@@ -10,7 +10,7 @@ mpl.rcParams.update({'axes.labelsize': 30})
 mpl.rcParams.update({'xtick.labelsize': 18})
 mpl.rcParams.update({'ytick.labelsize': 18})
 mpl.rcParams.update({'axes.titlesize': 36})
-mpl.rcParams.update({'titlesize': 42})
+#mpl.rcParams.update({'titlesize': 42})
 
 '''Perform requested analysis on a bunch of phiout datasets'''
 def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
