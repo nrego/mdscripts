@@ -10,7 +10,12 @@ import matplotlib as mpl
 
 def genHistMatrix(S, M):
 
+    histMat = numpy.empty((S,M))
 
+    for i, ds in enumerate(dr.datasets.itervalues()):
+        pass
+
+    return histMat
 
 
 if __name__ == "__main__":
@@ -18,7 +23,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run WHAM on collection of INDUS output datasets")
 
     parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
-                        help='Input file names')
+                        help='Input file names (presumably in a sensible order)')
     parser.add_argument('-b', '--start', type=int, default=0,
                         help='first timepoint (in ps)')
     parser.add_argument('--debug', action='store_true',
@@ -45,6 +50,27 @@ if __name__ == "__main__":
     if args.T:
         conv /= (args.T * 0.008314)
 
-    S = args.S or len(infiles) # Number of simulations to WHAM - assumed to be from input files
+    S = len(infiles) # Assume number of simulations from input
 
-    histMat = getHistMatrix(S, nbins)
+    nbins = args.nbins
+
+    minval = float('inf')
+    maxval = float('-inf')
+    for f in infiles:
+        ds = dr.loadPhi(f)
+
+        # Min, max for this dataset
+        tmpmax = ds.max(start=start)['$\~N$']
+        tmpmin = ds.min(start=start)['$\~N$']
+
+        minval = tmpmin if minval>tmpmin else minval
+        maxval = tmpmax if maxval<tmpmax else maxval
+
+    # N twid range
+    data_range = maxval - minval
+
+    log.debug('max: {} min: {} range: {}'.format(minval, maxval, data_range))
+
+    histMat = genHistMatrix(S, nbins)
+
+

@@ -10,6 +10,7 @@ from matplotlib import pyplot
 import logging
 import re
 import linecache
+import collections
 
 log = logging.getLogger()
 log.addHandler(logging.StreamHandler())
@@ -80,6 +81,12 @@ class PhiDataSet(DataSet):
 
         return rng['N']
 
+    def max(self, start=0):
+        return self.data[start:].max()
+
+    def min(self, start=0):
+        return self.data[start:].min()
+
     def getMean(self, start=0, bphi=1):
         #return self.data[start:].mean()[1]
         N = self.data[start:]['N']
@@ -101,7 +108,7 @@ class PhiDataSet(DataSet):
         return numer.mean() / denom.mean()
 
     def getHist(self, start=0, nbins=50):
-        return ds.data[start:].hist(bins=nbins)
+        return numpy.histogram(self.data[start:]['$\~N$'], bins=nbins)
 
 class XvgDataSet(DataSet):
 
@@ -155,16 +162,11 @@ class XvgDataSet(DataSet):
 
 class DataReader:
     '''Global class for handling datasets, etc'''
-    datasets = {}
+    datasets = collections.OrderedDict()
     ts = None
     start = 0.0
     mean = -1
     phi = -1
-
-    @ClassProperty
-    @classmethod
-    def n_sims(cls):
-        return len(cls.datasets)
 
     '''Load phiout.dat files'''
     @classmethod
@@ -212,7 +214,7 @@ class DataReader:
     @classmethod
     def clearData(cls):
         del cls.datasets
-        cls.datasets = {}
+        cls.datasets = collections.OrderedDict()
 
     @staticmethod
     def show():
