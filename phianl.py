@@ -22,14 +22,15 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
     for i, infile in enumerate(infiles):
         log.debug('loading file: {}'.format(infile))
         ds = PhiReader.loadPhi(infile)
-
+        '''
         with open(infile) as f:
             # Ugh
             for li, line in enumerate(f):
                 if (li == 2):
                     phi = float(line.split()[3])
                     break
-
+        '''
+        phi = ds.phi
         bphi = phi*conv #Could be in kT or kJ/mol
         if (args.plotDist):
             #fig = pyplot.figure()

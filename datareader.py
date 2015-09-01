@@ -9,6 +9,7 @@ import pandas
 from matplotlib import pyplot
 import logging
 import re
+import linecache
 
 log = logging.getLogger()
 log.addHandler(logging.StreamHandler())
@@ -26,6 +27,9 @@ def normhistnd(hist, binbounds):
 
     hist /= normfac
     return normfac
+
+def extractFloat(string):
+    return map(float, re.findall(r"[-+]?\d*\.\d+|\d+", string))
 
 class DataSet:
 
@@ -51,6 +55,10 @@ class PhiDataSet(DataSet):
 
     def __init__(self, filename):
         super(PhiDataSet, self).__init__()
+
+        # Assume output file from umbrella.conf
+        self.phi = extractFloat(linecache.getline(filename, 3)).pop() # Ugh
+        linecache.clearcache()
         data = numpy.loadtxt(filename)
         log.debug('Datareader {} reading input file {}'.format(self, filename))
         self.data = pandas.DataFrame(data[:, 1:], index=data[:, 0],
@@ -97,7 +105,7 @@ class XvgDataSet(DataSet):
     def __init__(self, title):
         super(XvgDataSet, self).__init__()
 
-        floats = XvgDataSet._extractFloat(title)
+        floats = extractFloat(title)
         self.partner = None
         self.dual = False
         self.normfac = 0
@@ -140,10 +148,6 @@ class XvgDataSet(DataSet):
 
         if (ylim is not None):
             pyplot.ylim(ylim)
-
-    @staticmethod
-    def _extractFloat(string):
-        return map(float, re.findall(r"[-+]?\d*\.\d+|\d+", string))
 
 
 class DataReader:
