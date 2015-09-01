@@ -67,6 +67,11 @@ class PhiDataSet(DataSet):
         if (ylim is not None):
             pyplot.ylim(ylim)
 
+    def getRange(self, start=0):
+        rng = self.data[start:].max() - self.data[start:].min()
+
+        return rng['N']
+
     def getMean(self, start=0, bphi=1):
         #return self.data[start:].mean()[1]
         N = self.data[start:]['N']

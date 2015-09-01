@@ -34,12 +34,13 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
         if (args.plotDist):
             #fig = pyplot.figure()
             #mu = ds.data[start:].mean()[0]
+            rng = ds.getRange(start=start)
             mu = ds.getMean(start=start, bphi=bphi)
             #var = ds.data[start:].var()[0]
             var = ds.getVar(start=start, bphi=bphi)
             txtstr = "$\mu={:.3f}$\n$\sigma^2={:.3f}$\n$F={:.2f}$".format(mu, var, var/mu)
             #print(txtstr)
-            ds.data[start:].hist(bins=25, normed=1)
+            ds.data[start:].hist(bins=rng, normed=1)
             pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
                             xycoords='figure fraction', textcoords='figure fraction')
             pyplot.suptitle(r'$\beta \phi ={}$'.format(bphi), fontsize=42)
