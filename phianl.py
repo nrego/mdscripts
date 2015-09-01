@@ -121,8 +121,7 @@ if __name__ == "__main__":
                                       construct N v. Phi plot from multiple phi values")
 
     parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
-                        help='phi values corresponding to input directories (assumed to be of form "phi_[input]", \
-                              where phi is in J/mol')
+                        help='Input file names')
     parser.add_argument('-o', '--output', default=None,
                         help='print output of N v. Phi plot')
     parser.add_argument('-b', '--start', type=int, default=0,

@@ -161,6 +161,11 @@ class DataReader:
     mean = -1
     phi = -1
 
+    @ClassProperty
+    @classmethod
+    def n_sims(cls):
+        return len(cls.datasets)
+
     '''Load phiout.dat files'''
     @classmethod
     def loadPhi(cls, filename):
