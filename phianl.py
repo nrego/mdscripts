@@ -120,7 +120,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phi Reader. Look at N v. time plots at individual Phi values, or \
                                       construct N v. Phi plot from multiple phi values")
 
-    parser.add_argument('input', metavar='INPUT', type=int, nargs='+',
+    parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
                         help='phi values corresponding to input directories (assumed to be of form "phi_[input]", \
                               where phi is in J/mol')
     parser.add_argument('-o', '--output', default=None,
@@ -155,7 +155,8 @@ if __name__ == "__main__":
         log.setLevel(logging.DEBUG)
 
     show = args.plotN or args.plotLogN or args.plotNegSlope or args.plotInteg or args.plotDist
-    infiles = ['phi_{:05d}/phiout.dat'.format(inarg) for inarg in args.input]
+    #infiles = ['phi_{:05d}/phiout.dat'.format(inarg) for inarg in args.input]
+    infiles = args.input
 
     log.debug("{} input files".format(len(infiles)))
     start = args.start
@@ -169,9 +170,6 @@ if __name__ == "__main__":
     myrange = None
     if args.range:
         myrange = parseRange(args.range)
-
-
-
 
     if len(infiles) == 1 and not args.plotDist:
         PhiReader.loadPhi(infiles[0])

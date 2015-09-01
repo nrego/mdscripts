@@ -100,6 +100,9 @@ class PhiDataSet(DataSet):
 
         return numer.mean() / denom.mean()
 
+    def getHist(self, start=0, nbins=50):
+        return ds.data[start:].hist(bins=nbins)
+
 class XvgDataSet(DataSet):
 
     def __init__(self, title):
@@ -200,6 +203,11 @@ class DataReader:
     def plot(cls, ylim=None, start=0, block=1):
         for title, dataset in cls.datasets.items():
             dataset.plot(ylim=ylim, start=start, block=block)
+
+    @classmethod
+    def clearData(cls):
+        del cls.datasets
+        cls.datasets = {}
 
     @staticmethod
     def show():
