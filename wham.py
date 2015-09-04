@@ -67,16 +67,17 @@ def loadRangeData(infiles, start):
 #   bias histogram N (nsims X nbins matrix), and bias (nsims X nbins matrix)
 # **Hopefully** this vectorized implementation will be reasonably quick
 #   since it relies on optimized numpy matrix manipulation routines
+# This returns an array of 'nan' if (I assume) we drop below machine precision - 
+#    TODO: Implement a graceful check to avoid this
 def genPdist(data, weights, nsample, numer, bias):
 
     nsims, nbins = data.shape
 
-    probHist = numpy.empty(nbins)
-
     denom = numpy.dot(weights*nsample, bias)
+
     probHist = numer/denom
 
-
+    
     return probHist
 
 # generate simulation weights from previously computed 
@@ -122,8 +123,12 @@ if __name__ == "__main__":
     parser.add_argument('--range', type=str,
                         help="Specify custom data range (as 'minval,maxval') for \
                         histogram binning (default: Full data range)")
-    parser.add_argument('--maxiter', type=int, metavar='ITER', default=1000,
+    parser.add_argument('--maxiter', type=int, metavar='ITER', default=20,
                         help='Maximum number of iterations to evaluate WHAM functions')
+    parser.add_argument('--plotPdist', action='store_true', 
+                        help='Plot resulting probability distribution')
+    parser.add_argument('--plotE', action='store_true',
+                        help='Plot resulting (free) energy distribution (-log(P))')
 
     
 
@@ -161,22 +166,44 @@ if __name__ == "__main__":
     log.debug('Bin bounds over range: {}'.format(binbounds))
 
     bincntrs = (binbounds[1:]+binbounds[:-1])/2.0
-
+    binwidths = (binbounds[1:]-binbounds[:-1])/2.0
+    log.debug('Bin centers: {}'.format(binbounds))
     biasMat = genBias(bincntrs, beta)
 
-    weights = numpy.ones(nsims)
+    weights = numpy.ones(nsims, dtype=numpy.float64)
     nsample = dataMat.sum(1) # Number of data points for each simulation 
+
     numer = dataMat.sum(0) # Sum over all simulations of nsample in each bin
 
     for i in xrange(args.maxiter):
+        printinfo = (i%10 == 0)
         probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
         weights = 1/numpy.dot(biasMat, probDist)
 
-    normhistnd(probDist, binbounds[:-1])
+        if printinfo:
+            log.info('Iter {}'.format(i))
+            log.debug('probDist: {}'.format(probDist))
+            log.debug('weights: {}'.format(weights))
 
-    pyplot.plot(bincntrs, -numpy.log(probDist))
-    pyplot.show()
+    log.debug('pdist (pre-normalization): {}'.format(probDist))
+    normfac = normhistnd(probDist, binbounds[:-1])
+    log.info('norm fac: {}'.format(normfac))
 
-    numpy.savetxt('Pn.dat', probDist)
+    log.info('pdist shape:{}'.format(probDist.shape))
+    log.debug('pdist: {}'.format(probDist))
+
+    if args.plotPdist:
+        pyplot.plot(bincntrs, probDist)
+        pyplot.show()
+
+    elif args.plotE:
+        pyplot.plot(bincntrs, -numpy.log(probDist))
+        pyplot.show()
+
+    log.info('shape of stacked array: {}'.format(numpy.column_stack((bincntrs, probDist)).shape))
+    numpy.savetxt('Pn.dat', numpy.column_stack((bincntrs, probDist)),
+                  fmt='%3.3f %1.3e')
+    numpy.savetxt('logPn.dat', numpy.column_stack((bincntrs, -numpy.log(probDist))),
+                  fmt='%3.3f %3.3f')
 
 
