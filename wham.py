@@ -1,3 +1,10 @@
+'''
+Stitch together Ntwid histograms from phiout datafiles to construct
+unbiased P(Ntwid) using WHAM
+
+nrego
+Sept 2015 
+'''
 import numpy
 from matplotlib import pyplot
 import argparse
@@ -8,22 +15,35 @@ import matplotlib as mpl
 
 log = logging.getLogger('wham')
 
+def normhistnd(hist, binbounds):
+    '''Normalize the N-dimensional histogram ``hist`` with corresponding
+    bin boundaries ``binbounds``.  Modifies ``hist`` in place and returns
+    the normalization factor used.'''
+
+    diffs = numpy.append(numpy.diff(binbounds), 0)
+
+    assert diffs.shape == hist.shape
+    normfac = (hist * diffs[0]).sum()
+
+    hist /= normfac
+    return normfac
+
 def parseRange(rangestr):
     spl = rangestr.split(",")
     return tuple([float(i) for i in spl])
 
 # Generate S x M count histogram over Ntwid for all sims
 # (M is number of bins)
-def genHistMatrix(S, M, rng, start):
+def genDataMatrix(S, M, rng, start):
 
-    histMat = numpy.empty((S,M))
+    dataMat = numpy.empty((S,M))
     binbounds = numpy.empty((1,M+1))
     for i, ds in enumerate(dr.datasets.itervalues()):
         dataframe = ds.data[start:]['$\~N$'] # make this dynamic in future
-        counts, binbounds = numpy.histogram(dataframe, bins=M, range=rng)
-        histMat[i,:] = counts
+        nsample, binbounds = numpy.histogram(dataframe, bins=M, range=rng)
+        dataMat[i,:] = nsample
 
-    return histMat, binbounds
+    return dataMat, binbounds
 
 # Load list of infiles from start
 # Return range over entire dataset (as tuple)
@@ -40,8 +60,47 @@ def loadRangeData(infiles, start):
         minval = tmpmin if minval>tmpmin else minval
         maxval = tmpmax if maxval<tmpmax else maxval
 
+
     return minval, maxval    
 
+# generate P histogram (shape: nbins) from weights (shape: nsims),
+#   bias histogram N (nsims X nbins matrix), and bias (nsims X nbins matrix)
+# **Hopefully** this vectorized implementation will be reasonably quick
+#   since it relies on optimized numpy matrix manipulation routines
+def genPdist(data, weights, nsample, numer, bias):
+
+    nsims, nbins = data.shape
+
+    probHist = numpy.empty(nbins)
+
+    denom = numpy.dot(weights*nsample, bias)
+    probHist = numer/denom
+
+
+    return probHist
+
+# generate simulation weights from previously computed 
+#  (unbiased) probability distribution and bias matrix
+def genWeights(prob, bias):
+    weights = numpy.dot(bias, prob)
+
+# Generate nsims x nbins bias matrix
+def genBias(bincntrs, beta):
+    nsims = len(dr.datasets)
+    nbins = len(bincntrs)
+
+    biasMat = numpy.empty((nsims, nbins))
+
+    for i, ds in enumerate(dr.datasets.itervalues()):
+        kappa = ds.kappa
+        Nstar = ds.Nstar
+        phi = ds.phi
+
+        biasMat[i, :] = 0.5*kappa*(bincntrs-Nstar)**2 + phi*bincntrs
+
+    biasMat = numpy.exp(-beta*biasMat)
+
+    return biasMat
 
 if __name__ == "__main__":
 
@@ -63,6 +122,8 @@ if __name__ == "__main__":
     parser.add_argument('--range', type=str,
                         help="Specify custom data range (as 'minval,maxval') for \
                         histogram binning (default: Full data range)")
+    parser.add_argument('--maxiter', type=int, metavar='ITER', default=1000,
+                        help='Maximum number of iterations to evaluate WHAM functions')
 
     
 
@@ -78,11 +139,11 @@ if __name__ == "__main__":
     log.info("{} input files".format(len(infiles)))
     start = args.start
 
-    conv = 1
+    beta = 1
     if args.T:
-        conv /= (args.T * 0.008314)
+        beta /= (args.T * 8.314462e-3)
 
-    S = len(infiles) # Assume number of simulations from input
+    nsims = len(infiles) # Assume number of simulations from input
 
     nbins = args.nbins
 
@@ -94,9 +155,28 @@ if __name__ == "__main__":
 
     log.info('max, min: {}'.format(data_range))
 
-    histMat, binbounds = genHistMatrix(S, nbins, data_range, start)
+    dataMat, binbounds = genDataMatrix(nsims, nbins, data_range, start)
 
-    log.info('Hist map shape: {}'.format(histMat.shape))
+    log.info('Hist map shape: {}'.format(dataMat.shape))
     log.debug('Bin bounds over range: {}'.format(binbounds))
+
+    bincntrs = (binbounds[1:]+binbounds[:-1])/2.0
+
+    biasMat = genBias(bincntrs, beta)
+
+    weights = numpy.ones(nsims)
+    nsample = dataMat.sum(1) # Number of data points for each simulation 
+    numer = dataMat.sum(0) # Sum over all simulations of nsample in each bin
+
+    for i in xrange(args.maxiter):
+        probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
+        weights = 1/numpy.dot(biasMat, probDist)
+
+    normhistnd(probDist, binbounds[:-1])
+
+    pyplot.plot(bincntrs, -numpy.log(probDist))
+    pyplot.show()
+
+    numpy.savetxt('Pn.dat', probDist)
 
 
