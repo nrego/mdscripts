@@ -58,6 +58,8 @@ class PhiDataSet(DataSet):
         super(PhiDataSet, self).__init__()
 
         # Assume output file from umbrella.conf
+        self.kappa = extractFloat(linecache.getline(filename, 1)).pop()
+        self.Nstar = extractFloat(linecache.getline(filename, 2)).pop()
         self.phi = extractFloat(linecache.getline(filename, 3)).pop() # Ugh
         linecache.clearcache()
         data = numpy.loadtxt(filename)
