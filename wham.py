@@ -40,7 +40,7 @@ def loadRangeData(infiles, start):
         minval = tmpmin if minval>tmpmin else minval
         maxval = tmpmax if maxval<tmpmax else maxval
 
-    return minval, maxval    
+    return minval, maxval
 
 
 if __name__ == "__main__":
@@ -98,5 +98,3 @@ if __name__ == "__main__":
 
     log.info('Hist map shape: {}'.format(histMat.shape))
     log.debug('Bin bounds over range: {}'.format(binbounds))
-
-
