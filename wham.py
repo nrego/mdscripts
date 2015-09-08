@@ -6,10 +6,12 @@ nrego
 Sept 2015
 '''
 import numpy
+from scipy.optimize import minimize
 from matplotlib import pyplot
 import argparse
 import logging
 from datareader import dr
+import uwham
 
 import matplotlib as mpl
 
@@ -63,6 +65,19 @@ def loadRangeData(infiles, start):
 
     return minval, maxval
 
+def genNegLL(weights, data, nsample, numer, bias):
+    denom = numpy.dot(weights*nsample, bias)
+    logPdist = numpy.log(numer/denom)
+    logweights = numpy.log(weights)
+
+    return - numpy.dot(nsample, logweights) - numpy.dot(numer, logPdist)
+
+def genNegLLGrad(weights, data, nsample, numer, bias):
+    invWeights = numpy.power(weights, -1)
+    denom = numpy.dot(weights*nsample, bias)
+    pDist = numer/denom
+
+    return nsample*(numpy.dot(bias, pDist)) - invWeights
 
 # generate P histogram (shape: nbins) from weights (shape: nsims),
 #   bias histogram N (nsims X nbins matrix), and bias (nsims X nbins matrix)
@@ -85,6 +100,16 @@ def genPdist(data, weights, nsample, numer, bias):
 #  (unbiased) probability distribution and bias matrix
 def genWeights(prob, bias):
     weights = numpy.dot(bias, prob)
+
+# For use with uwham - generate u_kln matrix of biased Ntwid values
+def genU_kln(nsims, maxnsample, start, beta):
+    u_kln = numpy.zeros((nsims, nsims, maxnsample))
+    for i,ds_i in enumerate(dr.datasets.iteritems()):
+        for j,ds_j in enumerate(dr.datasets.iteritems()):
+            dataframe = numpy.array(ds_j[1].data[start:]['$\~N$'])
+            u_kln[i,j,:] = ds_i[1].phi*beta*dataframe
+
+    return u_kln
 
 # Generate nsims x nbins bias matrix
 def genBias(bincntrs, beta):
@@ -118,13 +143,13 @@ if __name__ == "__main__":
                         help='be verbose')
     parser.add_argument('-T', metavar='TEMP', type=float,
                         help='convert Phi values to kT, for TEMP (K)')
-    parser.add_argument('-nbins', metavar='NBINS', type=int, default=50,
+    parser.add_argument('--nbins', metavar='NBINS', type=int, default=50,
                         help='Number of histogram bins (over range if specified, or from \
                             the minium to maximum of the input[start:]')
     parser.add_argument('--range', type=str,
                         help="Specify custom data range (as 'minval,maxval') for \
                         histogram binning (default: Full data range)")
-    parser.add_argument('--maxiter', type=int, metavar='ITER', default=20,
+    parser.add_argument('--maxiter', type=int, metavar='ITER', default=1000,
                         help='Maximum number of iterations to evaluate WHAM functions')
     parser.add_argument('--plotPdist', action='store_true',
                         help='Plot resulting probability distribution')
@@ -177,16 +202,22 @@ if __name__ == "__main__":
 
     numer = dataMat.sum(0) # Sum over all simulations of nsample in each bin
 
+    convergenceMat = numpy.zeros((100, 3), numpy.float64)
+    printinter = args.maxiter/100
+
     for i in xrange(args.maxiter):
-        printinfo = (i%10 == 0)
+        printinfo = (i%printinter == 0)
         probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
         weights = 1/numpy.dot(biasMat, probDist)
-
         if printinfo:
-            log.info('Iter {}'.format(i))
+            normhistnd(probDist, binbounds[:-1])
+            convergenceMat[i/printinter,...] = i, -numpy.log(probDist[0]), weights[0]
+            log.info('\rIter {}'.format(i))
             log.debug('probDist: {}'.format(probDist))
             log.debug('weights: {}'.format(weights))
 
+    #myargs = (dataMat, nsample, numer, biasMat)
+    #minimize(genNegLL, weights, myargs, method='BFGS', jac=genNegLLGrad)
     log.debug('pdist (pre-normalization): {}'.format(probDist))
     normfac = normhistnd(probDist, binbounds[:-1])
     log.info('norm fac: {}'.format(normfac))
@@ -207,6 +238,14 @@ if __name__ == "__main__":
                   fmt='%3.3f %1.3e')
     numpy.savetxt('logPn.dat', numpy.column_stack((bincntrs, -numpy.log(probDist))),
                   fmt='%3.3f %3.3f')
+    numpy.savetxt('convergence.dat', convergenceMat, fmt='%d %3.3f %1.3e')
 
+    ## UWHAM analysis
+    #u_kln = genU_kln(nsims, nsample.max(), start, beta)
 
-
+    log.info('nsims: {}'.format(nsims))
+    log.info('N_k shape: {}'.format(nsample.shape))
+    log.info('u_kln shape: {}'.format(u_kln.shape))
+    log.debug('u_kln[1,1,:]: {}'.format(u_kln[1,1,:]))
+    #results = uwham.UWHAM(u_kln, nsample)
+    #numpy.savetxt('uwham_results.dat', results.f_k, fmt='%3.3f')

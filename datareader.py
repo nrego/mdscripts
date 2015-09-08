@@ -91,13 +91,13 @@ class PhiDataSet(DataSet):
 
     def getMean(self, start=0, bphi=1):
         #return self.data[start:].mean()[1]
-        N = self.data[start:]['N']
+        #N = self.data[start:]['N']
         Ntwid = self.data[start:]['$\~N$']
-        numer = (N*numpy.exp(bphi*(Ntwid-N)))
-        denom = (numpy.exp(bphi*(Ntwid-N)))
+        #numer = (N*numpy.exp(bphi*(Ntwid-N)))
+        #denom = (numpy.exp(bphi*(Ntwid-N)))
 
-        return numer.mean() / denom.mean()
-        #return Ntwid.mean()
+        #return numer.mean() / denom.mean()
+        return Ntwid.mean()
 
     def getVar(self, start=0, bphi=1):
         N_avg = self.getMean(start, bphi)
