@@ -214,6 +214,15 @@ class DataReader:
             dataset.plot(ylim=ylim, start=start, block=block)
 
     @classmethod
+    def plotHistAll(cls, start=0, nbins=50):
+        total_array = numpy.array([])
+        for title, dataset in cls.datasets.iteritems():
+            total_array = numpy.append(total_array, dataset.data[start:]['$\~N$'])
+
+        pyplot.hist(total_array, bins=nbins)
+
+
+    @classmethod
     def clearData(cls):
         del cls.datasets
         cls.datasets = collections.OrderedDict()

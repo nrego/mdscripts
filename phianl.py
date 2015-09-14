@@ -2,7 +2,7 @@ import numpy
 from matplotlib import pyplot
 import argparse
 import logging
-from datareader import DataReader as PhiReader
+from datareader import dr
 
 import matplotlib as mpl
 
@@ -19,9 +19,10 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
     prev_n = 0
     n_0 = 0
     n_arr = numpy.empty((len(infiles),2))
+
     for i, infile in enumerate(infiles):
         log.debug('loading file: {}'.format(infile))
-        ds = PhiReader.loadPhi(infile)
+        ds = dr.loadPhi(infile)
         '''
         with open(infile) as f:
             # Ugh
@@ -77,6 +78,9 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
     if outfile:
         numpy.savetxt(outfile, phi_vals, fmt='%.2f')
     if show:
+        if (args.plotDistAll):
+            dr.plotHistAll(start=start, nbins=20)
+            dr.show()
         if (args.plotN):
             title = r'$\langle{N}\rangle_\phi$'
             num = 1
@@ -140,6 +144,8 @@ if __name__ == "__main__":
                         help='plot Negative slope of (Log N + Phi) v Phi (default no)')
     parser.add_argument('--plotDist', action='store_true',
                         help='plot water number distributions for each phi value')
+    parser.add_argument('--plotDistAll', action='store_true',
+                        help='Plot water histograms over all simulations in INPUT (e.g. to gauge overall sampling)')
     parser.add_argument('-S', type=int,
                         help='Number of phi points for guessing adaptive spacing')
     parser.add_argument('--range', type=str,
@@ -153,7 +159,7 @@ if __name__ == "__main__":
     if args.debug:
         log.setLevel(logging.DEBUG)
 
-    show = args.plotN or args.plotLogN or args.plotNegSlope or args.plotInteg or args.plotDist
+    show = args.plotN or args.plotLogN or args.plotNegSlope or args.plotInteg or args.plotDist or args.plotDistAll
     #infiles = ['phi_{:05d}/phiout.dat'.format(inarg) for inarg in args.input]
     infiles = args.input
 
@@ -171,8 +177,8 @@ if __name__ == "__main__":
         myrange = parseRange(args.range)
 
     if len(infiles) == 1 and not args.plotDist:
-        PhiReader.loadPhi(infiles[0])
-        PhiReader.plot(start=start, ylim=myrange)
-        PhiReader.show()
+        dr.loadPhi(infiles[0])
+        dr.plot(start=start, ylim=myrange)
+        dr.show()
     else:
         phiAnalyze(infiles, show, start, outfile, conv, S, myrange)

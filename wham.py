@@ -16,6 +16,7 @@ import uwham
 import matplotlib as mpl
 
 log = logging.getLogger('wham')
+Nfeval = 1
 
 def normhistnd(hist, binbounds):
     '''Normalize the N-dimensional histogram ``hist`` with corresponding
@@ -131,6 +132,12 @@ def gradKappa(xweights, nsample, u_kln):
 
     return grad[1:]
 
+def callbackF(xweights):
+    global Nfeval
+    #log.info('Iteration {}'.format(Nfeval))
+    print 'Iteration {}'.format(Nfeval)
+    Nfeval += 1
+
 # Generate nsims x nbins bias matrix
 def genBias(bincntrs, beta):
     nsims = len(dr.datasets)
@@ -240,9 +247,23 @@ if __name__ == "__main__":
             log.debug('weights: {}'.format(weights))
     '''
     u_kln = genU_kln(nsims, nsample.max(), start, beta)
-    logweights[1:] = scipy.optimize.fmin_bfgs(f=kappa, x0=logweights[1:], fprime=gradKappa, args=(nsample, u_kln))
-    weights = numpy.exp(logweights)
-    log.info('Free energies for each umbrella: {}'.format(logweights))
+
+    ## UWHAM analysis
+    if args.uwham:
+        log.info('u_kln shape: {}'.format(u_kln.shape))
+        log.debug('u_kln[1,1,:]: {}'.format(u_kln[1,1,:]))
+        results = uwham.UWHAM(u_kln, nsample)
+        numpy.savetxt('uwham_results.dat', results.f_k, fmt='%3.3f')
+        logweights = results.f_k
+        weights = numpy.exp(logweights)
+
+    else:
+        log.info('Starting optimization...')
+        logweights[1:] = scipy.optimize.fmin_bfgs(f=kappa, x0=logweights[1:], fprime=gradKappa,
+                                              args=(nsample, u_kln), callback=callbackF)
+        weights = numpy.exp(logweights)
+        log.info('Free energies for each umbrella: {}'.format(logweights))
+
     probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
 
     log.debug('pdist (pre-normalization): {}'.format(probDist))
@@ -270,10 +291,4 @@ if __name__ == "__main__":
     log.info('nsims: {}'.format(nsims))
     log.info('N_k shape: {}'.format(nsample.shape))
 
-    ## UWHAM analysis
-    if args.uwham:
-        u_kln = genU_kln(nsims, nsample.max(), start, beta)
-        log.info('u_kln shape: {}'.format(u_kln.shape))
-        log.debug('u_kln[1,1,:]: {}'.format(u_kln[1,1,:]))
-        results = uwham.UWHAM(u_kln, nsample)
-        numpy.savetxt('uwham_results.dat', results.f_k, fmt='%3.3f')
+
