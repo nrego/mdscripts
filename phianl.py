@@ -14,7 +14,7 @@ mpl.rcParams.update({'axes.titlesize': 36})
 
 '''Perform requested analysis on a bunch of phiout datasets'''
 def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
-    phi_vals = numpy.zeros((len(infiles), 7), dtype=numpy.float32)
+    phi_vals = numpy.zeros((len(infiles), 8), dtype=numpy.float32)
     prev_phi = 0.0
     prev_n = 0
     n_0 = 0
@@ -42,7 +42,7 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
             var = ds.getVar(start=start, bphi=bphi)
             txtstr = "$\mu={:.3f}$\n$\sigma^2={:.3f}$\n$F={:.2f}$".format(mu, var, var/mu)
             #print(txtstr)
-            ds.data[start:].hist(bins=rng, normed=1)
+            ds.data[start:].hist(bins=20, normed=1)
             pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
                             xycoords='figure fraction', textcoords='figure fraction')
             pyplot.suptitle(r'$\beta \phi ={}$'.format(bphi), fontsize=42)
@@ -53,7 +53,7 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
         #n = ds.data[start:]['$\~N$'].mean()
         log.debug("    N: {:.2f}".format(n))
         lg_n = numpy.log(n)+bphi
-        log.debug("    lg(N): {:.2f}".format(lg_n))
+        log.debug("    lg(N) + beta*phi: {:.2f}".format(lg_n))
         if i == 0:
             dndphi_neg = 0
             n_0 = n
@@ -65,7 +65,9 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
 
         lg_n_negslope = (dndphi_neg/n) - 1
 
-        phi_vals[i] = bphi, n, 0, dndphi_neg, lg_n, lg_n_negslope, delta_phi
+        secondCum = ds.getVar(start=start, bphi=bphi) - n**2
+
+        phi_vals[i] = bphi, n, 0, dndphi_neg, lg_n, lg_n_negslope, delta_phi, secondCum
         prev_phi = bphi
         prev_n = n
 
@@ -97,6 +99,10 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
             title = r'$\langle{\delta N^2}\rangle_\phi / \langle{N}\rangle_\phi - 1$'
             num = 5
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num])
+        if (args.plotSus):
+            title = r'$\langle{\delta N^2}\rangle_\phi$'
+            num = 3
+            pyplot.plot(phi_vals[:, 0], phi_vals[:, num])
         if (args.plotDist):
             pyplot.show()
         else:
@@ -142,6 +148,8 @@ if __name__ == "__main__":
                         help='plot (Log N + Phi) v Phi (default no)')
     parser.add_argument('--plotNegSlope', action='store_true',
                         help='plot Negative slope of (Log N + Phi) v Phi (default no)')
+    parser.add_argument('--plotSus', action='store_true',
+                        help='plot Negative slope of (<N> vs beta phi), the susceptibility')
     parser.add_argument('--plotDist', action='store_true',
                         help='plot water number distributions for each phi value')
     parser.add_argument('--plotDistAll', action='store_true',
@@ -151,15 +159,15 @@ if __name__ == "__main__":
     parser.add_argument('--range', type=str,
                         help="Specify custom range (as 'minY,maxY') for plotting")
 
-    log = logging.getLogger()
-    log.addHandler(logging.StreamHandler())
+    log = logging.getLogger('phianl')
+    
 
     args = parser.parse_args()
 
     if args.debug:
         log.setLevel(logging.DEBUG)
 
-    show = args.plotN or args.plotLogN or args.plotNegSlope or args.plotInteg or args.plotDist or args.plotDistAll
+    show = args.plotN or args.plotLogN or args.plotNegSlope or args.plotInteg or args.plotDist or args.plotDistAll or args.plotSus
     #infiles = ['phi_{:05d}/phiout.dat'.format(inarg) for inarg in args.input]
     infiles = args.input
 

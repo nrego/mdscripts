@@ -81,7 +81,7 @@ class PhiDataSet(DataSet):
     def getRange(self, start=0):
         rng = self.data[start:].max() - self.data[start:].min()
 
-        return rng['N']
+        return rng['$\~N$']
 
     def max(self, start=0):
         return self.data[start:].max()
@@ -99,15 +99,22 @@ class PhiDataSet(DataSet):
         #return numer.mean() / denom.mean()
         return Ntwid.mean()
 
+    def getSecondCum(self, start=0, bphi=1):
+
+        NtwidSq = (self.data[start:]['$\~N$'])**2
+
+        return NtwidSq.mean()
+
     def getVar(self, start=0, bphi=1):
         N_avg = self.getMean(start, bphi)
 
-        N = self.data[start:]['N']
+        #N = self.data[start:]['N']
         Ntwid = self.data[start:]['$\~N$']
-        numer = (N-N_avg)**2 * numpy.exp(bphi*(Ntwid-N))
-        denom = numpy.exp(bphi*(Ntwid-N))
+        #numer = (N-N_avg)**2 * numpy.exp(bphi*(Ntwid-N))
+        #denom = numpy.exp(bphi*(Ntwid-N))
 
-        return numer.mean() / denom.mean()
+        #return numer.mean() / denom.mean()
+        return ((Ntwid - N_avg)**2).mean()
 
     def getHist(self, start=0, nbins=50):
         return numpy.histogram(self.data[start:]['$\~N$'], bins=nbins)
