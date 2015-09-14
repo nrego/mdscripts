@@ -290,5 +290,3 @@ if __name__ == "__main__":
 
     log.info('nsims: {}'.format(nsims))
     log.info('N_k shape: {}'.format(nsample.shape))
-
-
