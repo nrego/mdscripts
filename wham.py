@@ -155,6 +155,8 @@ if __name__ == "__main__":
                         help='Plot resulting probability distribution')
     parser.add_argument('--plotE', action='store_true',
                         help='Plot resulting (free) energy distribution (-log(P))')
+    parser.add_argument('--uwham', action='store_true',
+                        help='perform UWHAM analysis (default: False)')
 
 
 
@@ -202,7 +204,8 @@ if __name__ == "__main__":
 
     numer = dataMat.sum(0) # Sum over all simulations of nsample in each bin
 
-    convergenceMat = numpy.zeros((100, 3), numpy.float64)
+    # Track the weights for each simulation over time
+    convergenceMat = numpy.zeros((100, nsims), numpy.float64)
     printinter = args.maxiter/100
 
     for i in xrange(args.maxiter):
@@ -210,8 +213,7 @@ if __name__ == "__main__":
         probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
         weights = 1/numpy.dot(biasMat, probDist)
         if printinfo:
-            normhistnd(probDist, binbounds[:-1])
-            convergenceMat[i/printinter,...] = i, -numpy.log(probDist[0]), weights[0]
+            convergenceMat[i/printinter,:] = numpy.log(weights/weights[0])
             log.info('\rIter {}'.format(i))
             log.debug('probDist: {}'.format(probDist))
             log.debug('weights: {}'.format(weights))
@@ -238,14 +240,15 @@ if __name__ == "__main__":
                   fmt='%3.3f %1.3e')
     numpy.savetxt('logPn.dat', numpy.column_stack((bincntrs, -numpy.log(probDist))),
                   fmt='%3.3f %3.3f')
-    numpy.savetxt('convergence.dat', convergenceMat, fmt='%d %3.3f %1.3e')
-
-    ## UWHAM analysis
-    #u_kln = genU_kln(nsims, nsample.max(), start, beta)
+    numpy.savetxt('convergence.dat', convergenceMat, fmt='%3.3f')
 
     log.info('nsims: {}'.format(nsims))
     log.info('N_k shape: {}'.format(nsample.shape))
-    log.info('u_kln shape: {}'.format(u_kln.shape))
-    log.debug('u_kln[1,1,:]: {}'.format(u_kln[1,1,:]))
-    #results = uwham.UWHAM(u_kln, nsample)
-    #numpy.savetxt('uwham_results.dat', results.f_k, fmt='%3.3f')
+
+    ## UWHAM analysis
+    if args.uwham:
+        u_kln = genU_kln(nsims, nsample.max(), start, beta)
+        log.info('u_kln shape: {}'.format(u_kln.shape))
+        log.debug('u_kln[1,1,:]: {}'.format(u_kln[1,1,:]))
+        results = uwham.UWHAM(u_kln, nsample)
+        numpy.savetxt('uwham_results.dat', results.f_k, fmt='%3.3f')
