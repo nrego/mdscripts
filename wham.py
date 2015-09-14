@@ -6,7 +6,7 @@ nrego
 Sept 2015
 '''
 import numpy
-from scipy.optimize import minimize
+import scipy.optimize
 from matplotlib import pyplot
 import argparse
 import logging
@@ -65,20 +65,6 @@ def loadRangeData(infiles, start):
 
     return minval, maxval
 
-def genNegLL(weights, data, nsample, numer, bias):
-    denom = numpy.dot(weights*nsample, bias)
-    logPdist = numpy.log(numer/denom)
-    logweights = numpy.log(weights)
-
-    return - numpy.dot(nsample, logweights) - numpy.dot(numer, logPdist)
-
-def genNegLLGrad(weights, data, nsample, numer, bias):
-    invWeights = numpy.power(weights, -1)
-    denom = numpy.dot(weights*nsample, bias)
-    pDist = numer/denom
-
-    return nsample*(numpy.dot(bias, pDist)) - invWeights
-
 # generate P histogram (shape: nbins) from weights (shape: nsims),
 #   bias histogram N (nsims X nbins matrix), and bias (nsims X nbins matrix)
 # **Hopefully** this vectorized implementation will be reasonably quick
@@ -102,14 +88,48 @@ def genWeights(prob, bias):
     weights = numpy.dot(bias, prob)
 
 # For use with uwham - generate u_kln matrix of biased Ntwid values
-def genU_kln(nsims, maxnsample, start, beta):
+def genU_kln(nsims, nsample, start, beta):
+    maxnsample = nsample.max()
     u_kln = numpy.zeros((nsims, nsims, maxnsample))
     for i,ds_i in enumerate(dr.datasets.iteritems()):
         for j,ds_j in enumerate(dr.datasets.iteritems()):
             dataframe = numpy.array(ds_j[1].data[start:]['$\~N$'])
             u_kln[i,j,:] = ds_i[1].phi*beta*dataframe
 
+    #for k, l in numpy.ndindex(u_kln.shape[0:2]):
+    #    u_kln[k, l, nsample[l]:] = numpy.NaN
+
     return u_kln
+
+# Log likelihood
+def kappa(xweights, nsample, u_kln):
+    logweights = numpy.zeros(xweights.shape[0]+1)
+    logweights[1:] = xweights
+    weights = numpy.exp(logweights)
+    mat = numpy.zeros(u_kln.shape[1:])
+    for j in xrange(u_kln.shape[1]):
+        mat[j] = numpy.log(numpy.dot((weights*nsample), numpy.exp(-u_kln[:,j,:])))
+
+    logLikelihood = numpy.nansum(mat) - numpy.dot(nsample, logweights)
+
+    return logLikelihood
+
+def gradKappa(xweights, nsample, u_kln):
+    logweights = numpy.zeros(xweights.shape[0]+1)
+    logweights[1:] = xweights
+    weights = numpy.exp(logweights)
+    grad = numpy.zeros(logweights.shape)
+    mat = numpy.empty(u_kln.shape[1]*u_kln.shape[2])
+    npts = u_kln.shape[2]
+    for j in xrange(u_kln.shape[1]):
+        mat[j*npts:(j+1)*npts] = numpy.dot((weights*nsample), numpy.exp(-u_kln[:,j,:]))
+
+    inv_mat = numpy.power(mat, -1)
+    for i in xrange(grad.shape[0]):
+        grad[i] = numpy.dot(inv_mat*nsample[i]*weights[i],
+                             numpy.exp(-numpy.ravel(u_kln[i]))) - nsample[i]
+
+    return grad[1:]
 
 # Generate nsims x nbins bias matrix
 def genBias(bincntrs, beta):
@@ -200,6 +220,7 @@ if __name__ == "__main__":
     biasMat = genBias(bincntrs, beta)
 
     weights = numpy.ones(nsims, dtype=numpy.float64)
+    logweights = numpy.log(weights)
     nsample = dataMat.sum(1) # Number of data points for each simulation
 
     numer = dataMat.sum(0) # Sum over all simulations of nsample in each bin
@@ -207,7 +228,7 @@ if __name__ == "__main__":
     # Track the weights for each simulation over time
     convergenceMat = numpy.zeros((100, nsims), numpy.float64)
     printinter = args.maxiter/100
-
+    '''
     for i in xrange(args.maxiter):
         printinfo = (i%printinter == 0)
         probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
@@ -217,9 +238,13 @@ if __name__ == "__main__":
             log.info('\rIter {}'.format(i))
             log.debug('probDist: {}'.format(probDist))
             log.debug('weights: {}'.format(weights))
+    '''
+    u_kln = genU_kln(nsims, nsample.max(), start, beta)
+    logweights[1:] = scipy.optimize.fmin_bfgs(f=kappa, x0=logweights[1:], fprime=gradKappa, args=(nsample, u_kln))
+    weights = numpy.exp(logweights)
+    log.info('Free energies for each umbrella: {}'.format(logweights))
+    probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
 
-    #myargs = (dataMat, nsample, numer, biasMat)
-    #minimize(genNegLL, weights, myargs, method='BFGS', jac=genNegLLGrad)
     log.debug('pdist (pre-normalization): {}'.format(probDist))
     normfac = normhistnd(probDist, binbounds[:-1])
     log.info('norm fac: {}'.format(normfac))
