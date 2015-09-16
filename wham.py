@@ -18,6 +18,11 @@ import matplotlib as mpl
 log = logging.getLogger('wham')
 Nfeval = 1
 
+mpl.rcParams.update({'axes.labelsize': 30})
+mpl.rcParams.update({'xtick.labelsize': 18})
+mpl.rcParams.update({'ytick.labelsize': 18})
+mpl.rcParams.update({'axes.titlesize': 36})
+
 def normhistnd(hist, binbounds):
     '''Normalize the N-dimensional histogram ``hist`` with corresponding
     bin boundaries ``binbounds``.  Modifies ``hist`` in place and returns
