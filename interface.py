@@ -56,7 +56,7 @@ if __name__=='__main__':
     sigma = 2.4
 
     # Phi hash for distances up to cutoff
-    phi_hash = phi(numpy.arange(0,cutoff+dl,dl), sigma, cutoff)
+    phi_hash = phi(numpy.arange(0, cutoff+dl,dl), sigma, cutoff)
 
     u = MDAnalysis.universe(args.grofile, args.trajfile)
 
@@ -65,7 +65,7 @@ if __name__=='__main__':
 
     prot_heavies = u.select_atoms("not (name H* or resname SOL) and not (name CL or name NA)")
     water_ow = u.select_atoms("name OW")
-    ions = u.select_atoms("name CL or name CL")
+    ions = u.select_atoms("name CL or name NA")
 
     # Hard coded for now - obviously must predict
     rho_water_bulk = 32.0
@@ -92,5 +92,11 @@ if __name__=='__main__':
     for i in xrange(startframe, u.trajectory.numframes):
 
         u.trajectory[i]
+
+        rho_water = numpy.zeros(ngrids, dtype=numpy.float32)
+        rho_prot = numpy.zeros(ngrids, dtype=numpy.float32)
+        rho = numpy.zeros(ngrids, dtype=numpy.float32)
+
+
 
         
