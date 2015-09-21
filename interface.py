@@ -37,14 +37,7 @@ if __name__=='__main__':
 
 
     cutoff = args.cutoff
-    # phi look up hash input increment (0.1 A or 0.01 nm)
-    dl = 0.1
 
-    #sigma_w = 0.24
-    #sigma_p = 0.24
-
-    # Phi hash for distances up to cutoff
-    phi_hash = phi(numpy.arange(0, cutoff+dl,dl), sigma, cutoff)
 
     u = MDAnalysis.Universe(args.grofile, args.trajfile)
 
@@ -62,6 +55,7 @@ if __name__=='__main__':
     rho_prot_bulk = 0.0410
     sigma = 2.4
 
+    # uh...?
     grid_dl = 1
     natoms = u.coord.n_atoms
 
@@ -76,17 +70,71 @@ if __name__=='__main__':
     ngrids = box[:3].astype(int)+1
     dgrid = box[:3]/(ngrids-1)
 
+    # Extra number of grid points on each side to reflect pbc
+    #    In grid units (i.e. inverse dgrid)
+    margin = (cutoff/dgrid).astype(int)
+
+    # Number of actual unique points
     npts = ngrids.prod()
-    ninc = cutoff/grid_dl
-    coord_x = numpy.arange(0,ngrids[0],dgrid[0])
-    coord_y = numpy.arange(0,ngrids[1],dgrid[1])
-    coord_z = numpy.arange(0,ngrids[2],dgrid[2])
+    # Number of real points plus margin of reflected pts
+    n_pseudo_pts = (ngrids + 2*margin).prod()
+
+    # Construct 'gridpts' array, over which we will perform
+    #    nearest neighbor searching for each heavy prot and water atom
+    #  NOTE: gridpts is an augmented array - that is, it includes
+    #  (margin+2) array points in each dimension - this is to reflect pbc 
+    #  conditions - i.e. atoms near the edge of the box can 'see' grid points
+    #    within a distance (opp edge +- cutoff)
+    #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
+    #     to retrieve appropriate real point indices
+    coord_x = numpy.arange(-margin[0],ngrids[0]+margin[0],dgrid[0])
+    coord_y = numpy.arange(-margin[1],ngrids[1]+margin[1],dgrid[1])
+    coord_z = numpy.arange(-margin[2],ngrids[2]+margin[2],dgrid[2])
     xpts, ypts, zpts = numpy.meshgrid(coord_x,coord_y,coord_z)
 
-    # Todo: must account for periodicity - i.e. all grid points within
-    #   cutoff distance of box edge have to be reflected on the opposite side
+    # gridpts array shape: (n_pseudo_pts, 3)
+    #   gridpts npseudo unique points - i.e. all points
+    #      on an enlarged grid
     gridpts = numpy.array(zip(xpts.ravel(),ypts.ravel(),zpts.ravel()))
     grididx = gridpts / dgrid
+    # Many-to-one mapping of pseudo pt inx => actual point idx
+    #   e.g. to translate from idx of gridpts array to point in 
+    #      'rho' arrays, below
+
+    # This part looks like a fucking mess - try to clean it up to simplify a bit
+    #    Eg do we really need 3 distinct mesh grids?
+
+    real_coord_x = coord_x.copy()
+    real_coord_y = coord_y.copy()
+    real_coord_z = coord_z.copy()
+
+    real_coord_x[:margin[0]] += ngrids[0]
+    real_coord_x[-margin[0]:] -= ngrids[0]
+
+    real_coord_y[:margin[1]] += ngrids[1]
+    real_coord_y[-margin[1]:] -= ngrids[1]
+
+    real_coord_z[:margin[2]] += ngrids[2]
+    real_coord_z[-margin[2]:] -= ngrids[2]
+
+    x_real, y_real, z_real = numpy.meshgrid(real_coord_x, real_coord_y, real_coord_z)
+
+    x_small, y_small, z_small = numpy.meshgrid(numpy.arange(0,ngrids[0],dgrid[0]), 
+                                               numpy.arange(0,ngrids[1],dgrid[1]),
+                                               numpy.arange(0,ngrids[2],dgrid[2]))
+
+    # Actual points in grid units - shape: (npts, 3)
+    actual_pts = (numpy.array(zip(x_small.ravel(), y_small.ravel(), z_small.ravel())) / dgrid).astype(int)
+
+    # Includes repeated points, all in units according to 'actual_pts' - shape: (n_pseudo_pts, 3)
+    repeat_pts = (numpy.array(zip(x_real.ravel(), y_real.ravel(), z_real.ravel())) / dgrid).astype(int)
+
+
+    pt_map = numpy.zeros((n_pseudo_pts,), dtype=numpy.int32)
+    for i in xrange(n_pseudo_pts):
+        x,y,z = repeat_pts[i]
+        idx = z*ngrids[2] + y*ngrids[1] + x
+        pt_map[i] = idx
 
     rho_water = numpy.zeros((nframes, npts), dtype=numpy.float32)
     rho_prot = numpy.zeros((nframes, npts), dtype=numpy.float32)
@@ -103,7 +151,9 @@ if __name__=='__main__':
         for atom in prot_heavies:
 
             pos = atom.position
+            # Indices of all gridpoints within cutoff of atom's position
             neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
             # Distance array between atom and neighbor grid points
@@ -111,11 +161,12 @@ if __name__=='__main__':
 
             phivals = phi(distarr, sigma, cutoff)
 
-            rho_prot[i-startframe, neighboridx] += phivals
+            rho_prot[i-startframe, real_idx] += phivals
 
         for atom in water_ow:
             pos = atom.position
             neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
             # Distance array between atom and neighbor grid points
@@ -123,6 +174,6 @@ if __name__=='__main__':
 
             phivals = phi(distarr, sigma, cutoff)
 
-            rho_water[i-startframe, neighboridx] += phivals
+            rho_water[i-startframe, real_idx] += phivals
 
         rho[i-startframe,:] = rho_prot[i-startframe,:]/rho_prot_bulk + rho_water[i-startframe,:]/rho_water_bulk
