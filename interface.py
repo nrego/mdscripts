@@ -42,7 +42,6 @@ if __name__=='__main__':
 
     #sigma_w = 0.24
     #sigma_p = 0.24
-    sigma = 2.4
 
     # Phi hash for distances up to cutoff
     phi_hash = phi(numpy.arange(0, cutoff+dl,dl), sigma, cutoff)
@@ -61,6 +60,7 @@ if __name__=='__main__':
     # Hard coded for now - obviously must predict
     rho_water_bulk = 0.0320
     rho_prot_bulk = 0.0410
+    sigma = 2.4
 
     grid_dl = 1
     natoms = u.coord.n_atoms
@@ -73,8 +73,8 @@ if __name__=='__main__':
 
     # Set up marching cube stuff - grids in Angstroms
     #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
-    ngrids = box[:3].astype(int)
-    dgrid = box[:3]/ngrids
+    ngrids = box[:3].astype(int)+1
+    dgrid = box[:3]/(ngrids-1)
 
     npts = ngrids.prod()
     ninc = cutoff/grid_dl
@@ -86,7 +86,7 @@ if __name__=='__main__':
     # Todo: must account for periodicity - i.e. all grid points within
     #   cutoff distance of box edge have to be reflected on the opposite side
     gridpts = numpy.array(zip(xpts.ravel(),ypts.ravel(),zpts.ravel()))
-    grididx = numpy.array(gridpts) / dgrid
+    grididx = gridpts / dgrid
 
     rho_water = numpy.zeros((nframes, npts), dtype=numpy.float32)
     rho_prot = numpy.zeros((nframes, npts), dtype=numpy.float32)
