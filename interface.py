@@ -37,6 +37,7 @@ if __name__=='__main__':
 
 
     cutoff = args.cutoff
+    cutoff_sq = cutoff**2
 
 
     u = MDAnalysis.Universe(args.grofile, args.trajfile)
@@ -54,6 +55,7 @@ if __name__=='__main__':
     rho_water_bulk = 0.0320
     rho_prot_bulk = 0.0410
     sigma = 2.4
+    sigma_sq = sigma**2
 
     # uh...?
     grid_dl = 1
@@ -82,7 +84,7 @@ if __name__=='__main__':
     # Construct 'gridpts' array, over which we will perform
     #    nearest neighbor searching for each heavy prot and water atom
     #  NOTE: gridpts is an augmented array - that is, it includes
-    #  (margin+2) array points in each dimension - this is to reflect pbc 
+    #  (margin+2) array points in each dimension - this is to reflect pbc
     #  conditions - i.e. atoms near the edge of the box can 'see' grid points
     #    within a distance (opp edge +- cutoff)
     #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
@@ -98,7 +100,7 @@ if __name__=='__main__':
     gridpts = numpy.array(zip(xpts.ravel(),ypts.ravel(),zpts.ravel()))
     grididx = gridpts / dgrid
     # Many-to-one mapping of pseudo pt inx => actual point idx
-    #   e.g. to translate from idx of gridpts array to point in 
+    #   e.g. to translate from idx of gridpts array to point in
     #      'rho' arrays, below
 
     # This part looks like a fucking mess - try to clean it up to simplify a bit
@@ -119,21 +121,16 @@ if __name__=='__main__':
 
     x_real, y_real, z_real = numpy.meshgrid(real_coord_x, real_coord_y, real_coord_z)
 
-    x_small, y_small, z_small = numpy.meshgrid(numpy.arange(0,ngrids[0],dgrid[0]), 
-                                               numpy.arange(0,ngrids[1],dgrid[1]),
-                                               numpy.arange(0,ngrids[2],dgrid[2]))
-
-    # Actual points in grid units - shape: (npts, 3)
-    actual_pts = (numpy.array(zip(x_small.ravel(), y_small.ravel(), z_small.ravel())) / dgrid).astype(int)
-
     # Includes repeated points, all in units according to 'actual_pts' - shape: (n_pseudo_pts, 3)
     repeat_pts = (numpy.array(zip(x_real.ravel(), y_real.ravel(), z_real.ravel())) / dgrid).astype(int)
 
 
     pt_map = numpy.zeros((n_pseudo_pts,), dtype=numpy.int32)
+    grid_sq = ngrids[0]**2
+    grid = ngrids[1]
     for i in xrange(n_pseudo_pts):
         x,y,z = repeat_pts[i]
-        idx = z*ngrids[2] + y*ngrids[1] + x
+        idx = x*grid_sq + y*grid + z
         pt_map[i] = idx
 
     rho_water = numpy.zeros((nframes, npts), dtype=numpy.float32)
@@ -141,7 +138,7 @@ if __name__=='__main__':
     rho = numpy.zeros((nframes, npts), dtype=numpy.float32)
 
     # KD tree for nearest neighbor search
-    tree = scipy.spatial.KDTree(gridpts)
+    tree = scipy.spatial.cKDTree(gridpts)
 
     for i in xrange(startframe, lastframe):
         print "Frame: {}".format(i)
@@ -157,9 +154,10 @@ if __name__=='__main__':
             neighborpts = gridpts[neighboridx]
 
             # Distance array between atom and neighbor grid points
-            distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts).reshape(neighboridx.shape)
+            distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
+                                                   'sqeuclidean').reshape(neighboridx.shape)
 
-            phivals = phi(distarr, sigma, cutoff)
+            phivals = phi(distarr, sigma, sigma_sq, cutoff, cutoff_sq)
 
             rho_prot[i-startframe, real_idx] += phivals
 
@@ -170,9 +168,10 @@ if __name__=='__main__':
             neighborpts = gridpts[neighboridx]
 
             # Distance array between atom and neighbor grid points
-            distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts).reshape(neighboridx.shape)
+            distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
+                                                   'sqeuclidean').reshape(neighboridx.shape)
 
-            phivals = phi(distarr, sigma, cutoff)
+            phivals = phi(distarr, sigma, sigma_sq, cutoff, cutoff_sq)
 
             rho_water[i-startframe, real_idx] += phivals
 
