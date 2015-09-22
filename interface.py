@@ -1,4 +1,5 @@
 #Instantaneous interface
+# nrego sept 2015
 
 import numpy
 import argparse
@@ -26,8 +27,8 @@ if __name__=='__main__':
                         help='Cutoff distance for coarse grained gaussian, in Angstroms (default: 7 A)')
     parser.add_argument('-b', '--start', type=int, default=0,
                         help='First timepoint (in ps)')
-    parser.add_argument('-o', '--outtraj', default='traj_II.xtc',
-                        help='Output trajectory file to write instantaneous interface evolution')
+    parser.add_argument('-o', '--outfile', default='interface.dat',
+                        help='Output file to write instantaneous interface')
 
 
     log = logging.getLogger('interface')
@@ -104,7 +105,6 @@ if __name__=='__main__':
     #      'rho' arrays, below
 
     # This part looks like a fucking mess - try to clean it up to simplify a bit
-    #    Eg do we really need 3 distinct mesh grids?
 
     real_coord_x = coord_x.copy()
     real_coord_y = coord_y.copy()
@@ -176,3 +176,23 @@ if __name__=='__main__':
             rho_water[i-startframe, real_idx] += phivals
 
         rho[i-startframe,:] = rho_prot[i-startframe,:]/rho_prot_bulk + rho_water[i-startframe,:]/rho_water_bulk
+
+    # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
+    rho_shape = rho[0].reshape(ngrids)
+    outfile = args.outfile
+    cntr = 0
+    with open(outfile, 'w') as f:
+        f.write("object 1 class gridpositions counts {} {} {}\n".format(ngrids[0], ngrids[1], ngrids[2]))
+        f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,0))
+        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(dgrid[0], 0, 0))
+        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, dgrid[1], 0))
+        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, 0, dgrid[2]))
+        f.write("object 2 class gridconnections counts {} {} {}\n".format(ngrids[0], ngrids[1], ngrids[2]))
+        f.write("object 3 class array type double rank 0 items {} data follows\n".format(npts))
+        for i in xrange(ngrids[0]):
+            for j in xrange(ngrids[1]):
+                for k in xrange(ngrids[2]):
+                    f.write("{:1.8e} ".format(rho_shape[i,j,k]))
+                    cntr += 1
+                    if (cntr % 3 == 0):
+                        f.write("\n")
