@@ -19,4 +19,4 @@ def phi(double r_sq, double sigma, double sigma_sq, double cutoff, double cutoff
         phic = math.exp(-0.5*(cutoff_sq/sigma_sq))
         pref = 1 / ( (2*math.pi)**(0.5) * sigma * math.erf(cutoff / (2**0.5 * sigma)) - 2*cutoff*phic )
 
-        return pref * ( math.exp((-0.5*r_sq)/(sigma_sq)) - phic )
+        return (pref * ( math.exp((-0.5*r_sq)/(sigma_sq)) - phic ))**3

@@ -53,8 +53,8 @@ if __name__=='__main__':
     ions = u.select_atoms("name CL or name NA")
 
     # Hard coded for now - obviously must predict
-    rho_water_bulk = 0.330
-    rho_prot_bulk = 0.50
+    rho_water_bulk = 0.0330
+    rho_prot_bulk = 0.050
     sigma = 2.4
     sigma_sq = sigma**2
 
@@ -176,7 +176,7 @@ if __name__=='__main__':
             rho_water[i-startframe, real_idx] += phivals
 
         rho[i-startframe,:] = rho_prot[i-startframe,:]/rho_prot_bulk + rho_water[i-startframe,:]/rho_water_bulk
-        rho[i-startframe,:] /= 2.0
+        #rho[i-startframe,:] /= 2.0
 
     # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
     rho_shape = rho[0].reshape(ngrids)
