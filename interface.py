@@ -11,7 +11,7 @@ from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_
 import scipy.spatial
 from skimage import measure
 
-from phi import phi
+from utils import phi
 
 
 
@@ -153,11 +153,13 @@ if __name__=='__main__':
             real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
-            # Distance array between atom and neighbor grid points
-            distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
-                                                   'sqeuclidean').reshape(neighboridx.shape)
+            dist_vectors = neighborpts[:,...] - pos
 
-            phivals = phi(distarr, sigma, sigma_sq, cutoff, cutoff_sq)
+            # Distance array between atom and neighbor grid points
+            #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
+            #                                       'sqeuclidean').reshape(neighboridx.shape)
+
+            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
 
             rho_prot[i-startframe, real_idx] += phivals
 
@@ -167,11 +169,12 @@ if __name__=='__main__':
             real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
+            dist_vectors = neighborpts[:,...] - pos
             # Distance array between atom and neighbor grid points
-            distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
-                                                   'sqeuclidean').reshape(neighboridx.shape)
+            #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
+            #                                       'sqeuclidean').reshape(neighboridx.shape)
 
-            phivals = phi(distarr, sigma, sigma_sq, cutoff, cutoff_sq)
+            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
 
             rho_water[i-startframe, real_idx] += phivals
 
