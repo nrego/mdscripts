@@ -12,6 +12,7 @@ import argparse
 import logging
 from datareader import dr
 import uwham
+from pymbar import MBAR
 
 import matplotlib as mpl
 
@@ -239,7 +240,7 @@ if __name__ == "__main__":
 
     # Track the weights for each simulation over time
     convergenceMat = numpy.zeros((100, nsims), numpy.float64)
-    printinter = args.maxiter/100
+    #printinter = args.maxiter/100
     '''
     for i in xrange(args.maxiter):
         printinfo = (i%printinter == 0)

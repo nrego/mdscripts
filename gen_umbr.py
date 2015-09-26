@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Generate dynamic umbrella conf file from Gro structure")
     parser.add_argument("-c", "--structure", required=True, dest="gro",
                         help="gromacs structure '.gro' input file")
-    parser.add_argument("-f", "--traj", 
+    parser.add_argument("-f", "--traj",
                         help="trajectory file (optional) - if supplied, output heavy atoms with more than avg \
                         number of waters within radius")
     parser.add_argument("-b", "--start", default=0, type=float,
