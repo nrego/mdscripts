@@ -69,7 +69,7 @@ class PhiDataSet(DataSet):
         self.title = filename
 
     def plot(self, start=0, ylim=None, block=1, end=None):
-        pandas.rolling_mean(self.data[start:end], window=block).plot()
+        pandas.rolling_mean(self.data[start:end:10], window=block).plot()
 
         mean = self.getMean(start=start, end=end)
         line = pyplot.hlines(mean, start, self.shape[0])
@@ -79,20 +79,20 @@ class PhiDataSet(DataSet):
             pyplot.ylim(ylim)
 
     def getRange(self, start=0, end=None):
-        rng = self.data[start:end].max() - self.data[start:end].min()
+        rng = self.data[start:end:10].max() - self.data[start:end:10].min()
 
         return rng['$\~N$']
 
     def max(self, start=0, end=None):
-        return self.data[start:end].max()
+        return self.data[start:end:10].max()
 
     def min(self, start=0, end=None):
-        return self.data[start:end].min()
+        return self.data[start:end:10].min()
 
     def getMean(self, start=0, bphi=1, end=None):
         #return self.data[start:].mean()[1]
         #N = self.data[start:]['N']
-        Ntwid = self.data[start:end]['$\~N$']
+        Ntwid = self.data[start:end:10]['$\~N$']
         #numer = (N*numpy.exp(bphi*(Ntwid-N)))
         #denom = (numpy.exp(bphi*(Ntwid-N)))
 
@@ -100,7 +100,7 @@ class PhiDataSet(DataSet):
         return Ntwid.mean()
 
     def getSecondMom(self, start=0, bphi=1, end=None):
-        NtwidSq = (self.data[start:end]['$\~N$'])**2
+        NtwidSq = (self.data[start:end:10]['$\~N$'])**2
 
         return NtwidSq.mean()
 
@@ -108,7 +108,7 @@ class PhiDataSet(DataSet):
         N_avg = self.getMean(start, bphi, end=end)
 
         #N = self.data[start:]['N']
-        Ntwid = self.data[start:end]['$\~N$']
+        Ntwid = self.data[start:end:10]['$\~N$']
         #numer = (N-N_avg)**2 * numpy.exp(bphi*(Ntwid-N))
         #denom = numpy.exp(bphi*(Ntwid-N))
 
@@ -116,7 +116,7 @@ class PhiDataSet(DataSet):
         return ((Ntwid - N_avg)**2).mean()
 
     def getHist(self, start=0, nbins=50, end=None):
-        return numpy.histogram(self.data[start:end]['$\~N$'], bins=nbins)
+        return numpy.histogram(self.data[start:end:10]['$\~N$'], bins=nbins)
 
 class XvgDataSet(DataSet):
 

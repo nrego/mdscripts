@@ -43,12 +43,12 @@ def parseRange(rangestr):
 
 # Generate S x M count histogram over Ntwid for all sims
 # (M is number of bins)
-def genDataMatrix(S, M, rng, start):
+def genDataMatrix(S, M, rng, start, end):
 
     dataMat = numpy.empty((S,M))
     binbounds = numpy.empty((1,M+1))
     for i, ds in enumerate(dr.datasets.itervalues()):
-        dataframe = ds.data[start:]['$\~N$'] # make this dynamic in future
+        dataframe = ds.data[start:end:10]['$\~N$'] # make this dynamic in future
         nsample, binbounds = numpy.histogram(dataframe, bins=M, range=rng)
         dataMat[i,:] = nsample
 
@@ -56,15 +56,15 @@ def genDataMatrix(S, M, rng, start):
 
 # Load list of infiles from start
 # Return range over entire dataset (as tuple)
-def loadRangeData(infiles, start):
+def loadRangeData(infiles, start, end):
     minval = float('inf')
     maxval = float('-inf')
     for f in infiles:
         ds = dr.loadPhi(f)
 
         # Min, max for this dataset
-        tmpmax = ds.max(start=start)['$\~N$']
-        tmpmin = ds.min(start=start)['$\~N$']
+        tmpmax = ds.max(start=start, end=end)['$\~N$']
+        tmpmin = ds.min(start=start, end=end)['$\~N$']
 
         minval = tmpmin if minval>tmpmin else minval
         maxval = tmpmax if maxval<tmpmax else maxval
@@ -95,12 +95,12 @@ def genWeights(prob, bias):
     weights = numpy.dot(bias, prob)
 
 # For use with uwham - generate u_kln matrix of biased Ntwid values
-def genU_kln(nsims, nsample, start, beta):
+def genU_kln(nsims, nsample, start, end, beta):
     maxnsample = nsample.max()
     u_kln = numpy.zeros((nsims, nsims, maxnsample))
     for i,ds_i in enumerate(dr.datasets.iteritems()):
         for j,ds_j in enumerate(dr.datasets.iteritems()):
-            dataframe = numpy.array(ds_j[1].data[start:]['$\~N$'])
+            dataframe = numpy.array(ds_j[1].data[start:end:10]['$\~N$'])
             u_kln[i,j,:] = ds_i[1].phi*beta*dataframe
 
     #for k, l in numpy.ndindex(u_kln.shape[0:2]):
@@ -170,6 +170,8 @@ if __name__ == "__main__":
                         help='Input file names (presumably in a sensible order)')
     parser.add_argument('-b', '--start', type=int, default=0,
                         help='first timepoint (in ps)')
+    parser.add_argument('-e', '--end', type=int, default=None,
+                        help='last timepoint (in ps) - default is last available time point')
     parser.add_argument('--debug', action='store_true',
                         help='print debugging info')
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -206,6 +208,7 @@ if __name__ == "__main__":
 
     log.info("{} input files".format(len(infiles)))
     start = args.start
+    end = args.end
 
     beta = 1
     if args.T:
@@ -216,14 +219,14 @@ if __name__ == "__main__":
     nbins = args.nbins
 
     # N twid range
-    data_range = loadRangeData(infiles, start)
+    data_range = loadRangeData(infiles, start, end)
 
     if args.range:
         data_range = parseRange(args.range)
 
     log.info('max, min: {}'.format(data_range))
 
-    dataMat, binbounds = genDataMatrix(nsims, nbins, data_range, start)
+    dataMat, binbounds = genDataMatrix(nsims, nbins, data_range, start, end)
 
     log.info('Hist map shape: {}'.format(dataMat.shape))
     log.debug('Bin bounds over range: {}'.format(binbounds))
@@ -254,7 +257,7 @@ if __name__ == "__main__":
             log.debug('probDist: {}'.format(probDist))
             log.debug('weights: {}'.format(weights))
     '''
-    u_kln = genU_kln(nsims, nsample.max(), start, beta)
+    u_kln = genU_kln(nsims, nsample.max(), start, end, beta)
 
     ## UWHAM analysis
     if args.uwham:
