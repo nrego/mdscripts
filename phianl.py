@@ -65,7 +65,7 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
 
         lg_n_negslope = (dndphi_neg/n) - 1
 
-        secondCum = ds.getVar(start=start, bphi=bphi) - n**2
+        secondCum = ds.getVar(start=start, bphi=bphi)
 
         phi_vals[i] = bphi, n, 0, dndphi_neg, lg_n, lg_n_negslope, delta_phi, secondCum
         prev_phi = bphi
@@ -101,7 +101,7 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num])
         if (args.plotSus):
             title = r'$\langle{\delta N^2}\rangle_\phi$'
-            num = 3
+            num = 7
             pyplot.plot(phi_vals[:, 0], phi_vals[:, num])
         if (args.plotDist):
             pyplot.show()

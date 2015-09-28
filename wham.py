@@ -188,6 +188,8 @@ if __name__ == "__main__":
                         help='Plot resulting probability distribution')
     parser.add_argument('--plotE', action='store_true',
                         help='Plot resulting (free) energy distribution (-log(P))')
+    parser.add_argument('--plotLogP', action='store_true',
+                        help='Plot resulting log probability (log(P))')
     parser.add_argument('--uwham', action='store_true',
                         help='perform UWHAM analysis (default: False)')
 
@@ -287,10 +289,14 @@ if __name__ == "__main__":
         pyplot.plot(bincntrs, -numpy.log(probDist))
         pyplot.show()
 
+    elif args.plotLogP:
+        pyplot.plot(bincntrs, numpy.log(probDist))
+        pyplot.show()
+
     log.info('shape of stacked array: {}'.format(numpy.column_stack((bincntrs, probDist)).shape))
     numpy.savetxt('Pn.dat', numpy.column_stack((bincntrs, probDist)),
                   fmt='%3.3f %1.3e')
-    numpy.savetxt('logPn.dat', numpy.column_stack((bincntrs, -numpy.log(probDist))),
+    numpy.savetxt('logPn.dat', numpy.column_stack((bincntrs, numpy.log(probDist))),
                   fmt='%3.3f %3.3f')
     numpy.savetxt('convergence.dat', convergenceMat, fmt='%3.3f')
 

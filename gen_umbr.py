@@ -61,6 +61,8 @@ if __name__ == "__main__":
         startframe = int(args.start/frame_time)
         lastframe = u.trajectory.n_frames
 
+        waterdist = args.waterdist
+
         n_frames = lastframe - startframe
 
         prot_heavies = u.select_atoms("not (name H* or resname SOL) and not (name NA or name CL)")
@@ -80,7 +82,7 @@ if __name__ == "__main__":
             tree = cKDTree([ow.position for ow in water_ow])
 
             for prot_idx, prot_atom in enumerate(prot_heavies):
-                water_neighbors = tree.query_ball_point(prot_atom.position, args.waterdist)
+                water_neighbors = tree.query_ball_point(prot_atom.position, waterdist)
                 n_waters[prot_idx] += len(water_neighbors)
 
         n_waters /= n_frames
@@ -91,6 +93,5 @@ if __name__ == "__main__":
 
             for atomidx in xrange(n_waters.shape[0]):
                 if n_waters[atomidx] > args.avgwater:
-                    fout.write("{:<10.1f} {:<10.1f} {:d} \\\n".format(-0.5, args.rad/10.0, prot_heavies[atomidx].id+1))
-
+                    fout.write("{:<10.1f} {:<10.1f} {:d} \\\n".format(-0.5, args.rad/10.0, atomidx+1))
 

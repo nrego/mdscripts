@@ -54,7 +54,7 @@ if __name__=='__main__':
 
     # Hard coded for now - obviously must predict
     rho_water_bulk = 0.0330
-    rho_prot_bulk = 0.050
+    rho_prot_bulk = 0.040
     sigma = 2.4
     sigma_sq = sigma**2
 
@@ -75,8 +75,8 @@ if __name__=='__main__':
 
     # Extra number of grid points on each side to reflect pbc
     #    In grid units (i.e. inverse dgrid)
-    margin = (cutoff/dgrid).astype(int)
-
+    #margin = (cutoff/dgrid).astype(int)
+    margin = numpy.array([0,0,0], dtype=numpy.int)
     # Number of actual unique points
     npts = ngrids.prod()
     # Number of real points plus margin of reflected pts
@@ -182,6 +182,7 @@ if __name__=='__main__':
         #rho[i-startframe,:] /= 2.0
 
     # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
+    prot_tree = scipy.spatial.cKDTree(prot_heavies.positions)
     rho_shape = rho[0].reshape(ngrids)
     outfile = args.outfile
     cntr = 0
@@ -196,6 +197,13 @@ if __name__=='__main__':
         for i in xrange(ngrids[0]):
             for j in xrange(ngrids[1]):
                 for k in xrange(ngrids[2]):
+                    grid_pt = numpy.array([dgrid[0]*i, dgrid[1]*j, dgrid[2]*k])
+                    dist, idx = prot_tree.query(grid_pt, distance_upper_bound=10.0)
+
+                    if dist == float('inf'):
+                        rho_shape[i,j,k] += 1.0
+                    #if (i < lowercutoff_x or j < lowercutoff_y or k < lowercutoff_z) or (i > uppercutoff_x or j > uppercutoff_y or k > uppercutoff_z):
+                    #    rho_shape[i,j,k] += 1.0
                     f.write("{:1.8e} ".format(rho_shape[i,j,k]))
                     cntr += 1
                     if (cntr % 3 == 0):
