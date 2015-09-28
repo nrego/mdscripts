@@ -68,56 +68,55 @@ class PhiDataSet(DataSet):
                                      columns=['N', r'$\~N$'])
         self.title = filename
 
-    def plot(self, start=0, ylim=None, block=1):
-        pandas.rolling_mean(self.data[start:], window=block).plot()
+    def plot(self, start=0, ylim=None, block=1, end=None):
+        pandas.rolling_mean(self.data[start:end], window=block).plot()
 
-        mean = self.getMean(start=start)
+        mean = self.getMean(start=start, end=end)
         line = pyplot.hlines(mean, start, self.shape[0])
         line.set_label('mean: {:.2f}'.format(mean))
 
         if (ylim is not None):
             pyplot.ylim(ylim)
 
-    def getRange(self, start=0):
-        rng = self.data[start:].max() - self.data[start:].min()
+    def getRange(self, start=0, end=None):
+        rng = self.data[start:end].max() - self.data[start:end].min()
 
         return rng['$\~N$']
 
-    def max(self, start=0):
-        return self.data[start:].max()
+    def max(self, start=0, end=None):
+        return self.data[start:end].max()
 
-    def min(self, start=0):
-        return self.data[start:].min()
+    def min(self, start=0, end=None):
+        return self.data[start:end].min()
 
-    def getMean(self, start=0, bphi=1):
+    def getMean(self, start=0, bphi=1, end=None):
         #return self.data[start:].mean()[1]
         #N = self.data[start:]['N']
-        Ntwid = self.data[start:]['$\~N$']
+        Ntwid = self.data[start:end]['$\~N$']
         #numer = (N*numpy.exp(bphi*(Ntwid-N)))
         #denom = (numpy.exp(bphi*(Ntwid-N)))
 
         #return numer.mean() / denom.mean()
         return Ntwid.mean()
 
-    def getSecondCum(self, start=0, bphi=1):
-
-        NtwidSq = (self.data[start:]['$\~N$'])**2
+    def getSecondMom(self, start=0, bphi=1, end=None):
+        NtwidSq = (self.data[start:end]['$\~N$'])**2
 
         return NtwidSq.mean()
 
-    def getVar(self, start=0, bphi=1):
-        N_avg = self.getMean(start, bphi)
+    def getVar(self, start=0, bphi=1, end=None):
+        N_avg = self.getMean(start, bphi, end=end)
 
         #N = self.data[start:]['N']
-        Ntwid = self.data[start:]['$\~N$']
+        Ntwid = self.data[start:end]['$\~N$']
         #numer = (N-N_avg)**2 * numpy.exp(bphi*(Ntwid-N))
         #denom = numpy.exp(bphi*(Ntwid-N))
 
         #return numer.mean() / denom.mean()
         return ((Ntwid - N_avg)**2).mean()
 
-    def getHist(self, start=0, nbins=50):
-        return numpy.histogram(self.data[start:]['$\~N$'], bins=nbins)
+    def getHist(self, start=0, nbins=50, end=None):
+        return numpy.histogram(self.data[start:end]['$\~N$'], bins=nbins)
 
 class XvgDataSet(DataSet):
 

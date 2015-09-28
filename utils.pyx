@@ -1,3 +1,5 @@
+# distutils: library_dirs = /usr/lib
+
 import numpy
 import math
 

@@ -13,7 +13,7 @@ mpl.rcParams.update({'axes.titlesize': 36})
 #mpl.rcParams.update({'titlesize': 42})
 
 '''Perform requested analysis on a bunch of phiout datasets'''
-def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
+def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange):
     phi_vals = numpy.zeros((len(infiles), 8), dtype=numpy.float32)
     prev_phi = 0.0
     prev_n = 0
@@ -36,20 +36,20 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
         if (args.plotDist):
             #fig = pyplot.figure()
             #mu = ds.data[start:].mean()[0]
-            rng = ds.getRange(start=start)
-            mu = ds.getMean(start=start, bphi=bphi)
+            rng = ds.getRange(start=start, end=end)
+            mu = ds.getMean(start=start, end=end, bphi=bphi)
             #var = ds.data[start:].var()[0]
-            var = ds.getVar(start=start, bphi=bphi)
+            var = ds.getVar(start=start, end=end, bphi=bphi)
             txtstr = "$\mu={:.3f}$\n$\sigma^2={:.3f}$\n$F={:.2f}$".format(mu, var, var/mu)
             #print(txtstr)
-            ds.data[start:].hist(bins=20, normed=1)
+            ds.data[start:end].hist(bins=20, normed=1)
             pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
                             xycoords='figure fraction', textcoords='figure fraction')
             pyplot.suptitle(r'$\beta \phi ={}$'.format(bphi), fontsize=42)
             #pyplot.legend()
 
         log.debug("Beta*Phi: {:.3f}".format(bphi))
-        n = ds.getMean(start=start, bphi=bphi)
+        n = ds.getMean(start=start, end=end, bphi=bphi)
         #n = ds.data[start:]['$\~N$'].mean()
         log.debug("    N: {:.2f}".format(n))
         lg_n = numpy.log(n)+bphi
@@ -65,7 +65,7 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
 
         lg_n_negslope = (dndphi_neg/n) - 1
 
-        secondCum = ds.getVar(start=start, bphi=bphi)
+        secondCum = ds.getVar(start=start, end=end, bphi=bphi)
 
         phi_vals[i] = bphi, n, 0, dndphi_neg, lg_n, lg_n_negslope, delta_phi, secondCum
         prev_phi = bphi
@@ -81,7 +81,7 @@ def phiAnalyze(infiles, show, start, outfile, conv, S, myrange):
         numpy.savetxt(outfile, phi_vals, fmt='%.2f')
     if show:
         if (args.plotDistAll):
-            dr.plotHistAll(start=start, nbins=20)
+            dr.plotHistAll(start=start, end=end, nbins=20)
             dr.show()
         if (args.plotN):
             title = r'$\langle{N}\rangle_\phi$'
@@ -136,6 +136,8 @@ if __name__ == "__main__":
                         help='print output of N v. Phi plot')
     parser.add_argument('-b', '--start', type=int, default=0,
                         help='first timepoint (in ps)')
+    parser.add_argument('-e', '--end', type=int, default=None,
+                        help='last timepoint (in ps) - default is last available time point')
     parser.add_argument('--debug', action='store_true',
                         help='print debugging info')
     parser.add_argument('-T', metavar='TEMP', type=float,
@@ -173,6 +175,7 @@ if __name__ == "__main__":
 
     log.debug("{} input files".format(len(infiles)))
     start = args.start
+    end = args.end
     outfile = args.output
     conv = 1
     if args.T:
@@ -186,7 +189,7 @@ if __name__ == "__main__":
 
     if len(infiles) == 1 and not args.plotDist:
         dr.loadPhi(infiles[0])
-        dr.plot(start=start, ylim=myrange)
+        dr.plot(start=start, end=end, ylim=myrange)
         dr.show()
     else:
-        phiAnalyze(infiles, show, start, outfile, conv, S, myrange)
+        phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange)
