@@ -12,6 +12,40 @@ mpl.rcParams.update({'ytick.labelsize': 18})
 mpl.rcParams.update({'axes.titlesize': 36})
 #mpl.rcParams.update({'titlesize': 42})
 
+
+def blockAvg(ds, start, end=None):
+    data = numpy.array(ds.data[start+1:end]['$\~N$'])
+    #data = ds
+    data_var = data.var()
+    n_obs = len(data)  # Total number of observations
+
+    #blocks = (numpy.power(2, xrange(int(numpy.log2(n_obs))))).astype(int)
+    blocks = numpy.arange(1,len(data)/2+1,1)
+
+    n_blocks = len(blocks)
+
+    block_vals = numpy.zeros((n_blocks, 3))
+    block_vals[:, 0] = blocks.copy()
+
+    block_ctr = 0
+
+    for block in blocks:
+        n_block = int(n_obs/block)
+        obs_prop = numpy.zeros(n_block)
+
+        for i in xrange(n_block):
+            ibeg = i*block
+            iend = ibeg + block
+            obs_prop[i] = data[ibeg:iend].mean()
+
+        block_vals[block_ctr, 1] = obs_prop.mean()
+        block_vals[block_ctr, 2] = obs_prop.var() / (n_block-1)
+        #block_vals[block_ctr, 2] = (numpy.power(obs_prop,2).mean() - obs_prop.mean()**2).sum() / (n_block - 1)
+
+        block_ctr += 1
+
+    return block_vals
+
 '''Perform requested analysis on a bunch of phiout datasets'''
 def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange):
     phi_vals = numpy.zeros((len(infiles), 8), dtype=numpy.float32)
@@ -156,13 +190,15 @@ if __name__ == "__main__":
                         help='plot water number distributions for each phi value')
     parser.add_argument('--plotDistAll', action='store_true',
                         help='Plot water histograms over all simulations in INPUT (e.g. to gauge overall sampling)')
+    parser.add_argument('--blockAvg', action='store_true',
+                        help='Perform block averaging over one simulation')
     parser.add_argument('-S', type=int,
                         help='Number of phi points for guessing adaptive spacing')
     parser.add_argument('--range', type=str,
                         help="Specify custom range (as 'minY,maxY') for plotting")
 
     log = logging.getLogger('phianl')
-    
+
 
     args = parser.parse_args()
 
@@ -187,7 +223,15 @@ if __name__ == "__main__":
     if args.range:
         myrange = parseRange(args.range)
 
-    if len(infiles) == 1 and not args.plotDist:
+    if len(infiles) == 1 and args.blockAvg:
+        ds = dr.loadPhi(infiles[0], corr_len=10)
+        block_vals = blockAvg(ds, start=start)
+        pyplot.plot(9000/block_vals[:,0], numpy.sqrt(block_vals[:,2]), 'ro')
+        pyplot.xlim(0,500)
+        pyplot.xlabel("Block size (ps)")
+        pyplot.ylabel(r'$\sigma_{{\langle{\~N}\rangle}}$')
+        pyplot.show()
+    elif len(infiles) == 1 and not args.plotDist:
         dr.loadPhi(infiles[0])
         dr.plot(start=start, end=end, ylim=myrange)
         dr.show()

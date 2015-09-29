@@ -48,7 +48,7 @@ def genDataMatrix(S, M, rng, start, end):
     dataMat = numpy.empty((S,M))
     binbounds = numpy.empty((1,M+1))
     for i, ds in enumerate(dr.datasets.itervalues()):
-        dataframe = ds.data[start:end:10]['$\~N$'] # make this dynamic in future
+        dataframe = ds.data[start:end]['$\~N$'] # make this dynamic in future
         nsample, binbounds = numpy.histogram(dataframe, bins=M, range=rng)
         dataMat[i,:] = nsample
 
@@ -100,7 +100,7 @@ def genU_kln(nsims, nsample, start, end, beta):
     u_kln = numpy.zeros((nsims, nsims, maxnsample))
     for i,ds_i in enumerate(dr.datasets.iteritems()):
         for j,ds_j in enumerate(dr.datasets.iteritems()):
-            dataframe = numpy.array(ds_j[1].data[start:end:10]['$\~N$'])
+            dataframe = numpy.array(ds_j[1].data[start:end]['$\~N$'])
             u_kln[i,j,:] = ds_i[1].phi*beta*dataframe
 
     #for k, l in numpy.ndindex(u_kln.shape[0:2]):

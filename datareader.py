@@ -54,7 +54,7 @@ class DataSet:
 
 class PhiDataSet(DataSet):
 
-    def __init__(self, filename):
+    def __init__(self, filename, corr_len=10):
         super(PhiDataSet, self).__init__()
 
         # Assume output file from umbrella.conf
@@ -64,7 +64,7 @@ class PhiDataSet(DataSet):
         linecache.clearcache()
         data = numpy.loadtxt(filename)
         log.debug('Datareader {} reading input file {}'.format(self, filename))
-        self.data = pandas.DataFrame(data[:, 1:], index=data[:, 0],
+        self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
                                      columns=['N', r'$\~N$'])
         self.title = filename
 
@@ -79,20 +79,20 @@ class PhiDataSet(DataSet):
             pyplot.ylim(ylim)
 
     def getRange(self, start=0, end=None):
-        rng = self.data[start:end:10].max() - self.data[start:end:10].min()
+        rng = self.data[start:end].max() - self.data[start:end:10].min()
 
         return rng['$\~N$']
 
     def max(self, start=0, end=None):
-        return self.data[start:end:10].max()
+        return self.data[start:end].max()
 
     def min(self, start=0, end=None):
-        return self.data[start:end:10].min()
+        return self.data[start:end].min()
 
     def getMean(self, start=0, bphi=1, end=None):
         #return self.data[start:].mean()[1]
         #N = self.data[start:]['N']
-        Ntwid = self.data[start:end:10]['$\~N$']
+        Ntwid = self.data[start:end]['$\~N$']
         #numer = (N*numpy.exp(bphi*(Ntwid-N)))
         #denom = (numpy.exp(bphi*(Ntwid-N)))
 
@@ -100,7 +100,7 @@ class PhiDataSet(DataSet):
         return Ntwid.mean()
 
     def getSecondMom(self, start=0, bphi=1, end=None):
-        NtwidSq = (self.data[start:end:10]['$\~N$'])**2
+        NtwidSq = (self.data[start:end]['$\~N$'])**2
 
         return NtwidSq.mean()
 
@@ -108,7 +108,7 @@ class PhiDataSet(DataSet):
         N_avg = self.getMean(start, bphi, end=end)
 
         #N = self.data[start:]['N']
-        Ntwid = self.data[start:end:10]['$\~N$']
+        Ntwid = self.data[start:end]['$\~N$']
         #numer = (N-N_avg)**2 * numpy.exp(bphi*(Ntwid-N))
         #denom = numpy.exp(bphi*(Ntwid-N))
 
@@ -116,7 +116,7 @@ class PhiDataSet(DataSet):
         return ((Ntwid - N_avg)**2).mean()
 
     def getHist(self, start=0, nbins=50, end=None):
-        return numpy.histogram(self.data[start:end:10]['$\~N$'], bins=nbins)
+        return numpy.histogram(self.data[start:end]['$\~N$'], bins=nbins)
 
 class XvgDataSet(DataSet):
 
@@ -178,8 +178,8 @@ class DataReader:
 
     '''Load phiout.dat files'''
     @classmethod
-    def loadPhi(cls, filename):
-        ds = PhiDataSet(filename)
+    def loadPhi(cls, filename, corr_len=10):
+        ds = PhiDataSet(filename, corr_len)
         return cls._addSet(ds)
 
     @classmethod
