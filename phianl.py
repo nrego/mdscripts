@@ -226,9 +226,11 @@ if __name__ == "__main__":
     if len(infiles) == 1 and args.blockAvg:
         ds = dr.loadPhi(infiles[0], corr_len=10)
         block_vals = blockAvg(ds, start=start)
-        pyplot.plot(9000/block_vals[:,0], numpy.sqrt(block_vals[:,2]), 'ro')
-        pyplot.xlim(0,500)
-        pyplot.xlabel("Block size (ps)")
+        data_len = ds.data[start:].shape[0]
+        print "Data length:{}".format(data_len)
+        pyplot.plot(data_len/block_vals[:,0], numpy.sqrt(block_vals[:,2]), 'ro')
+        pyplot.xlim(0,1000)
+        pyplot.xlabel("Number of blocks")
         pyplot.ylabel(r'$\sigma_{{\langle{\~N}\rangle}}$')
         pyplot.show()
     elif len(infiles) == 1 and not args.plotDist:

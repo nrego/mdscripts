@@ -6,13 +6,15 @@ nrego
 Sept 2015
 '''
 import numpy
-import scipy.optimize
+from scipy.optimize import fmin_bfgs
 from matplotlib import pyplot
 import argparse
 import logging
 from datareader import dr
 import uwham
 from pymbar import MBAR
+
+import sys
 
 import matplotlib as mpl
 
@@ -81,9 +83,7 @@ def loadRangeData(infiles, start, end):
 def genPdist(data, weights, nsample, numer, bias):
 
     nsims, nbins = data.shape
-
     denom = numpy.dot(weights*nsample, bias)
-
     probHist = numer/denom
 
 
@@ -108,40 +108,74 @@ def genU_kln(nsims, nsample, start, end, beta):
 
     return u_kln
 
+# Put all data points into N dim vector
+def unpack_data(start, end=None):
+
+    all_data = numpy.array([])
+    nsample = numpy.array([])
+    phivals = numpy.array([])
+
+    for i, ds_item in enumerate(dr.datasets.iteritems()):
+        ds_name, ds = ds_item
+        dataframe = numpy.array(ds.data[start:end]['$\~N$'])
+        nsample = numpy.append(nsample, dataframe.shape[0])
+        all_data = numpy.append(all_data, dataframe)
+        phivals = numpy.append(phivals, ds.phi)
+
+    for val in nsample:
+        if nsample.max() != val:
+            log.info("NOTE: Data sets of unequal sizes")
+
+    return all_data, numpy.matrix( numpy.diag(nsample/nsample.sum()) ), phivals
+
+# U[i,j] is exp(-beta * Uj(n_i))
+def genU_nm(all_data, nsims, beta, start, end=None):
+
+    n_tot = all_data.shape[0]
+
+    u_nm = numpy.zeros((n_tot, nsims))
+
+    for i, ds_item in enumerate(dr.datasets.iteritems()):
+        ds_name, ds = ds_item
+        u_nm[:, i] = numpy.exp(-beta*ds.phi*all_data)
+
+    return numpy.matrix(u_nm)
+
 # Log likelihood
-def kappa(xweights, nsample, u_kln):
-    logweights = numpy.zeros(xweights.shape[0]+1)
-    logweights[1:] = xweights
-    weights = numpy.exp(logweights)
-    mat = numpy.zeros(u_kln.shape[1:])
-    for j in xrange(u_kln.shape[1]):
-        mat[j] = numpy.log(numpy.dot((weights*nsample), numpy.exp(-u_kln[:,j,:])))
+def kappa(xweights, u_nm, nsample_diag, ones_m, ones_N, n_tot):
 
-    logLikelihood = numpy.nansum(mat) - numpy.dot(nsample, logweights)
+    logf = numpy.append(0, xweights)
+    f = numpy.exp(-logf) # Partition functions relative to first window
 
-    return logLikelihood
+    Q = numpy.dot(u_nm, numpy.diag(f))
 
-def gradKappa(xweights, nsample, u_kln):
-    logweights = numpy.zeros(xweights.shape[0]+1)
-    logweights[1:] = xweights
-    weights = numpy.exp(logweights)
-    grad = numpy.zeros(logweights.shape)
-    mat = numpy.empty(u_kln.shape[1]*u_kln.shape[2])
-    npts = u_kln.shape[2]
-    for j in xrange(u_kln.shape[1]):
-        mat[j*npts:(j+1)*npts] = numpy.dot((weights*nsample), numpy.exp(-u_kln[:,j,:]))
+    logLikelihood = (ones_N.transpose()/n_tot)*numpy.log(Q*nsample_diag*ones_m) + \
+                    numpy.dot(numpy.diag(nsample_diag), logf)
 
-    inv_mat = numpy.power(mat, -1)
-    for i in xrange(grad.shape[0]):
-        grad[i] = numpy.dot(inv_mat*nsample[i]*weights[i],
-                             numpy.exp(-numpy.ravel(u_kln[i]))) - nsample[i]
 
-    return grad[1:]
+    return float(logLikelihood)
+
+def gradKappa(xweights, u_nm, nsample_diag, ones_m, ones_N, n_tot):
+
+    logf = numpy.append(0, xweights)
+    f = numpy.exp(-logf) # Partition functions relative to first window
+
+    Q = numpy.dot(u_nm, numpy.diag(f))
+    denom = (Q*nsample_diag).sum(axis=1)
+
+    W = Q/denom
+
+    grad = -nsample_diag*W.transpose()*(ones_N/n_tot) + nsample_diag*ones_m
+
+    return ( numpy.array(grad[1:]) ).reshape(len(grad)-1 )
 
 def callbackF(xweights):
     global Nfeval
     #log.info('Iteration {}'.format(Nfeval))
-    print 'Iteration {}'.format(Nfeval)
+    log.info('\rIteration {}\r'.format(Nfeval))
+    sys.stdout.flush()
+    #log.info('.')
+
     Nfeval += 1
 
 # Generate nsims x nbins bias matrix
@@ -161,6 +195,10 @@ def genBias(bincntrs, beta):
     biasMat = numpy.exp(-beta*biasMat)
 
     return biasMat
+
+def logP(N, fk_inv, nsample, phivals, beta):
+
+    return -numpy.log( (nsample*fk_inv*numpy.exp(-beta*N*phivals)).sum() )
 
 if __name__ == "__main__":
 
@@ -194,6 +232,8 @@ if __name__ == "__main__":
                         help='Plot resulting log probability (log(P))')
     parser.add_argument('--uwham', action='store_true',
                         help='perform UWHAM analysis (default: False)')
+    parser.add_argument('--mywham', action='store_true', default=True,
+                        help='perform WHAM analysis with my implementation (improved convergence)')
 
 
 
@@ -243,20 +283,7 @@ if __name__ == "__main__":
 
     numer = dataMat.sum(0) # Sum over all simulations of nsample in each bin
 
-    # Track the weights for each simulation over time
-    convergenceMat = numpy.zeros((100, nsims), numpy.float64)
-    #printinter = args.maxiter/100
-    '''
-    for i in xrange(args.maxiter):
-        printinfo = (i%printinter == 0)
-        probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
-        weights = 1/numpy.dot(biasMat, probDist)
-        if printinfo:
-            convergenceMat[i/printinter,:] = numpy.log(weights/weights[0])
-            log.info('\rIter {}'.format(i))
-            log.debug('probDist: {}'.format(probDist))
-            log.debug('weights: {}'.format(weights))
-    '''
+
     u_kln = genU_kln(nsims, nsample.max(), start, end, beta)
 
     ## UWHAM analysis
@@ -268,12 +295,24 @@ if __name__ == "__main__":
         logweights = results.f_k
         weights = numpy.exp(logweights)
 
-    else:
-        log.info('Starting optimization...')
-        logweights[1:] = scipy.optimize.fmin_bfgs(f=kappa, x0=logweights[1:], fprime=gradKappa,
-                                              args=(nsample, u_kln), callback=callbackF)
+    # My WHAM implementation
+    elif args.mywham:
+
+        all_data, nsample_diag, phivals = unpack_data(start, end)
+        u_nm = genU_nm(all_data, nsims, beta, start, end)
+
+        xweights = numpy.zeros(nsims-1)
+        ones_m = numpy.matrix(numpy.ones(nsims)).transpose()
+        ones_N = numpy.matrix(numpy.ones(all_data.shape[0])).transpose()
+
+        n_tot = len(all_data)
+        myargs = (u_nm, nsample_diag, ones_m, ones_N, n_tot)
+
+        log.info("Beginning optimization procedure...")
+        res = fmin_bfgs(kappa, xweights, fprime=gradKappa, args=myargs, callback=callbackF)
+        logweights = numpy.append(1, -res)
         weights = numpy.exp(logweights)
-        log.info('Free energies for each umbrella: {}'.format(logweights))
+
 
     probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
 
@@ -301,7 +340,6 @@ if __name__ == "__main__":
                   fmt='%3.3f %1.3e')
     numpy.savetxt('logPn.dat', numpy.column_stack((bincntrs, numpy.log(probDist))),
                   fmt='%3.3f %3.3f')
-    numpy.savetxt('convergence.dat', convergenceMat, fmt='%3.3f')
 
     log.info('nsims: {}'.format(nsims))
     log.info('N_k shape: {}'.format(nsample.shape))

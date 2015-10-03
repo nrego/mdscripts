@@ -153,7 +153,7 @@ if __name__=='__main__':
             real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
-            dist_vectors = neighborpts[:,...] - pos
+            dist_vectors = neighborpts[:, ...] - pos
 
             # Distance array between atom and neighbor grid points
             #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
@@ -169,21 +169,22 @@ if __name__=='__main__':
             real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
-            dist_vectors = neighborpts[:,...] - pos
+            dist_vectors = neighborpts[:, ...] - pos
             # Distance array between atom and neighbor grid points
-            #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
-            #                                       'sqeuclidean').reshape(neighboridx.shape)
+            # distarr = scipy.spatial.distance.cdist(pos.reshape(1,3),
+            #       neighborpts,'sqeuclidean').reshape(neighboridx.shape)
 
             phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
 
             rho_water[i-startframe, real_idx] += phivals
 
-        rho[i-startframe,:] = rho_prot[i-startframe,:]/rho_prot_bulk + rho_water[i-startframe,:]/rho_water_bulk
-        #rho[i-startframe,:] /= 2.0
+        rho[i-startframe, :] = rho_prot[i-startframe, :]/rho_prot_bulk \
+            + rho_water[i-startframe, :]/rho_water_bulk
+        # rho[i-startframe, :] /= 2.0
 
     # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
     prot_tree = scipy.spatial.cKDTree(prot_heavies.positions)
-    rho_shape = rho[0].reshape(ngrids)
+    rho_shape = (rho.sum(axis=0)/rho.shape[0]).reshape(ngrids)
     outfile = args.outfile
     cntr = 0
     with open(outfile, 'w') as f:

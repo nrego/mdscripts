@@ -215,9 +215,9 @@ class DataReader:
         return ds
 
     @classmethod
-    def plot(cls, ylim=None, start=0, block=1):
+    def plot(cls, ylim=None, start=0, end=None, block=1):
         for title, dataset in cls.datasets.items():
-            dataset.plot(ylim=ylim, start=start, block=block)
+            dataset.plot(ylim=ylim, start=start, end=end, block=block)
 
     @classmethod
     def plotHistAll(cls, start=0, nbins=50):
