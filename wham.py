@@ -12,7 +12,7 @@ import argparse
 import logging
 from datareader import dr
 import uwham
-from pymbar import MBAR
+
 
 import sys
 
@@ -88,6 +88,31 @@ def genPdist(data, weights, nsample, numer, bias):
 
 
     return probHist
+
+def genPdistBinless(all_data, u_nm, nsample_diag, weights, data_range, nbins):
+    u_nm = numpy.array(u_nm)
+    range_min, range_max = data_range
+    binbounds = numpy.linspace(range_min, range_max, nbins)
+    binbounds = numpy.append(binbounds, float('inf'))
+
+    nsample = numpy.diag(nsample_diag) * all_data.shape[0]
+
+    weights_prod_nsample = nsample * weights
+
+    pdist = numpy.zeros(nbins, dtype=numpy.float64)
+
+    for n_idx in xrange(all_data.shape[0]):
+        ntwid = all_data[n_idx]
+
+        # which bin does ntwid fall into? A boolean array.
+        bin_assign = (ntwid >= binbounds[:-1]) * (ntwid < binbounds[1:])
+
+        denom = numpy.dot(weights_prod_nsample, u_nm[n_idx, :])
+
+        pdist[bin_assign] += 1.0/denom
+
+    return binbounds, pdist
+
 
 # generate simulation weights from previously computed
 #  (unbiased) probability distribution and bias matrix
@@ -232,10 +257,11 @@ if __name__ == "__main__":
                         help='Plot resulting log probability (log(P))')
     parser.add_argument('--uwham', action='store_true',
                         help='perform UWHAM analysis (default: False)')
-    parser.add_argument('--mywham', action='store_true', default=True,
+    parser.add_argument('--mywham', action='store_true', 
                         help='perform WHAM analysis with my implementation (improved convergence)')
 
-
+    parser.add_argument('--weights', default=None,
+                        help='Input file for WHAM weights, if previously calculated')
 
     args = parser.parse_args()
 
@@ -310,11 +336,22 @@ if __name__ == "__main__":
 
         log.info("Beginning optimization procedure...")
         res = fmin_bfgs(kappa, xweights, fprime=gradKappa, args=myargs, callback=callbackF)
-        logweights = numpy.append(1, -res)
+        logweights = numpy.append(0, -res)
+        weights = numpy.exp(logweights)
+        numpy.savetxt('logweights.dat', logweights, fmt='%3.3f')
+
+    elif args.weights is not None:
+        try:
+            logweights = numpy.loadtxt(args.weights)
+        except IOError:
+            print "Error loading weights file '{}'".format(args.weights)
+        all_data, nsample_diag, phivals = unpack_data(start, end)
+        u_nm = genU_nm(all_data, nsims, beta, start, end)
         weights = numpy.exp(logweights)
 
 
-    probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
+    #probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
+    binbounds, probDist = genPdistBinless(all_data, u_nm, nsample_diag, weights, data_range, nbins)
 
     log.debug('pdist (pre-normalization): {}'.format(probDist))
     normfac = normhistnd(probDist, binbounds[:-1])
