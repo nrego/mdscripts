@@ -220,12 +220,16 @@ class DataReader:
             dataset.plot(ylim=ylim, start=start, end=end, block=block)
 
     @classmethod
-    def plotHistAll(cls, start=0, nbins=50):
+    def plotHistAll(cls, start=0, end=None, nbins=50):
         total_array = numpy.array([])
         for title, dataset in cls.datasets.iteritems():
-            total_array = numpy.append(total_array, dataset.data[start:]['$\~N$'])
+            #total_array = numpy.append(total_array, dataset.data[start:end]['$\~N$'])
+            data = dataset.data[start:end]['$\~N$']
+            pyplot.hist(numpy.array(data), bins=nbins, label="phi: {} kj/mol".format(dataset.phi))
 
-        pyplot.hist(total_array, bins=nbins)
+        pyplot.legend()
+
+        #pyplot.hist(total_array, bins=nbins)
 
 
     @classmethod

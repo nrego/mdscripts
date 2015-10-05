@@ -115,8 +115,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange):
         numpy.savetxt(outfile, phi_vals, fmt='%.2f')
     if show:
         if (args.plotDistAll):
-            dr.plotHistAll(start=start, end=end, nbins=20)
-            dr.show()
+            dr.plotHistAll(start=start, end=end, nbins=50)
         if (args.plotN):
             title = r'$\langle{N}\rangle_\phi$'
             num = 1
@@ -137,7 +136,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange):
             title = r'$\langle{\delta N^2}\rangle_\phi$'
             num = 7
             pyplot.plot(phi_vals[:, 0], phi_vals[:, num])
-        if (args.plotDist):
+        if (args.plotDist or args.plotDistAll):
             pyplot.show()
         else:
             #pyplot.plot(phi_vals[:, 0],phi_vals[:, num])
