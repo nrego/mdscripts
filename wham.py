@@ -92,8 +92,8 @@ def genPdist(data, weights, nsample, numer, bias):
 def genPdistBinless(all_data, u_nm, nsample_diag, weights, data_range, nbins):
     u_nm = numpy.array(u_nm)
     range_min, range_max = data_range
-    binbounds = numpy.linspace(range_min, range_max, nbins)
-    binbounds = numpy.append(binbounds, float('inf'))
+    nstep = float(range_max - range_min) / nbins
+    binbounds = numpy.arange(range_min, range_max+nstep, nstep)
 
     nsample = numpy.diag(nsample_diag) * all_data.shape[0]
 
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     parser.add_argument('--mywham', action='store_true', 
                         help='perform WHAM analysis with my implementation (improved convergence)')
 
-    parser.add_argument('--weights', default=None,
+    parser.add_argument('--logweights', default=None,
                         help='Input file for WHAM weights, if previously calculated')
 
     args = parser.parse_args()
@@ -340,14 +340,15 @@ if __name__ == "__main__":
         weights = numpy.exp(logweights)
         numpy.savetxt('logweights.dat', logweights, fmt='%3.3f')
 
-    elif args.weights is not None:
+    elif args.logweights is not None:
         try:
-            logweights = numpy.loadtxt(args.weights)
+            logweights = numpy.loadtxt(args.logweights)
         except IOError:
-            print "Error loading weights file '{}'".format(args.weights)
+            print "Error loading weights file '{}'".format(args.logweights)
         all_data, nsample_diag, phivals = unpack_data(start, end)
         u_nm = genU_nm(all_data, nsims, beta, start, end)
         weights = numpy.exp(logweights)
+
 
 
     #probDist = genPdist(dataMat, weights, nsample, numer, biasMat)
@@ -377,6 +378,7 @@ if __name__ == "__main__":
                   fmt='%3.3f %1.3e')
     numpy.savetxt('logPn.dat', numpy.column_stack((bincntrs, numpy.log(probDist))),
                   fmt='%3.3f %3.3f')
+    numpy.savetxt('binbounds', binbounds, fmt='%3.3f')
 
     log.info('nsims: {}'.format(nsims))
     log.info('N_k shape: {}'.format(nsample.shape))

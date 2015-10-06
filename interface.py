@@ -185,6 +185,7 @@ if __name__=='__main__':
     # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
     prot_tree = scipy.spatial.cKDTree(prot_heavies.positions)
     rho_shape = (rho.sum(axis=0)/rho.shape[0]).reshape(ngrids)
+    #rho_shape = rho[0].reshape(ngrids)
     outfile = args.outfile
     cntr = 0
     with open(outfile, 'w') as f:

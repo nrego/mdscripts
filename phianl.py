@@ -20,6 +20,7 @@ def blockAvg(ds, start, end=None):
     n_obs = len(data)  # Total number of observations
 
     #blocks = (numpy.power(2, xrange(int(numpy.log2(n_obs))))).astype(int)
+    # Block size
     blocks = numpy.arange(1,len(data)/2+1,1)
 
     n_blocks = len(blocks)
@@ -40,7 +41,6 @@ def blockAvg(ds, start, end=None):
 
         block_vals[block_ctr, 1] = obs_prop.mean()
         block_vals[block_ctr, 2] = obs_prop.var() / (n_block-1)
-        #block_vals[block_ctr, 2] = (numpy.power(obs_prop,2).mean() - obs_prop.mean()**2).sum() / (n_block - 1)
 
         block_ctr += 1
 
@@ -227,9 +227,9 @@ if __name__ == "__main__":
         block_vals = blockAvg(ds, start=start)
         data_len = ds.data[start:].shape[0]
         print "Data length:{}".format(data_len)
-        pyplot.plot(data_len/block_vals[:,0], numpy.sqrt(block_vals[:,2]), 'ro')
+        pyplot.plot(block_vals[:,0], numpy.sqrt(block_vals[:,2]), 'ro')
         pyplot.xlim(0,1000)
-        pyplot.xlabel("Number of blocks")
+        pyplot.xlabel("Block size")
         pyplot.ylabel(r'$\sigma_{{\langle{\~N}\rangle}}$')
         pyplot.show()
     elif len(infiles) == 1 and not args.plotDist:
