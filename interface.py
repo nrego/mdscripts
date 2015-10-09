@@ -13,7 +13,9 @@ from skimage import measure
 
 from utils import phi
 
+import work_managers.environment
 
+wm_env = work_managers.environment.default_env
 
 if __name__=='__main__':
 
@@ -29,12 +31,19 @@ if __name__=='__main__':
                         help='First timepoint (in ps)')
     parser.add_argument('-o', '--outfile', default='interface.dx',
                         help='Output file to write instantaneous interface')
-
+    parser.add_argument('-rhoprot', '--rhoprot', default=40, type=float,
+                        help='Estimated protein density (heavy atoms per nm3)')
+    wm_env.add_wm_args(parser)
 
     log = logging.getLogger('interface')
 
 
     args = parser.parse_args()
+
+    wm_env.process_wm_args(args)
+
+    # Intelligently instantiate work manager from enviornment
+    wm = wm_env.make_work_manager()
 
 
     cutoff = args.cutoff
@@ -45,7 +54,7 @@ if __name__=='__main__':
 
     # Start frame, in trajectory units
     startframe = int(args.start / u.trajectory.dt)
-    lastframe = int(u.trajectory.n_frames / u.trajectory.dt)
+    lastframe = u.trajectory.n_frames
     nframes = lastframe - startframe
 
     prot_heavies = u.select_atoms("not (name H* or resname SOL) and not (name CL or name NA)")
@@ -54,7 +63,8 @@ if __name__=='__main__':
 
     # Hard coded for now - obviously must predict
     rho_water_bulk = 0.0330
-    rho_prot_bulk = 0.040
+    #rho_prot_bulk = 0.040
+    rho_prot_bulk = (args.rhoprot / 1000.0)
     sigma = 2.4
     sigma_sq = sigma**2
 
@@ -98,40 +108,11 @@ if __name__=='__main__':
     # gridpts array shape: (n_pseudo_pts, 3)
     #   gridpts npseudo unique points - i.e. all points
     #      on an enlarged grid
-    gridpts = numpy.array(zip(xpts.ravel(),ypts.ravel(),zpts.ravel()))
+    gridpts = numpy.array(zip(ypts.ravel(),xpts.ravel(),zpts.ravel()))
     grididx = gridpts / dgrid
     # Many-to-one mapping of pseudo pt inx => actual point idx
     #   e.g. to translate from idx of gridpts array to point in
     #      'rho' arrays, below
-
-    # This part looks like a fucking mess - try to clean it up to simplify a bit
-
-    real_coord_x = coord_x.copy()
-    real_coord_y = coord_y.copy()
-    real_coord_z = coord_z.copy()
-
-    real_coord_x[:margin[0]] += ngrids[0]
-    real_coord_x[-margin[0]:] -= ngrids[0]
-
-    real_coord_y[:margin[1]] += ngrids[1]
-    real_coord_y[-margin[1]:] -= ngrids[1]
-
-    real_coord_z[:margin[2]] += ngrids[2]
-    real_coord_z[-margin[2]:] -= ngrids[2]
-
-    x_real, y_real, z_real = numpy.meshgrid(real_coord_x, real_coord_y, real_coord_z)
-
-    # Includes repeated points, all in units according to 'actual_pts' - shape: (n_pseudo_pts, 3)
-    repeat_pts = (numpy.array(zip(x_real.ravel(), y_real.ravel(), z_real.ravel())) / dgrid).astype(int)
-
-
-    pt_map = numpy.zeros((n_pseudo_pts,), dtype=numpy.int32)
-    grid_sq = ngrids[0]**2
-    grid = ngrids[1]
-    for i in xrange(n_pseudo_pts):
-        x,y,z = repeat_pts[i]
-        idx = x*grid_sq + y*grid + z
-        pt_map[i] = idx
 
     rho_water = numpy.zeros((nframes, npts), dtype=numpy.float32)
     rho_prot = numpy.zeros((nframes, npts), dtype=numpy.float32)
@@ -150,7 +131,6 @@ if __name__=='__main__':
             pos = atom.position
             # Indices of all gridpoints within cutoff of atom's position
             neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
-            real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
             dist_vectors = neighborpts[:, ...] - pos
@@ -161,12 +141,11 @@ if __name__=='__main__':
 
             phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
 
-            rho_prot[i-startframe, real_idx] += phivals
+            rho_prot[i-startframe, neighboridx] += phivals
 
         for atom in water_ow:
             pos = atom.position
             neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
-            real_idx = pt_map[neighboridx]
             neighborpts = gridpts[neighboridx]
 
             dist_vectors = neighborpts[:, ...] - pos
@@ -176,7 +155,7 @@ if __name__=='__main__':
 
             phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
 
-            rho_water[i-startframe, real_idx] += phivals
+            rho_water[i-startframe, neighboridx] += phivals
 
         rho[i-startframe, :] = rho_prot[i-startframe, :]/rho_prot_bulk \
             + rho_water[i-startframe, :]/rho_water_bulk
@@ -184,10 +163,14 @@ if __name__=='__main__':
 
     # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
     prot_tree = scipy.spatial.cKDTree(prot_heavies.positions)
+    print "Average rho = {}".format(rho.mean())
     rho_shape = (rho.sum(axis=0)/rho.shape[0]).reshape(ngrids)
     #rho_shape = rho[0].reshape(ngrids)
     outfile = args.outfile
     cntr = 0
+
+    print "Preparing to output data"
+
     with open(outfile, 'w') as f:
         f.write("object 1 class gridpositions counts {} {} {}\n".format(ngrids[0], ngrids[1], ngrids[2]))
         f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,0))
