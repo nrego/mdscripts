@@ -96,9 +96,61 @@ Command-line options
 
         self.output_filename = args.outfile
 
-    def go(self):
+    def calc_rho(self, npts, gridpts, prot_heavies, water_ow):
+
         cutoff_sq = self.cutoff**2
         sigma_sq = self.sigma**2
+
+        rho_water = numpy.zeros((self.n_frames, npts), dtype=numpy.float32)
+        rho_prot = numpy.zeros((self.n_frames, npts), dtype=numpy.float32)
+        rho = numpy.zeros((self.n_frames, npts), dtype=numpy.float32)
+
+        # KD tree for nearest neighbor search
+        tree = scipy.spatial.cKDTree(gridpts)
+
+        for i in xrange(self.start_frame, self.last_frame):
+            print "Frame: {}".format(i)
+
+            self.univ.trajectory[i]
+
+            for atom in prot_heavies:
+
+                pos = atom.position
+                # Indices of all gridpoints within cutoff of atom's position
+                neighboridx = numpy.array(tree.query_ball_point(pos, self.cutoff))
+                neighborpts = gridpts[neighboridx]
+
+                dist_vectors = neighborpts[:, ...] - pos
+
+                # Distance array between atom and neighbor grid points
+                #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
+                #                                       'sqeuclidean').reshape(neighboridx.shape)
+
+                phivals = phi(dist_vectors, self.sigma, sigma_sq, self.cutoff, cutoff_sq)
+
+                rho_prot[i-self.start_frame, neighboridx] += phivals
+
+            for atom in water_ow:
+                pos = atom.position
+                neighboridx = numpy.array(tree.query_ball_point(pos, self.cutoff))
+                neighborpts = gridpts[neighboridx]
+
+                dist_vectors = neighborpts[:, ...] - pos
+                # Distance array between atom and neighbor grid points
+                # distarr = scipy.spatial.distance.cdist(pos.reshape(1,3),
+                #       neighborpts,'sqeuclidean').reshape(neighboridx.shape)
+
+                phivals = phi(dist_vectors, self.sigma, sigma_sq, self.cutoff, cutoff_sq)
+
+                rho_water[i-self.start_frame, neighboridx] += phivals
+
+            rho[i-self.start_frame, :] = rho_prot[i-self.start_frame, :]/self.rho_prot_bulk \
+                + rho_water[i-self.start_frame, :]/self.rho_water_bulk
+            
+
+        return rho
+
+    def go(self):
 
         prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA)")
         water_ow = self.univ.select_atoms("name OW")
@@ -149,52 +201,9 @@ Command-line options
         #   e.g. to translate from idx of gridpts array to point in
         #      'rho' arrays, below
 
-        rho_water = numpy.zeros((self.n_frames, npts), dtype=numpy.float32)
-        rho_prot = numpy.zeros((self.n_frames, npts), dtype=numpy.float32)
-        rho = numpy.zeros((self.n_frames, npts), dtype=numpy.float32)
-
-        # KD tree for nearest neighbor search
-        tree = scipy.spatial.cKDTree(gridpts)
-
-        for i in xrange(self.start_frame, self.last_frame):
-            print "Frame: {}".format(i)
-
-            self.univ.trajectory[i]
-
-            for atom in prot_heavies:
-
-                pos = atom.position
-                # Indices of all gridpoints within cutoff of atom's position
-                neighboridx = numpy.array(tree.query_ball_point(pos, self.cutoff))
-                neighborpts = gridpts[neighboridx]
-
-                dist_vectors = neighborpts[:, ...] - pos
-
-                # Distance array between atom and neighbor grid points
-                #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
-                #                                       'sqeuclidean').reshape(neighboridx.shape)
-
-                phivals = phi(dist_vectors, self.sigma, sigma_sq, self.cutoff, cutoff_sq)
-
-                rho_prot[i-self.start_frame, neighboridx] += phivals
-
-            for atom in water_ow:
-                pos = atom.position
-                neighboridx = numpy.array(tree.query_ball_point(pos, self.cutoff))
-                neighborpts = gridpts[neighboridx]
-
-                dist_vectors = neighborpts[:, ...] - pos
-                # Distance array between atom and neighbor grid points
-                # distarr = scipy.spatial.distance.cdist(pos.reshape(1,3),
-                #       neighborpts,'sqeuclidean').reshape(neighboridx.shape)
-
-                phivals = phi(dist_vectors, self.sigma, sigma_sq, self.cutoff, cutoff_sq)
-
-                rho_water[i-self.start_frame, neighboridx] += phivals
-
-            rho[i-self.start_frame, :] = rho_prot[i-self.start_frame, :]/self.rho_prot_bulk \
-                + rho_water[i-self.start_frame, :]/self.rho_water_bulk
-            # rho[i-startframe, :] /= 2.0
+        # Split up frames, assign to work manager, splice back together into
+        #   total rho array
+        rho = self.calc_rho(npts, gridpts, prot_heavies, water_ow)
 
         # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
         prot_tree = scipy.spatial.cKDTree(prot_heavies.positions)
