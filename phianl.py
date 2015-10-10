@@ -2,7 +2,7 @@ import numpy
 from matplotlib import pyplot
 import argparse
 import logging
-from datareader import dr
+from mdtools import dr
 
 import matplotlib as mpl
 

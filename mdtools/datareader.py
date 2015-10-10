@@ -4,6 +4,7 @@ Static data reader class for analysing phi time series data from simulations
 nrego
 """
 from __future__ import print_function, division; __metaclass__ = type
+
 import numpy
 import pandas
 from matplotlib import pyplot
@@ -12,8 +13,7 @@ import re
 import linecache
 import collections
 
-log = logging.getLogger()
-log.addHandler(logging.StreamHandler())
+log = logging.getLogger(__name__)
 
 
 def normhistnd(hist, binbounds):
