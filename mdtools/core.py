@@ -10,6 +10,8 @@ from __future__ import print_function, division; __metaclass__ = type
 import sys, argparse
 import work_managers
 
+import os
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -75,18 +77,38 @@ class Tool(ToolComponent):
     
     def __init__(self):
         super(Tool,self).__init__()
+        self.process_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
                     
     def add_args(self, parser):
         '''Add arguments specific to this tool to the given argparse parser.'''
         #westpa.rc.add_args(parser)
         # Add some default args here?
-        pass
+        group = parser.add_argument_group('general options')
+        egroup = group.add_mutually_exclusive_group()
+        egroup.add_argument('--quiet', dest='verbosity', action='store_const', const='quiet',
+                             help='emit only essential information')
+        egroup.add_argument('--verbose', '-v', dest='verbosity', action='store_const', const='verbose',
+                             help='emit extra information')
+        egroup.add_argument('--debug', dest='verbosity', action='store_const', const='debug',
+                            help='enable extra checks and emit copious information')
     
-    def process_args(self, args):
-        '''Take argparse-processed arguments associated with this tool and deal
-        with them appropriately (setting instance variables, etc)'''
-        #westpa.rc.process_args(args, config_required = self.config_required)
-        pass
+    @property
+    def verbose_mode(self):
+        return (self.verbosity in ('verbose', 'debug'))
+    
+    @property
+    def debug_mode(self):
+        return (self.verbosity == 'debug')
+    
+    @property
+    def quiet_mode(self):
+        return (self.verbosity == 'quiet')
+                            
+    def process_args(self, args, config_required = True):
+        self.cmdline_args = args
+        self.verbosity = args.verbosity
+
+        self.config_logging()
                         
     def make_parser(self, prog=None, usage=None, description=None, epilog=None, args=None):
         prog = prog or self.prog
@@ -115,6 +137,43 @@ class Tool(ToolComponent):
         '''A convenience function to make a parser, parse and process arguments, then call self.go()'''
         self.make_parser_and_process()
         self.go()
+
+    def config_logging(self):
+        import logging.config
+        logging_config = {'version': 1, 'incremental': False,
+                          'formatters': {'standard': {'format': '-- %(levelname)-8s [%(name)s] -- %(message)s'},
+                                         'debug':    {'format': '''\
+-- %(levelname)-8s %(asctime)24s PID %(process)-12d TID %(thread)-20d
+   from logger "%(name)s" 
+   at location %(pathname)s:%(lineno)d [%(funcName)s()] 
+   ::
+   %(message)s
+'''}},
+                          'handlers': {'console': {'class': 'logging.StreamHandler',
+                                                   'stream': 'ext://sys.stdout',
+                                                   'formatter': 'standard'}},
+                          'loggers': {'west': {'handlers': ['console'], 'propagate': False},
+                                      'westpa': {'handlers': ['console'], 'propagate': False},
+                                      'oldtools': {'handlers': ['console'], 'propagate': False},
+                                      'westtools': {'handlers': ['console'], 'propagate': False},
+                                      'westext': {'handlers': ['console'], 'propagate': False},
+                                      'work_managers': {'handlers': ['console'], 'propagate': False},
+                                      'py.warnings': {'handlers': ['console'], 'propagate': False}},
+                          'root': {'handlers': ['console']}}
+        
+        logging_config['loggers'][self.process_name] = {'handlers': ['console'], 'propagate': False}
+            
+        if self.verbosity == 'debug':
+            logging_config['root']['level'] = 5 #'DEBUG'
+            logging_config['handlers']['console']['formatter'] = 'debug'
+        elif self.verbosity == 'verbose':
+            logging_config['root']['level'] = 'INFO'
+        else:
+            logging_config['root']['level'] = 'WARNING'
+
+        logging.config.dictConfig(logging_config)
+        logging_config['incremental'] = True
+        logging.captureWarnings(True)
     
                 
 class ParallelTool(Tool):

@@ -10,7 +10,7 @@ from scipy.optimize import fmin_bfgs
 from matplotlib import pyplot
 import argparse
 import logging
-from datareader import dr
+from mdtools import dr
 import uwham
 
 
@@ -93,7 +93,8 @@ def genPdistBinless(all_data, u_nm, nsample_diag, weights, data_range, nbins):
     u_nm = numpy.array(u_nm)
     range_min, range_max = data_range
     nstep = float(range_max - range_min) / nbins
-    binbounds = numpy.arange(range_min, range_max+nstep, nstep)
+    #binbounds = numpy.arange(range_min, range_max+nstep, nstep)
+    binbounds = numpy.linspace(range_min, range_max, nbins+1)
 
     nsample = numpy.diag(nsample_diag) * all_data.shape[0]
 

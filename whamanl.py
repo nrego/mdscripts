@@ -22,7 +22,7 @@ mpl.rcParams.update({'axes.titlesize': 36})
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Run WHAM on collection of INDUS output datasets")
+    parser = argparse.ArgumentParser(description="Run WHAM analysis")
 
     parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
                         help='Input file names (presumably in a sensible order)')
