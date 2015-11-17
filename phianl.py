@@ -76,10 +76,10 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange):
             var = ds.getVar(start=start, end=end, bphi=bphi)
             txtstr = "$\mu={:.3f}$\n$\sigma^2={:.3f}$\n$F={:.2f}$".format(mu, var, var/mu)
             #print(txtstr)
-            ds.data[start:end].hist(bins=20, normed=1)
+            ds.data[start:end].hist(bins=50, normed=1)
             pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
                             xycoords='figure fraction', textcoords='figure fraction')
-            pyplot.suptitle(r'$\beta \phi ={}$'.format(bphi), fontsize=42)
+            pyplot.suptitle(r'$\beta \phi ={:.2f}$'.format(bphi), fontsize=42)
             #pyplot.legend()
 
         log.debug("Beta*Phi: {:.3f}".format(bphi))

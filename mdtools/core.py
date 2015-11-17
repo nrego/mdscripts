@@ -10,6 +10,8 @@ from __future__ import print_function, division; __metaclass__ = type
 import sys, argparse
 import work_managers
 
+import mdtools
+
 import os
 
 import logging
@@ -81,34 +83,11 @@ class Tool(ToolComponent):
                     
     def add_args(self, parser):
         '''Add arguments specific to this tool to the given argparse parser.'''
-        #westpa.rc.add_args(parser)
+        mdtools.rc.add_args(parser)
         # Add some default args here?
-        group = parser.add_argument_group('general options')
-        egroup = group.add_mutually_exclusive_group()
-        egroup.add_argument('--quiet', dest='verbosity', action='store_const', const='quiet',
-                             help='emit only essential information')
-        egroup.add_argument('--verbose', '-v', dest='verbosity', action='store_const', const='verbose',
-                             help='emit extra information')
-        egroup.add_argument('--debug', dest='verbosity', action='store_const', const='debug',
-                            help='enable extra checks and emit copious information')
-    
-    @property
-    def verbose_mode(self):
-        return (self.verbosity in ('verbose', 'debug'))
-    
-    @property
-    def debug_mode(self):
-        return (self.verbosity == 'debug')
-    
-    @property
-    def quiet_mode(self):
-        return (self.verbosity == 'quiet')
                             
     def process_args(self, args, config_required = True):
-        self.cmdline_args = args
-        self.verbosity = args.verbosity
-
-        self.config_logging()
+        mdtools.rc.process_args(args)
                         
     def make_parser(self, prog=None, usage=None, description=None, epilog=None, args=None):
         prog = prog or self.prog

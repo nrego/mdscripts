@@ -225,7 +225,7 @@ class DataReader:
         for title, dataset in cls.datasets.iteritems():
             #total_array = numpy.append(total_array, dataset.data[start:end]['$\~N$'])
             data = dataset.data[start:end]['$\~N$']
-            pyplot.hist(numpy.array(data), bins=nbins, label="phi: {} kj/mol".format(dataset.phi))
+            pyplot.hist(numpy.array(data), bins=nbins, normed=True, label="phi: {} kj/mol".format(dataset.phi))
 
         pyplot.legend()
 

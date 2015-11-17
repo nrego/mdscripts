@@ -16,7 +16,7 @@ from skimage import measure
 from utils import phi
 from mdtools import ParallelTool
 
-log = logging.getLogger('Interface')
+log = logging.getLogger('mdtools.interface')
 
 def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk):    
     cutoff_sq = cutoff**2
@@ -36,6 +36,8 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
             #pos = atom.position
             # Indices of all gridpoints within cutoff of atom's position
             neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            if neighboridx.size == 0:
+                continue
             neighborpts = gridpts[neighboridx]
 
             dist_vectors = neighborpts[:, ...] - pos
@@ -50,6 +52,8 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
 
         for pos in water_ow[i]:
             neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            if neighboridx.size == 0:
+                continue
             neighborpts = gridpts[neighboridx]
 
             dist_vectors = neighborpts[:, ...] - pos
@@ -68,7 +72,7 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
     return (rho_slice, lb, ub)
 
 class Interface(ParallelTool):
-    prog='w_assign'
+    prog='interface'
     description = '''\
 Perform instantaneous interface analysis on simulation data. Requires 
 GROFILE and TRAJECTORY (XTC or TRR). Conduct Instantaneous interface 
@@ -135,7 +139,7 @@ Command-line options
         try:
             self.univ = u = MDAnalysis.Universe(args.grofile, args.trajfile)
         except:
-            #print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
+            print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
             sys.exit()
 
         self.cutoff = args.cutoff
@@ -164,8 +168,11 @@ Command-line options
         n_workers = self.work_manager.n_workers or 1
 
         blocksize = self.n_frames // n_workers
+        log.info('n workers: {}'.format(n_workers))
+        log.info('n frames: {}'.format(self.n_frames))
         if self.n_frames % n_workers > 0:
             blocksize += 1
+        log.info('blocksize: {}'.format(blocksize))
 
         def task_gen():
             prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA)")
@@ -222,6 +229,9 @@ Command-line options
         self.ngrids = ngrids = box[:3].astype(int)+1
         self.dgrid = dgrid = box[:3]/(ngrids-1)
 
+        log.info("Box: {}".format(box))
+        log.info("Ngrids: {}".format(ngrids))
+
         # Extra number of grid points on each side to reflect pbc
         #    In grid units (i.e. inverse dgrid)
         #margin = (cutoff/dgrid).astype(int)
@@ -248,10 +258,18 @@ Command-line options
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
         self.gridpts = gridpts = numpy.array(zip(ypts.ravel(),xpts.ravel(),zpts.ravel()))
-        grididx = gridpts / dgrid
-        # Many-to-one mapping of pseudo pt inx => actual point idx
-        #   e.g. to translate from idx of gridpts array to point in
-        #      'rho' arrays, below
+        
+        gridpts = numpy.zeros((ngrids[0], ngrids[1], ngrids[2], 3))
+        for i in xrange(ngrids[0]):
+            for j in xrange(ngrids[1]):
+                for k in xrange(ngrids[2]):
+                    gridpts[i,j,k,:] = numpy.array([i,j,k]) * dgrid
+
+        self.gridpts = gridpts = gridpts.reshape((npts, 3))
+        #self.gridpts.dtype = numpy.float32
+        
+
+        log.info("Point grid set up")
 
         # Split up frames, assign to work manager, splice back together into
         #   total rho array
@@ -263,12 +281,12 @@ Command-line options
         # Note we artificially add to all grid points more than 10 A from protein
         #   heavy atoms to remove errors at box edges - hackish, but seems to work ok
         prot_tree = cKDTree(prot_heavies.positions)
-        print "Average rho = {}".format(rho.mean())
+        log.info("Average rho = {}".format(rho.mean()))
         rho_shape = (rho.sum(axis=0)/rho.shape[0]).reshape(ngrids)
         #rho_shape = rho[0].reshape(ngrids)
         cntr = 0
 
-        print "Preparing to output data"
+        log.info("Preparing to output data")
 
         with open(self.output_filename, 'w') as f:
             f.write("object 1 class gridpositions counts {} {} {}\n".format(ngrids[0], ngrids[1], ngrids[2]))

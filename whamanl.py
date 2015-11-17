@@ -95,6 +95,13 @@ if __name__ == "__main__":
         data_arr = numpy.array(ds.data[start:end]['$\~N$'])
         obs_hist, bb = numpy.histogram(data_arr, range=(range_min, range_max), bins=len(binctrs), normed=True)
 
+        comp_arr = numpy.zeros((obs_hist.shape[0], 3))
+        comp_arr[:, 0] = (bb[:-1] + numpy.diff(bb)/2.0)
+        comp_arr[:, 1] = obs_hist[:]
+        comp_arr[:, 2] = biasDist[:]
+
+        numpy.savetxt('phi-{:05g}_consensus.dat'.format(ds.phi*1000), comp_arr)
+
         shannonEntropy = numpy.nansum(obs_hist*numpy.log(obs_hist/biasDist))
         log.info("  Shannon Entropy: {}".format(shannonEntropy))
 

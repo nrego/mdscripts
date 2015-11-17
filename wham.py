@@ -18,7 +18,8 @@ import sys
 
 import matplotlib as mpl
 
-log = logging.getLogger('wham')
+log = logging.getLogger()
+log.addHandler(logging.StreamHandler())
 Nfeval = 1
 
 mpl.rcParams.update({'axes.labelsize': 30})
@@ -336,7 +337,7 @@ if __name__ == "__main__":
         myargs = (u_nm, nsample_diag, ones_m, ones_N, n_tot)
 
         log.info("Beginning optimization procedure...")
-        res = fmin_bfgs(kappa, xweights, fprime=gradKappa, args=myargs, callback=callbackF)
+        res = fmin_bfgs(kappa, xweights, fprime=gradKappa, args=myargs)
         logweights = numpy.append(0, -res)
         weights = numpy.exp(logweights)
         numpy.savetxt('logweights.dat', logweights, fmt='%3.3f')
