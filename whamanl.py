@@ -83,9 +83,9 @@ if __name__ == "__main__":
 
     for i, ds_item in enumerate(dr.datasets.iteritems()):
         ds_name, ds = ds_item
-        bias = numpy.exp(-beta*ds.phi*binctrs)
+        bias = numpy.exp(-beta*(0.5*ds.kappa*(binctrs-ds.Nstar)**2 + ds.phi*binctrs))
         calcWeight = (probDist[:, 1] * bias * binlen).sum()
-        log.info("Calculated weight for phi={}:  f={}".format(ds.phi, -numpy.log(calcWeight)))
+        log.info("Calculated weight for nstar={}, phi={}:  f={}".format(ds.Nstar, ds.phi, -numpy.log(calcWeight)))
         # Consensus histogram
         biasDist = (probDist[:, 1] * bias * binlen) / calcWeight
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         comp_arr[:, 1] = obs_hist[:]
         comp_arr[:, 2] = biasDist[:]
 
-        numpy.savetxt('phi-{:05g}_consensus.dat'.format(ds.phi*1000), comp_arr)
+        numpy.savetxt('nstar-{:05g}_phi-{:05g}_consensus.dat'.format(ds.Nstar, ds.phi*1000), comp_arr)
 
         shannonEntropy = numpy.nansum(obs_hist*numpy.log(obs_hist/biasDist))
         log.info("  Shannon Entropy: {}".format(shannonEntropy))

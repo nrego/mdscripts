@@ -1,3 +1,17 @@
+import numpy as np
+
+pt1 = np.array([18.0, 18.3, 41.22])
+pt2 = np.array([32.0, 61.7, 78.81])
+
+xpts = np.linspace(pt1[0], pt2[0], 5)
+ypts = np.linspace(pt1[1], pt2[1], 6)
+zpts = np.linspace(pt1[2], pt2[2], 6)
+
+xdiff, ydiff, zdiff = np.diff(xpts)[0], np.diff(ypts)[0], np.diff(zpts)[0]
+
+diffs = np.array([xdiff/2.0, ydiff/2.0, zdiff/2.0])
+origin = pt1 + diffs
+
 def write_string(idx, string_data):
     string = string_data[idx]
     fname = 'image_{:02d}.dx'.format(idx)

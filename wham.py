@@ -128,7 +128,7 @@ def genU_kln(nsims, nsample, start, end, beta):
     for i,ds_i in enumerate(dr.datasets.iteritems()):
         for j,ds_j in enumerate(dr.datasets.iteritems()):
             dataframe = numpy.array(ds_j[1].data[start:end]['$\~N$'])
-            u_kln[i,j,:] = ds_i[1].phi*beta*dataframe
+            u_kln[i,j,:] = 0.5*ds_i[1].kappa*(dataframe-ds_i[1].Nstar)**2 + ds_i[1].phi*beta*dataframe
 
     #for k, l in numpy.ndindex(u_kln.shape[0:2]):
     #    u_kln[k, l, nsample[l]:] = numpy.NaN
@@ -164,7 +164,7 @@ def genU_nm(all_data, nsims, beta, start, end=None):
 
     for i, ds_item in enumerate(dr.datasets.iteritems()):
         ds_name, ds = ds_item
-        u_nm[:, i] = numpy.exp(-beta*ds.phi*all_data)
+        u_nm[:, i] = numpy.exp( -beta*(0.5*ds.kappa*(all_data-ds.Nstar)**2 + ds.phi*all_data) )
 
     return numpy.matrix(u_nm)
 
