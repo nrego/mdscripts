@@ -223,13 +223,13 @@ class DataReader:
     def plotHistAll(cls, start=0, end=None, nbins=50):
         total_array = numpy.array([])
         for title, dataset in cls.datasets.iteritems():
-            #total_array = numpy.append(total_array, dataset.data[start:end]['$\~N$'])
+            total_array = numpy.append(total_array, dataset.data[start:end]['$\~N$'])
             data = dataset.data[start:end]['$\~N$']
-            pyplot.hist(numpy.array(data), bins=nbins, normed=True, label="phi: {} kj/mol".format(dataset.phi))
+            #pyplot.hist(numpy.array(data), bins=nbins, normed=True, label="phi: {} kj/mol".format(dataset.phi))
 
         pyplot.legend()
 
-        #pyplot.hist(total_array, bins=nbins)
+        pyplot.hist(total_array, bins=nbins)
 
 
     @classmethod

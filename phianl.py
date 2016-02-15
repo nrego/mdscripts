@@ -47,7 +47,7 @@ def blockAvg(ds, start, end=None):
     return block_vals
 
 '''Perform requested analysis on a bunch of phiout datasets'''
-def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange):
+def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
     phi_vals = numpy.zeros((len(infiles), 8), dtype=numpy.float32)
     prev_phi = 0.0
     prev_n = 0
@@ -115,7 +115,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange):
         numpy.savetxt(outfile, phi_vals, fmt='%.2f')
     if show:
         if (args.plotDistAll):
-            dr.plotHistAll(start=start, end=end, nbins=50)
+            dr.plotHistAll(start=start, end=end, nbins=nbins)
         if (args.plotN):
             title = r'$\langle{N}\rangle_\phi$'
             num = 1
@@ -195,6 +195,8 @@ if __name__ == "__main__":
                         help='Number of phi points for guessing adaptive spacing')
     parser.add_argument('--range', type=str,
                         help="Specify custom range (as 'minY,maxY') for plotting")
+    parser.add_argument('--nbins', type=int, default=50,
+                        help='Number of bins for histograms')
 
     log = logging.getLogger('phianl')
 
@@ -237,4 +239,4 @@ if __name__ == "__main__":
         dr.plot(start=start, end=end, ylim=myrange)
         dr.show()
     else:
-        phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange)
+        phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, args.nbins)
