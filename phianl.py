@@ -1,4 +1,5 @@
 import numpy
+np = numpy
 from matplotlib import pyplot
 import argparse
 import logging
@@ -14,7 +15,8 @@ mpl.rcParams.update({'axes.titlesize': 36})
 
 
 def blockAvg(ds, start, end=None):
-    data = numpy.array(ds.data[start+1:end]['$\~N$'])
+    data = numpy.array(ds.data[start:end]['$\~N$'])
+    data = data[1:]
     #data = ds
     data_var = data.var()
     n_obs = len(data)  # Total number of observations
@@ -76,11 +78,18 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             var = ds.getVar(start=start, end=end, bphi=bphi)
             txtstr = "$\mu={:.3f}$\n$\sigma^2={:.3f}$\n$F={:.2f}$".format(mu, var, var/mu)
             #print(txtstr)
-            ds.data[start:end].hist(bins=50, normed=1)
+            hist, bounds = numpy.histogram(numpy.array(ds.data[start:end]['$\~N$']), bins=50, normed=1)
+            ctrs = numpy.diff(bounds)/2.0 + bounds[:-1]
+            pyplot.bar(ctrs, hist, width=numpy.diff(ctrs)[0])
             pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
                             xycoords='figure fraction', textcoords='figure fraction')
             pyplot.suptitle(r'$\beta \phi ={:.2f}$'.format(bphi), fontsize=42)
             #pyplot.legend()
+            if outfile:
+                stuff = np.zeros((ctrs.shape[0], 2), dtype=float)
+                stuff[:,0] = ctrs
+                stuff[:,1] = hist
+                numpy.savetxt(outfile, stuff)
 
         log.debug("Beta*Phi: {:.3f}".format(bphi))
         n = ds.getMean(start=start, end=end, bphi=bphi)
@@ -93,9 +102,15 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             n_0 = n
             delta_phi = 0
         else:
-            dndphi_neg = (prev_n - n) / (bphi - prev_phi)
+            try:
+                dndphi_neg = (prev_n - n) / (bphi - prev_phi)
+            except ZeroDivisionError:
+                dndphi_neg = 0
             # Suggested delta phi (adaptive method)
-            delta_phi = (n_0/S)/dndphi_neg
+            try:
+                delta_phi = (n_0/S)/dndphi_neg
+            except ZeroDivisionError:
+                delta_phi = 0
 
         lg_n_negslope = (dndphi_neg/n) - 1
 
@@ -111,11 +126,13 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
     # Fill in deriv of lg_beta graph
     # phi_vals[1:,5] = - numpy.diff(phi_vals[:, 2]) / numpy.diff(phi_vals[:, 0])
     log.debug("Phi Vals: {}".format(phi_vals))
-    if outfile:
+    if outfile and not args.plotDist:
         numpy.savetxt(outfile, phi_vals, fmt='%.2f')
     if show:
         if (args.plotDistAll):
-            dr.plotHistAll(start=start, end=end, nbins=nbins)
+            total_stuff = dr.plotHistAll(start=start, end=end, nbins=nbins)
+            if outfile:
+                numpy.savetxt(outfile, total_stuff)
         if (args.plotN):
             title = r'$\langle{N}\rangle_\phi$'
             num = 1
@@ -225,9 +242,9 @@ if __name__ == "__main__":
         myrange = parseRange(args.range)
 
     if len(infiles) == 1 and args.blockAvg:
-        ds = dr.loadPhi(infiles[0], corr_len=10)
+        ds = dr.loadPhi(infiles[0], corr_len=1)
         block_vals = blockAvg(ds, start=start)
-        data_len = ds.data[start:].shape[0]
+        data_len = np.array(ds.data[start:]['$\~N$']).shape[0]
         print "Data length:{}".format(data_len)
         pyplot.plot(block_vals[:,0], numpy.sqrt(block_vals[:,2]), 'ro')
         pyplot.xlim(0,1000)

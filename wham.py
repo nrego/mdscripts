@@ -11,7 +11,7 @@ from matplotlib import pyplot
 import argparse
 import logging
 from mdtools import dr
-import uwham
+#import uwham
 
 
 import sys
@@ -32,7 +32,7 @@ def normhistnd(hist, binbounds):
     bin boundaries ``binbounds``.  Modifies ``hist`` in place and returns
     the normalization factor used.'''
 
-    diffs = numpy.append(numpy.diff(binbounds), 0)
+    diffs = numpy.diff(binbounds)
 
     assert diffs.shape == hist.shape
     normfac = (hist * diffs[0]).sum()
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     binbounds, probDist = genPdistBinless(all_data, u_nm, nsample_diag, weights, data_range, nbins)
 
     log.debug('pdist (pre-normalization): {}'.format(probDist))
-    normfac = normhistnd(probDist, binbounds[:-1])
+    normfac = normhistnd(probDist, binbounds)
     log.info('norm fac: {}'.format(normfac))
 
     log.info('pdist shape:{}'.format(probDist.shape))

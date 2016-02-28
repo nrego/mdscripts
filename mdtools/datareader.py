@@ -54,7 +54,7 @@ class DataSet:
 
 class PhiDataSet(DataSet):
 
-    def __init__(self, filename, corr_len=10):
+    def __init__(self, filename, corr_len=1):
         super(PhiDataSet, self).__init__()
 
         # Assume output file from umbrella.conf
@@ -178,7 +178,7 @@ class DataReader:
 
     '''Load phiout.dat files'''
     @classmethod
-    def loadPhi(cls, filename, corr_len=10):
+    def loadPhi(cls, filename, corr_len=1):
         ds = PhiDataSet(filename, corr_len)
         return cls._addSet(ds)
 
@@ -228,8 +228,15 @@ class DataReader:
             #pyplot.hist(numpy.array(data), bins=nbins, normed=True, label="phi: {} kj/mol".format(dataset.phi))
 
         pyplot.legend()
+        counts, centers = numpy.histogram(total_array, bins=nbins)
+        centers = numpy.diff(centers)/2.0 + centers[:-1]
+        pyplot.bar(centers, counts, width=numpy.diff(centers)[0])
 
-        pyplot.hist(total_array, bins=nbins)
+        retarr = numpy.zeros((centers.size, 2),dtype=numpy.float32)
+        retarr[:,0] = centers
+        retarr[:,1] = counts
+
+        return retarr
 
 
     @classmethod
