@@ -5,7 +5,7 @@ nrego
 """
 from __future__ import print_function, division; __metaclass__ = type
 
-import numpy
+import numpy as np
 import pandas
 from matplotlib import pyplot
 import logging
@@ -21,7 +21,7 @@ def normhistnd(hist, binbounds):
     bin boundaries ``binbounds``.  Modifies ``hist`` in place and returns
     the normalization factor used.'''
 
-    diffs = numpy.append(numpy.diff(binbounds), 0)
+    diffs = np.append(np.diff(binbounds), 0)
 
     assert diffs.shape == hist.shape
     normfac = (hist * diffs[0]).sum()
@@ -31,6 +31,7 @@ def normhistnd(hist, binbounds):
 
 def extractFloat(string):
     return map(float, re.findall(r"[-+]?\d*\.\d+|\d+", string))
+
 
 class DataSet:
 
@@ -62,11 +63,71 @@ class PhiDataSet(DataSet):
         self.Nstar = extractFloat(linecache.getline(filename, 2)).pop()
         self.phi = extractFloat(linecache.getline(filename, 3)).pop() # Ugh
         linecache.clearcache()
-        data = numpy.loadtxt(filename)
+        data = np.loadtxt(filename)
         log.debug('Datareader {} reading input file {}'.format(self, filename))
         self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
                                      columns=['N', r'$\~N$'])
         self.title = filename
+
+    # Block is block size of data
+    def printOut(self, filename, start, end=None, block=1):
+
+        n_obs = len(self.data[start:end])
+        data = np.zeros((n_obs, 3), dtype=np.float32)
+        data[:,0] = self.data[start:end].index
+        data[:,1:] = np.array(self.data[start:end])
+
+        data = data[1:] # generally cut off first datapoint
+
+        n_block = int(n_obs/block)
+        obs_prop = np.zeros((n_block, 3), dtype=np.float32)
+
+        for i in xrange(n_block):
+            ibeg = i*block
+            iend = ibeg + block
+            obs_prop[i] = data[ibeg:iend].mean(axis=0)
+
+        header = '''kappa =    {:1.3f} kJ/mol
+        NStar =    {:1.3f}
+        mu =    {:1.3f} kJ/mol
+        t (ps)        N       NTwiddle'''.format(self.kappa, self.Nstar, self.phi)
+
+        np.savetxt(filename, obs_prop, header=header, fmt="%1.6f        %2.6f        %2.6f")
+
+    def blockAvg(self, start, end=None, outfile=None):
+
+        data = np.array(self.data[start:end]['$\~N$'])
+        data = data[1:]
+        #data = ds
+        data_var = data.var()
+        n_obs = len(data)  # Total number of observations
+
+        #blocks = (np.power(2, xrange(int(np.log2(n_obs))))).astype(int)
+        # Block size
+        blocks = np.arange(1,len(data)/2+1,1)
+
+        n_blocks = len(blocks)
+
+        block_vals = np.zeros((n_blocks, 3))
+        block_vals[:, 0] = blocks.copy()
+
+        block_ctr = 0
+
+        for block in blocks:
+            n_block = int(n_obs/block)
+            obs_prop = np.zeros(n_block)
+
+            for i in xrange(n_block):
+                ibeg = i*block
+                iend = ibeg + block
+                obs_prop[i] = data[ibeg:iend].mean()
+
+            block_vals[block_ctr, 1] = obs_prop.mean()
+            block_vals[block_ctr, 2] = obs_prop.var() / (n_block-1)
+
+            block_ctr += 1
+
+        return block_vals
 
     def plot(self, start=0, ylim=None, block=1, end=None):
         pandas.rolling_mean(self.data[start:end:10], window=block).plot()
@@ -93,8 +154,8 @@ class PhiDataSet(DataSet):
         #return self.data[start:].mean()[1]
         #N = self.data[start:]['N']
         Ntwid = self.data[start:end]['$\~N$']
-        #numer = (N*numpy.exp(bphi*(Ntwid-N)))
-        #denom = (numpy.exp(bphi*(Ntwid-N)))
+        #numer = (N*np.exp(bphi*(Ntwid-N)))
+        #denom = (np.exp(bphi*(Ntwid-N)))
 
         #return numer.mean() / denom.mean()
         return Ntwid.mean()
@@ -109,54 +170,68 @@ class PhiDataSet(DataSet):
 
         #N = self.data[start:]['N']
         Ntwid = self.data[start:end]['$\~N$']
-        #numer = (N-N_avg)**2 * numpy.exp(bphi*(Ntwid-N))
-        #denom = numpy.exp(bphi*(Ntwid-N))
+        #numer = (N-N_avg)**2 * np.exp(bphi*(Ntwid-N))
+        #denom = np.exp(bphi*(Ntwid-N))
 
         #return numer.mean() / denom.mean()
         return ((Ntwid - N_avg)**2).mean()
 
     def getHist(self, start=0, nbins=50, end=None):
-        return numpy.histogram(self.data[start:end]['$\~N$'], bins=nbins)
+        return np.histogram(self.data[start:end]['$\~N$'], bins=nbins)
 
+
+# For free energy calcs
 class XvgDataSet(DataSet):
 
-    def __init__(self, title):
+    def __init__(self, filename, corr_len=1):
         super(XvgDataSet, self).__init__()
 
-        floats = extractFloat(title)
-        self.partner = None
-        self.dual = False
-        self.normfac = 0
+        self.lbdas = []
+        self.temp = None
 
-        if len(floats) == 1:
-            self.name = _titleString[0].format(floats[0])
-            self.title = '{:.2f}'.format(floats[0])
-        else:
-            self.name = _titleString[1].format(floats[0], floats[1])
-            self.title = '{:.2f}|{:.2f}'.format(floats[0], floats[1])
-            self.dual = True
-            #Opposite, for easier plotting - only match pairs once
-            if floats[0] < floats[1]:
-                self.partner = '{:.2f}|{:.2f}'.format(floats[1], floats[0])
+        with open(filename, 'r') as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                elif line.startswith('@'):
+                    if line.find('T =') != -1:
+                        self.temp = extractFloat(line)[0]
+                    if line.find('s0') != -1:
+                        self.lbdas.append(extractFloat(line[-1]))
+                    elif line.find('s1') != -1 or line.find('s2') != -1:
+                        self.lbdas.append(extractFloat(line[-1]))
+                else:
+                    break
 
         #self.title = title
-        self.data = []
+        data = np.loadtxt(filename, comments=['#', '@'])
+        log.debug('Datareader {} reading input file {}'.format(self, filename))
+        self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
+                                     columns=[])
 
-    def _rehashData(self):
-        self.data = numpy.array(self.data)
-        tmp_data = numpy.empty((self.data.shape[0], 3))
-        if self.dual:
-            negate = self.partner is not None
-            conv = -0.4009 if negate else 0.4009
-            tmp_data[:, :2] = self.data
-            self.data = tmp_data
-            # self.data[:, 1] modified in-place; self.data[:, 0] unchanged
-            self.normfac = normhistnd(self.data[:, 1], self.data[:, 0])
+    def printOut(self, filename, start, end=None, block=1):
 
-            #self.data[:, 2] *= self.data[:, 1]
-            #if negate:
-            #    self.data[:, 0] *= -1
-            self.data[:, 2] = numpy.log(self.data[:,1]) + (0.5*conv*self.data[:,0])
+        n_obs = len(self.data[start:end])
+        data = np.zeros((n_obs, 3), dtype=np.float32)
+        data[:,0] = self.data[start:end].index
+        data[:,1:] = np.array(self.data[start:end])
+
+        data = data[1:] # generally cut off first datapoint
+
+        n_block = int(n_obs/block)
+        obs_prop = np.zeros((n_block, 3), dtype=np.float32)
+
+        for i in xrange(n_block):
+            ibeg = i*block
+            iend = ibeg + block
+            obs_prop[i] = data[ibeg:iend].mean(axis=0)
+
+        header = '''kappa =    {:1.3f} kJ/mol
+        NStar =    {:1.3f}
+        mu =    {:1.3f} kJ/mol
+        t (ps)        N       NTwiddle'''.format(self.kappa, self.Nstar, self.phi)
+
+        np.savetxt(filename, obs_prop, header=header, fmt="%1.6f        %2.6f        %2.6f")
 
     def plot(self, ylim=None, start=0, block=1):
         pyplot.plot(self.data[:, 0], self.data[:, 1], label=self.name)
@@ -183,31 +258,9 @@ class DataReader:
         return cls._addSet(ds)
 
     @classmethod
-    def loadXVG(cls, filename):
-        with open(filename) as xvg:
-            titles = []
-            curr_title_idx = -1
-            curr_title = None
-            curr_ds = None
-            for i, line in enumerate(xvg):
-                line.strip()
-                if line.startswith("#") or len(line) == 0:
-                    continue
-                elif line.startswith("@ s"):
-                    log.debug("str: {}".format(line.split('"')[1]))
-                    title = line.split('"')[1]
-                    titles.append(title)
-                elif line.startswith("@\n"):
-                    curr_title_idx += 1
-                    curr_title = titles[curr_title_idx]
-                    curr_ds = cls._addSet(XvgDataSet(curr_title))
-                elif curr_ds:
-                    curr_ds.data.append(map(float, line.split()))
-                else:
-                    continue
-
-        for i, title in enumerate(cls.datasets):
-            cls.datasets[title]._rehashData()
+    def loadXVG(cls, filename, corr_len=1):
+        ds = XvgDataSet(filename, corr_len)
+        return cls._addSet(ds)
 
     @classmethod
     def _addSet(cls, ds):
@@ -221,18 +274,18 @@ class DataReader:
 
     @classmethod
     def plotHistAll(cls, start=0, end=None, nbins=50):
-        total_array = numpy.array([])
+        total_array = np.array([])
         for title, dataset in cls.datasets.iteritems():
-            total_array = numpy.append(total_array, dataset.data[start:end]['$\~N$'])
+            total_array = np.append(total_array, dataset.data[start:end]['$\~N$'])
             data = dataset.data[start:end]['$\~N$']
-            #pyplot.hist(numpy.array(data), bins=nbins, normed=True, label="phi: {} kj/mol".format(dataset.phi))
+            #pyplot.hist(np.array(data), bins=nbins, normed=True, label="phi: {} kj/mol".format(dataset.phi))
 
         pyplot.legend()
-        counts, centers = numpy.histogram(total_array, bins=nbins)
-        centers = numpy.diff(centers)/2.0 + centers[:-1]
-        pyplot.bar(centers, counts, width=numpy.diff(centers)[0])
+        counts, centers = np.histogram(total_array, bins=nbins)
+        centers = np.diff(centers)/2.0 + centers[:-1]
+        pyplot.bar(centers, counts, width=np.diff(centers)[0])
 
-        retarr = numpy.zeros((centers.size, 2),dtype=numpy.float32)
+        retarr = np.zeros((centers.size, 2),dtype=np.float32)
         retarr[:,0] = centers
         retarr[:,1] = counts
 

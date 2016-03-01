@@ -13,7 +13,6 @@ import logging
 from mdtools import dr
 #import uwham
 
-
 import sys
 
 import matplotlib as mpl
@@ -162,8 +161,7 @@ def genU_nm(all_data, nsims, beta, start, end=None):
 
     u_nm = numpy.zeros((n_tot, nsims))
 
-    for i, ds_item in enumerate(dr.datasets.iteritems()):
-        ds_name, ds = ds_item
+    for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
         u_nm[:, i] = numpy.exp( -beta*(0.5*ds.kappa*(all_data-ds.Nstar)**2 + ds.phi*all_data) )
 
     return numpy.matrix(u_nm)
@@ -312,10 +310,11 @@ if __name__ == "__main__":
     numer = dataMat.sum(0) # Sum over all simulations of nsample in each bin
 
 
-    u_kln = genU_kln(nsims, nsample.max(), start, end, beta)
+    
 
     ## UWHAM analysis
     if args.uwham:
+        u_kln = genU_kln(nsims, nsample.max(), start, end, beta)
         log.info('u_kln shape: {}'.format(u_kln.shape))
         log.debug('u_kln[1,1,:]: {}'.format(u_kln[1,1,:]))
         results = uwham.UWHAM(u_kln, nsample)

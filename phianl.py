@@ -1,5 +1,4 @@
-import numpy
-np = numpy
+import numpy as np
 from matplotlib import pyplot
 import argparse
 import logging
@@ -12,49 +11,15 @@ mpl.rcParams.update({'xtick.labelsize': 18})
 mpl.rcParams.update({'ytick.labelsize': 18})
 mpl.rcParams.update({'axes.titlesize': 36})
 #mpl.rcParams.update({'titlesize': 42})
-
-
-def blockAvg(ds, start, end=None):
-    data = numpy.array(ds.data[start:end]['$\~N$'])
-    data = data[1:]
-    #data = ds
-    data_var = data.var()
-    n_obs = len(data)  # Total number of observations
-
-    #blocks = (numpy.power(2, xrange(int(numpy.log2(n_obs))))).astype(int)
-    # Block size
-    blocks = numpy.arange(1,len(data)/2+1,1)
-
-    n_blocks = len(blocks)
-
-    block_vals = numpy.zeros((n_blocks, 3))
-    block_vals[:, 0] = blocks.copy()
-
-    block_ctr = 0
-
-    for block in blocks:
-        n_block = int(n_obs/block)
-        obs_prop = numpy.zeros(n_block)
-
-        for i in xrange(n_block):
-            ibeg = i*block
-            iend = ibeg + block
-            obs_prop[i] = data[ibeg:iend].mean()
-
-        block_vals[block_ctr, 1] = obs_prop.mean()
-        block_vals[block_ctr, 2] = obs_prop.var() / (n_block-1)
-
-        block_ctr += 1
-
-    return block_vals
-
+log = logging.getLogger()
+log.addHandler(logging.StreamHandler())
 '''Perform requested analysis on a bunch of phiout datasets'''
 def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
-    phi_vals = numpy.zeros((len(infiles), 8), dtype=numpy.float32)
+    phi_vals = np.zeros((len(infiles), 8), dtype=np.float32)
     prev_phi = 0.0
     prev_n = 0
     n_0 = 0
-    n_arr = numpy.empty((len(infiles),2))
+    n_arr = np.empty((len(infiles),2))
 
     for i, infile in enumerate(infiles):
         log.debug('loading file: {}'.format(infile))
@@ -78,9 +43,9 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             var = ds.getVar(start=start, end=end, bphi=bphi)
             txtstr = "$\mu={:.3f}$\n$\sigma^2={:.3f}$\n$F={:.2f}$".format(mu, var, var/mu)
             #print(txtstr)
-            hist, bounds = numpy.histogram(numpy.array(ds.data[start:end]['$\~N$']), bins=50, normed=1)
-            ctrs = numpy.diff(bounds)/2.0 + bounds[:-1]
-            pyplot.bar(ctrs, hist, width=numpy.diff(ctrs)[0])
+            hist, bounds = np.histogram(np.array(ds.data[start:end]['$\~N$']), bins=50, normed=1)
+            ctrs = np.diff(bounds)/2.0 + bounds[:-1]
+            pyplot.bar(ctrs, hist, width=np.diff(ctrs)[0])
             pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
                             xycoords='figure fraction', textcoords='figure fraction')
             pyplot.suptitle(r'$\beta \phi ={:.2f}$'.format(bphi), fontsize=42)
@@ -89,13 +54,13 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
                 stuff = np.zeros((ctrs.shape[0], 2), dtype=float)
                 stuff[:,0] = ctrs
                 stuff[:,1] = hist
-                numpy.savetxt(outfile, stuff)
+                np.savetxt(outfile, stuff)
 
         log.debug("Beta*Phi: {:.3f}".format(bphi))
         n = ds.getMean(start=start, end=end, bphi=bphi)
         #n = ds.data[start:]['$\~N$'].mean()
         log.debug("    N: {:.2f}".format(n))
-        lg_n = numpy.log(n)+bphi
+        lg_n = np.log(n)+bphi
         log.debug("    lg(N) + beta*phi: {:.2f}".format(lg_n))
         if i == 0:
             dndphi_neg = 0
@@ -121,18 +86,18 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
         prev_n = n
 
     for i in xrange(phi_vals.shape[0]):
-        phi_vals[i, 2] = numpy.trapz(phi_vals[:i+1, 1], phi_vals[:i+1, 0])
+        phi_vals[i, 2] = np.trapz(phi_vals[:i+1, 1], phi_vals[:i+1, 0])
 
     # Fill in deriv of lg_beta graph
-    # phi_vals[1:,5] = - numpy.diff(phi_vals[:, 2]) / numpy.diff(phi_vals[:, 0])
+    # phi_vals[1:,5] = - np.diff(phi_vals[:, 2]) / np.diff(phi_vals[:, 0])
     log.debug("Phi Vals: {}".format(phi_vals))
     if outfile and not args.plotDist:
-        numpy.savetxt(outfile, phi_vals, fmt='%.2f')
+        np.savetxt(outfile, phi_vals, fmt='%.2f')
     if show:
         if (args.plotDistAll):
             total_stuff = dr.plotHistAll(start=start, end=end, nbins=nbins)
             if outfile:
-                numpy.savetxt(outfile, total_stuff)
+                np.savetxt(outfile, total_stuff)
         if (args.plotN):
             title = r'$\langle{N}\rangle_\phi$'
             num = 1
@@ -215,7 +180,6 @@ if __name__ == "__main__":
     parser.add_argument('--nbins', type=int, default=50,
                         help='Number of bins for histograms')
 
-    log = logging.getLogger('phianl')
 
 
     args = parser.parse_args()
@@ -243,14 +207,17 @@ if __name__ == "__main__":
 
     if len(infiles) == 1 and args.blockAvg:
         ds = dr.loadPhi(infiles[0], corr_len=1)
-        block_vals = blockAvg(ds, start=start)
+        block_vals = ds.blockAvg(start)
         data_len = np.array(ds.data[start:]['$\~N$']).shape[0]
         print "Data length:{}".format(data_len)
-        pyplot.plot(block_vals[:,0], numpy.sqrt(block_vals[:,2]), 'ro')
+        pyplot.plot(block_vals[:,0], np.sqrt(block_vals[:,2]), 'ro')
         pyplot.xlim(0,1000)
         pyplot.xlabel("Block size")
         pyplot.ylabel(r'$\sigma_{{\langle{\~N}\rangle}}$')
         pyplot.show()
+        if outfile:
+            block = input("Input block size for output: ")
+            ds.printOut(outfile, start=start, block=block)
     elif len(infiles) == 1 and not args.plotDist:
         dr.loadPhi(infiles[0])
         dr.plot(start=start, end=end, ylim=myrange)
