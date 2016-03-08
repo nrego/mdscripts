@@ -1,9 +1,9 @@
 ## My set of WHAM/MBAR utilities
 
-import np as np
+import numpy as np
 
 # U[i,j] is exp(-beta * Uj(n_i))
-def genU_nm(all_data, nsims, beta, start, end=None):
+def gen_U_nm(all_data, nsims, beta, start, end=None):
 
     n_tot = all_data.shape[0]
 
@@ -28,7 +28,7 @@ def kappa(xweights, u_nm, nsample_diag, ones_m, ones_N, n_tot):
 
     return float(logLikelihood)
 
-def gradKappa(xweights, u_nm, nsample_diag, ones_m, ones_N, n_tot):
+def grad_kappa(xweights, u_nm, nsample_diag, ones_m, ones_N, n_tot):
 
     logf = np.append(0, xweights)
     f = np.exp(-logf) # Partition functions relative to first window

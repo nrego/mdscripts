@@ -186,52 +186,97 @@ class XvgDataSet(DataSet):
     def __init__(self, filename, corr_len=1):
         super(XvgDataSet, self).__init__()
 
-        self.lbdas = []
+        # Value of lambda for each window
+        self.lmbdas = []
         self.temp = None
 
+        self.title=filename
+        self.header = ''
         with open(filename, 'r') as f:
+            
             for line in f:
+                #print(line)
                 if line.startswith('#'):
                     continue
                 elif line.startswith('@'):
+                    self.header += line
                     if line.find('T =') != -1:
                         self.temp = extractFloat(line)[0]
                     if line.find('s0') != -1:
-                        self.lbdas.append(extractFloat(line[-1]))
-                    elif line.find('s1') != -1 or line.find('s2') != -1:
-                        self.lbdas.append(extractFloat(line[-1]))
+                        continue
+                    elif re.findall('s[0-9]+', line):
+                        self.lmbdas.append(extractFloat(line)[1])
                 else:
                     break
-
-        #self.title = title
+        #print(self.lmbdas)
+        self.header = self.header.rstrip()
         data = np.loadtxt(filename, comments=['#', '@'])
         log.debug('Datareader {} reading input file {}'.format(self, filename))
-        self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
-                                     columns=[])
 
-    def printOut(self, filename, start, end=None, block=1):
+        # Data has biases in kJ/mol !
+        self.data = pandas.DataFrame(data[::corr_len, 2:], index=data[::corr_len, 0],
+                                     columns=self.lmbdas)
+
+    def blockAvg(self, start=None, end=None, outfile=None):
+        blocks = np.arange(1,min(len(self.data)//2, 5000))
+
+        n_blocks = len(blocks)
+        n_obs = len(self.data)  # Total number of observations
+        total_block_vals = np.zeros((len(self.lmbdas), n_blocks, 3))
+
+        for i,key in enumerate(self.lmbdas):
+
+            data = np.array(self.data[start:end][key])
+            data = data[1:]
+            #data = ds
+            data_var = data.var()
+
+
+            #blocks = (np.power(2, xrange(int(np.log2(n_obs))))).astype(int)
+            # Block size
+
+            block_vals = total_block_vals[i]
+            block_vals[:, 0] = blocks.copy()
+
+            block_ctr = 0
+
+            for block in blocks:
+                n_block = int(n_obs/block)
+                obs_prop = np.zeros(n_block)
+
+                for i in xrange(n_block):
+                    ibeg = i*block
+                    iend = ibeg + block
+                    obs_prop[i] = data[ibeg:iend].mean()
+
+                block_vals[block_ctr, 1] = obs_prop.mean()
+                block_vals[block_ctr, 2] = obs_prop.var() / (n_block-1)
+
+                block_ctr += 1
+
+        return total_block_vals
+
+    def printOut(self, filename, start=None, end=None, block=1):
 
         n_obs = len(self.data[start:end])
-        data = np.zeros((n_obs, 3), dtype=np.float32)
+        data = np.zeros((n_obs, self.data.shape[1]+2), dtype=np.float32)
         data[:,0] = self.data[start:end].index
-        data[:,1:] = np.array(self.data[start:end])
+        data[:,1] = -1
+        data[:,2:] = np.array(self.data[start:end])
 
         data = data[1:] # generally cut off first datapoint
 
-        n_block = int(n_obs/block)
-        obs_prop = np.zeros((n_block, 3), dtype=np.float32)
+        n_block = n_obs // block
+        obs_prop = np.zeros((n_block, data.shape[1]), dtype=np.float32)
 
         for i in xrange(n_block):
             ibeg = i*block
             iend = ibeg + block
             obs_prop[i] = data[ibeg:iend].mean(axis=0)
 
-        header = '''kappa =    {:1.3f} kJ/mol
-        NStar =    {:1.3f}
-        mu =    {:1.3f} kJ/mol
-        t (ps)        N       NTwiddle'''.format(self.kappa, self.Nstar, self.phi)
+        header = '# Block average output for {}\n'.format(self.title) + self.header
 
-        np.savetxt(filename, obs_prop, header=header, fmt="%1.6f        %2.6f        %2.6f")
+        np.savetxt(filename, obs_prop, header=header, fmt="%.4f", comments="")
 
     def plot(self, ylim=None, start=0, block=1):
         pyplot.plot(self.data[:, 0], self.data[:, 1], label=self.name)
