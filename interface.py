@@ -8,7 +8,7 @@ import argparse
 import logging
 
 import MDAnalysis
-from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
+#from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
 from scipy.spatial import cKDTree
 from skimage import measure
@@ -175,7 +175,7 @@ Command-line options
         log.info('blocksize: {}'.format(blocksize))
 
         def task_gen():
-            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA)")
+            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
             water_ow = self.univ.select_atoms("name OW")
 
             if __debug__:
@@ -276,7 +276,7 @@ Command-line options
         rho = self.calc_rho()
 
         self.univ.trajectory[self.last_frame-1]
-        prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA)")
+        prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
         # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
         # Note we artificially add to all grid points more than 10 A from protein
         #   heavy atoms to remove errors at box edges - hackish, but seems to work ok
