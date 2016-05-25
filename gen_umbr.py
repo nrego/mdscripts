@@ -29,14 +29,14 @@ if __name__ == "__main__":
                         out atom to umbr file")
     parser.add_argument("-r", "--radius", dest="rad", default=6, type=float,
                         help="radius of hydration shell around heavy atoms (default 6 A)")
-    parser.add_argument("-o", "--out", default="output", dest="outfile",
-                        help="output")
+    parser.add_argument("-o", "--out", default="umbr.conf", dest="outfile",
+                        help="output file name (default: umbr.conf)")
 
     args = parser.parse_args()
 
     header_string = "; Umbrella potential for a spherical shell cavity\n\
     ; Name    Type          Group  Kappa   Nstar    mu    width  cutoff  outfile    nstout\n\
-    CAVITATOR dyn_union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
+    hydshell dyn_union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
 
     if args.traj is None:
         u = Universe(args.gro)
