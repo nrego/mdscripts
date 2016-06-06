@@ -42,7 +42,7 @@ if __name__ == "__main__":
         u = Universe(args.gro)
 
         # Select peptide heavies - exclude water's and ions
-        prot_heavies = u.select_atoms("not (name H* or resname SOL) and not (name NA or name CL) and not (resname WAL) and not (resname DUM)")
+        prot_heavies = u.select_atoms("not (name H* or type H or resname SOL) and not (name NA or name CL) and not (resname WAL) and not (resname DUM)")
 
         fout = open(args.outfile, 'w')
         fout.write(header_string)
