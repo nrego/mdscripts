@@ -29,8 +29,10 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
     # KD tree for nearest neighbor search
     tree = cKDTree(gridpts)
 
+    # i is frame
     for i in xrange(block):
 
+        # position of each atom at frame i
         for pos in prot_heavies[i]:
 
             #pos = atom.position
@@ -144,7 +146,7 @@ Command-line options
 
         self.cutoff = args.cutoff
         self.sigma = 2.4
-        self.rho_water_bulk = 0.0330
+        self.rho_water_bulk = 0.032
         self.rho_prot_bulk = args.rhoprot / 1000.0
 
         if (args.start > (u.trajectory.n_frames * u.trajectory.dt)):
@@ -187,6 +189,7 @@ Command-line options
                 if __debug__:
                     checkset.update(set(xrange(lb_frame,ub_frame)))
 
+                # Shape is (nframes, natoms, 3)
                 prot_heavies_pos = numpy.zeros((ub-lb, len(prot_heavies), 3), dtype=numpy.float32)
                 water_ow_pos = numpy.zeros((ub-lb, len(water_ow), 3), dtype=numpy.float32)
                 for i, frame_idx in enumerate(xrange(lb_frame, ub_frame)):
@@ -275,14 +278,15 @@ Command-line options
         #   total rho array
         rho = self.calc_rho()
 
-        self.univ.trajectory[self.last_frame-1]
+        self.univ.trajectory[-1]
         prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
         # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
         # Note we artificially add to all grid points more than 10 A from protein
         #   heavy atoms to remove errors at box edges - hackish, but seems to work ok
         prot_tree = cKDTree(prot_heavies.positions)
-        log.info("Average rho = {}".format(rho.mean()))
+        #log.info("Average rho = {}".format(rho.mean()))
         rho_shape = (rho.sum(axis=0)/rho.shape[0]).reshape(ngrids)
+        log.info("Min rho: {}, Max rho: {}".format(rho_shape.min(), rho_shape.max()))
         #rho_shape = rho[0].reshape(ngrids)
         cntr = 0
 

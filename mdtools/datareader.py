@@ -43,6 +43,15 @@ class DataSet:
     def shape(self):
         return self.data.shape
 
+    # Return dataset's timestep (in ps)
+    @property
+    def ts(self):
+        if self.data is None:
+            return -1
+        else:
+            return np.diff(self.data.index)[0]
+    
+
     def plot(self, ylim=None, start=0, block=1):
         raise NotImplemetedError
 
@@ -221,14 +230,14 @@ class XvgDataSet(DataSet):
         blocks = np.arange(1,min(len(self.data)//2, 5000))
 
         n_blocks = len(blocks)
-        n_obs = len(self.data)  # Total number of observations
+        
         total_block_vals = np.zeros((len(self.lmbdas), n_blocks, 3))
 
         for i,key in enumerate(self.lmbdas):
 
             data = np.array(self.data[start:end][key])
             data = data[1:]
-            #data = ds
+            n_obs = len(data)  # Total number of observations
             data_var = data.var()
 
 

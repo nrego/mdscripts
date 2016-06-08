@@ -6,10 +6,10 @@ from mdtools import dr
 
 import matplotlib as mpl
 
-mpl.rcParams.update({'axes.labelsize': 30})
-mpl.rcParams.update({'xtick.labelsize': 18})
-mpl.rcParams.update({'ytick.labelsize': 18})
-mpl.rcParams.update({'axes.titlesize': 36})
+mpl.rcParams.update({'axes.labelsize': 36})
+mpl.rcParams.update({'xtick.labelsize': 24})
+mpl.rcParams.update({'ytick.labelsize': 24})
+mpl.rcParams.update({'axes.titlesize': 40})
 #mpl.rcParams.update({'titlesize': 42})
 log = logging.getLogger()
 log.addHandler(logging.StreamHandler())
@@ -101,33 +101,50 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
         if (args.plotN):
             title = r'$\langle{N}\rangle_\phi$'
             num = 1
-            pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'bo-')
+            pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-')
+            pyplot.fill_between(phi_vals[:,0], phi_vals[:,num], color='none', hatch='\\', edgecolor='b')
         if (args.plotInteg):
             title = r'$\int{\langle{N}\rangle_\phi}d\phi$'
             num = 2
-            pyplot.plot(phi_vals[:, 0], phi_vals[:, num])
+            pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-')
         if (args.plotLogN):
             title = r'$\ln{\langle{N}\rangle_\phi} + \beta\phi$'
             num = 4
-            pyplot.plot(phi_vals[:, 0],phi_vals[:, num])
+            pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-')
         if (args.plotNegSlope):
             title = r'$\langle{\delta N^2}\rangle_\phi / \langle{N}\rangle_\phi - 1$'
             num = 5
-            pyplot.plot(phi_vals[:, 0],phi_vals[:, num])
+            pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-')
         if (args.plotSus):
             title = r'$\langle{\delta N^2}\rangle_\phi$'
             num = 7
-            pyplot.plot(phi_vals[:, 0], phi_vals[:, num])
+            pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-')
+        if (args.plotBoth):
+            pyplot.close('all')
+            f, axarr = pyplot.subplots(2, sharex=True)
+            axarr[0].plot(phi_vals[:, 0],phi_vals[:, 1], 'o-')
+            axarr[0].set_ylabel(r'$\langle{N}\rangle_\phi$')
+            ticks = axarr[0].get_yticks()
+            axarr[0].set_yticks(ticks[::2])
+            axarr[1].plot(phi_vals[:, 0], phi_vals[:, 7], 'o-')
+            axarr[1].set_ylabel(r'$\langle{\delta N^2}\rangle_\phi$')
+            ticks = axarr[0].get_yticks()
+            axarr[0].set_yticks(ticks[::2])            
+            if conv == 1:
+                pyplot.xlabel(r'$\phi$ (kJ/mol)')
+            else:
+                pyplot.xlabel(r'$\beta\phi$ ($k_B T$)')
+            pyplot.show()
         if (args.plotDist or args.plotDistAll):
             pyplot.show()
         else:
             #pyplot.plot(phi_vals[:, 0],phi_vals[:, num])
-            pyplot.title(title + r' vs $\beta\phi$')
+            #pyplot.title(title + r' vs $\beta\phi$')
 
-            if conv == 0.001:
+            if conv == 1:
                 pyplot.xlabel(r'$\phi$ (kJ/mol)')
             else:
-                pyplot.xlabel(r'$\beta\phi$')
+                pyplot.xlabel(r'$\beta\phi$ ($k_B T$)')
 
             pyplot.ylabel(title)
 
@@ -171,6 +188,8 @@ if __name__ == "__main__":
                         help='plot water number distributions for each phi value')
     parser.add_argument('--plotDistAll', action='store_true',
                         help='Plot water histograms over all simulations in INPUT (e.g. to gauge overall sampling)')
+    parser.add_argument('--plotBoth', action='store_true',
+                        help='Plot N v phi and var(N) v phi')
     parser.add_argument('--blockAvg', action='store_true',
                         help='Perform block averaging over one simulation')
     parser.add_argument('-S', type=int,
@@ -187,7 +206,7 @@ if __name__ == "__main__":
     if args.debug:
         log.setLevel(logging.DEBUG)
 
-    show = args.plotN or args.plotLogN or args.plotNegSlope or args.plotInteg or args.plotDist or args.plotDistAll or args.plotSus
+    show = args.plotN or args.plotLogN or args.plotNegSlope or args.plotInteg or args.plotDist or args.plotDistAll or args.plotSus or args.plotBoth
     #infiles = ['phi_{:05d}/phiout.dat'.format(inarg) for inarg in args.input]
     infiles = args.input
 
@@ -207,11 +226,11 @@ if __name__ == "__main__":
 
     if len(infiles) == 1 and args.blockAvg:
         ds = dr.loadPhi(infiles[0], corr_len=1)
-        block_vals = ds.blockAvg(start)
-        data_len = np.array(ds.data[start:]['$\~N$']).shape[0]
+        block_vals = ds.blockAvg(start,end=end)
+        data_len = np.array(ds.data[start:end]['$\~N$']).shape[0]
         print "Data length:{}".format(data_len)
         pyplot.plot(block_vals[:,0], np.sqrt(block_vals[:,2]), 'ro')
-        pyplot.xlim(0,1000)
+        pyplot.xlim(0,block_vals.shape[0]/2)
         pyplot.xlabel("Block size")
         pyplot.ylabel(r'$\sigma_{{\langle{\~N}\rangle}}$')
         pyplot.show()

@@ -88,8 +88,8 @@ Command-line options
                             help='Number of bootstrap samples to perform')      
 
         agroup = parser.add_argument_group('other options')
-        agroup.add_argument('-o', '--outfile', default='interface.dx',
-                        help='Output file to write instantaneous interface')
+        agroup.add_argument('-o', '--outfile', default='out.dat',
+                        help='Output file to write -ln(Q_\phi/Q_0)')
 
     def process_args(self, args):
         try:
@@ -104,7 +104,7 @@ Command-line options
 
         self.conv = 1
         if args.T:
-            self.conv /= (args.T * 0.008314)
+            self.conv /= (args.T * 8.3144598e-3)
 
         # Number of bootstrap samples to perform
         self.bootstrap = args.bootstrap
@@ -114,7 +114,7 @@ Command-line options
     def go(self):
 
         phidat = self.dr.datasets
-        phivals = np.zeros(len(phidat), dtype=np.float32)
+        phivals = np.zeros(len(phidat), dtype=np.float64)
 
         ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float32)
         integ_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float32)
@@ -157,8 +157,20 @@ Command-line options
 
         log.info("Var shape: {}".format(ntwid_se.shape))
 
+        out_actual = np.zeros((len(phidat), 3), dtype=np.float64)
+        out_actual[:, 0] = phivals
+
+        for i, (ds_name, ds) in enumerate(phidat.items()):
+            np.testing.assert_almost_equal(ds.phi*self.conv, out_actual[i, 0])
+            ntwidarr = np.array(ds.data[:]['$\~N$'])
+            out_actual[i, 1] = ntwidarr.mean()
+
+        out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], phivals)
+
+        log.info("outputting data to ntwid_err.dat, integ_err.dat, and {}".format(self.output_filename))
         np.savetxt('ntwid_err.dat', ntwid_se, fmt="%1.8e")
         np.savetxt('integ_err.dat', integ_se, fmt="%1.8e")
+        np.savetxt(self.output_filename, out_actual, fmt="%1.3f")
 
 
 if __name__=='__main__':

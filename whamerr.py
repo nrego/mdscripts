@@ -24,7 +24,10 @@ mpl.rcParams.update({'axes.titlesize': 36})
 log = logging.getLogger('mdtools.whamerr')
 
 
-## TODO: Eventually betaert this to just do all MBAR analysis (for phiout.dat and XVG)
+## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
+#    Note for .xvg datasets (alchemical free energy calcs in gromacs), each file must contain *every* other window
+#       (not just the adjacent windows, as g_bar requires for TI)
+
 
 # Load list of infiles from start
 # Return range over entire dataset (as tuple)
@@ -48,22 +51,44 @@ def load_range_data(infiles, start, end):
 # phidat is datareader (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
 def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_sample_diag,
-               n_tot, n_windows):
+               n_tot, n_windows, autocorr_nsteps):
 
     np.random.seed()
     block_size = ub - lb
     logweights_ret = np.zeros((block_size, n_windows), dtype=np.float64)
-    bias_mat_boot = np.zeros_like(bias_mat)
+
+    # Will only contain uncorrelated, bootstrap samples from biasMat
+    bias_mat_boot = np.zeros((n_tot, n_windows), dtype=np.float64)
     xweights = np.zeros(n_windows-1)
 
     for batch_num in xrange(block_size):
         # Subsample bias_mat
         i_start = 0
-        for n_sample in n_samples:
-            indices = np.random.randint(n_sample, size=n_sample) + i_start
-            i_end = i_start+n_sample
-            bias_mat_boot[i_start:i_end, :] = bias_mat[indices, :]
+        i_start_sub = 0
+        for i, n_sample in enumerate(n_samples):
+            # the entire bias matrix for this window, shape (nsample, nwindows)
+            bias_mat_window = bias_mat[i_start:i_start+n_sample, :]
+            rand_start = np.random.randint(autocorr_nsteps)
+            # grab every uncorrelated data point - from a random start position
+            bias_mat_window_uncorr = bias_mat_window[rand_start::autocorr_nsteps]
+
+            n_pts_uncorr = n_sample // autocorr_nsteps
+            # Number of data points after decorrelating matrix
+            # should be n_sample/autocorr_nsteps, if not throw out first data point
+            # Hackish for when n_sample is not divisible by autocorr length
+            if (bias_mat_window_uncorr.shape[0] > n_pts_uncorr): 
+                bias_mat_window_uncorr = bias_mat_window_uncorr[1:, :]
+                assert bias_mat_window_uncorr.shape[0] == n_pts_uncorr
+
+            # Indices of data points to grap from uncorrelated bias matrix
+            #    These are sampled *with* replacement
+            #    This comprises our uncorrelated, bootstrap sample for the current window
+            indices = np.random.randint(n_pts_uncorr, size=n_pts_uncorr)
+
+            # Append our uncorrelated, bootstrap sample for this window to our bias matrix
+            bias_mat_boot[i_start_sub:i_start_sub+n_pts_uncorr, :] = bias_mat_window_uncorr[indices, :]
             i_start += n_sample
+            i_start_sub += n_pts_uncorr
 
         myargs = (bias_mat_boot, n_sample_diag, ones_m, ones_n, n_tot)
         logweights_ret[batch_num, 1:] = -fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs, disp=False)        
@@ -74,7 +99,11 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_sample_diag,
 class WHAMmer(ParallelTool):
     prog='WHAM/MBAR analysis'
     description = '''\
-Perform WHAM/MBAR analysis on datasets. Also perform bootstrapping
+Perform MBAR/Binless WHAM analysis on 'phiout.dat' or '*.xvg' datasets (e.g. from alchemical FE cals with GROMACS).
+Note that XVG type datasets must contain DeltaU for *every* other window (not just the adjacent window(s), as
+    is required by 'g_bar', which uses TI, not MBAR).
+
+Also perform bootstrapping standard error analysis - must specify an autocorrelation time for this to work correctly!
 
 This tool supports parallelization (see options below)
 
@@ -110,6 +139,9 @@ Command-line options
 
         self.n_bootstrap = None
 
+        self.autocorr = None
+        self.ts = None
+
         self.dr = dr
         self.output_filename = None
         
@@ -122,7 +154,7 @@ Command-line options
         
         sgroup = parser.add_argument_group('(Binless) WHAM/MBAR error options')
         sgroup.add_argument('input', metavar='INPUT', type=str, nargs='+',
-                            help='Input file names - Assumed to be blocked/autocorrelation removed!')
+                            help='Input file names - Must be in ps units!')
         sgroup.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
                             help='Format of input data files:  \'phi\' for phiout.dat; \
                             \'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
@@ -132,8 +164,11 @@ Command-line options
                             help='last timepoint (in ps) - default is last available time point')
         sgroup.add_argument('-T', metavar='TEMP', type=float,
                             help='betaert Phi values to kT, for TEMP (K)')
-        sgroup.add_argument('--bootstrap', type=int, default=10000,
-                            help='Number of bootstrap samples to perform')      
+        sgroup.add_argument('--bootstrap', type=int, default=1000,
+                            help='Number of bootstrap samples to perform')   
+        sgroup.add_argument('--autocorr', '-ac', type=float, default=1.0,
+                            help='Autocorrelation time (in ps); this can be \
+                            a single float, or one for each window')   
 
 
     def process_args(self, args):
@@ -155,13 +190,20 @@ Command-line options
 
         self.beta = 1
         if args.T:
-            self.beta /= (args.T * 8.314462e-3)
+            self.beta /= (args.T * 8.3144598e-3)
 
         # Number of bootstrap samples to perform
         self.n_bootstrap = args.bootstrap
 
+        self.autocorr = self._parse_autocorr(args.autocorr)
+
         self.unpack_data(args.start, args.end)
 
+    # TODO: Parse lists as well
+    def _parse_autocorr(self, autocorr):
+        return autocorr
+
+    # Note: sets self.ts, as well
     def unpack_data(self, start, end):
         if self.fmt == 'phi':
             self._unpack_phi_data(start, end)
@@ -176,6 +218,11 @@ Command-line options
         self.n_samples = np.array([], dtype=np.int32)
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+            if self.ts == None:
+                self.ts = ds.ts
+            else:
+                np.testing.assert_almost_equal(self.ts, ds.ts)
+
             dataframe = np.array(ds.data[start:end]['$\~N$'])
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
             self.all_data = np.append(self.all_data, dataframe)
@@ -194,6 +241,10 @@ Command-line options
         self.bias_mat = None
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+            if self.ts == None:
+                self.ts = ds.ts
+            else:
+                np.testing.assert_almost_equal(self.ts, ds.ts)
             dataframe = np.array(ds.data[start:end][0])
             bias = np.exp(-self.beta*np.array(ds.data[start:end][1:], dtype=np.float64)) # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
@@ -207,9 +258,7 @@ Command-line options
         
     def go(self):
 
-        # Diagonal is fractional n_samples for each window - should be 
-        #    float because future's division function
-        n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float64 )
+
 
         n_workers = self.work_manager.n_workers or 1
         batch_size = self.n_bootstrap // n_workers
@@ -218,8 +267,21 @@ Command-line options
         log.info("batch size: {}".format(batch_size))
 
         logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
+
+        # 2*autocorr length (ps), divided by step size (also in ps)
+        autocorr_nsteps = int(2*self.autocorr/self.ts)
+        log.info("autocorr length: {} ps".format(self.autocorr))
+        log.info("data time step: {} ps".format(self.ts))
+        log.info("autocorr nsteps: {}".format(autocorr_nsteps))
+
+        # Diagonal is fractional n_samples for each window - should be 
+        #    float because future's division function
+        uncorr_n_samples = self.n_samples // autocorr_nsteps
+        uncorr_ntot = uncorr_n_samples.sum()
+        n_sample_diag = np.matrix( np.diag(uncorr_n_samples / uncorr_ntot), dtype=np.float64 )
+
         ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float64).transpose()
-        ones_n = np.matrix(np.ones(self.all_data.shape[0]), dtype=np.float64).transpose()
+        ones_n = np.matrix(np.ones(uncorr_ntot), dtype=np.float64).transpose()
 
         def task_gen():
             
@@ -233,8 +295,8 @@ Command-line options
 
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, bias_mat=self.bias_mat,
-                              n_samples=self.n_samples, n_sample_diag=n_sample_diag, n_tot=self.n_tot, 
-                              n_windows=self.n_windows)
+                              n_samples=self.n_samples, n_sample_diag=n_sample_diag, n_tot=uncorr_ntot, 
+                              n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
 
@@ -245,14 +307,21 @@ Command-line options
             logweights_boot[lb:ub, :] = logweights_slice
             del logweights_slice
 
+        # Redefine these for entire dataset
+        ones_n = np.matrix(np.ones(self.n_tot), dtype=np.float64).transpose()
+        n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float64 )
+
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         xweights = np.zeros(self.n_windows-1)
         logweights_actual = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
         logweights_actual = np.append(0, -logweights_actual)
 
         # Get SE from bootstrapped samples
+        logweights_boot_mean = logweights_boot.mean(axis=0)
         logweights_se = np.sqrt(logweights_boot.var(axis=0))
 
+
+        print('logweights (boot mean): {}'.format(logweights_boot_mean))
         print('logweights: {}'.format(logweights_actual))
         print('se: {}'.format(logweights_se))
 
