@@ -76,8 +76,10 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
                 delta_phi = (n_0/S)/dndphi_neg
             except ZeroDivisionError:
                 delta_phi = 0
-
-        lg_n_negslope = (dndphi_neg/n) - 1
+        try:
+            lg_n_negslope = (dndphi_neg/n) - 1
+        except ZeroDivisionError:
+            lg_n_negslope = -1
 
         secondCum = ds.getVar(start=start, end=end, bphi=bphi)
 
