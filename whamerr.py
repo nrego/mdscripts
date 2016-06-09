@@ -7,13 +7,16 @@ import logging
 from mdtools import dr
 import scipy.integrate
 from scipy.optimize import fmin_bfgs
+import pymbar
 import time
 
 from mdtools import ParallelTool
 
-from wham import gen_U_nm, kappa, grad_kappa
+from wham import gen_U_nm, kappa, grad_kappa, gen_pdist
 
 import matplotlib as mpl
+
+import matplotlib.pyplot as plt
 
 mpl.rcParams.update({'axes.labelsize': 30})
 mpl.rcParams.update({'xtick.labelsize': 18})
@@ -126,6 +129,13 @@ Command-line options
         # Number of input simulations (windows) - arranged in order of input file
         self.n_windows = None
 
+        # All data from all windows to be WHAMed, in 1-d array
+        # shape: (n_tot,)
+        self.all_data = None
+
+        # Only initialized for 'phi' datasets - same shape as above
+        self.all_data_N = None
+
         # bias for each window
         # shape: (n_tot, n_windows)
         #    Each row contains ith observation at *each* biasing window
@@ -144,7 +154,8 @@ Command-line options
 
         self.dr = dr
         self.output_filename = None
-        
+    
+    # Total number of samples - sum of n_samples from each window
     @property
     def n_tot(self):
         return self.n_samples.sum()
@@ -168,7 +179,12 @@ Command-line options
                             help='Number of bootstrap samples to perform')   
         sgroup.add_argument('--autocorr', '-ac', type=float, default=1.0,
                             help='Autocorrelation time (in ps); this can be \
-                            a single float, or one for each window')   
+                            a single float, or one for each window') 
+        sgroup.add_argument('--logweights', type=float, 
+                            help='(optional) previously calculated logweights file for INDUS simulations - \
+                            if \'phi\' format option also supplied, this will calculate the Pv(N) (and Ntwid). \
+                            For \'xvg\' formats, this will calculate the probability distribution of whatever \
+                            variable has been umbrella sampled')
 
 
     def process_args(self, args):
@@ -215,17 +231,22 @@ Command-line options
     def _unpack_phi_data(self, start, end=None):
 
         self.all_data = np.array([], dtype=np.float64)
-        self.n_samples = np.array([], dtype=np.int32)
+        self.all_data_N = np.array([], dtype=np.uint32)
+        self.n_samples = np.array([], dtype=np.uint32)
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             if self.ts == None:
                 self.ts = ds.ts
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
+            data = ds.data[start:end]
+            dataframe = np.array(data['$\~N$'], dtype=np.float64)
+            dataframe_N = np.array(data['N'], dtype=np.uint32)
 
-            dataframe = np.array(ds.data[start:end]['$\~N$'])
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
+
             self.all_data = np.append(self.all_data, dataframe)
+            self.all_data_N = np.append(self.all_data_N, dataframe_N)
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float64)
 
@@ -320,13 +341,29 @@ Command-line options
         logweights_boot_mean = logweights_boot.mean(axis=0)
         logweights_se = np.sqrt(logweights_boot.var(axis=0))
 
+        ## Get the probability distribution (s)
+        if self.fmt == 'phi':
+            data_range = (0, self.all_data_N.max()+1)
+            binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
+            
+            neglogpdist_N = -np.log(pdist_N)
+
+            data_range = (0, self.all_data.max()+1)
+            binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
+            neglogpdist = -np.log(pdist)
+            arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
+            arr = arr.squeeze()
+            np.savetxt('neglogpdist_N.dat', arr)
 
         print('logweights (boot mean): {}'.format(logweights_boot_mean))
         print('logweights: {}'.format(logweights_actual))
         print('se: {}'.format(logweights_se))
 
-        np.savetxt('logweights.dat', logweights_actual, fmt='%3.3f')
-        np.savetxt('err_logweights.dat', logweights_se, fmt='%3.3f')
+        arr =  np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
+        arr = arr.squeeze()
+        np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
+        np.savetxt('err_logweights.dat', logweights_se, fmt='%3.6f')
+        np.savetxt('neglogpdist.dat', arr)
         #print('logweights from bootstrap: {}'.format(logweights_boot))
 
 if __name__=='__main__':

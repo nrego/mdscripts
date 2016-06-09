@@ -1,3 +1,5 @@
+from __future__ import division, print_function
+
 import numpy
 from scipy.optimize import fmin_bfgs
 from matplotlib import pyplot
@@ -10,8 +12,8 @@ import uwham
 import sys
 
 import matplotlib as mpl
-
-log = logging.getLogger('whamanl')
+log = logging.getLogger()
+log.addHandler(logging.StreamHandler())
 Nfeval = 1
 
 mpl.rcParams.update({'axes.labelsize': 30})
@@ -32,8 +34,8 @@ if __name__ == "__main__":
                         help='last timepoint (in ps) - default is last available time point')
     parser.add_argument('--logweights', default='logweights.dat', 
                         help='Input file for WHAM logweights, if previously calculated')
-    parser.add_argument('--pdist', default='Pn.dat', 
-                        help='Name of calculated pdist file (default: Pn.dat)')
+    parser.add_argument('--logpdist', default='neglogpdist.dat', 
+                        help='Name of calculated - log pdist file (default: neglogpdist.dat)')
     parser.add_argument('--debug', action='store_true',
                         help='print debugging info')
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -67,9 +69,10 @@ if __name__ == "__main__":
     logweights = numpy.loadtxt(args.logweights)
     weights = numpy.exp(logweights)
 
-    probDist = numpy.loadtxt(args.pdist)
-    logP = numpy.exp(probDist)
-
+    logP = numpy.loadtxt(args.logpdist)
+    logP[:,1] = -logP[:,1]
+    probDist = logP.copy()
+    probDist[:,1] = numpy.exp(probDist[:,1])
     binctrs = probDist[:, 0]
     binlen = numpy.diff(binctrs)[0] # Assume equal sized bins
 
@@ -90,7 +93,9 @@ if __name__ == "__main__":
         biasDist = (probDist[:, 1] * bias * binlen) / calcWeight
 
         range_max = (binctrs + (numpy.diff(binctrs)/2.0)[0])[-1]
+        #print('max: {}'.format(range_max))
         range_min = (binctrs - (numpy.diff(binctrs)/2.0)[0])[0]
+        #print('min: {}'.format(range_min))
 
         data_arr = numpy.array(ds.data[start:end]['$\~N$'])
         obs_hist, bb = numpy.histogram(data_arr, range=(range_min, range_max), bins=len(binctrs), normed=True)

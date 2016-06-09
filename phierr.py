@@ -6,6 +6,7 @@ import argparse
 import logging
 from mdtools import dr
 import scipy.integrate
+import pymbar
 import time
 
 from mdtools import ParallelTool
@@ -23,7 +24,7 @@ log = logging.getLogger('mdtools.phierr')
 
 # phidat is datareader (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
-def _bootstrap(lb, ub, phivals, phidat):
+def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
 
     np.random.seed()
     block_size = ub - lb
@@ -32,8 +33,11 @@ def _bootstrap(lb, ub, phivals, phidat):
 
     for batch_num in xrange(block_size):
         for i, (ds_name, ds) in enumerate(phidat.items()):
+            rand_start = np.random.randint(autocorr_nsteps[i])
+            ntwidarr = np.array(ds.data[start:end]['$\~N$'])
 
-            ntwidarr = np.array(ds.data[:]['$\~N$'])
+            # Only grab data points after correlation length
+            ntwidarr = ntwidarr[rand_start::autocorr_nsteps[i]]
             bootstrap = np.random.choice(ntwidarr, size=len(ntwidarr))
             ntwid_ret[i,batch_num] = bootstrap.mean()
 
@@ -46,6 +50,10 @@ class Phierr(ParallelTool):
     prog='phi error analysis'
     description = '''\
 Perform bootstrap error analysis for phi dataset (N v phi)
+
+This tool calculates the autocorrelation time automagically with PYMBAR for each dataset.
+    It's integrated into the rest of the bootstrapping analysis - this program will
+    take care of autocorrelated data and provide accurate estimates for standard errors.
 
 This tool supports parallelization (see options below)
 
@@ -68,6 +76,8 @@ Command-line options
         self.conv = 1
 
         self.bootstrap = None
+        self.autocorr = None
+        self.ts = None
 
         self.dr = dr
         self.output_filename = None
@@ -85,22 +95,34 @@ Command-line options
         sgroup.add_argument('-T', metavar='TEMP', type=float,
                             help='convert Phi values to kT, for TEMP (K)')
         sgroup.add_argument('--bootstrap', type=int, default=10000,
-                            help='Number of bootstrap samples to perform')      
+                            help='Number of bootstrap samples to perform')       
 
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-o', '--outfile', default='out.dat',
                         help='Output file to write -ln(Q_\phi/Q_0)')
 
     def process_args(self, args):
+
+        autocorr = []
+        self.start = start = args.start
+        self.end = end = args.end
+
         try:
             for i, infile in enumerate(args.input):
                 log.info("loading {}th input: {}".format(i, infile))
-                self.dr.loadPhi(infile)
+                ds = self.dr.loadPhi(infile)
+                if self.ts == None:
+                    self.ts = ds.ts
+                else:
+                    np.testing.assert_almost_equal(self.ts, ds.ts)
+
+                # Estimate autocorrelation time from entire data set
+                autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(ds.data[start:]['$\~N$'])))
         except:
             raise IOError("Error: Unable to successfully load inputs")
 
-        self.start = args.start
-        self.end = args.end
+        self.autocorr = np.array(autocorr)
+        #print(self.autocorr)
 
         self.conv = 1
         if args.T:
@@ -119,8 +141,13 @@ Command-line options
         ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float32)
         integ_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float32)
 
+
         for i, (ds_name, ds) in enumerate(phidat.items()):
             phivals[i] = ds.phi * self.conv
+
+
+        autocorr_nsteps = (2*self.autocorr/self.ts).astype(int)
+        log.info('autocorr nsteps: {}'.format(autocorr_nsteps))
 
         n_workers = self.work_manager.n_workers or 1
         batch_size = self.bootstrap // n_workers
@@ -140,7 +167,8 @@ Command-line options
                     checkset.update(set(xrange(lb,ub)))
 
                 args = ()
-                kwargs = dict(lb=lb, ub=ub, phivals=phivals, phidat=phidat)
+                kwargs = dict(lb=lb, ub=ub, phivals=phivals, phidat=phidat, autocorr_nsteps=autocorr_nsteps, 
+                              start=self.start, end=self.end)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
 
@@ -162,14 +190,15 @@ Command-line options
 
         for i, (ds_name, ds) in enumerate(phidat.items()):
             np.testing.assert_almost_equal(ds.phi*self.conv, out_actual[i, 0])
-            ntwidarr = np.array(ds.data[:]['$\~N$'])
+            ntwidarr = np.array(ds.data[self.start:self.end]['$\~N$'])
             out_actual[i, 1] = ntwidarr.mean()
 
         out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], phivals)
 
-        log.info("outputting data to ntwid_err.dat, integ_err.dat, and {}".format(self.output_filename))
+        log.info("outputting data to ntwid_err.dat, integ_err.dat, autocorr_len.dat, and {}".format(self.output_filename))
         np.savetxt('ntwid_err.dat', ntwid_se, fmt="%1.8e")
         np.savetxt('integ_err.dat', integ_se, fmt="%1.8e")
+        np.savetxt('autocorr_len.dat', self.autocorr, fmt="%1.3f")
         np.savetxt(self.output_filename, out_actual, fmt="%1.3f")
 
 

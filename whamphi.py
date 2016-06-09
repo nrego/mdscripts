@@ -1,6 +1,6 @@
 '''
 Stitch together Ntwid histograms from phiout datafiles to construct
-unbiased P(Ntwid) using WHAM
+unbiased P(Ntwid) or P(N) using WHAM
 
 nrego
 Sept 2015
