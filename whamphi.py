@@ -11,7 +11,7 @@ from matplotlib import pyplot
 import argparse
 import logging
 from mdtools import dr
-#import uwham
+import uwham
 
 import sys
 

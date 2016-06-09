@@ -77,6 +77,7 @@ class PhiDataSet(DataSet):
         self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
                                      columns=['N', r'$\~N$'])
         self.title = filename
+        log.debug('....DONE;  kappa={}, Nstar={}, phi={}'.format(self.kappa,self.Nstar,self.phi))
 
     # Block is block size of data
     def printOut(self, filename, start, end=None, block=1):

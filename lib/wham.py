@@ -5,6 +5,7 @@ import numpy as np
 # Generate a probability distribution over a variable by integrating
 #
 def gen_pdist(all_data, bias_mat, n_samples, logweights, data_range, nbins):
+    bias_mat = np.exp(-bias_mat)
     bias_mat = np.array(bias_mat)
     range_min, range_max = data_range
     nstep = float(range_max - range_min) / nbins
@@ -42,28 +43,37 @@ def gen_U_nm(all_data, nsims, beta, start, end=None):
     return np.matrix(u_nm)
 
 # Log likelihood
-def kappa(xweights, u_nm, nsample_diag, ones_m, ones_N, n_tot):
+def kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
+    #u_nm = np.exp(-bias_mat)
+    f = np.append(0, xweights)
+    #z = np.exp(-f)
 
-    logf = np.append(0, xweights)
-    f = np.exp(-logf) # Partition functions relative to first window
+    #Q = np.dot(u_nm, np.diag(z))
 
-    Q = np.dot(u_nm, np.diag(f))
-
-    logLikelihood = (ones_N.transpose()/n_tot)*np.log(Q*nsample_diag*ones_m) + \
-                    np.dot(np.diag(nsample_diag), logf)
+    Q = bias_mat + f
+    #Q = np.exp(-Q)
+    #logLikelihood = (ones_N.transpose()/n_tot)*np.log(Q*nsample_diag.diagonal().T) + \
+    #                np.dot(np.diag(nsample_diag), f)
+    logLikelihood = (ones_N.transpose()/n_tot)*np.log(( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1)) + \
+                    np.dot(np.diag(nsample_diag), f)
 
 
     return float(logLikelihood)
 
-def grad_kappa(xweights, u_nm, nsample_diag, ones_m, ones_N, n_tot):
+def grad_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
 
-    logf = np.append(0, xweights)
-    f = np.exp(-logf) # Partition functions relative to first window
+    #u_nm = np.exp(-bias_mat)
+    f = np.append(0, xweights)
+    #z = np.exp(-f) # Partition functions relative to first window
 
-    Q = np.dot(u_nm, np.diag(f))
-    denom = (Q*nsample_diag).sum(axis=1)
+    #Q = np.dot(u_nm, np.diag(z))
 
-    W = Q/denom
+    Q = bias_mat + f
+    #Q = np.exp(-Q)
+    #denom = (Q*nsample_diag).sum(axis=1)
+    denom = ( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1) 
+
+    W = np.exp(-Q)/denom
 
     grad = -nsample_diag*W.transpose()*(ones_N/n_tot) + nsample_diag*ones_m
 

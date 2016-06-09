@@ -231,8 +231,8 @@ Command-line options
     def _unpack_phi_data(self, start, end=None):
 
         self.all_data = np.array([], dtype=np.float64)
-        self.all_data_N = np.array([], dtype=np.uint32)
-        self.n_samples = np.array([], dtype=np.uint32)
+        self.all_data_N = np.array([]).astype(int)
+        self.n_samples = np.array([]).astype(int)
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             if self.ts == None:
@@ -241,7 +241,7 @@ Command-line options
                 np.testing.assert_almost_equal(self.ts, ds.ts)
             data = ds.data[start:end]
             dataframe = np.array(data['$\~N$'], dtype=np.float64)
-            dataframe_N = np.array(data['N'], dtype=np.uint32)
+            dataframe_N = np.array(data['N']).astype(int)
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
@@ -252,7 +252,7 @@ Command-line options
 
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-            self.bias_mat[:, i] = np.exp( -self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) )
+            self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
 
     # Put all data points into N dim vector
     def _unpack_xvg_data(self, start, end=None):
@@ -345,11 +345,12 @@ Command-line options
         if self.fmt == 'phi':
             data_range = (0, self.all_data_N.max()+1)
             binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
-            
+            pdist_N /= pdist_N.sum()
             neglogpdist_N = -np.log(pdist_N)
 
             data_range = (0, self.all_data.max()+1)
             binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
+            pdist /= pdist.sum()
             neglogpdist = -np.log(pdist)
             arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
             arr = arr.squeeze()

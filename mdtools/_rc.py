@@ -30,7 +30,7 @@ class MDTOOLSRC:
         egroup = group.add_mutually_exclusive_group()
         egroup.add_argument('--quiet', dest='verbosity', action='store_const', const='quiet',
                              help='emit only essential information')
-        egroup.add_argument('--verbose', dest='verbosity', action='store_const', const='verbose',
+        egroup.add_argument('--verbose', '-v', dest='verbosity', action='store_const', const='verbose',
                              help='emit extra information')
         egroup.add_argument('--debug', dest='verbosity', action='store_const', const='debug',
                             help='enable extra checks and emit copious information')
