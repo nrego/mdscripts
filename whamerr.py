@@ -267,7 +267,7 @@ Command-line options
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
             dataframe = np.array(ds.data[start:end][0])
-            bias = np.exp(-self.beta*np.array(ds.data[start:end][1:], dtype=np.float64)) # biased values for all windows
+            bias = self.beta*np.array(ds.data[start:end][1:], dtype=np.float64) # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
             self.all_data = np.append(self.all_data, dataframe)
 
@@ -347,14 +347,16 @@ Command-line options
             binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
             pdist_N /= pdist_N.sum()
             neglogpdist_N = -np.log(pdist_N)
-
-            data_range = (0, self.all_data.max()+1)
-            binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
-            pdist /= pdist.sum()
-            neglogpdist = -np.log(pdist)
-            arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
+            arr = np.dstack((binbounds_N[:-1], neglogpdist_N))
             arr = arr.squeeze()
-            np.savetxt('neglogpdist_N.dat', arr)
+            np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
+
+        # Generate pdist for WHAM'ed variable
+        data_range = (0, self.all_data.max()+1)
+        binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
+        pdist /= pdist.sum()
+        neglogpdist = -np.log(pdist)
+
 
         print('logweights (boot mean): {}'.format(logweights_boot_mean))
         print('logweights: {}'.format(logweights_actual))
@@ -364,7 +366,7 @@ Command-line options
         arr = arr.squeeze()
         np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
         np.savetxt('err_logweights.dat', logweights_se, fmt='%3.6f')
-        np.savetxt('neglogpdist.dat', arr)
+        np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
         #print('logweights from bootstrap: {}'.format(logweights_boot))
 
 if __name__=='__main__':

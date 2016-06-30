@@ -46,9 +46,9 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             hist, bounds = np.histogram(np.array(ds.data[start:end]['$\~N$']), bins=50, normed=1)
             ctrs = np.diff(bounds)/2.0 + bounds[:-1]
             pyplot.bar(ctrs, hist, width=np.diff(ctrs)[0])
-            pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
-                            xycoords='figure fraction', textcoords='figure fraction')
-            pyplot.suptitle(r'$\beta \phi ={:.2f}$'.format(bphi), fontsize=42)
+            #pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
+            #                xycoords='figure fraction', textcoords='figure fraction')
+            #pyplot.suptitle(r'$\beta \phi ={:.2f}$'.format(bphi), fontsize=42)
             #pyplot.legend()
             if outfile:
                 stuff = np.zeros((ctrs.shape[0], 2), dtype=float)
@@ -62,26 +62,25 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
         log.debug("    N: {:.2f}".format(n))
         lg_n = np.log(n)+bphi
         log.debug("    lg(N) + beta*phi: {:.2f}".format(lg_n))
+        secondCum = ds.getVar(start=start, end=end, bphi=bphi)
         if i == 0:
             dndphi_neg = 0
             n_0 = n
             delta_phi = 0
-        else:
-            try:
-                dndphi_neg = (prev_n - n) / (bphi - prev_phi)
-            except ZeroDivisionError:
-                dndphi_neg = 0
-            # Suggested delta phi (adaptive method)
-            try:
-                delta_phi = (n_0/S)/dndphi_neg
-            except ZeroDivisionError:
-                delta_phi = 0
+        
+        try:
+            dndphi_neg = (prev_n - n) / (bphi - prev_phi)
+        except ZeroDivisionError:
+            dndphi_neg = 0
+        # Suggested delta phi (adaptive method)
+        try:
+            delta_phi = (n_0/S)/secondCum
+        except ZeroDivisionError:
+            delta_phi = 0
         try:
             lg_n_negslope = (dndphi_neg/n) - 1
         except ZeroDivisionError:
             lg_n_negslope = -1
-
-        secondCum = ds.getVar(start=start, end=end, bphi=bphi)
 
         phi_vals[i] = bphi, n, 0, dndphi_neg, lg_n, lg_n_negslope, delta_phi, secondCum
         prev_phi = bphi

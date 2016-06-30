@@ -48,6 +48,9 @@ if __name__ == "__main__":
                         help='Plot resulting (free) energy distribution (-log(P))')
     parser.add_argument('--plotLogP', action='store_true',
                         help='Plot resulting log probability (log(P))')
+    parser.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
+                        help='Format of input data files:  \'phi\' for phiout.dat; \
+                        \'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
 
     args = parser.parse_args()
 
@@ -58,8 +61,12 @@ if __name__ == "__main__":
 
     log.info("Loading input files")
 
-    for infile in args.input:
-        dr.loadPhi(infile)
+    if args.fmt == 'phi':
+        for infile in args.input:
+            dr.loadPhi(infile)
+    elif args.fmt == 'xvg':
+        for infile in args.input:
+            dr.loadXVG(infile)
 
     log.info("   ...Done")
 
