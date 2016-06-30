@@ -101,10 +101,10 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             if outfile:
                 np.savetxt(outfile, total_stuff)
         if (args.plotN):
-            title = r'$\langle{N}\rangle_\phi$'
+            title = r"$\langle{\~N}\rangle'_\phi$"
             num = 1
-            pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-')
-            pyplot.fill_between(phi_vals[:,0], phi_vals[:,num], color='none', hatch='\\', edgecolor='b')
+            pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-', markersize=12, linewidth=4)
+            #pyplot.fill_between(phi_vals[:,0], phi_vals[:,num], color='none', hatch='\\', edgecolor='b')
         if (args.plotInteg):
             title = r'$\int{\langle{N}\rangle_\phi}d\phi$'
             num = 2
@@ -118,9 +118,9 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             num = 5
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-')
         if (args.plotSus):
-            title = r'$\langle{\delta N^2}\rangle_\phi$'
+            title = r"$\langle{\delta \~N^2}\rangle'_\phi$"
             num = 7
-            pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-')
+            pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-', markersize=12, linewidth=4)
         if (args.plotBoth):
             pyplot.close('all')
             f, axarr = pyplot.subplots(2, sharex=True)

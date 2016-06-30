@@ -12,6 +12,7 @@ import argparse
 import logging
 from mdtools import dr
 import uwham
+import pymbar
 
 import sys
 
