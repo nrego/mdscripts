@@ -31,6 +31,8 @@ if __name__ == "__main__":
                         help="radius of hydration shell around heavy atoms (default 6 A)")
     parser.add_argument("-o", "--out", default="umbr.conf", dest="outfile",
                         help="output file name (default: umbr.conf)")
+    parser.add_argument("--sspec", type=str,
+                        help="custom selection string (to select atoms over which to create umbrellas), default all prot heavies")
 
     args = parser.parse_args()
 
@@ -41,8 +43,11 @@ if __name__ == "__main__":
     if args.traj is None:
         u = Universe(args.gro)
 
-        # Select peptide heavies - exclude water's and ions
-        prot_heavies = u.select_atoms("not (name H* or type H or resname SOL) and not (name NA or name CL) and not (resname WAL) and not (resname DUM)")
+        if args.sspec is not None:
+            prot_heavies = u.select_atoms(args.sspec)
+        else:
+            # Select peptide heavies - exclude water's and ions
+            prot_heavies = u.select_atoms("not (name H* or type H or resname SOL) and not (name NA or name CL) and not (resname WAL) and not (resname DUM)")
 
         fout = open(args.outfile, 'w')
         fout.write(header_string)

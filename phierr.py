@@ -151,9 +151,11 @@ Command-line options
                     self.ts = ds.ts
                 else:
                     np.testing.assert_almost_equal(self.ts, ds.ts)
-
+                try:
                 # Estimate autocorrelation time from entire data set
-                autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(ds.data[start:]['$\~N$'])))
+                    autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(ds.data[start:]['$\~N$'])))
+                except:
+                    autocorr.append(self.ts * 10)
         except:
             raise IOError("Error: Unable to successfully load inputs")
 
@@ -268,6 +270,7 @@ Command-line options
                 n_integ_err = integ_ntwid_se
                 ylab_n = r"$" + beta_pref + r"\langle \~N \rangle_{\phi}$"
                 ylab_n_integ = r"$" + beta_pref + r"\int_0^{\phi} \langle \~N \rangle_{\phi'} d \phi'$"
+
             elif self.mode == 'n':
                 n_dat = out_actual[:,3]
                 n_err = n_se

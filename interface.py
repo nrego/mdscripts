@@ -287,6 +287,7 @@ Command-line options
         #log.info("Average rho = {}".format(rho.mean()))
         rho_shape = (rho.sum(axis=0)/rho.shape[0]).reshape(ngrids)
         log.info("Min rho: {}, Max rho: {}".format(rho_shape.min(), rho_shape.max()))
+        max_rho = rho_shape.max()
         #rho_shape = rho[0].reshape(ngrids)
         cntr = 0
 
