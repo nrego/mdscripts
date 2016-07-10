@@ -6,6 +6,7 @@ from mdtools import dr
 
 import matplotlib as mpl
 
+
 mpl.rcParams.update({'axes.labelsize': 36})
 mpl.rcParams.update({'xtick.labelsize': 24})
 mpl.rcParams.update({'ytick.labelsize': 24})
@@ -100,7 +101,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             if outfile:
                 np.savetxt(outfile, total_stuff)
         if (args.plotN):
-            title = r"$\langle{\~N}\rangle'_\phi$"
+            title = r"$\langle{\~N}\rangle_\phi$"
             num = 1
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-', markersize=12, linewidth=4)
             #pyplot.fill_between(phi_vals[:,0], phi_vals[:,num], color='none', hatch='\\', edgecolor='b')
@@ -117,7 +118,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             num = 5
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-')
         if (args.plotSus):
-            title = r"$\langle{\delta \~N^2}\rangle'_\phi$"
+            title = r"$\langle{\delta \~N^2}\rangle_\phi$"
             num = 7
             pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-', markersize=12, linewidth=4)
         if (args.plotBoth):
@@ -160,8 +161,8 @@ def parseRange(rangestr):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Phi Reader. Look at N v. time plots at individual Phi values, or \
-                                      construct N v. Phi plot from multiple phi values")
+    parser = argparse.ArgumentParser(description='''Phi Reader. Look at N v. time plots at individual Phi values, or 
+                                      construct N v. Phi plot from multiple phi values''')
 
     parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
                         help='Input file names')
