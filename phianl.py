@@ -89,6 +89,9 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
     for i in xrange(phi_vals.shape[0]):
         phi_vals[i, 2] = np.trapz(phi_vals[:i+1, 1], phi_vals[:i+1, 0])
 
+    # sort by phi
+    phi_vals = phi_vals[phi_vals[:,0].argsort()]
+
     # Fill in deriv of lg_beta graph
     # phi_vals[1:,5] = - np.diff(phi_vals[:, 2]) / np.diff(phi_vals[:, 0])
     log.debug("Phi Vals: {}".format(phi_vals))
@@ -100,7 +103,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             if outfile:
                 np.savetxt(outfile, total_stuff)
         if (args.plotN):
-            title = r"$\langle{\~N}\rangle'_\phi$"
+            title = r"$\langle{\~N}\rangle_\phi$"
             num = 1
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-', markersize=12, linewidth=4)
             #pyplot.fill_between(phi_vals[:,0], phi_vals[:,num], color='none', hatch='\\', edgecolor='b')
