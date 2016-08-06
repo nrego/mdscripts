@@ -37,7 +37,7 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
     # For each bootstrap sample...
     for batch_num in xrange(block_size):
         # For each data set (i.e. INDUS window)
-        for i, (ds_name, ds) in enumerate(phidat.items()):
+        for i, ds in enumerate(phidat):
             rand_start = np.random.randint(autocorr_nsteps[i])
             ntwid_sample = np.array(ds.data[start:end]['$\~N$'])
             n_sample = np.array(ds.data[start:end]['N'])
@@ -96,6 +96,9 @@ Command-line options
         self.autocorr = None
         self.ts = None
 
+        self.phidat = None
+        self.phivals = None
+
         self.dr = dr
         self.output_filename = None
 
@@ -139,7 +142,13 @@ Command-line options
 
     def process_args(self, args):
 
+        self.conv = 1
+        if args.T:
+            self.conv /= (args.T * 8.3144598e-3)
+
         autocorr = []
+        phidat = []
+        phivals = []
         self.start = start = args.start
         self.end = end = args.end
 
@@ -156,15 +165,26 @@ Command-line options
                     autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(ds.data[start:]['$\~N$'])))
                 except:
                     autocorr.append(self.ts * 10)
+
+                # save phi val and phi dataset
+                phivals.append(ds.phi * self.conv)
+                phidat.append(ds)
         except:
             raise IOError("Error: Unable to successfully load inputs")
 
-        self.autocorr = np.array(autocorr)
+
+        phivals = np.array(phivals)
+        phidat = np.array(phidat)
+        autocorr = np.array(autocorr)
+        # Sort based on phi
+        # returns *indices*
+        sorted_indices = np.argsort(phivals)
+
+        self.autocorr = autocorr[sorted_indices]
         #print(self.autocorr)
 
-        self.conv = 1
-        if args.T:
-            self.conv /= (args.T * 8.3144598e-3)
+        self.phidat = phidat[sorted_indices]
+        self.phivals = phivals[sorted_indices]
 
         # Number of bootstrap samples to perform
         self.bootstrap = args.bootstrap
@@ -178,18 +198,11 @@ Command-line options
 
     def go(self):
 
-        phidat = self.dr.datasets
-        # value of \beta \phi for each window (if temp provided) or just \phi (in kj/mol if no temp provided)
-        phivals = np.zeros(len(phidat), dtype=np.float64)
 
-        ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float32)
+        ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float32)
         n_boot = np.zeros_like(ntwid_boot)
-        integ_ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float32)
+        integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float32)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
-
-
-        for i, (ds_name, ds) in enumerate(phidat.items()):
-            phivals[i] = ds.phi * self.conv
 
 
         autocorr_nsteps = (2*self.autocorr/self.ts).astype(int)
@@ -213,7 +226,7 @@ Command-line options
                     checkset.update(set(xrange(lb,ub)))
 
                 args = ()
-                kwargs = dict(lb=lb, ub=ub, phivals=phivals, phidat=phidat, autocorr_nsteps=autocorr_nsteps, 
+                kwargs = dict(lb=lb, ub=ub, phivals=self.phivals, phidat=self.phidat, autocorr_nsteps=autocorr_nsteps, 
                               start=self.start, end=self.end)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
@@ -236,19 +249,19 @@ Command-line options
         log.info("Var shape: {}".format(ntwid_se.shape))
 
         # phi  <ntwid>'  \int <ntwid>'  <n>  \int <n>
-        out_actual = np.zeros((len(phidat), 5), dtype=np.float64)
-        out_actual[:, 0] = phivals
+        out_actual = np.zeros((len(self.phidat), 5), dtype=np.float64)
+        out_actual[:, 0] = self.phivals
 
-        for i, (ds_name, ds) in enumerate(phidat.items()):
+        for i, ds in enumerate(self.phidat):
             np.testing.assert_almost_equal(ds.phi*self.conv, out_actual[i, 0])
             ntwid_all = np.array(ds.data[self.start:self.end]['$\~N$'])
             n_all = np.array(ds.data[self.start:self.end]['N'])
             out_actual[i, 1] = ntwid_all.mean()
-            n_reweight = np.exp(-phivals[i]*(n_all-ntwid_all))
+            n_reweight = np.exp(-self.phivals[i]*(n_all-ntwid_all))
             out_actual[i, 3] = (n_all*n_reweight).mean() / (n_reweight).mean()
 
-        out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], phivals)
-        out_actual[1:, 4] = scipy.integrate.cumtrapz(out_actual[:, 3], phivals)
+        out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], self.phivals)
+        out_actual[1:, 4] = scipy.integrate.cumtrapz(out_actual[:, 3], self.phivals)
 
         log.info("outputting data to ntwid_err.dat, integ_err.dat, autocorr_len.dat, and {}".format(self.output_filename))
         np.savetxt('ntwid_err.dat', ntwid_se, fmt='%1.4e')
