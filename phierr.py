@@ -126,9 +126,9 @@ Command-line options
         sgroup.add_argument('--bootstrap', type=int, default=1000,
                             help='Number of bootstrap samples to perform')      
         sgroup.add_argument('--mode', choices=['ntwid', 'n'], default='ntwid',
-                            help='Integrate and calculate <Ntwid> for \phi Ntwid ensemble (ntwid, default) or <N> \
-                                  for \phi N ensemble using reweighting. (n)\
-                                  Default ntwid.') 
+                            help='''Integrate and calculate <Ntwid> for \phi Ntwid ensemble (ntwid, default) or <N> \
+                                  for phi N ensemble using reweighting. (n)\
+                                  Default ntwid.''') 
 
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('--plotN', action='store_true',
@@ -272,20 +272,25 @@ Command-line options
         np.savetxt(self.output_filename, out_actual, fmt='%1.4f')
 
         if self.plot:
+            if self.conv == 1:
+                beta_pref = ''
+            else:
+                beta_pref = r"\beta"
             if self.mode == 'ntwid':
                 n_dat = out_actual[:,1]
                 n_err = ntwid_se
                 n_integ_dat = out_actual[:,2]
                 n_integ_err = integ_ntwid_se
-                ylab_n = r"$\langle \~N \rangle_{\phi}$"
-                ylab_n_integ = r"$\int_0^{\phi} \langle \~N \rangle_{\phi'} d \phi'$"
+                ylab_n = r"$" + beta_pref + r"\langle \~N \rangle_{\phi}$"
+                ylab_n_integ = r"$" + beta_pref + r"\int_0^{\phi} \langle \~N \rangle_{\phi'} d \phi'$"
+
             elif self.mode == 'n':
                 n_dat = out_actual[:,3]
                 n_err = n_se
                 n_integ_dat = out_actual[:,4]
                 n_integ_err = integ_n_se
-                ylab_n = r"$\langle N \rangle_\phi$"
-                ylab_n_integ = r"$\int_0^\phi \langle N \rangle_{\phi'} d \phi'$"
+                ylab_n = r"$" + beta_pref + r"\langle N \rangle_\phi$"
+                ylab_n_integ = r"$" + beta_pref + r"\int_0^\phi \langle N \rangle_{\phi'} d \phi'$"
 
             beta_phi = out_actual[:,0]
             if self.conv == 1:
