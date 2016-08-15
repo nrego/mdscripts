@@ -112,7 +112,7 @@ if __name__ == "__main__":
                 for atomidx in xrange(n_waters.shape[0]):
                     if n_waters[atomidx] > args.avgwater:
                         atm = prot_heavies[atomidx]
-                        fout.write("{:<10.1f} {:<10.1f} {:<10.3f} {:<10.3f} {:<10.3f}\\\n".format(-0.5, args.rad/10.0, atm.pos[0], atm.pos[1], atm.pos[2]))                   
+                        fout.write("{:<10.1f} {:<10.1f} {:<10.3f} {:<10.3f} {:<10.3f}\\\n".format(-0.5, args.rad/10.0, atm.pos[0]/10.0, atm.pos[1]/10.0, atm.pos[2]/10.0))                   
             else:
                 for atomidx in xrange(n_waters.shape[0]):
                     if n_waters[atomidx] > args.avgwater:
