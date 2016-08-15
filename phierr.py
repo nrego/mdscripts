@@ -23,39 +23,50 @@ mpl.rcParams.update({'axes.titlesize': 36})
 log = logging.getLogger('mdtools.phierr')
 
 
-# phidat is datareader (could have different number of values for each ds)
+# phidat is datareader.datasets (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
 def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
 
     np.random.seed()
-    block_size = ub - lb
-    ntwid_ret = np.zeros((len(phidat), block_size), dtype=np.float32)
-    integ_ntwid_ret = np.zeros((len(phidat), block_size), dtype=np.float32)
+    # batch_size is the number of independent bootstrap samples for this job
+    batch_size = ub - lb
+    ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
+    integ_ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
     n_ret = np.zeros_like(ntwid_ret)
     integ_n_ret = np.zeros_like(integ_ntwid_ret)
 
     # For each bootstrap sample...
-    for batch_num in xrange(block_size):
+    for batch_num in xrange(batch_size):
         # For each data set (i.e. INDUS window)
-        for i, ds in enumerate(phidat):
-            rand_start = np.random.randint(autocorr_nsteps[i])
+        for i, (ds_name, ds) in enumerate(phidat.items()):
             ntwid_sample = np.array(ds.data[start:end]['$\~N$'])
             n_sample = np.array(ds.data[start:end]['N'])
+            assert ntwid_sample.shape[0] == n_sample.shape[0], "Ntwid and N must have same shape for given dataset!"
+            
+            # Cast should be unnecessary, but just to be sure
+            # block_size (not to be confused with batch size!) is the size of the bootstrapping 'block' - here, the autocorr length
+            block_size = int(autocorr_nsteps[i])
+            # Number of blocks of block size autocorr we can take from dataset
+            num_blocks = int(ntwid_sample.shape[0]/block_size)
 
-            # Only grab data points after correlation length
-            ntwid_sample = ntwid_sample[rand_start::autocorr_nsteps[i]]
-            n_sample = n_sample[rand_start::autocorr_nsteps[i]]
-            assert ntwid_sample.shape[0] == n_sample.shape[0]
+            num_boot_sample = num_blocks * block_size
+            ntwid_boot_sample = np.zeros(num_boot_sample)
+            n_boot_sample = np.zeros(num_boot_sample)
 
-            # Indices of bootstrap sampling - random (with replacement)
-            boot_indices = np.random.randint(ntwid_sample.shape[0], size=ntwid_sample.shape[0])
-            bootstrap_ntwid = ntwid_sample[boot_indices]
-            bootstrap_n = n_sample[boot_indices]
-            ntwid_ret[i,batch_num] = bootstrap_ntwid.mean()
+            boot_start_indices = np.random.randint(num_blocks, size=num_blocks) 
+            boot_start_indices *= block_size
 
-            n_reweight = np.exp(-phivals[i]*(bootstrap_n - bootstrap_ntwid))
+            for k, boot_start_idx in enumerate(boot_start_indices):
+                start_idx = k*block_size
+                ntwid_boot_sample[start_idx:start_idx+block_size] = ntwid_sample[boot_start_idx:boot_start_idx+block_size]
+                n_boot_sample[start_idx:start_idx+block_size] = n_sample[boot_start_idx:boot_start_idx+block_size]
 
-            n_ret[i,batch_num] = (bootstrap_n*n_reweight).mean() / (n_reweight).mean()
+            assert ntwid_boot_sample.shape[0] == n_boot_sample.shape[0]
+
+            ntwid_ret[i,batch_num] = ntwid_boot_sample.mean()
+
+            n_reweight = np.exp(-phivals[i]*(n_boot_sample - ntwid_boot_sample))
+            n_ret[i,batch_num] = (n_boot_sample*n_reweight).mean() / (n_reweight).mean()
 
         integ_ntwid_ret[1:,batch_num] = scipy.integrate.cumtrapz(ntwid_ret[:,batch_num], phivals)
         integ_n_ret[1:,batch_num] = scipy.integrate.cumtrapz(n_ret[:,batch_num], phivals)
@@ -198,10 +209,9 @@ Command-line options
 
     def go(self):
 
-
-        ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float32)
+        ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float64)
         n_boot = np.zeros_like(ntwid_boot)
-        integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float32)
+        integ_ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
 
 
