@@ -188,7 +188,7 @@ Command-line options
                             help='(optional) previously calculated logweights file for INDUS simulations - \ '
                             'if \'phi\' format option also supplied, this will calculate the Pv(N) (and Ntwid). \ '
                             'For \'xvg\' formats, this will calculate the probability distribution of whatever \ '
-                            'variable has been umbrella sampled')
+                              'variable has been umbrella sampled')
 
 
     def process_args(self, args):
