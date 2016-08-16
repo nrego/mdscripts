@@ -39,22 +39,25 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
     for batch_num in xrange(batch_size):
         # For each data set (i.e. INDUS window)
         for i, (ds_name, ds) in enumerate(phidat.items()):
+            # Full datasets for ntwid, n
             ntwid_sample = np.array(ds.data[start:end]['$\~N$'])
             n_sample = np.array(ds.data[start:end]['N'])
             assert ntwid_sample.shape[0] == n_sample.shape[0], "Ntwid and N must have same shape for given dataset!"
             
+            sample_size = ntwid_sample.shape[0]
             # Cast should be unnecessary, but just to be sure
             # block_size (not to be confused with batch size!) is the size of the bootstrapping 'block' - here, the autocorr length
             block_size = int(autocorr_nsteps[i])
             # Number of blocks of block size autocorr we can take from dataset
-            num_blocks = int(ntwid_sample.shape[0]/block_size)
+            num_blocks = int(sample_size/block_size)
 
             num_boot_sample = num_blocks * block_size
             ntwid_boot_sample = np.zeros(num_boot_sample)
             n_boot_sample = np.zeros(num_boot_sample)
 
-            boot_start_indices = np.random.randint(num_blocks, size=num_blocks) 
-            boot_start_indices *= block_size
+            # this (minus 1) is the maximum start index from which we can grab a full block from full dataset
+            avail_start_indices = sample_size - block_size + 1
+            boot_start_indices = np.random.randint(avail_start_indices, size=num_blocks) 
 
             for k, boot_start_idx in enumerate(boot_start_indices):
                 start_idx = k*block_size
@@ -104,6 +107,7 @@ Command-line options
         self.conv = 1
 
         self.bootstrap = None
+        # Autocorrelation time (ps)
         self.autocorr = None
         self.ts = None
 
