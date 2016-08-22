@@ -7,9 +7,9 @@ from mdtools import dr
 import matplotlib as mpl
 
 
-mpl.rcParams.update({'axes.labelsize': 36})
-mpl.rcParams.update({'xtick.labelsize': 24})
-mpl.rcParams.update({'ytick.labelsize': 24})
+mpl.rcParams.update({'axes.labelsize': 40})
+mpl.rcParams.update({'xtick.labelsize': 30})
+mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 40})
 #mpl.rcParams.update({'titlesize': 42})
 log = logging.getLogger()

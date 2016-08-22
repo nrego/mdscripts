@@ -38,7 +38,7 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
     # For each bootstrap sample...
     for batch_num in xrange(batch_size):
         # For each data set (i.e. INDUS window)
-        for i, (ds_name, ds) in enumerate(phidat.items()):
+        for i, ds in enumerate(phidat):
             # Full datasets for ntwid, n
             ntwid_sample = np.array(ds.data[start:end]['$\~N$'])
             n_sample = np.array(ds.data[start:end]['N'])
@@ -141,9 +141,10 @@ Command-line options
         sgroup.add_argument('--bootstrap', type=int, default=1000,
                             help='Number of bootstrap samples to perform')      
         sgroup.add_argument('--mode', choices=['ntwid', 'n'], default='ntwid',
-                            help='''Integrate and calculate <Ntwid> for \phi Ntwid ensemble (ntwid, default) or <N> \
+                            help='''(Plotting option) integrate and calculate <Ntwid> for \phi Ntwid ensemble (ntwid, default) or <N> \
                                   for phi N ensemble using reweighting. (n)\
-                                  Default ntwid.''') 
+                                  Default ntwid. NOTE: This option controls plotting only - this tool automatically outputs
+                                  for Ntwid and N''') 
 
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('--plotN', action='store_true',
@@ -213,9 +214,9 @@ Command-line options
 
     def go(self):
 
-        ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float64)
+        ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         n_boot = np.zeros_like(ntwid_boot)
-        integ_ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float64)
+        integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
 
 
