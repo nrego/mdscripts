@@ -293,7 +293,7 @@ Command-line options
                 self.ts = ds.ts
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
-            dataframe = np.array(ds.data[start:end])
+            dataframe = np.array(ds.data[start:end][0])
 
             if do_autocorr:
                 log.info("    Calculating autocorrelation time...")
@@ -332,6 +332,29 @@ Command-line options
         logweights_actual = -fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
         logweights_actual = np.append(0, logweights_actual)
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
+
+
+        # Calculate and output probability distributions..
+        if self.fmt == 'phi':
+            data_range = (0, self.all_data_N.max()+1)
+            binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
+            pdist_N /= pdist_N.sum()
+            neglogpdist_N = -np.log(pdist_N)
+            arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
+            arr = arr.squeeze()
+            np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
+
+        # Generate pdist for WHAM'ed variable
+        data_range = (0, self.all_data.max()+1)
+        binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
+        pdist /= pdist.sum()
+        neglogpdist = -np.log(pdist)
+
+        arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
+        arr = arr.squeeze()
+        np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
+        np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
+
 
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
@@ -392,38 +415,13 @@ Command-line options
         logweights_boot_mean = logweights_boot.mean(axis=0)
         logweights_se = np.sqrt(logweights_boot.var(axis=0))
 
-        ## Get the probability distribution (s)
-        if self.fmt == 'phi':
-            data_range = (0, self.all_data_N.max()+1)
-            binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
-            pdist_N /= pdist_N.sum()
-            neglogpdist_N = -np.log(pdist_N)
-            arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
-            arr = arr.squeeze()
-            np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
+        np.savetxt('err_logweights.dat', logweights_se, fmt='%3.6f')
 
-        # Generate pdist for WHAM'ed variable
-        data_range = (0, self.all_data.max()+1)
-        binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
-        pdist /= pdist.sum()
-        neglogpdist = -np.log(pdist)
-
-
-        data_range = (0, self.all_data.max()+1)
-        binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_boot_mean, data_range, data_range[1])
-        pdist /= pdist.sum()
-        neglogpdist = -np.log(pdist)
-
+        ## Print some stdout
         print('logweights (boot mean): {}'.format(logweights_boot_mean))
         print('logweights: {}'.format(logweights_actual))
         print('se: {}'.format(logweights_se))
 
-        arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
-        arr = arr.squeeze()
-        np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
-        np.savetxt('err_logweights.dat', logweights_se, fmt='%3.6f')
-        np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
-        #print('logweights from bootstrap: {}'.format(logweights_boot))
 
 if __name__=='__main__':
     WHAMmer().main()

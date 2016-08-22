@@ -49,8 +49,8 @@ if __name__ == "__main__":
     parser.add_argument('--plotLogP', action='store_true',
                         help='Plot resulting log probability (log(P))')
     parser.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
-                        help='Format of input data files:  \'phi\' for phiout.dat; \
-                        \'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
+                        help='Format of input data files:  \'phi\' for phiout.dat;' \
+                        '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
 
     args = parser.parse_args()
 
