@@ -296,7 +296,7 @@ Command-line options
                 n_err = ntwid_se
                 n_integ_dat = out_actual[:,2]
                 n_integ_err = integ_ntwid_se
-                ylab_n = r"$" + beta_pref + r"\langle \~N \rangle_{\phi}$"
+                ylab_n = r"$" + r"\langle \~N \rangle_{\phi}$"
                 ylab_n_integ = r"$" + beta_pref + r"\int_0^{\phi} \langle \~N \rangle_{\phi'} d \phi'$"
 
             elif self.mode == 'n':
@@ -304,7 +304,7 @@ Command-line options
                 n_err = n_se
                 n_integ_dat = out_actual[:,4]
                 n_integ_err = integ_n_se
-                ylab_n = r"$" + beta_pref + r"\langle N \rangle_\phi$"
+                ylab_n = r"$" + r"\langle N \rangle_\phi$"
                 ylab_n_integ = r"$" + beta_pref + r"\int_0^\phi \langle N \rangle_{\phi'} d \phi'$"
 
             beta_phi = out_actual[:,0]

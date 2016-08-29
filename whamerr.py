@@ -293,7 +293,7 @@ Command-line options
                 self.ts = ds.ts
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
-            dataframe = np.array(ds.data[start:end][0])
+            dataframe = np.array(ds.data[start:end])
 
             if do_autocorr:
                 log.info("    Calculating autocorrelation time...")
