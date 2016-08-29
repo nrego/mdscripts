@@ -50,6 +50,16 @@ def load_range_data(infiles, start, end):
 
     return minval, maxval
 
+   
+def parse_np_array(inputarr):
+    namespace = {'np': np,
+                 'inf': float('inf')}
+                 
+    try:
+        binspec_compiled = eval(inputarr,namespace)
+    except Exception as e:
+        raise ValueError('invalid bin specification: {!r}'.format(e))
+
 
 # phidat is datareader (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
@@ -159,6 +169,8 @@ Command-line options
 
         self.dr = dr
         self.output_filename = None
+
+        self.start_weights = None
     
     # Total number of samples - sum of n_samples from each window
     @property
@@ -184,7 +196,7 @@ Command-line options
                             help='Number of bootstrap samples to perform')   
         sgroup.add_argument('--autocorr', '-ac', type=float,                             help='Autocorrelation time (in ps); this can be \ '
                             'a single float, or one for each window') 
-        sgroup.add_argument('--logweights', type=float, 
+        sgroup.add_argument('--logweights', type=str, 
                             help='(optional) previously calculated logweights file for INDUS simulations - \ '
                             'if \'phi\' format option also supplied, this will calculate the Pv(N) (and Ntwid). \ '
                             'For \'xvg\' formats, this will calculate the probability distribution of whatever \ '
@@ -219,6 +231,9 @@ Command-line options
             self._parse_autocorr(args.autocorr)
 
         self.unpack_data(args.start, args.end)
+
+        if args.logweights:
+            self.start_weights = parse_np_array(args.logweights)
 
     # TODO: Parse lists as well
     def _parse_autocorr(self, autocorr):
@@ -260,7 +275,7 @@ Command-line options
 
             if do_autocorr:
                 autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
-                self.autocorr[i] = self.ts * autocorr_len
+                self.autocorr[i] = self.ts * autocorr_len * 2
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
@@ -300,15 +315,15 @@ Command-line options
                 autocorr_nsteps = 1
                 for k in xrange(self.n_windows):
                     try:
-                        autocorr_res = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:,k]))
+                        autocorr_res = 2 * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:,k]))
                         if autocorr_res > autocorr_nsteps:
                             autocorr_nsteps = autocorr_res
                     except:
                         continue
-                self.autocorr[i] = self.ts * autocorr_nsteps
+                self.autocorr[i] = self.ts * autocorr_nsteps * 0.5
             bias = self.beta*np.array(ds.data[start:end][1:], dtype=np.float64) # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
-            self.all_data = np.append(self.all_data, dataframe)
+            self.all_data = np.append(self.all_data, dataframe[0])
 
             if self.bias_mat is None:
                 self.bias_mat = bias
@@ -326,7 +341,11 @@ Command-line options
         n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float64 )
 
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
-        xweights = np.zeros(self.n_windows-1)
+        if self.start_weights:
+            log.info("using initial weights: {}".format(self.start_weights))
+            xweights = self.start_weights[1:]
+        else:
+            xweights = np.zeros(self.n_windows-1)
 
         log.info("Running MBAR on entire dataset")
         logweights_actual = -fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
