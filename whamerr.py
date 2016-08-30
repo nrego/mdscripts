@@ -6,7 +6,7 @@ import argparse
 import logging
 from mdtools import dr
 import scipy.integrate
-from scipy.optimize import l_fmin_bfgs_b
+from scipy.optimize import fmin_l_bfgs_b
 import pymbar
 import time
 
