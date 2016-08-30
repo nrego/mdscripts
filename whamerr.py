@@ -6,7 +6,7 @@ import argparse
 import logging
 from mdtools import dr
 import scipy.integrate
-from scipy.optimize import fmin_bfgs
+from scipy.optimize import fmin_l_bfgs as fmin_bfgs
 import pymbar
 import time
 
@@ -194,9 +194,9 @@ Command-line options
                             help='betaert Phi values to kT, for TEMP (K)')
         sgroup.add_argument('--bootstrap', type=int, default=1000,
                             help='Number of bootstrap samples to perform')   
-        sgroup.add_argument('--autocorr', '-ac', type=float,                             help='Autocorrelation time (in ps); this can be \ '
+        sgroup.add_argument('--autocorr', '-ac', type=float, help='Autocorrelation time (in ps); this can be \ '
                             'a single float, or one for each window') 
-        sgroup.add_argument('--logweights', type=str, 
+        sgroup.add_argument('--logweights', type=str, default=None,
                             help='(optional) previously calculated logweights file for INDUS simulations - \ '
                             'if \'phi\' format option also supplied, this will calculate the Pv(N) (and Ntwid). \ '
                             'For \'xvg\' formats, this will calculate the probability distribution of whatever \ '
@@ -234,6 +234,7 @@ Command-line options
 
         if args.logweights:
             self.start_weights = parse_np_array(args.logweights)
+            log.info("start weights: {}".format(self.start_weights))
 
     # TODO: Parse lists as well
     def _parse_autocorr(self, autocorr):
