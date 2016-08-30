@@ -359,7 +359,8 @@ Command-line options
             xweights = np.zeros(self.n_windows-1)
 
         log.info("Running MBAR on entire dataset")
-        logweights_actual = -fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
+        logweights_actual = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
+        log.info('logweights: {}'.format(logweights_actual))
         logweights_actual = np.append(0, logweights_actual)
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
 
