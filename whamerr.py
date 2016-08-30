@@ -108,7 +108,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
             i_boot_start += boot_n_sample
 
         myargs = (bias_mat_boot, n_boot_sample_diag, ones_m, ones_n, n_boot_tot)
-        this_weights = -np.append(0, fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
+        this_weights = -np.array(fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
         logweights_ret[batch_num, 1:] = this_weights
 
     return (logweights_ret, lb, ub)
