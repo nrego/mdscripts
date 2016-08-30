@@ -288,6 +288,8 @@ Command-line options
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
 
+        dr.clearData()
+
     # Put all data points into N dim vector
     def _unpack_xvg_data(self, start, end=None):
 
@@ -332,6 +334,7 @@ Command-line options
             else:
                 self.bias_mat = np.vstack((self.bias_mat, bias))
 
+        dr.clearData()
         
     def go(self):
 
