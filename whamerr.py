@@ -363,17 +363,17 @@ Command-line options
             arr = arr.squeeze()
             np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
 
-        # Generate pdist for WHAM'ed variable
-        data_range = (0, self.all_data.max()+1)
-        binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
-        pdist /= pdist.sum()
-        neglogpdist = -np.log(pdist)
+            data_range = (0, self.all_data.max()+1)
+            binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
+            pdist /= pdist.sum()
+            neglogpdist = -np.log(pdist)
 
-        arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
-        arr = arr.squeeze()
+            arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
+            arr = arr.squeeze()
+            np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
+
         np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
-        np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
-
+        
 
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
