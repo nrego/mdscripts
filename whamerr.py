@@ -108,7 +108,8 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
             i_boot_start += boot_n_sample
 
         myargs = (bias_mat_boot, n_boot_sample_diag, ones_m, ones_n, n_boot_tot)
-        logweights_ret[batch_num, 1:] = -fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs, disp=False)        
+        this_weights = -np.append(0, fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0], dtype=np.float32)
+        logweights_ret[batch_num, 1:] = this_weights
 
     return (logweights_ret, lb, ub)
 
@@ -361,7 +362,7 @@ Command-line options
         log.info("Running MBAR on entire dataset")
         logweights_actual = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
         
-        logweights_actual = -np.append(0, logweights_actual[0])
+        logweights_actual = -np.append(0, logweights_actual[0], dtype=np.float32)
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
 
 
