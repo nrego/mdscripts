@@ -294,7 +294,7 @@ Command-line options
     # Put all data points into N dim vector
     def _unpack_xvg_data(self, start, end=None):
 
-        self.all_data = np.array([], dtype=np.float32)
+        self.all_data = None
         self.n_samples = np.array([], dtype=np.int32)
         self.bias_mat = None
 
