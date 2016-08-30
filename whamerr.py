@@ -230,10 +230,11 @@ Command-line options
         if args.autocorr:
             self._parse_autocorr(args.autocorr)
 
-        self.unpack_data(args.start, args.end)
-
         if args.logweights:
             self.start_weights = np.loadtxt(args.logweights)
+            log.info("starting weights: {}".format(self.start_weights))
+
+        self.unpack_data(args.start, args.end)
 
     # TODO: Parse lists as well
     def _parse_autocorr(self, autocorr):
