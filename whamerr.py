@@ -325,6 +325,7 @@ Command-line options
                     except:
                         continue
                 self.autocorr[i] = self.ts * autocorr_nsteps * 0.5
+                log.info("      Tau={} ps".format(self.autocorr[i]))
             bias = self.beta*dataframe # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
             self.all_data = np.append(self.all_data, dataframe[0])
