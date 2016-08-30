@@ -112,6 +112,9 @@ Command-line options
 
         self.output_filename = None
 
+        # consider interfaces near walls
+        self.wall = None
+
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
@@ -128,6 +131,8 @@ Command-line options
                             help='Cutoff distance for coarse grained gaussian, in Angstroms (default: 7 A)')
         sgroup.add_argument('-b', '--start', type=int, default=0,
                         help='First timepoint (in ps)')
+        sgroup.add_argument('--wall', action='store_true', 
+                            help='If true, consider interace near walls (default False)')
         sgroup.add_argument('--rhoprot', default=40, type=float,
                         help='Estimated protein density (heavy atoms per nm3)')
 
@@ -160,6 +165,8 @@ Command-line options
 
         self.output_filename = args.outfile
 
+        self.wall = args.wall
+
     def calc_rho(self):
 
         rho_water = numpy.zeros((self.n_frames, self.npts), dtype=numpy.float32)
@@ -177,7 +184,11 @@ Command-line options
         log.info('blocksize: {}'.format(blocksize))
 
         def task_gen():
-            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
+            if not self.wall:
+                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
+            else:
+                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM)")
+
             water_ow = self.univ.select_atoms("name OW")
 
             if __debug__:
@@ -279,7 +290,10 @@ Command-line options
         rho = self.calc_rho()
 
         self.univ.trajectory[-1]
-        prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
+        if not self.wall:
+            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
+        else:
+            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM)")
         # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
         # Note we artificially add to all grid points more than 10 A from protein
         #   heavy atoms to remove errors at box edges - hackish, but seems to work ok

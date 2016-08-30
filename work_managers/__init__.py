@@ -26,6 +26,7 @@ _available_work_managers = {'serial': SerialWorkManager,
                             'processes': ProcessWorkManager}
 
 # Import MPI work manager if available
+
 try:
     import mpi
     from mpi import MPIWorkManager

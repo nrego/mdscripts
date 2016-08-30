@@ -38,23 +38,26 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
     # For each bootstrap sample...
     for batch_num in xrange(batch_size):
         # For each data set (i.e. INDUS window)
-        for i, (ds_name, ds) in enumerate(phidat.items()):
+        for i, ds in enumerate(phidat):
+            # Full datasets for ntwid, n
             ntwid_sample = np.array(ds.data[start:end]['$\~N$'])
             n_sample = np.array(ds.data[start:end]['N'])
             assert ntwid_sample.shape[0] == n_sample.shape[0], "Ntwid and N must have same shape for given dataset!"
             
+            sample_size = ntwid_sample.shape[0]
             # Cast should be unnecessary, but just to be sure
             # block_size (not to be confused with batch size!) is the size of the bootstrapping 'block' - here, the autocorr length
             block_size = int(autocorr_nsteps[i])
             # Number of blocks of block size autocorr we can take from dataset
-            num_blocks = int(ntwid_sample.shape[0]/block_size)
+            num_blocks = int(sample_size/block_size)
 
             num_boot_sample = num_blocks * block_size
             ntwid_boot_sample = np.zeros(num_boot_sample)
             n_boot_sample = np.zeros(num_boot_sample)
 
-            boot_start_indices = np.random.randint(num_blocks, size=num_blocks) 
-            boot_start_indices *= block_size
+            # this (minus 1) is the maximum start index from which we can grab a full block from full dataset
+            avail_start_indices = sample_size - block_size + 1
+            boot_start_indices = np.random.randint(avail_start_indices, size=num_blocks) 
 
             for k, boot_start_idx in enumerate(boot_start_indices):
                 start_idx = k*block_size
@@ -104,6 +107,7 @@ Command-line options
         self.conv = 1
 
         self.bootstrap = None
+        # Autocorrelation time (ps)
         self.autocorr = None
         self.ts = None
 
@@ -137,9 +141,10 @@ Command-line options
         sgroup.add_argument('--bootstrap', type=int, default=1000,
                             help='Number of bootstrap samples to perform')      
         sgroup.add_argument('--mode', choices=['ntwid', 'n'], default='ntwid',
-                            help='''Integrate and calculate <Ntwid> for \phi Ntwid ensemble (ntwid, default) or <N> \
+                            help='''(Plotting option) integrate and calculate <Ntwid> for \phi Ntwid ensemble (ntwid, default) or <N> \
                                   for phi N ensemble using reweighting. (n)\
-                                  Default ntwid.''') 
+                                  Default ntwid. NOTE: This option controls plotting only - this tool automatically outputs
+                                  for Ntwid and N''') 
 
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('--plotN', action='store_true',
@@ -209,9 +214,9 @@ Command-line options
 
     def go(self):
 
-        ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float64)
+        ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         n_boot = np.zeros_like(ntwid_boot)
-        integ_ntwid_boot = np.zeros((len(phidat), self.bootstrap), dtype=np.float64)
+        integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
 
 
@@ -291,7 +296,7 @@ Command-line options
                 n_err = ntwid_se
                 n_integ_dat = out_actual[:,2]
                 n_integ_err = integ_ntwid_se
-                ylab_n = r"$" + beta_pref + r"\langle \~N \rangle_{\phi}$"
+                ylab_n = r"$" + r"\langle \~N \rangle_{\phi}$"
                 ylab_n_integ = r"$" + beta_pref + r"\int_0^{\phi} \langle \~N \rangle_{\phi'} d \phi'$"
 
             elif self.mode == 'n':
@@ -299,7 +304,7 @@ Command-line options
                 n_err = n_se
                 n_integ_dat = out_actual[:,4]
                 n_integ_err = integ_n_se
-                ylab_n = r"$" + beta_pref + r"\langle N \rangle_\phi$"
+                ylab_n = r"$" + r"\langle N \rangle_\phi$"
                 ylab_n_integ = r"$" + beta_pref + r"\int_0^\phi \langle N \rangle_{\phi'} d \phi'$"
 
             beta_phi = out_actual[:,0]
