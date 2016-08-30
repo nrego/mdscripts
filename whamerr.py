@@ -348,7 +348,7 @@ Command-line options
         n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32 )
 
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
-        if self.start_weights:
+        if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
             xweights = self.start_weights[1:]
         else:
