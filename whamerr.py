@@ -233,8 +233,7 @@ Command-line options
         self.unpack_data(args.start, args.end)
 
         if args.logweights:
-            self.start_weights = parse_np_array(args.logweights)
-            log.info("start weights: {}".format(self.start_weights))
+            self.start_weights = np.loadtxt(args.logweights)
 
     # TODO: Parse lists as well
     def _parse_autocorr(self, autocorr):
