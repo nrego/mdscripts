@@ -231,7 +231,7 @@ Command-line options
             self._parse_autocorr(args.autocorr)
 
         if args.logweights:
-            self.start_weights = np.loadtxt(args.logweights)
+            self.start_weights = -np.loadtxt(args.logweights)
             log.info("starting weights: {}".format(self.start_weights))
 
         self.unpack_data(args.start, args.end)
@@ -361,7 +361,7 @@ Command-line options
         log.info("Running MBAR on entire dataset")
         logweights_actual = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
         
-        logweights_actual = np.append(0, logweights_actual[0])
+        logweights_actual = -np.append(0, logweights_actual[0])
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
 
 
@@ -430,7 +430,7 @@ Command-line options
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, bias_mat=self.bias_mat,
                               n_samples=self.n_samples, n_boot_samples=n_boot_samples, n_boot_sample_diag=n_boot_sample_diag, n_tot=self.n_tot, n_boot_tot=n_boot_tot, 
-                              n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=logweights_actual[1:])
+                              n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=-logweights_actual[1:])
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
 
