@@ -69,12 +69,12 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
 
     np.random.seed()
     batch_size = ub - lb
-    logweights_ret = np.zeros((batch_size, n_windows), dtype=np.float64)
+    logweights_ret = np.zeros((batch_size, n_windows), dtype=np.float32)
 
     for batch_num in xrange(batch_size):
 
         # Will contain bootstrap samples from biasMat
-        bias_mat_boot = np.zeros((n_boot_tot, n_windows), dtype=np.float64)
+        bias_mat_boot = np.zeros((n_boot_tot, n_windows), dtype=np.float32)
         # Subsample bias_mat
         i_start = 0
         i_boot_start = 0
@@ -194,9 +194,9 @@ Command-line options
                             help='betaert Phi values to kT, for TEMP (K)')
         sgroup.add_argument('--bootstrap', type=int, default=1000,
                             help='Number of bootstrap samples to perform')   
-        sgroup.add_argument('--autocorr', '-ac', type=float,                             help='Autocorrelation time (in ps); this can be \ '
+        sgroup.add_argument('--autocorr', '-ac', type=float, help='Autocorrelation time (in ps); this can be \ '
                             'a single float, or one for each window') 
-        sgroup.add_argument('--logweights', type=str, 
+        sgroup.add_argument('--logweights', type=str, default=None,
                             help='(optional) previously calculated logweights file for INDUS simulations - \ '
                             'if \'phi\' format option also supplied, this will calculate the Pv(N) (and Ntwid). \ '
                             'For \'xvg\' formats, this will calculate the probability distribution of whatever \ '
@@ -230,10 +230,11 @@ Command-line options
         if args.autocorr:
             self._parse_autocorr(args.autocorr)
 
-        self.unpack_data(args.start, args.end)
-
         if args.logweights:
-            self.start_weights = parse_np_array(args.logweights)
+            self.start_weights = np.loadtxt(args.logweights)
+            log.info("starting weights: {}".format(self.start_weights))
+
+        self.unpack_data(args.start, args.end)
 
     # TODO: Parse lists as well
     def _parse_autocorr(self, autocorr):
@@ -251,7 +252,7 @@ Command-line options
     # Put all data points into N dim vector
     def _unpack_phi_data(self, start, end=None):
 
-        self.all_data = np.array([], dtype=np.float64)
+        self.all_data = np.array([], dtype=np.float32)
         self.all_data_N = np.array([]).astype(int)
         self.n_samples = np.array([]).astype(int)
 
@@ -282,16 +283,18 @@ Command-line options
             self.all_data = np.append(self.all_data, dataframe)
             self.all_data_N = np.append(self.all_data_N, dataframe_N)
 
-        self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float64)
+        self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
 
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
 
+        dr.clearData()
+
     # Put all data points into N dim vector
     def _unpack_xvg_data(self, start, end=None):
 
-        self.all_data = None
+        self.all_data = np.array([], dtype=np.float32)
         self.n_samples = np.array([], dtype=np.int32)
         self.bias_mat = None
 
@@ -302,18 +305,20 @@ Command-line options
             do_autocorr = False
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-            log.info("Loading {}th dataset ({:s})".format(i, ds_name))
+            log.info("Unpacking {}th dataset ({:s})".format(i, ds_name))
 
             if self.ts == None:
                 self.ts = ds.ts
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
-            dataframe = np.array(ds.data[start:end])
+            dataframe = np.array(ds.data[start:end], dtype=np.float32)
 
             if do_autocorr:
                 log.info("    Calculating autocorrelation time...")
                 autocorr_nsteps = 1
                 for k in xrange(self.n_windows):
+                    if k == i:
+                        continue
                     try:
                         autocorr_res = 2 * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:,k]))
                         if autocorr_res > autocorr_nsteps:
@@ -321,7 +326,8 @@ Command-line options
                     except:
                         continue
                 self.autocorr[i] = self.ts * autocorr_nsteps * 0.5
-            bias = self.beta*np.array(ds.data[start:end][1:], dtype=np.float64) # biased values for all windows
+                log.info("      Tau={} ps".format(self.autocorr[i]))
+            bias = self.beta*dataframe # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
             if self.all_data is None:
@@ -334,18 +340,19 @@ Command-line options
             else:
                 self.bias_mat = np.vstack((self.bias_mat, bias))
 
+        dr.clearData()
         
     def go(self):
 
         # Run WHAM on entire dataset - use the logweights as inputs to future bootstrap runs
         # (k x 1) ones vector; k is number of windows
-        ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float64).T
+        ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float32).T
         # (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
-        ones_n = np.matrix(np.ones(self.n_tot,), dtype=np.float64).T
-        n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float64 )
+        ones_n = np.matrix(np.ones(self.n_tot,), dtype=np.float32).T
+        n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32 )
 
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
-        if self.start_weights:
+        if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
             xweights = self.start_weights[1:]
         else:
@@ -367,17 +374,17 @@ Command-line options
             arr = arr.squeeze()
             np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
 
-        # Generate pdist for WHAM'ed variable
-        data_range = (0, self.all_data.max()+1)
-        binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
-        pdist /= pdist.sum()
-        neglogpdist = -np.log(pdist)
+            data_range = (0, self.all_data.max()+1)
+            binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
+            pdist /= pdist.sum()
+            neglogpdist = -np.log(pdist)
 
-        arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
-        arr = arr.squeeze()
+            arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
+            arr = arr.squeeze()
+            np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
+
         np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
-        np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
-
+        
 
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
@@ -386,7 +393,7 @@ Command-line options
             batch_size += 1
         log.info("batch size: {}".format(batch_size))
 
-        logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
+        logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float32)
 
         # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
         autocorr_nsteps = np.ceil(2*self.autocorr/self.ts).astype(int)
@@ -403,10 +410,10 @@ Command-line options
 
         # Diagonal is fractional n_boot_samples for each window - should be 
         #    float because future's division function
-        n_boot_sample_diag = np.matrix( np.diag(n_boot_samples / n_boot_tot), dtype=np.float64 )
+        n_boot_sample_diag = np.matrix( np.diag(n_boot_samples / n_boot_tot), dtype=np.float32 )
 
         # We must redefine ones_n vector to reflect boot_n_tot
-        ones_n = np.matrix(np.ones(n_boot_tot), dtype=np.float64).T
+        ones_n = np.matrix(np.ones(n_boot_tot), dtype=np.float32).T
 
 
         def task_gen():
