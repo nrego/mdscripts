@@ -5,7 +5,7 @@ from scipy.optimize import fmin_bfgs
 from matplotlib import pyplot
 import argparse
 import logging
-from datareader import dr
+from mdtools import dr
 import uwham
 
 

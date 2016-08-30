@@ -3,7 +3,7 @@
 import numpy as np
 
 # Generate a probability distribution over a variable by integrating
-#
+# This currently works for phi datasets **ONLY**
 def gen_pdist(all_data, bias_mat, n_samples, logweights, data_range, nbins):
     bias_mat = np.exp(-bias_mat)
     bias_mat = np.array(bias_mat)
@@ -17,17 +17,28 @@ def gen_pdist(all_data, bias_mat, n_samples, logweights, data_range, nbins):
     pdist = np.zeros(nbins, dtype=np.float64)
 
     for n_idx in xrange(all_data.shape[0]):
-        val = all_data[n_idx]
+        if all_data.ndim == 2:
+            for k in xrange(all_data.shape[1]):
+                val = all_data[n_idx, k]
+                bin_assign = (val >= binbounds[:-1]) * (val < binbounds[1:])
+                denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
+                pdist[bin_assign] += 1.0/denom
 
-        # which bin does ntwid fall into? A boolean array.
-        # Might want to assert sum==1 here; i.e. it falls into exactly 1 bin
-        bin_assign = (val >= binbounds[:-1]) * (val < binbounds[1:])
+        elif all_data.ndim == 1:
+            val = all_data[n_idx]
 
-        denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
+            # which bin does ntwid fall into? A boolean array.
+            # Might want to assert sum==1 here; i.e. it falls into exactly 1 bin
+            bin_assign = (val >= binbounds[:-1]) * (val < binbounds[1:])
 
-        pdist[bin_assign] += 1.0/denom
+            denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
+
+            pdist[bin_assign] += 1.0/denom
 
     return binbounds, pdist
+
+def gen_pdist_xvg(all_data, bias_mat, n_samples, logweights, data_range, nbins):
+    pass
 
 # U[i,j] is exp(-beta * Uj(n_i))
 # This is equivalent to the bias mat in whamerr.py, right??

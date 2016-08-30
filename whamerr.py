@@ -291,7 +291,7 @@ Command-line options
     # Put all data points into N dim vector
     def _unpack_xvg_data(self, start, end=None):
 
-        self.all_data = np.array([], dtype=np.float64)
+        self.all_data = None
         self.n_samples = np.array([], dtype=np.int32)
         self.bias_mat = None
 
@@ -323,7 +323,11 @@ Command-line options
                 self.autocorr[i] = self.ts * autocorr_nsteps * 0.5
             bias = self.beta*np.array(ds.data[start:end][1:], dtype=np.float64) # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
-            self.all_data = np.append(self.all_data, dataframe[0])
+
+            if self.all_data is None:
+                self.all_data = dataframe
+            else:
+                self.all_data = np.vstack((self.all_data, dataframe))
 
             if self.bias_mat is None:
                 self.bias_mat = bias
