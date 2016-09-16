@@ -277,7 +277,7 @@ Command-line options
 
             if do_autocorr:
                 autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
-                self.autocorr[i] = self.ts * autocorr_len * 2
+                self.autocorr[i] = self.ts * autocorr_len
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
@@ -440,6 +440,7 @@ Command-line options
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
             logweights_slice, lb, ub = future.get_result(discard=True)
+            log.info("Receiving result")
             logweights_boot[lb:ub, :] = logweights_slice
             del logweights_slice
 
