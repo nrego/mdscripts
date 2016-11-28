@@ -1,13 +1,15 @@
 from __future__ import division, print_function
 
-import numpy
+import numpy as np
 from scipy.optimize import fmin_bfgs
 from matplotlib import pyplot
 import argparse
 import logging
 from mdtools import dr
 import uwham
+import matplotlib.pyplot as plt
 
+from IPython import embed
 
 import sys
 
@@ -48,6 +50,8 @@ if __name__ == "__main__":
                         help='Plot resulting (free) energy distribution (-log(P))')
     parser.add_argument('--plotLogP', action='store_true',
                         help='Plot resulting log probability (log(P))')
+    parser.add_argument('--nbins', type=int, default=50,
+                        help='Number of bins for each histogram (default 50)')
     parser.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
                         help='Format of input data files:  \'phi\' for phiout.dat;' \
                         '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
@@ -58,6 +62,8 @@ if __name__ == "__main__":
         log.setLevel(logging.INFO)
     if args.debug:
         log.setLevel(logging.DEBUG)
+
+    nbins = args.nbins
 
     log.info("Loading input files")
 
@@ -74,11 +80,21 @@ if __name__ == "__main__":
     end = args.end 
 
     if args.fmt == 'xvg':
-        for i, ds in enumearte(dr.datasets.values()):
-            data = ds.data[start:end]
+        for i, ds in enumerate(dr.datasets.values()):
+            data = np.array(ds.data[start:end])
 
-            for j,lmda in enumerate(ds.lmbdas):
-                if j != i:
-                    ds2 = dr.datasets.values()[j]
-                    data2 = ds2.data[start:end]
+            lmbda = ds.lmbda
+
+            if lmbda == 0:
+                hist, bb = np.histogram(-data[:,-1], bins=nbins)
+
+            else:
+                # maybe try always comparing to lambda==1??
+                hist, bb = np.histogram(data[:,0][np.abs(data[:,0]<1000.0)], bins=nbins)
                     
+            bctrs = np.diff(bb)/2.0 + bb[:-1]
+            plt.plot(bctrs, hist, label='$\lambda={}$'.format(lmbda))
+            #embed()
+
+        plt.legend()
+        plt.show()

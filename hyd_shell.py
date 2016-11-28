@@ -70,7 +70,7 @@ Command-line options
 
     def go(self):
 
-        prot = self.univ.select_atoms('protein and not name H*')
+        prot = self.univ.select_atoms('protein or resname PNI and not name H*')
 
         non_polar_str = 'resname ALA or resname ILE or resname LEU or resname MET or resname PHE or resname TYR or resname TRP or resname PRO or resname GLY or resname VAL'
         polar_str = 'protein and not (' + non_polar_str + ')'
@@ -81,12 +81,12 @@ Command-line options
         for atom in prot:
             atom.resname = 'SHEL'
         prot.write(self.output_filename)
-        for atom in non_polar:
-            atom.resname = 'NOP'
-        non_polar.write('non_polar.gro')
-        for atom in polar:
-            atom.resname = 'POL'
-        polar.write('polar.gro')
+        #for atom in non_polar:
+        #    atom.resname = 'NOP'
+        #non_polar.write('non_polar.gro')
+        #for atom in polar:
+        #    atom.resname = 'POL'
+        #polar.write('polar.gro')
 
 if __name__=='__main__':
     HydrationShell().main()

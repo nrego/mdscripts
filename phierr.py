@@ -264,7 +264,7 @@ Command-line options
         log.info("Var shape: {}".format(ntwid_se.shape))
 
         # phi  <ntwid>'  \int <ntwid>'  <n>  \int <n>
-        out_actual = np.zeros((len(self.phidat), 5), dtype=np.float64)
+        out_actual = np.zeros((len(self.phidat), 6), dtype=np.float64)
         out_actual[:, 0] = self.phivals
 
         for i, ds in enumerate(self.phidat):
@@ -274,6 +274,7 @@ Command-line options
             out_actual[i, 1] = ntwid_all.mean()
             n_reweight = np.exp(-self.phivals[i]*(n_all-ntwid_all))
             out_actual[i, 3] = (n_all*n_reweight).mean() / (n_reweight).mean()
+            out_actual[i, 5] = np.log(n_reweight.mean())
 
         out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], self.phivals)
         out_actual[1:, 4] = scipy.integrate.cumtrapz(out_actual[:, 3], self.phivals)
