@@ -10,6 +10,10 @@ from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
 import pymbar
 import time
 
+from IPython import embed
+
+from fasthist import normhistnd
+
 from mdtools import ParallelTool
 
 from wham import gen_U_nm, kappa, grad_kappa, gen_pdist
@@ -18,10 +22,10 @@ import matplotlib as mpl
 
 import matplotlib.pyplot as plt
 
-mpl.rcParams.update({'axes.labelsize': 30})
-mpl.rcParams.update({'xtick.labelsize': 18})
-mpl.rcParams.update({'ytick.labelsize': 18})
-mpl.rcParams.update({'axes.titlesize': 36})
+mpl.rcParams.update({'axes.labelsize': 50})
+mpl.rcParams.update({'xtick.labelsize': 25})
+mpl.rcParams.update({'ytick.labelsize': 25})
+mpl.rcParams.update({'axes.titlesize': 50})
 #mpl.rcParams.update({'titlesize': 42})
 
 log = logging.getLogger('mdtools.whamerr')
@@ -374,6 +378,7 @@ Command-line options
             data_range = (0, self.all_data_N.max()+1)
             binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, data_range, self.nbins)
             pdist_N /= pdist_N.sum()
+
             neglogpdist_N = -np.log(pdist_N)
             arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
             arr = arr.squeeze()
