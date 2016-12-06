@@ -23,8 +23,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 25})
-mpl.rcParams.update({'ytick.labelsize': 25})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize': 50})
 #mpl.rcParams.update({'titlesize': 42})
 
