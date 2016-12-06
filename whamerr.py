@@ -164,6 +164,8 @@ Command-line options
         # (n_windows,) array of number of samples in each window
         self.n_samples = None
 
+        self.nbins = None
+
         self.beta = 1
 
         self.n_bootstrap = None
@@ -201,6 +203,7 @@ Command-line options
                             help='Number of bootstrap samples to perform')   
         sgroup.add_argument('--autocorr', '-ac', type=float, help='Autocorrelation time (in ps); this can be \ '
                             'a single float, or one for each window') 
+        sgroup.add_argument('--nbins', type=int, default=25, help='number of bins, if plotting prob dist (default 25)')
         sgroup.add_argument('--logweights', type=str, default=None,
                             help='(optional) previously calculated logweights file for INDUS simulations - \ '
                             'if \'phi\' format option also supplied, this will calculate the Pv(N) (and Ntwid). \ '
@@ -240,7 +243,7 @@ Command-line options
             log.info("starting weights: {}".format(self.start_weights))
 
         self.unpack_data(args.start, args.end)
-
+        self.nbins = args.nbins
     # TODO: Parse lists as well
     def _parse_autocorr(self, autocorr):
         self.autocorr = np.ones(self.n_windows)
@@ -373,17 +376,17 @@ Command-line options
         # Calculate and output probability distributions..
         if self.fmt == 'phi':
             data_range = (0, self.all_data_N.max()+1)
-            binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
-            pdist_N /= np.sum(pdist_N * np.diff(binbounds_N))
-            #embed()
+            binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, data_range, self.nbins)
+            pdist_N /= pdist_N.sum()
+
             neglogpdist_N = -np.log(pdist_N)
             arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
             arr = arr.squeeze()
             np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
 
             data_range = (0, self.all_data.max()+1)
-            binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, data_range[1])
-            pdist /= np.sum(pdist * np.diff(binbounds))
+            binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, self.nbins)
+            pdist /= pdist.sum()
             neglogpdist = -np.log(pdist)
 
             arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))

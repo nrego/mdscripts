@@ -70,7 +70,7 @@ Command-line options
 
     def go(self):
 
-        prot = self.univ.select_atoms('resname LIG and not name H*')
+        prot = self.univ.select_atoms('protein or resname PNI and not name H*')
 
         #non_polar_str = 'resname ALA or resname ILE or resname LEU or resname MET or resname PHE or resname TYR or resname TRP or resname PRO or resname GLY or resname VAL'
         #polar_str = 'protein and not (' + non_polar_str + ')'

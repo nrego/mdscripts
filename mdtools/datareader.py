@@ -198,6 +198,7 @@ class XvgDataSet(DataSet):
 
         # Value of lambda for each window
         self.lmbdas = []
+        self.lmbda = None
         self.temp = None
 
         self.title=filename
@@ -212,6 +213,7 @@ class XvgDataSet(DataSet):
                     self.header += line
                     if line.find('T =') != -1:
                         self.temp = extractFloat(line)[0]
+                        self.lmbda = extractFloat(line)[1]
                     if line.find('s0') != -1:
                         continue
                     elif re.findall('s[0-9]+', line):
