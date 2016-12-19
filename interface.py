@@ -300,7 +300,7 @@ Command-line options
         if weights == None:
             weights = np.ones((self.n_frames))
 
-        assert weights.size == self.n_frames
+        assert weights.size == rho.shape[0]
 
         weights /= weights.sum()
 
