@@ -11,7 +11,7 @@ from work_managers import SerialWorkManager
 
 
 class MDTOOLSRC:
-    '''A class, an instance of which is accessible as ``westpa.rc``, to handle global issues for WEST-PA code,
+    '''A class, an instance of which is accessible as ``mdtools.rc``, to handle global issues for mdtools code,
     such as loading modules and plugins, writing output based on verbosity level, adding default command line options,
     and so on.'''
     
