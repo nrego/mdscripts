@@ -2,6 +2,7 @@
 
 import numpy
 import math
+from scipy.spatial import cKDTree
 
 cimport numpy
 
@@ -52,3 +53,58 @@ def phi(numpy.ndarray r_array, double sigma, double sigma_sq, double cutoff, dou
             phi_vec[i] = pref * phi_term
 
     return phi_vec
+
+def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk):    
+    cutoff_sq = cutoff**2
+    sigma_sq = sigma**2
+    block = ub - lb
+    rho_prot_slice = numpy.zeros((block, npts), dtype=numpy.float32)
+    rho_water_slice = numpy.zeros((block, npts), dtype=numpy.float32)
+    rho_slice = numpy.zeros((block, npts), dtype=numpy.float32)
+
+    # KD tree for nearest neighbor search
+    tree = cKDTree(gridpts)
+
+    # i is frame
+    for i in xrange(block):
+
+        # position of each atom at frame i
+        for pos in prot_heavies[i]:
+
+            #pos = atom.position
+            # Indices of all gridpoints within cutoff of atom's position
+            neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            if neighboridx.size == 0:
+                continue
+            neighborpts = gridpts[neighboridx]
+
+            dist_vectors = neighborpts[:, ...] - pos
+
+            # Distance array between atom and neighbor grid points
+            #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
+            #                                       'sqeuclidean').reshape(neighboridx.shape)
+
+            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
+
+            rho_prot_slice[i, neighboridx] += phivals
+
+        for pos in water_ow[i]:
+            neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            if neighboridx.size == 0:
+                continue
+            neighborpts = gridpts[neighboridx]
+
+            dist_vectors = neighborpts[:, ...] - pos
+            # Distance array between atom and neighbor grid points
+            # distarr = scipy.spatial.distance.cdist(pos.reshape(1,3),
+            #       neighborpts,'sqeuclidean').reshape(neighboridx.shape)
+
+            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
+
+            rho_water_slice[i, neighboridx] += phivals
+
+        # Can probably move this out of here and perform at end
+        rho_slice[i, :] = rho_prot_slice[i, :]/rho_prot_bulk \
+            + rho_water_slice[i, :]/rho_water_bulk
+
+    return (rho_slice, lb, ub)

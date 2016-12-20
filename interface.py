@@ -3,15 +3,17 @@
 
 from __future__ import division; __metaclass__ = type
 import sys
-import numpy
+import numpy as np
 import argparse
 import logging
+
+from IPython import embed
 
 import MDAnalysis
 #from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
 from scipy.spatial import cKDTree
-from skimage import measure
+#from skimage import measure
 
 from utils import phi
 from mdtools import ParallelTool
@@ -22,9 +24,9 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
     cutoff_sq = cutoff**2
     sigma_sq = sigma**2
     block = ub - lb
-    rho_prot_slice = numpy.zeros((block, npts), dtype=numpy.float32)
-    rho_water_slice = numpy.zeros((block, npts), dtype=numpy.float32)
-    rho_slice = numpy.zeros((block, npts), dtype=numpy.float32)
+    rho_prot_slice = np.zeros((block, npts), dtype=np.float32)
+    rho_water_slice = np.zeros((block, npts), dtype=np.float32)
+    rho_slice = np.zeros((block, npts), dtype=np.float32)
 
     # KD tree for nearest neighbor search
     tree = cKDTree(gridpts)
@@ -37,7 +39,7 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
 
             #pos = atom.position
             # Indices of all gridpoints within cutoff of atom's position
-            neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            neighboridx = np.array(tree.query_ball_point(pos, cutoff))
             if neighboridx.size == 0:
                 continue
             neighborpts = gridpts[neighboridx]
@@ -53,7 +55,7 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
             rho_prot_slice[i, neighboridx] += phivals
 
         for pos in water_ow[i]:
-            neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
+            neighboridx = np.array(tree.query_ball_point(pos, cutoff))
             if neighboridx.size == 0:
                 continue
             neighborpts = gridpts[neighboridx]
@@ -151,7 +153,7 @@ Command-line options
 
         self.cutoff = args.cutoff
         self.sigma = 2.4
-        self.rho_water_bulk = 0.032
+        self.rho_water_bulk = 0.033
         self.rho_prot_bulk = args.rhoprot / 1000.0
 
         if (args.start > (u.trajectory.n_frames * u.trajectory.dt)):
@@ -169,9 +171,9 @@ Command-line options
 
     def calc_rho(self):
 
-        rho_water = numpy.zeros((self.n_frames, self.npts), dtype=numpy.float32)
-        rho_prot = numpy.zeros((self.n_frames, self.npts), dtype=numpy.float32)
-        rho = numpy.zeros((self.n_frames, self.npts), dtype=numpy.float32)
+        rho_water = np.zeros((self.n_frames, self.npts), dtype=np.float32)
+        rho_prot = np.zeros((self.n_frames, self.npts), dtype=np.float32)
+        rho = np.zeros((self.n_frames, self.npts), dtype=np.float32)
 
         # Cut that shit up to send to work manager
         n_workers = self.work_manager.n_workers or 1
@@ -187,7 +189,7 @@ Command-line options
             if not self.wall:
                 prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
             else:
-                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM)")
+                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM) and not resname INT")
 
             water_ow = self.univ.select_atoms("name OW")
 
@@ -201,8 +203,8 @@ Command-line options
                     checkset.update(set(xrange(lb_frame,ub_frame)))
 
                 # Shape is (nframes, natoms, 3)
-                prot_heavies_pos = numpy.zeros((ub-lb, len(prot_heavies), 3), dtype=numpy.float32)
-                water_ow_pos = numpy.zeros((ub-lb, len(water_ow), 3), dtype=numpy.float32)
+                prot_heavies_pos = np.zeros((ub-lb, len(prot_heavies), 3), dtype=np.float32)
+                water_ow_pos = np.zeros((ub-lb, len(water_ow), 3), dtype=np.float32)
                 for i, frame_idx in enumerate(xrange(lb_frame, ub_frame)):
                     self.univ.trajectory[frame_idx]
                     prot_heavies_pos[i, ...] = prot_heavies.positions
@@ -227,21 +229,19 @@ Command-line options
 
         return rho
 
-    def go(self):
-
-        grid_dl = 1
+    def setup_grid(self):
+        grid_dl = 1 # Grid resolution at *most* 1 angstrom (when box dimension an integral number of angstroms)
         natoms = self.univ.coord.n_atoms
 
-        # Numpy 6d array of xyz dimensions - I assume last three dimensions are axis angles?
+        # np 6d array of xyz dimensions - I assume last three dimensions are axis angles?
         # should modify in future to accomodate non cubic box
         #   In angstroms
-        box = self.univ.dimensions
-
+        box = self.univ.dimensions[:3]
 
         # Set up marching cube stuff - grids in Angstroms
         #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
-        self.ngrids = ngrids = box[:3].astype(int)+1
-        self.dgrid = dgrid = box[:3]/(ngrids-1)
+        self.ngrids = ngrids = np.ceil(box/ grid_dl).astype(int)+1
+        self.dgrid = dgrid = box/(ngrids-1)
 
         log.info("Box: {}".format(box))
         log.info("Ngrids: {}".format(ngrids))
@@ -249,7 +249,7 @@ Command-line options
         # Extra number of grid points on each side to reflect pbc
         #    In grid units (i.e. inverse dgrid)
         #margin = (cutoff/dgrid).astype(int)
-        margin = numpy.array([0,0,0], dtype=numpy.int)
+        margin = np.array([0,0,0], dtype=np.int)
         # Number of actual unique points
         self.npts = npts = ngrids.prod()
         # Number of real points plus margin of reflected pts
@@ -263,50 +263,68 @@ Command-line options
         #    within a distance (opp edge +- cutoff)
         #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
         #     to retrieve appropriate real point indices
-        coord_x = numpy.arange(-margin[0],ngrids[0]+margin[0],dgrid[0])
-        coord_y = numpy.arange(-margin[1],ngrids[1]+margin[1],dgrid[1])
-        coord_z = numpy.arange(-margin[2],ngrids[2]+margin[2],dgrid[2])
-        xpts, ypts, zpts = numpy.meshgrid(coord_x,coord_y,coord_z)
+        coord_x = np.linspace(-margin[0],box[0]+margin[0],ngrids[0])
+        coord_y = np.linspace(-margin[1],box[1]+margin[1],ngrids[1])
+        coord_z = np.linspace(-margin[2],box[2]+margin[2],ngrids[2])
+        xpts, ypts, zpts = np.meshgrid(coord_x,coord_y,coord_z)
 
         # gridpts array shape: (n_pseudo_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
-        self.gridpts = gridpts = numpy.array(zip(ypts.ravel(),xpts.ravel(),zpts.ravel()))
+        self.gridpts = gridpts = np.array(zip(ypts.ravel(),xpts.ravel(),zpts.ravel()))
         
-        gridpts = numpy.zeros((ngrids[0], ngrids[1], ngrids[2], 3))
+        gridpts = np.zeros((ngrids[0], ngrids[1], ngrids[2], 3))
         for i in xrange(ngrids[0]):
             for j in xrange(ngrids[1]):
                 for k in xrange(ngrids[2]):
-                    gridpts[i,j,k,:] = numpy.array([i,j,k]) * dgrid
+                    gridpts[i,j,k,:] = np.array([i,j,k]) * dgrid
 
         self.gridpts = gridpts = gridpts.reshape((npts, 3))
-        #self.gridpts.dtype = numpy.float32
+        #self.gridpts.dtype = np.float32
         
 
-        log.info("Point grid set up")
+        log.info("Point grid set up")   
 
-        # Split up frames, assign to work manager, splice back together into
-        #   total rho array
-        rho = self.calc_rho()
+
+    # rho: array, shape (n_frames, npts) - calculated coarse-grained rho for each grid point, for 
+    #         each frame
+    # weights: (optional) array, shape (n_frames,) - array of weights for averaging rho - default 
+    #         is array of equal weights
+    def do_output(self, rho, weights=None):
+
+        #if rho.shape != (self.n_frames, self.npts):
+        #    log.error("Invalid Rho array with shape {} (should be shape {})".
+        #              format(rho.shape, (self.n_frames, self.npts)))
+        #    return
+
+        if weights == None:
+            weights = np.ones((self.n_frames))
+
+        assert weights.size == rho.shape[0]
+
+        weights /= weights.sum()
 
         self.univ.trajectory[-1]
         if not self.wall:
             prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
         else:
-            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM)")
+            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM) and not resname INT")
         # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
         # Note we artificially add to all grid points more than 10 A from protein
         #   heavy atoms to remove errors at box edges - hackish, but seems to work ok
         prot_tree = cKDTree(prot_heavies.positions)
         #log.info("Average rho = {}".format(rho.mean()))
-        rho_shape = (rho.sum(axis=0)/rho.shape[0]).reshape(ngrids)
+
+        rho_shape = (np.sum((rho * weights[:, np.newaxis]), axis=0)).reshape(self.ngrids)
         log.info("Min rho: {}, Max rho: {}".format(rho_shape.min(), rho_shape.max()))
         max_rho = rho_shape.max()
         #rho_shape = rho[0].reshape(ngrids)
         cntr = 0
 
         log.info("Preparing to output data")
-
+        ngrids = self.ngrids
+        dgrid = self.dgrid
+        npts = self.npts
         with open(self.output_filename, 'w') as f:
             f.write("object 1 class gridpositions counts {} {} {}\n".format(ngrids[0], ngrids[1], ngrids[2]))
             f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,0))
@@ -318,8 +336,8 @@ Command-line options
             for i in xrange(ngrids[0]):
                 for j in xrange(ngrids[1]):
                     for k in xrange(ngrids[2]):
-                        grid_pt = numpy.array([dgrid[0]*i, dgrid[1]*j, dgrid[2]*k])
-                        dist, idx = prot_tree.query(grid_pt, distance_upper_bound=10.0)
+                        grid_pt = np.array([dgrid[0]*i, dgrid[1]*j, dgrid[2]*k])
+                        dist, idx = prot_tree.query(grid_pt, distance_upper_bound=12)
 
                         if dist == float('inf'):
                             rho_shape[i,j,k] += 1.0
@@ -329,6 +347,15 @@ Command-line options
                         cntr += 1
                         if (cntr % 3 == 0):
                             f.write("\n")
+
+    def go(self):
+
+        self.setup_grid()
+        # Split up frames, assign to work manager, splice back together into
+        #   total rho array
+        rho = self.calc_rho()
+
+        self.do_output(rho)
 
 
 if __name__=='__main__':
