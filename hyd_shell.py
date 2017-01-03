@@ -3,7 +3,7 @@
 
 from __future__ import division; __metaclass__ = type
 import sys
-import numpy
+import numpy as np
 import argparse
 import logging
 
@@ -38,6 +38,7 @@ Command-line options
         self.ngrids = None
         self.gridpts = None
         self.npts = None
+        self.indices = None
 
         self.output_filename = None
 
@@ -51,6 +52,8 @@ Command-line options
         sgroup = parser.add_argument_group('Hydration Shell options')
         sgroup.add_argument('-f', '--grofile', metavar='INPUT', type=str, required=True,
                             help='Input structure file')
+        sgroup.add_argument('--indices', type=str,
+                            help='Indices of protein atoms to grab, optional')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-o', '--outfile', default='shell.gro',
                         help='Output file to write hydration shell (default: shell.gro)')
@@ -68,10 +71,15 @@ Command-line options
 
         self.output_filename = args.outfile
 
+        self.indices = args.indices
+
     def go(self):
 
-        prot = self.univ.select_atoms('protein or resname PNI and not name H*')
+        prot = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
 
+        if self.indices is not None:
+            indices = np.loadtxt(self.indices).astype(int)
+            prot = prot[indices]
         #non_polar_str = 'resname ALA or resname ILE or resname LEU or resname MET or resname PHE or resname TYR or resname TRP or resname PRO or resname GLY or resname VAL'
         #polar_str = 'protein and not (' + non_polar_str + ')'
 

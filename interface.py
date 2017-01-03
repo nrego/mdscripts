@@ -13,14 +13,17 @@ import MDAnalysis
 #from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
 from scipy.spatial import cKDTree
+import itertools
 #from skimage import measure
 
-from utils import phi
+from utils import phi, cartesian
 from mdtools import ParallelTool
+
+from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
 
-def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk):    
+def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree):    
     cutoff_sq = cutoff**2
     sigma_sq = sigma**2
     block = ub - lb
@@ -28,18 +31,19 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
     rho_water_slice = np.zeros((block, npts), dtype=np.float32)
     rho_slice = np.zeros((block, npts), dtype=np.float32)
 
-    # KD tree for nearest neighbor search
-    tree = cKDTree(gridpts)
+
 
     # i is frame
     for i in xrange(block):
+        prot_tree = cKDTree(prot_heavies[i])
+        prot_neighbors = prot_tree.query_ball_tree(tree, cutoff)
 
         # position of each atom at frame i
-        for pos in prot_heavies[i]:
+        for atm_idx, pos in enumerate(prot_heavies[i]):
 
             #pos = atom.position
             # Indices of all gridpoints within cutoff of atom's position
-            neighboridx = np.array(tree.query_ball_point(pos, cutoff))
+            neighboridx = np.array(prot_neighbors[atm_idx])
             if neighboridx.size == 0:
                 continue
             neighborpts = gridpts[neighboridx]
@@ -51,27 +55,42 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
             #                                       'sqeuclidean').reshape(neighboridx.shape)
 
             phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-
             rho_prot_slice[i, neighboridx] += phivals
 
-        for pos in water_ow[i]:
-            neighboridx = np.array(tree.query_ball_point(pos, cutoff))
+        # find all gridpoints within 12 A of protein atoms
+        #   so we can set the rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
+        neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=12)
+        neighbor_list = itertools.chain(*neighbor_list_by_point)
+        # neighbor_idx is a unique list of all grid_pt *indices* that are within r=12 from
+        #   *any* atom in prot_heavies
+        neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
+
+        # Find indices of all grid points that are *farther* than 12 A from protein
+        far_pt_idx = np.setdiff1d(np.arange(npts), neighbor_idx)
+
+        assert neighbor_idx.shape[0] + far_pt_idx.shape[0] == npts
+
+        del prot_tree, prot_neighbors, neighbor_list_by_point, neighbor_list, neighbor_idx
+
+        water_tree = cKDTree(water_ow[i])
+        water_neighbors = water_tree.query_ball_tree(tree, cutoff)
+
+        for atm_idx, pos in enumerate(water_ow[i]):
+            neighboridx = np.array(water_neighbors[atm_idx])
             if neighboridx.size == 0:
                 continue
             neighborpts = gridpts[neighboridx]
 
             dist_vectors = neighborpts[:, ...] - pos
-            # Distance array between atom and neighbor grid points
-            # distarr = scipy.spatial.distance.cdist(pos.reshape(1,3),
-            #       neighborpts,'sqeuclidean').reshape(neighboridx.shape)
 
             phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-
             rho_water_slice[i, neighboridx] += phivals
 
+        del water_tree, water_neighbors
         # Can probably move this out of here and perform at end
         rho_slice[i, :] = rho_prot_slice[i, :]/rho_prot_bulk \
             + rho_water_slice[i, :]/rho_water_bulk
+        rho_slice[i, far_pt_idx] = 1.0
 
     return (rho_slice, lb, ub)
 
@@ -104,24 +123,41 @@ Command-line options
         self.rho_prot_bulk = None
         self.rho_water_bulk = None
 
+        self.rho = None
+        self.rho_avg = None
+
         self.dgrid = None
         self.ngrids = None
         self.gridpts = None
         self.npts = None
 
+        self.tree = None
+
         self.start_frame = None
         self.last_frame = None
 
-        self.output_filename = None
+        self.outdx = None
+        self.outgro = None
+        self.outxtc = None
 
         # consider interfaces near walls
         self.wall = None
 
+        self.init_from_args = False
+
+        self._rho_shape = None
+
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
+
+    @property
+    def rho_shape(self):
+        if self.rho is not None and self._rho_shape is None:
+            self._rho_shape = self.rho.reshape((self.n_frames, self.ngrids[0], self.ngrids[1], self.ngrids[2]))
+       
+        return self._rho_shape
         
-    
     def add_args(self, parser):
         
         sgroup = parser.add_argument_group('Instantaneous interface options')
@@ -139,8 +175,12 @@ Command-line options
                         help='Estimated protein density (heavy atoms per nm3)')
 
         agroup = parser.add_argument_group('other options')
-        agroup.add_argument('-o', '--outfile', default='interface.dx',
+        agroup.add_argument('-odx', '--outdx', default='interface.dx',
                         help='Output file to write instantaneous interface')
+        agroup.add_argument('-ogro', '--outgro',
+                        help='output file to write instantaneous interface as GRO file')
+        agroup.add_argument('-oxtc', '--outxtc',
+                        help='Output file to write trajectory of instantaneous interfaces as XTC file')
 
 
     def process_args(self, args):
@@ -165,15 +205,21 @@ Command-line options
 
         self.npts = 0
 
-        self.output_filename = args.outfile
+        self.outdx = args.outdx
+        self.outgro = args.outgro
+        self.outxtc = args.outxtc
 
         self.wall = args.wall
+
+        self.init_from_args = True
+
+        self._setup_grid()
 
     def calc_rho(self):
 
         rho_water = np.zeros((self.n_frames, self.npts), dtype=np.float32)
         rho_prot = np.zeros((self.n_frames, self.npts), dtype=np.float32)
-        rho = np.zeros((self.n_frames, self.npts), dtype=np.float32)
+        self.rho = np.zeros((self.n_frames, self.npts), dtype=np.float32)
 
         # Cut that shit up to send to work manager
         n_workers = self.work_manager.n_workers or 1
@@ -186,10 +232,10 @@ Command-line options
         log.info('blocksize: {}'.format(blocksize))
 
         def task_gen():
-            if not self.wall:
-                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
-            else:
+            if self.wall:
                 prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM) and not resname INT")
+            else:
+                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
 
             water_ow = self.univ.select_atoms("name OW")
 
@@ -213,7 +259,8 @@ Command-line options
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, prot_heavies=prot_heavies_pos, water_ow=water_ow_pos,
                               cutoff=self.cutoff, sigma=self.sigma, gridpts=self.gridpts, npts=self.npts, 
-                              rho_prot_bulk=self.rho_prot_bulk, rho_water_bulk=self.rho_water_bulk)
+                              rho_prot_bulk=self.rho_prot_bulk, rho_water_bulk=self.rho_water_bulk,
+                              tree=self.tree)
                 log.info("Sending job batch (from frame {} to {})".format(lb_frame, ub_frame))
                 yield (_calc_rho, args, kwargs)
 
@@ -223,13 +270,29 @@ Command-line options
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
             rho_slice, lb, ub = future.get_result(discard=True)
-            rho[lb:ub, :] = rho_slice
+            self.rho[lb:ub, :] = rho_slice
             del rho_slice
             
 
-        return rho
+    def get_rho_avg(self, weights=None):
+        if self.rho is None:
+            log.warning('Rho has not been calculated yet - must run calc_rho')
+            return
+        if weights is None:
+            weights = np.ones((self.n_frames))
 
-    def setup_grid(self):
+        assert weights.size == self.rho.shape[0]
+
+        weights /= weights.sum()
+
+        self.rho_avg = np.sum((self.rho * weights[:, np.newaxis]), axis=0)
+        min_rho = self.rho_avg.min()
+        max_rho = self.rho_avg.max()
+        log.info("Min rho: {}, Max rho: {}".format(min_rho, max_rho))
+
+
+
+    def _setup_grid(self):
         grid_dl = 1 # Grid resolution at *most* 1 angstrom (when box dimension an integral number of angstroms)
         natoms = self.univ.coord.n_atoms
 
@@ -266,22 +329,13 @@ Command-line options
         coord_x = np.linspace(-margin[0],box[0]+margin[0],ngrids[0])
         coord_y = np.linspace(-margin[1],box[1]+margin[1],ngrids[1])
         coord_z = np.linspace(-margin[2],box[2]+margin[2],ngrids[2])
-        xpts, ypts, zpts = np.meshgrid(coord_x,coord_y,coord_z)
 
         # gridpts array shape: (n_pseudo_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
-        self.gridpts = gridpts = np.array(zip(ypts.ravel(),xpts.ravel(),zpts.ravel()))
+        self.gridpts = gridpts = cartesian([coord_x, coord_y, coord_z])
         
-        gridpts = np.zeros((ngrids[0], ngrids[1], ngrids[2], 3))
-        for i in xrange(ngrids[0]):
-            for j in xrange(ngrids[1]):
-                for k in xrange(ngrids[2]):
-                    gridpts[i,j,k,:] = np.array([i,j,k]) * dgrid
-
-        self.gridpts = gridpts = gridpts.reshape((npts, 3))
-        #self.gridpts.dtype = np.float32
-        
+        self.tree = cKDTree(self.gridpts)
 
         log.info("Point grid set up")   
 
@@ -290,72 +344,35 @@ Command-line options
     #         each frame
     # weights: (optional) array, shape (n_frames,) - array of weights for averaging rho - default 
     #         is array of equal weights
-    def do_output(self, rho, weights=None):
+    def do_output(self):
 
-        #if rho.shape != (self.n_frames, self.npts):
-        #    log.error("Invalid Rho array with shape {} (should be shape {})".
-        #              format(rho.shape, (self.n_frames, self.npts)))
-        #    return
+        if self.rho is None:
+            log.warning("Rho not calculated - run calc_rho first")
 
-        if weights == None:
-            weights = np.ones((self.n_frames))
-
-        assert weights.size == rho.shape[0]
-
-        weights /= weights.sum()
-
-        self.univ.trajectory[-1]
-        if not self.wall:
-            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
-        else:
-            prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM) and not resname INT")
-        # Hack out the last frame to a volumetric '.dx' format (readable by VMD)
-        # Note we artificially add to all grid points more than 10 A from protein
-        #   heavy atoms to remove errors at box edges - hackish, but seems to work ok
-        prot_tree = cKDTree(prot_heavies.positions)
-        #log.info("Average rho = {}".format(rho.mean()))
-
-        rho_shape = (np.sum((rho * weights[:, np.newaxis]), axis=0)).reshape(self.ngrids)
-        log.info("Min rho: {}, Max rho: {}".format(rho_shape.min(), rho_shape.max()))
-        max_rho = rho_shape.max()
-        #rho_shape = rho[0].reshape(ngrids)
-        cntr = 0
+            return
 
         log.info("Preparing to output data")
-        ngrids = self.ngrids
-        dgrid = self.dgrid
-        npts = self.npts
-        with open(self.output_filename, 'w') as f:
-            f.write("object 1 class gridpositions counts {} {} {}\n".format(ngrids[0], ngrids[1], ngrids[2]))
-            f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,0))
-            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(dgrid[0], 0, 0))
-            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, dgrid[1], 0))
-            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, 0, dgrid[2]))
-            f.write("object 2 class gridconnections counts {} {} {}\n".format(ngrids[0], ngrids[1], ngrids[2]))
-            f.write("object 3 class array type double rank 0 items {} data follows\n".format(npts))
-            for i in xrange(ngrids[0]):
-                for j in xrange(ngrids[1]):
-                    for k in xrange(ngrids[2]):
-                        grid_pt = np.array([dgrid[0]*i, dgrid[1]*j, dgrid[2]*k])
-                        dist, idx = prot_tree.query(grid_pt, distance_upper_bound=12)
 
-                        if dist == float('inf'):
-                            rho_shape[i,j,k] += 1.0
-                        #if (i < lowercutoff_x or j < lowercutoff_y or k < lowercutoff_z) or (i > uppercutoff_x or j > uppercutoff_y or k > uppercutoff_z):
-                        #    rho_shape[i,j,k] += 1.0
-                        f.write("{:1.8e} ".format(rho_shape[i,j,k]))
-                        cntr += 1
-                        if (cntr % 3 == 0):
-                            f.write("\n")
+        writer = RhoField(self.rho_shape, self.gridpts)
+
+        # Always do dx file output
+        writer.do_DX(self.outdx)
+
+        if self.outgro is not None:
+            writer.do_GRO(self.outgro, frame=0)
+
+        if self.outxtc is not None:
+            writer.do_XTC(self.outxtc)
+
 
     def go(self):
 
-        self.setup_grid()
+        #self.setup_grid()
         # Split up frames, assign to work manager, splice back together into
         #   total rho array
-        rho = self.calc_rho()
-
-        self.do_output(rho)
+        self.calc_rho()
+        embed()
+        self.do_output()
 
 
 if __name__=='__main__':

@@ -5,7 +5,7 @@ Quick script to construct dyn_union_sph_sh umbrella file around .gro file's heav
 from itertools import izip
 import sys
 
-import numpy
+import numpy as np
 from scipy.spatial import cKDTree
 
 from MDAnalysis import Universe
@@ -15,8 +15,12 @@ import argparse
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser("Generate dynamic umbrella conf file from Gro structure")
-    parser.add_argument("-c", "--structure", required=True, dest="gro",
+    
+    parser.add_argument("-c", "--structure", dest="gro",
                         help="gromacs structure '.gro' input file")
+    parser.add_argument("--indices", 
+                        help=("Optionally supply a file with the indices of the atoms you wish to output."
+                            "Read in using np.loadtxt([FILE])"))
     parser.add_argument("-f", "--traj",
                         help="trajectory file (optional) - if supplied, output heavy atoms with more than avg" \
                         "number of waters within radius")
@@ -54,7 +58,12 @@ if __name__ == "__main__":
             prot_heavies = u.select_atoms(args.sspec)
         else:
             # Select peptide heavies - exclude water's and ions
-            prot_heavies = u.select_atoms("not (name H* or type H or resname SOL) and not (name NA or name CL) and not (resname WAL) and not (resname DUM)")
+            prot_heavies = u.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
+
+        if args.indices is not None:
+            indices = np.loadtxt(args.indices).astype(int)
+            prot_heavies = prot_heavies[indices]
+
 
         fout = open(args.outfile, 'w')
         fout.write(header_string)
@@ -85,7 +94,7 @@ if __name__ == "__main__":
         water_ow = u.select_atoms("name OW")
 
         # Number of waters near each protein heavy
-        n_waters = numpy.zeros((len(prot_heavies),), dtype=numpy.int32)
+        n_waters = np.zeros((len(prot_heavies),), dtype=np.int32)
 
 
         for frame_idx in xrange(startframe, lastframe):
