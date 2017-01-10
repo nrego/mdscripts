@@ -10,6 +10,8 @@ import mdtraj as md
 
 from skimage import measure
 
+from IPython import embed
+
 def extractInt(string):
     return map(int, re.findall(r"[-+]?\d*\.\d+|\d+", string))
 
@@ -158,8 +160,11 @@ class RhoField:
 
         max_pts = 0
         for i_frame in range(self.n_frames):
-            verts, faces, normals, values = measure.marching_cubes(self.rho[i_frame], isoval, spacing=tuple(self.d_grid))
-            mesh = verts
+            try:
+                verts, faces, normals, values = measure.marching_cubes(self.rho[i_frame], isoval, spacing=tuple(self.d_grid))
+                mesh = verts
+            except ValueError:
+                mesh = np.zeros((1,3))
             if mesh.shape[0] > max_pts:
                 max_pts = mesh.shape[0]
             meshpts[i_frame] = mesh

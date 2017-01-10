@@ -371,7 +371,7 @@ Command-line options
         # Split up frames, assign to work manager, splice back together into
         #   total rho array
         self.calc_rho()
-        embed()
+        #embed()
         self.do_output()
 
 
