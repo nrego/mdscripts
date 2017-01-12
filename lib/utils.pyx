@@ -1,19 +1,44 @@
 # distutils: library_dirs = /usr/lib
 
-import numpy
-import math
+import numpy as np
+from math import pi, exp, erf
 from scipy.spatial import cKDTree
+from scipy.interpolate import interp1d, UnivariateSpline
 
-cimport numpy
+cimport numpy as np
 
-DTYPE = numpy.float32
-ctypedef numpy.float32_t DTYPE_t
+DTYPE = np.float32
+ctypedef np.float32_t DTYPE_t
 
-# Caluclates value of coarse-grained gaussian for point at r
+cdef int min_lup = -15
+cdef np.ndarray xvals = np.linspace(min_lup, 0, 10000, dtype=DTYPE)
+cdef np.ndarray exp_table = np.exp(xvals, dtype=DTYPE)
+exp_lut = interp1d(xvals, exp_table, kind='linear')
+#exp_lut = UnivariateSpline(xvals, exp_table, k=1)
+
+def phi_1d(np.ndarray[DTYPE_t, ndim=1] r_array, double sigma, double sigma_sq, double cutoff, double cutoff_sq):
+    cdef double r
+    cdef np.ndarray[DTYPE_t, ndim=1] r_sq
+    cdef double phic
+    cdef double pref
+    cdef double phi_term
+    cdef np.ndarray[DTYPE_t, ndim=1] phi_vec
+
+    r_sq = (r_array**2)
+
+    phic = exp(-(cutoff_sq/(2*sigma_sq)))
+    pref = (1 / ( (2*pi)**(0.5) * sigma * erf(cutoff / (2**0.5 * sigma)) - 2*cutoff*phic ))
+
+    phi_vec = pref * (exp_lut(-(r_sq/(2*sigma_sq))) - phic).astype(DTYPE)
+    phi_vec[r_sq > cutoff_sq] = 0.0
+
+    return phi_vec
+
+# Calculates value of coarse-grained gaussian for point at r
 #   sigma and cutoff in A. only works around this range - have to see
 #   About dynamically adjusting the prefactor
-#   r is an array of vectors from atom position to grid point position (i.e. grid - atom)
-def phi(numpy.ndarray r_array, double sigma, double sigma_sq, double cutoff, double cutoff_sq):
+#   r is an array of vectors [shape: (n_atoms, 3)] from atom position to grid point position (i.e. grid - atom)
+def rho(np.ndarray[DTYPE_t, ndim=2] r_array, double sigma, double sigma_sq, double cutoff, double cutoff_sq):
 
     cdef double x_sq
     cdef double y_sq
@@ -21,18 +46,18 @@ def phi(numpy.ndarray r_array, double sigma, double sigma_sq, double cutoff, dou
     cdef double phic
     cdef double pref
     cdef double phi_term
-    cdef numpy.ndarray r
+    cdef np.ndarray r
     cdef int i
     cdef int r_array_shape
 
     r_array_shape = r_array.shape[0]
 
-    cdef numpy.ndarray[numpy.float32_t, ndim=1] phi_vec
-    phi_vec = numpy.zeros(r_array_shape, dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim=1] phi_vec
+    phi_vec = np.zeros(r_array_shape, dtype=DTYPE)
 
-    phic = math.exp(-0.5*(cutoff_sq/sigma_sq))
+    phic = exp(-0.5*(cutoff_sq/sigma_sq))
 
-    pref = (1 / ( (2*math.pi)**(0.5) * sigma * math.erf(cutoff / (2**0.5 * sigma)) - 2*cutoff*phic ))**3
+    pref = (1 / ( (2*pi)**(0.5) * sigma * erf(cutoff / (2**0.5 * sigma)) - 2*cutoff*phic ))**3
 
     for i in xrange(r_array_shape):
 
@@ -42,75 +67,18 @@ def phi(numpy.ndarray r_array, double sigma, double sigma_sq, double cutoff, dou
         y_sq = r[1]**2
         z_sq = r[2]**2
 
-        if ((x_sq+y_sq+z_sq) >= cutoff_sq):
+        if (x_sq > cutoff_sq or y_sq > cutoff_sq or z_sq > cutoff_sq):
             phi_vec[i] = 0.0
 
         else:
 
-            phi_term = ( (math.exp(-0.5*(x_sq/sigma_sq)) - phic) * (math.exp(-0.5*(y_sq/sigma_sq) - phic)) *
-                         (math.exp(-0.5*(z_sq/sigma_sq)) - phic) )
+            phi_term = ( (exp(-0.5*(x_sq/sigma_sq)) - phic) * (exp(-0.5*(y_sq/sigma_sq) - phic)) *
+                         (exp(-0.5*(z_sq/sigma_sq)) - phic) )
             #print "val: {}".format(pref*phi_term)
             phi_vec[i] = pref * phi_term
 
     return phi_vec
 
-def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk):    
-    cutoff_sq = cutoff**2
-    sigma_sq = sigma**2
-    block = ub - lb
-    rho_prot_slice = numpy.zeros((block, npts), dtype=numpy.float32)
-    rho_water_slice = numpy.zeros((block, npts), dtype=numpy.float32)
-    rho_slice = numpy.zeros((block, npts), dtype=numpy.float32)
-
-    # KD tree for nearest neighbor search
-    tree = cKDTree(gridpts)
-
-    # i is frame
-    for i in xrange(block):
-
-        # position of each atom at frame i
-        for pos in prot_heavies[i]:
-
-            #pos = atom.position
-            # Indices of all gridpoints within cutoff of atom's position
-            neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
-            if neighboridx.size == 0:
-                continue
-            neighborpts = gridpts[neighboridx]
-
-            dist_vectors = neighborpts[:, ...] - pos
-
-            # Distance array between atom and neighbor grid points
-            #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
-            #                                       'sqeuclidean').reshape(neighboridx.shape)
-
-            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-
-            rho_prot_slice[i, neighboridx] += phivals
-
-        for pos in water_ow[i]:
-            neighboridx = numpy.array(tree.query_ball_point(pos, cutoff))
-            if neighboridx.size == 0:
-                continue
-            neighborpts = gridpts[neighboridx]
-
-            dist_vectors = neighborpts[:, ...] - pos
-            # Distance array between atom and neighbor grid points
-            # distarr = scipy.spatial.distance.cdist(pos.reshape(1,3),
-            #       neighborpts,'sqeuclidean').reshape(neighboridx.shape)
-
-            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-
-            rho_water_slice[i, neighboridx] += phivals
-
-        # Can probably move this out of here and perform at end
-        rho_slice[i, :] = rho_prot_slice[i, :]/rho_prot_bulk \
-            + rho_water_slice[i, :]/rho_water_bulk
-
-    return (rho_slice, lb, ub)
-
-
-import numpy as np
 
 def cartesian(arrays, out=None):
     """
