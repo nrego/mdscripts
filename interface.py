@@ -31,8 +31,6 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
     rho_water_slice = np.zeros((block, npts), dtype=np.float32)
     rho_slice = np.zeros((block, npts), dtype=np.float32)
 
-
-
     # i is frame
     for i in xrange(block):
         prot_tree = cKDTree(prot_heavies[i])

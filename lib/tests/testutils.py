@@ -91,3 +91,5 @@ class TestPhi:
         assert max_diff < arr_tol, "maximum difference ({}) > tolerance ({})".format(max_diff, arr_tol)
 
         assert (test_rhovals == 0.0).sum() == (self.rhovals == 0).sum(), "different number of rho=zero values"
+
+    ## TODO: testcartesian

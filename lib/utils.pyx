@@ -16,8 +16,9 @@ cdef np.ndarray exp_table = np.exp(xvals, dtype=DTYPE)
 exp_lut = interp1d(xvals, exp_table, kind='linear')
 #exp_lut = UnivariateSpline(xvals, exp_table, k=1)
 
+# Gets phi for a 1d array of values for the given sigma and cutoff
+#
 def phi_1d(np.ndarray[DTYPE_t, ndim=1] r_array, double sigma, double sigma_sq, double cutoff, double cutoff_sq):
-    cdef double r
     cdef np.ndarray[DTYPE_t, ndim=1] r_sq
     cdef double phic
     cdef double pref
@@ -33,49 +34,26 @@ def phi_1d(np.ndarray[DTYPE_t, ndim=1] r_array, double sigma, double sigma_sq, d
     phi_vec[r_sq > cutoff_sq] = 0.0
 
     return phi_vec
+    
 
-# Calculates value of coarse-grained gaussian for point at r
+# Calculates value of coarse-grained gaussian for each point in r_array (shape (n_pts, 3))
 #   sigma and cutoff in A. only works around this range - have to see
-#   About dynamically adjusting the prefactor
-#   r is an array of vectors [shape: (n_atoms, 3)] from atom position to grid point position (i.e. grid - atom)
 def rho(np.ndarray[DTYPE_t, ndim=2] r_array, double sigma, double sigma_sq, double cutoff, double cutoff_sq):
 
-    cdef double x_sq
-    cdef double y_sq
-    cdef double z_sq
-    cdef double phic
-    cdef double pref
-    cdef double phi_term
-    cdef np.ndarray r
-    cdef int i
-    cdef int r_array_shape
-
-    r_array_shape = r_array.shape[0]
-
+    cdef np.ndarray[DTYPE_t, ndim=1] xpts, ypts, zpts, phi_x, phi_y, phi_z
+    cdef int r_array_shape = r_array.shape[0]
     cdef np.ndarray[DTYPE_t, ndim=1] phi_vec
-    phi_vec = np.zeros(r_array_shape, dtype=DTYPE)
 
-    phic = exp(-0.5*(cutoff_sq/sigma_sq))
 
-    pref = (1 / ( (2*pi)**(0.5) * sigma * erf(cutoff / (2**0.5 * sigma)) - 2*cutoff*phic ))**3
+    xpts = r_array[:,0]
+    ypts = r_array[:,1]
+    zpts = r_array[:,2]
 
-    for i in xrange(r_array_shape):
+    phi_x = phi_1d(xpts, sigma, sigma_sq, cutoff, cutoff_sq)
+    phi_y = phi_1d(ypts, sigma, sigma_sq, cutoff, cutoff_sq)
+    phi_z = phi_1d(zpts, sigma, sigma_sq, cutoff, cutoff_sq)
 
-        r = r_array[i]
-
-        x_sq = r[0]**2
-        y_sq = r[1]**2
-        z_sq = r[2]**2
-
-        if (x_sq > cutoff_sq or y_sq > cutoff_sq or z_sq > cutoff_sq):
-            phi_vec[i] = 0.0
-
-        else:
-
-            phi_term = ( (exp(-0.5*(x_sq/sigma_sq)) - phic) * (exp(-0.5*(y_sq/sigma_sq) - phic)) *
-                         (exp(-0.5*(z_sq/sigma_sq)) - phic) )
-            #print "val: {}".format(pref*phi_term)
-            phi_vec[i] = pref * phi_term
+    phi_vec = phi_x * phi_y * phi_z
 
     return phi_vec
 
