@@ -16,20 +16,23 @@ from scipy.spatial import cKDTree
 import itertools
 #from skimage import measure
 
-from utils import phi, phi_fast, cartesian
+from utils import rho, cartesian
 from mdtools import ParallelTool
 
 from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
 
+## Try to avoid round-off errors as much as we can...
+rho_dtype = np.float64 
+
 def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree):    
     cutoff_sq = cutoff**2
     sigma_sq = sigma**2
     block = ub - lb
-    rho_prot_slice = np.zeros((block, npts), dtype=np.float32)
-    rho_water_slice = np.zeros((block, npts), dtype=np.float32)
-    rho_slice = np.zeros((block, npts), dtype=np.float32)
+    rho_prot_slice = np.zeros((block, npts), dtype=rho_dtype)
+    rho_water_slice = np.zeros((block, npts), dtype=rho_dtype)
+    rho_slice = np.zeros((block, npts), dtype=rho_dtype)
 
     # i is frame
     for i in xrange(block):
@@ -52,8 +55,8 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
             #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
             #                                       'sqeuclidean').reshape(neighboridx.shape)
 
-            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-            rho_prot_slice[i, neighboridx] += phivals
+            rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
+            rho_prot_slice[i, neighboridx] += rhovals
 
         # find all gridpoints within 12 A of protein atoms
         #   so we can set the rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
@@ -81,8 +84,8 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
 
             dist_vectors = neighborpts[:, ...] - pos
 
-            phivals = phi(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-            rho_water_slice[i, neighboridx] += phivals
+            rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
+            rho_water_slice[i, neighboridx] += rhovals
 
         del water_tree, water_neighbors
         # Can probably move this out of here and perform at end
@@ -215,9 +218,9 @@ Command-line options
 
     def calc_rho(self):
 
-        rho_water = np.zeros((self.n_frames, self.npts), dtype=np.float32)
-        rho_prot = np.zeros((self.n_frames, self.npts), dtype=np.float32)
-        self.rho = np.zeros((self.n_frames, self.npts), dtype=np.float32)
+        rho_water = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
+        rho_prot = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
+        self.rho = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
 
         # Cut that shit up to send to work manager
         n_workers = self.work_manager.n_workers or 1
@@ -247,8 +250,8 @@ Command-line options
                     checkset.update(set(xrange(lb_frame,ub_frame)))
 
                 # Shape is (nframes, natoms, 3)
-                prot_heavies_pos = np.zeros((ub-lb, len(prot_heavies), 3), dtype=np.float32)
-                water_ow_pos = np.zeros((ub-lb, len(water_ow), 3), dtype=np.float32)
+                prot_heavies_pos = np.zeros((ub-lb, len(prot_heavies), 3), dtype=rho_dtype)
+                water_ow_pos = np.zeros((ub-lb, len(water_ow), 3), dtype=rho_dtype)
                 for i, frame_idx in enumerate(xrange(lb_frame, ub_frame)):
                     self.univ.trajectory[frame_idx]
                     prot_heavies_pos[i, ...] = prot_heavies.positions

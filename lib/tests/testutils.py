@@ -7,7 +7,7 @@ import scipy.integrate
 import numpy as np
 
 
-DTYPE = np.float32
+DTYPE = np.float64
 
 # Tolerance for array equivalence tests, etc
 arr_tol = 1e-7
@@ -82,7 +82,7 @@ class TestPhi:
 
         assert np.abs(1 - integ) < arr_tol, "does not integrate to 1 within tolerance of {}: got {}".format(arr_tol, integ)
 
-    def test_rhovals(self, arr_tol=1e-4):
+    def test_rhovals(self, arr_tol=1e-6):
 
         test_rhovals = rho(self.dist_vectors, sigma=self.sigma, sigma_sq=self.sigma**2, cutoff=self.cutoff, cutoff_sq=self.cutoff**2)
 

@@ -1,6 +1,16 @@
 from distutils.core import setup
-from Cython.Build import cythonize
+from distutils.extension import Extension
 
-setup(
-    ext_modules=cythonize("utils.pyx"),
-)
+
+import numpy
+try:
+    numpy_include = numpy.get_include()
+except AttributeError:
+    numpy_include = numpy.get_numpy_include()
+from Cython.Distutils import build_ext
+
+ext_modules = [Extension("utils", ["utils.pyx"],
+            include_dirs=[numpy_include],
+            extra_compile_args=["-O3","-ffast-math"])]
+setup(cmdclass = {'build_ext': build_ext},
+      ext_modules = ext_modules)
