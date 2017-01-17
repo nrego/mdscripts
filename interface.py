@@ -35,11 +35,11 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
     rho_water_slice = np.zeros((block, npts), dtype=rho_dtype)
     rho_slice = np.zeros((block, npts), dtype=rho_dtype)
 
-    max_cutoff = np.sqrt(3*cutoff_sq)
+   
     # i is frame
     for i in xrange(block):
         prot_tree = cKDTree(prot_heavies[i])
-        prot_neighbors = prot_tree.query_ball_tree(tree, max_cutoff)
+        prot_neighbors = prot_tree.query_ball_tree(tree, cutoff, p=float('inf'))
 
         # position of each atom at frame i
         for atm_idx, pos in enumerate(prot_heavies[i]):
@@ -76,7 +76,7 @@ def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_
         del prot_tree, prot_neighbors, neighbor_list_by_point, neighbor_list, neighbor_idx
 
         water_tree = cKDTree(water_ow[i])
-        water_neighbors = water_tree.query_ball_tree(tree, max_cutoff)
+        water_neighbors = water_tree.query_ball_tree(tree, cutoff, p=float('inf'))
 
         for atm_idx, pos in enumerate(water_ow[i]):
             neighboridx = np.array(water_neighbors[atm_idx])
