@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from utils import phi_1d, rho
+from rhoutils import phi_1d, rho
 from math import exp, erf, sqrt, pi
 
 import scipy.integrate
