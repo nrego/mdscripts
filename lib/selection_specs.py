@@ -7,3 +7,4 @@
 #   ions (CL and NA only)
 #   dummy (name DUM)
 sel_spec_heavies_nowall = "not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)"
+sel_spec_nowall = "not (resname SOL or resname WAL) and not (name CL or name NA or name DUM)"

@@ -2,7 +2,7 @@ from __future__ import division, print_function
 
 from boxutils import center_mol, rotate_mol, pbc
 
-from selection_specs import sel_spec_heavies_nowall
+from selection_specs import sel_spec_heavies_nowall, sel_spec_nowall
 
 import mdtraj as md
 
@@ -19,6 +19,12 @@ import logging
 
 logger = logging.getLogger('MDAnalysis.core.AtomGroup')
 logger.setLevel(logging.INFO)
+
+# RMSD tolerance for fitting (in A)
+RMSD_TOL = 0.05
+
+# Precision for np.testing.assert_array_almost_equal: in A
+ARR_PREC = 2
 
 NUM_ROT_CONFIGS = 10
 # These routines perform high-level tests on 'boxutil' functionality.
@@ -52,6 +58,12 @@ def gen_shifted_configs(u, parent_dir, filename):
     base_filename = filename.split('.')[0]
 
     box = u.dimensions[:3]
+    box_center = box / 2
+    # Make sure structure is centered in box
+    com = u.select_atoms(sel_spec_nowall).center_of_mass()
+    err_msg = 'center of mass of mol ({}) not in center of box ({})'.format(com, box_center)
+    np.testing.assert_array_almost_equal(box_center, com, decimal=ARR_PREC, err_msg=err_msg)
+
     shifts = [-1, 0, 1]
     shift_vectors = np.array([p for p in itertools.product(shifts, repeat=3)])
 
@@ -73,15 +85,16 @@ def gen_shifted_configs(u, parent_dir, filename):
 def gen_rotated_configs(u, parent_dir, filename):
     assert np.array_equal(u.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
 
-    # call to copy is probably unnecessary, as center_of_mass method always
-    #    returns a fresh instance of the COM vector (I think)
-    #    but good for clarity and just in case
-    com = u.select_atoms(sel_spec_heavies_nowall).center_of_mass().copy()
-
     filepath = os.path.join(parent_dir, filename)
     base_filename = filename.split('.')[0]
 
     box = u.dimensions[:3]
+    box_center = box / 2
+    ## Make sure structure is centered in box
+    com = u.select_atoms(sel_spec_nowall).center_of_mass()
+    err_msg = 'center of mass of mol ({}) not in center of box ({})'.format(com, box_center)
+    np.testing.assert_array_almost_equal(box_center, com, decimal=ARR_PREC, err_msg=err_msg)
+
     rot_vectors = np.random.random((NUM_ROT_CONFIGS, 3))
     rot_degrees = np.random.random(NUM_ROT_CONFIGS) * 360.0
 
@@ -106,8 +119,9 @@ def gen_rotated_configs(u, parent_dir, filename):
 ### Main Tests - iterate through all structure files 
 
 # a list of tuples: (parent_dir, struct_filename)
-#root_dir = os.path.dirname( os.path.realpath(__file__) )
-root_dir = "/home/nick/research/mdscripts/lib/tests"
+root_dir = os.path.dirname( os.path.realpath(__file__) )
+#root_dir = "/home/nick/research/mdscripts/lib/tests"
+
 test_structs = [ (x[0], x[2]) for x in os.walk('{}/test_structs/'.format(root_dir)) ][1:]
 
 
@@ -115,21 +129,23 @@ test_structs = [ (x[0], x[2]) for x in os.walk('{}/test_structs/'.format(root_di
 #   after applying function 'fn'
 #
 #  Used by test routines, below
-def check_centering(ref_filepath, other_glob):
-    u_ref = MDAnalysis.Universe(ref_filepath)
+def check_centering(ref_filepath, ref_toppath, other_glob):
+    u_ref = MDAnalysis.Universe(ref_toppath, ref_filepath)
     ref_pos = u_ref.atoms.positions
 
     other_paths = glob.glob(other_glob)
 
     for other_filepath in other_paths:
-        u_other = MDAnalysis.Universe(other_filepath)
+        u_other = MDAnalysis.Universe(ref_toppath, other_filepath)
 
         # apply centering or rotating function
         center_mol(u_other)
 
         other_pos = u_other.atoms.positions
 
-        assert np.array_equal(ref_pos, other_pos), "RMDS: {}".format( np.sqrt(((ref_pos - other_pos)**2).mean()) )
+        rmsd = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
+
+        assert rmsd < RMSD_TOL, "RMSD ({}) is greater than tolerance ({})".format(rmsd, RMSD_TOL)
 
 def check_rotation(ref_filepath, other_glob):
     u_ref = MDAnalysis.Universe(ref_filepath)
@@ -145,7 +161,9 @@ def check_rotation(ref_filepath, other_glob):
 
         other_pos = u_other.atoms.positions
 
-        assert np.allclose(ref_pos, other_pos, atol=0.02), "RMDS: {}".format( np.sqrt(((ref_pos - other_pos)**2).mean()) )
+        rmsd = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
+        
+        assert rmsd < RMSD_TOL, "RMSD ({}) is greater than tolerance ({})".format(rmsd, RMSD_TOL)
 
 
 def setup_shifted():
@@ -175,9 +193,11 @@ def test_shifted_highlevel():
             other_glob = 'shifted_{}_*'.format(base_filename)
 
             u_refname = os.path.join(parent_dir, struct_file)
+            top_ext = os.path.join('topologies', os.path.basename(parent_dir), '{}.tpr'.format(base_filename))
+            u_topname = os.path.join(root_dir, top_ext)
             other_fileglob = os.path.join(parent_dir, other_glob)
 
-            yield check_centering, u_refname, other_fileglob
+            yield check_centering, u_refname, u_topname, other_fileglob
 
 
 def setup_rotated():
