@@ -15,6 +15,7 @@ ctypedef np.int_t i_DTYPE_t
 
 cdef double MAX_BOND_LEN=4.0
 
+
 #Enforce pbc for all atoms in u
 def pbc(object u):
     assert np.array_equal(u.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
@@ -57,13 +58,46 @@ def merge_sets(list_of_sets):
         curr_set = tuple(curr_set)
         mysets.append(curr_set)
 
-    if len(mysets) == 1:
-        return sorted(mysets)
+    mysets = sorted(list( set(mysets) ))
 
-    mysets = list( np.unique(np.array(mysets)) )
+    if len(mysets) == 1:
+        return mysets
 
     if not sets_merged:
         return mysets
 
     else:
         return merge_sets(mysets)
+
+cdef double sq_dist(np.ndarray[f_DTYPE_t, ndim=1] pt1, np.ndarray[f_DTYPE_t, ndim=1] pt2):
+    return (pt1[0] - pt2[0])**2 + (pt1[1] - pt2[1])**2 + (pt1[2] - pt2[2])**2
+
+
+# Get the minimum image from point 'pt' for a given atom position 'pos' with a given box vector, 'box'
+#
+#    Essentially, this reflects 'pos' across the box, and returns the position of the reflection that is closest to 'pt'
+cdef np.ndarray shift_vectors = np.array([[-1, -1, -1],[-1, -1,  0],[-1, -1,  1],[-1,  0, -1],[-1,  0,  0], [-1,  0,  1], [-1,  1, -1], [-1,  1,  0], [-1,  1,  1],[ 0, -1, -1],[ 0, -1,  0],[ 0, -1,  1],[ 0,  0, -1],[ 0,  0,  1],[ 0,  1, -1],[ 0,  1,  0],[ 0,  1,  1],[ 1, -1, -1],[ 1, -1,  0],[ 1, -1,  1],[ 1,  0, -1],[ 1,  0, 0],[ 1,  0,  1],[ 1,  1, -1],[ 1,  1,  0],[ 1,  1,  1]], dtype=f_DTYPE)
+def get_minimum_image(np.ndarray[f_DTYPE_t, ndim=1] pt, np.ndarray[f_DTYPE_t, ndim=1] pos, np.ndarray[f_DTYPE_t, ndim=1] box_vec):
+
+    cdef double min_dist
+    cdef np.ndarray new_pos, shift_vector
+    cdef np.ndarray this_shift = np.array([0,0,0], dtype=f_DTYPE)
+
+    min_dist = sq_dist(pt, pos)
+    min_pos = pos
+
+    for i in range(26):
+        shift_vector = shift_vectors[i]
+        for j in range(3):
+            this_shift[j] = shift_vector[j] * box_vec[j]
+
+        new_pos = pos + this_shift
+
+        new_dist = sq_dist(pt, new_pos)
+
+        if new_dist < min_dist:
+            min_dist = new_dist
+            min_pos = new_pos
+
+
+    return min_pos

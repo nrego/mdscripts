@@ -10,6 +10,7 @@ import numpy as np
 import math
 import itertools
 
+from MDAnalysis import NoDataError
 import MDAnalysis
 
 import os, glob
@@ -25,6 +26,9 @@ RMSD_TOL = 0.05
 
 # Precision for np.testing.assert_array_almost_equal: in A
 ARR_PREC = 2
+
+# check that these atom positions are correct - all within cutoff of center of box
+DIST_CUTOFF = 10
 
 NUM_ROT_CONFIGS = 10
 # These routines perform high-level tests on 'boxutil' functionality.
@@ -70,7 +74,7 @@ def gen_shifted_configs(u, parent_dir, filename):
     i = 0
     for shift_vector in shift_vectors:
         
-        coord_shift = shift_vector * box.astype(float)/2
+        coord_shift = shift_vector * box/2
 
         u.atoms.positions += coord_shift
 
@@ -131,7 +135,14 @@ test_structs = [ (x[0], x[2]) for x in os.walk('{}/test_structs/'.format(root_di
 #  Used by test routines, below
 def check_centering(ref_filepath, ref_toppath, other_glob):
     u_ref = MDAnalysis.Universe(ref_toppath, ref_filepath)
-    ref_pos = u_ref.atoms.positions
+
+    ref_com = u_ref.select_atoms(sel_spec_nowall).center_of_mass()
+
+    try:
+        ref_close_atoms = u_ref.select_atoms('around {:.2f} ({})'.format(DIST_CUTOFF, sel_spec_nowall))
+        ref_pos = ref_close_atoms.positions
+    except NoDataError:
+        ref_close_atoms = None
 
     other_paths = glob.glob(other_glob)
 
@@ -141,11 +152,17 @@ def check_centering(ref_filepath, ref_toppath, other_glob):
         # apply centering or rotating function
         center_mol(u_other)
 
-        other_pos = u_other.atoms.positions
+        other_com = u_other.select_atoms(sel_spec_nowall).center_of_mass()
 
-        rmsd = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
+        err_msg = 'Center of masses of mol not equal within precision'
+        np.testing.assert_array_almost_equal(ref_com, other_com, err_msg=err_msg, decimal=2)
+        
+        np.testing.assert_array_almost_equal(u_ref.select_atoms(sel_spec_nowall).positions, u_other.select_atoms(sel_spec_nowall).positions, decimal=2)
 
-        assert rmsd < RMSD_TOL, "RMSD ({}) is greater than tolerance ({})".format(rmsd, RMSD_TOL)
+        if ref_close_atoms is not None:
+            other_pos = u_other.atoms[ref_close_atoms.indices].positions
+            rmsd = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
+            assert rmsd < RMSD_TOL, "RMSD ({}) is greater than tolerance ({}) for atoms within {:.2f} A".format(rmsd, RMSD_TOL, DIST_CUTOFF)
 
 def check_rotation(ref_filepath, other_glob):
     u_ref = MDAnalysis.Universe(ref_filepath)
