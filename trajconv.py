@@ -109,20 +109,27 @@ Command-line options
 
         n_frames = self.last_frame - self.start_frame
         center_mol(self.ref_univ)
-        for i_frame in range(self.start_frame, self.last_frame):
-            if i_frame % 100 == 0:
-                print("\r doing frame {} of {}".format(i_frame, n_frames))
-            curr_ts = self.other_univ.trajectory[i_frame]
 
+        self.ref_univ.atoms.write('fit_ref.gro')
+        if self.do_traj:
+            with MDAnalysis.Writer(self.outfile + ".xtc", self.other_univ.atoms.n_atoms) as W:
+                for i_frame in range(self.start_frame, self.last_frame):
+                    
+                    if i_frame % 100 == 0:
+                        print("\r doing frame {} of {}".format(i_frame, n_frames))
+                    curr_ts = self.other_univ.trajectory[i_frame]
+
+                    center_mol(self.other_univ)
+                    rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+                    W.write(self.other_univ.atoms)
+        
+
+        else:
             center_mol(self.other_univ)
             rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
-
-        if not self.do_traj:
             self.other_univ.atoms.write(self.outfile + ".gro")
-        else:
-            with MDAnalysis.Writer(self.outfile + ".xtc", self.other_univ.atoms.n_atoms) as W:
-                for ts in self.other_univ.trajectory:
-                    W.write(self.other_univ.atoms)
+
+
 
 
 if __name__=='__main__':
