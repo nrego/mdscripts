@@ -11,6 +11,7 @@ import math
 import itertools
 
 from MDAnalysis import NoDataError
+from MDAnalysis.analysis.rms import rmsd
 import MDAnalysis
 
 import os, glob
@@ -26,9 +27,11 @@ RMSD_TOL = 0.05
 
 # Precision for np.testing.assert_array_almost_equal: in A
 ARR_PREC = 2
+ARR_PREC_TIGHT = 4
 
 # check that these atom positions are correct - all within cutoff of center of box
 DIST_CUTOFF = 10
+PROT_DIST_CUTOFF = 12.2
 
 NUM_ROT_CONFIGS = 10
 # These routines perform high-level tests on 'boxutil' functionality.
@@ -161,8 +164,8 @@ def check_centering(ref_filepath, ref_toppath, other_glob):
 
         if ref_close_atoms is not None:
             other_pos = u_other.atoms[ref_close_atoms.indices].positions
-            rmsd = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
-            assert rmsd < RMSD_TOL, "RMSD ({}) is greater than tolerance ({}) for atoms within {:.2f} A".format(rmsd, RMSD_TOL, DIST_CUTOFF)
+            rms = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
+            assert rms < RMSD_TOL, "RMSD ({}) is greater than tolerance ({}) for atoms within {:.2f} A".format(rms, RMSD_TOL, DIST_CUTOFF)
 
 def check_rotation(ref_filepath, other_glob):
     u_ref = MDAnalysis.Universe(ref_filepath)
@@ -178,9 +181,9 @@ def check_rotation(ref_filepath, other_glob):
 
         other_pos = u_other.atoms.positions
 
-        rmsd = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
+        rms = np.sqrt(( np.sum((ref_pos - other_pos)**2, axis=1)).mean())
         
-        assert rmsd < RMSD_TOL, "RMSD ({}) is greater than tolerance ({})".format(rmsd, RMSD_TOL)
+        assert rms < RMSD_TOL, "RMSD ({}) is greater than tolerance ({})".format(rms, RMSD_TOL)
 
 
 def setup_shifted():
@@ -249,3 +252,91 @@ def test_rotated_highlevel():
             yield check_rotation, u_refname, other_fileglob
 
 
+# Check how well we can align actual simulation data: the final configuration
+#   of a ubiquitin to its starting structure
+def test_align_prot_struct():
+
+    top_file_path = os.path.join(root_dir, 'test_data/ubiq/ubiq.tpr')
+    ref_struct_path = os.path.join(root_dir, 'test_data/ubiq/ubiq_reference.gro')
+    other_struct_path = os.path.join(root_dir, 'test_data/ubiq/ubiq_other.gro')
+
+    ref_univ = MDAnalysis.Universe(top_file_path, ref_struct_path)
+    other_univ = MDAnalysis.Universe(top_file_path, other_struct_path)
+
+    center_mol(ref_univ)
+    center_mol(other_univ)
+
+    # Rotationally align according to all protein heavies
+    rotate_mol(other_univ, ref_univ, mol_spec=sel_spec_heavies_nowall)
+
+    ref_mol = ref_univ.select_atoms(sel_spec_heavies_nowall)
+    other_mol = ref_univ.select_atoms(sel_spec_heavies_nowall)
+    rms = np.sqrt(( np.sum((ref_mol.atoms.positions - other_mol.atoms.positions)**2, axis=1)).mean())
+
+    assert rms < 5.0, "RMSD ({}) is greater than {} A".format(rms)
+
+# Test how well we can align (center and rotate) after shifting and rotating a starting structure
+def test_align_prot_after_shift():
+
+    top_file_path = os.path.join(root_dir, 'test_data/ubiq/ubiq.tpr')
+    ref_struct_path = os.path.join(root_dir, 'test_data/ubiq/ubiq_reference.gro')
+
+    ref_univ = MDAnalysis.Universe(top_file_path, ref_struct_path)
+    center_mol(ref_univ)
+
+    box = ref_univ.dimensions[:3]
+    assert np.array_equal(ref_univ.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
+
+    other_univ = MDAnalysis.Universe(top_file_path, ref_struct_path)
+    center_mol(other_univ)
+
+    com = other_univ.select_atoms(sel_spec_nowall).center_of_mass()
+    # Rotate the system randomly
+    rot_vector = np.random.random((3))
+    is_neg = np.random.random(3) > 0.5
+    rot_vector[is_neg] = - rot_vector[is_neg]
+    degree_to_rot = np.random.random() * 360.0
+    curr_rot_mat = rotation_matrix(rot_vector, degree_to_rot)
+
+    # Rotate about protein's COM
+    init_positions = other_univ.atoms.positions - com
+    new_positions = np.dot(init_positions, curr_rot_mat) + com
+    other_univ.atoms.positions = new_positions
+
+    # Shift all positions
+    shift_vec = np.random.random((3))
+    shift_vec /= np.sqrt( np.sum(shift_vec**2) )
+    is_neg = np.random.random(3) > 0.5
+    shift_vec[is_neg] = -shift_vec[is_neg]
+    # Max shift of 10 A in any direction
+    dist_to_shift = np.random.random() * 5.0
+    shift_vec *= dist_to_shift
+    other_univ.atoms.positions += shift_vec
+
+    # ...and apply pbc
+    pbc(other_univ)
+
+    ## No check we can retrieve original structure by centering 
+    # and fitting the protein's heavy atoms
+    center_mol(other_univ)
+
+    new_com = other_univ.select_atoms(sel_spec_nowall).center_of_mass()
+    np.testing.assert_array_almost_equal(com, new_com, decimal=ARR_PREC_TIGHT)
+
+    rotate_mol(ref_univ, other_univ, sel_spec_heavies_nowall)
+
+    ref_mol = ref_univ.select_atoms(sel_spec_nowall)
+    other_mol = other_univ.select_atoms(sel_spec_nowall)
+
+    rmsd_mol = rmsd(ref_mol.positions, other_mol.positions)
+    assert rmsd_mol < 1e-4
+
+    ## Make sure all waters within a reasonable distance of protein are still good
+    ref_close_waters = ref_univ.select_atoms('name OW and around {:.1f} {}'.format(PROT_DIST_CUTOFF, sel_spec_nowall))
+    other_close_waters = other_univ.select_atoms('name OW and around {:.1f} {}'.format(PROT_DIST_CUTOFF, sel_spec_nowall))
+
+    assert ref_close_waters.n_atoms > 1000
+    assert ref_close_waters.n_atoms == other_close_waters.n_atoms
+
+    rmsd_waters = rmsd(ref_close_waters.positions, other_close_waters.positions)
+    assert rmsd_waters < 1e-4

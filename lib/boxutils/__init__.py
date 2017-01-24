@@ -51,9 +51,9 @@ def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall):
 #   atoms in system
 #
 #  Modifies MDAnalysis Universe 'univ' in-place
-def rotate_mol(ref_univ, univ_other, mol_spec=sel_spec_nowall):
+def rotate_mol(ref_univ, other_univ, mol_spec=sel_spec_nowall):
 
-    alignto(univ_other, ref_univ, select=mol_spec)
+    alignto(other_univ, ref_univ, select=mol_spec)
 
     return ref_univ
 

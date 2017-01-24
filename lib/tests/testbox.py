@@ -6,7 +6,7 @@ from selection_specs import sel_spec_nowall
 import os
 
 import MDAnalysis
-from MDAnalysis.tests.datafiles import GRO_CUBIC, GRO, TPR, PDB_xvf, TPR_xvf
+from MDAnalysis.tests.datafiles import GRO, TPR, PDB_xvf, TPR_xvf
 
 import numpy as np
 

@@ -17,7 +17,7 @@ from scipy.spatial import cKDTree
 import itertools
 #from skimage import measure
 
-from utils import rho, cartesian
+from rhoutils import rho, cartesian
 from mdtools import ParallelTool
 
 from fieldwriter import RhoField

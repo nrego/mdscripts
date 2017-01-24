@@ -3,7 +3,7 @@ import numpy as np
 import re
 import MDAnalysis
 
-from utils import cartesian
+from rhoutils import cartesian
 
 import pandas
 import mdtraj as md
