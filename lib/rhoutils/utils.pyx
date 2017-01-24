@@ -80,6 +80,12 @@ cpdef np.ndarray[f_DTYPE_t, ndim=1] phi_1d(np.ndarray[f_DTYPE_t, ndim=1] r_array
 
     return phi_vec
 
+cdef np.ndarray new_xvals = np.linspace(-12.3, 12.3, 1000, dtype=f_DTYPE)
+cdef np.ndarray fast_phi_table = phi_1d(new_xvals, 2.4, 2.4*2.4, 7.0, 7.0*7.0)
+fast_phi_table[new_xvals > 7.0] = 0.0
+fast_phi_table[new_xvals <= -7.0] = 0.0
+fast_phi = interp1d(new_xvals, fast_phi_table)
+
 
 # Calculates value of coarse-grained gaussian for each point in r_array (shape (n_pts, 3))
 #   sigma and cutoff in A. only works around this range - have to see
@@ -96,9 +102,34 @@ def rho(np.ndarray[f_DTYPE_t, ndim=2] r_array, double sigma, double sigma_sq, do
     ypts = r_array[:,1]
     zpts = r_array[:,2]
 
+    #phi_x = phi_1d(xpts, sigma, sigma_sq, cutoff, cutoff_sq)
+    #phi_y = phi_1d(ypts, sigma, sigma_sq, cutoff, cutoff_sq)
+    #phi_z = phi_1d(zpts, sigma, sigma_sq, cutoff, cutoff_sq)
+    phi_x = fast_phi(xpts)
+    phi_y = fast_phi(ypts)
+    phi_z = fast_phi(zpts)
+
+    phi_vec = phi_x * phi_y * phi_z
+
+    return phi_vec
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def rho2(np.ndarray[f_DTYPE_t, ndim=2] r_array, double sigma, double sigma_sq, double cutoff, double cutoff_sq):
+
+    cdef np.ndarray[f_DTYPE_t, ndim=1] xpts, ypts, zpts, phi_x, phi_y, phi_z
+    cdef int r_array_shape = r_array.shape[0]
+    cdef np.ndarray[f_DTYPE_t, ndim=1] phi_vec
+
+
+    xpts = r_array[:,0]
+    ypts = r_array[:,1]
+    zpts = r_array[:,2]
+
     phi_x = phi_1d(xpts, sigma, sigma_sq, cutoff, cutoff_sq)
     phi_y = phi_1d(ypts, sigma, sigma_sq, cutoff, cutoff_sq)
     phi_z = phi_1d(zpts, sigma, sigma_sq, cutoff, cutoff_sq)
+
 
     phi_vec = phi_x * phi_y * phi_z
 

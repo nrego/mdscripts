@@ -1,5 +1,5 @@
 from __future__ import division, print_function
-from rhoutils import phi_1d, rho
+from rhoutils import phi_1d, rho, fast_phi
 from math import exp, erf, sqrt, pi
 
 import scipy.integrate
@@ -10,7 +10,7 @@ import numpy as np
 DTYPE = np.float64
 
 # Tolerance for array equivalence tests, etc
-arr_tol = 1e-7
+arr_tol = 1e-5
 
 class TestPhi:
 
@@ -74,6 +74,11 @@ class TestPhi:
         max_diff = np.abs((test_phivals - self.phivals).max())
         assert max_diff < arr_tol, "maximum difference ({}) > tolerance ({})".format(max_diff, arr_tol)
 
+    def test_fast_phi(self, arr_tol=5e-5):
+        test_phivals = fast_phi(self.vals)
+        max_diff = np.abs((test_phivals - self.phivals).max())
+        assert max_diff < arr_tol, "maximum difference ({}) > tolerance ({})".format(max_diff, arr_tol)
+
     def test_phi_1d_normalized(self, arr_tol=1e-6):
 
         test_phivals = phi_1d(self.vals, sigma=self.sigma, sigma_sq=self.sigma**2, cutoff=self.cutoff, cutoff_sq=self.cutoff**2)
@@ -90,6 +95,8 @@ class TestPhi:
 
         assert max_diff < arr_tol, "maximum difference ({}) > tolerance ({})".format(max_diff, arr_tol)
 
-        assert (test_rhovals == 0.0).sum() == (self.rhovals == 0).sum(), "different number of rho=zero values"
-
-    ## TODO: testcartesian
+        #assert (test_rhovals == 0.0).sum() == (self.rhovals == 0).sum(), "different number of rho=zero values"
+        max_zero_diff = test_rhovals[self.rhovals==0.0].max()
+        assert max_zero_diff < arr_tol
+        max_zero_diff = self.rhovals[test_rhovals==0.0].max()
+        assert max_zero_diff < arr_tol

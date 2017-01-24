@@ -116,7 +116,7 @@ Command-line options
                 for i_frame in range(self.start_frame, self.last_frame):
                     
                     if i_frame % 100 == 0:
-                        print("\r doing frame {} of {}".format(i_frame, n_frames))
+                        print("\r doing frame {} of {}".format(i_frame, self.last_frame))
                     curr_ts = self.other_univ.trajectory[i_frame]
 
                     center_mol(self.other_univ)
