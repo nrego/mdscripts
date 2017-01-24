@@ -110,7 +110,7 @@ Command-line options
         n_frames = self.last_frame - self.start_frame
         center_mol(self.ref_univ)
         for i_frame in range(self.start_frame, self.last_frame):
-            if i_frame % (n_frames/10) == 0:
+            if i_frame % 100 == 0:
                 print("\r doing frame {} of {}".format(i_frame, n_frames))
             curr_ts = self.other_univ.trajectory[i_frame]
 

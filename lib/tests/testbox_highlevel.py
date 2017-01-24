@@ -333,10 +333,9 @@ def test_align_prot_after_shift():
 
     ## Make sure all waters within a reasonable distance of protein are still good
     ref_close_waters = ref_univ.select_atoms('name OW and around {:.1f} {}'.format(PROT_DIST_CUTOFF, sel_spec_nowall))
-    other_close_waters = other_univ.select_atoms('name OW and around {:.1f} {}'.format(PROT_DIST_CUTOFF, sel_spec_nowall))
+    other_close_waters = other_univ.atoms[ref_close_waters.indices]
 
     assert ref_close_waters.n_atoms > 1000
-    assert ref_close_waters.n_atoms == other_close_waters.n_atoms
 
     rmsd_waters = rmsd(ref_close_waters.positions, other_close_waters.positions)
     assert rmsd_waters < 1e-4
