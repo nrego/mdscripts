@@ -51,7 +51,7 @@ class MPIBase:
 
         self.comm = comm
         self.rank = comm.Get_rank()
-        self.num_procs = comm.Get_size()
+        self.num_procs = self.n_workers = comm.Get_size()
         self.name = MPI.Get_processor_name()
 
         # Define master rank
