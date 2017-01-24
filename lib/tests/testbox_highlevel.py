@@ -31,7 +31,7 @@ ARR_PREC_TIGHT = 4
 
 # check that these atom positions are correct - all within cutoff of center of box
 DIST_CUTOFF = 10
-PROT_DIST_CUTOFF = 12.2
+PROT_DIST_CUTOFF = 13
 
 NUM_ROT_CONFIGS = 10
 # These routines perform high-level tests on 'boxutil' functionality.
