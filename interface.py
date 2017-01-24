@@ -225,7 +225,10 @@ Command-line options
         self.rho = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
 
         # Cut that shit up to send to work manager
-        n_workers = self.work_manager.n_workers or 1
+        try:
+            n_workers = self.work_manager.n_workers or 1
+        except AttributeError:
+            n_workers = 1
 
         blocksize = self.n_frames // n_workers
         log.info('n workers: {}'.format(n_workers))
