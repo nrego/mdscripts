@@ -13,8 +13,8 @@ cdef extern from "math.h":
 cimport numpy as np
 cimport cython
 
-f_DTYPE = np.float64
-ctypedef np.float64_t f_DTYPE_t
+f_DTYPE = np.float32
+ctypedef np.float32_t f_DTYPE_t
 
 i_DTYPE = np.int
 ctypedef np.int_t i_DTYPE_t

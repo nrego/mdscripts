@@ -20,82 +20,85 @@ import itertools
 from rhoutils import rho, cartesian
 from mdtools import ParallelTool
 
+from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
+
 from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
 
 ## Try to avoid round-off errors as much as we can...
-rho_dtype = np.float64 
+rho_dtype = np.float32
 
-def _calc_rho(lb, ub, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree):    
+def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree, water_cutoff):    
     cutoff_sq = cutoff**2
     sigma_sq = sigma**2
-    block = ub - lb
-    rho_prot_slice = np.zeros((block, npts), dtype=rho_dtype)
-    rho_water_slice = np.zeros((block, npts), dtype=rho_dtype)
-    rho_slice = np.zeros((block, npts), dtype=rho_dtype)
+    rho_prot_slice = np.zeros((npts,), dtype=rho_dtype)
+    rho_water_slice = np.zeros((npts,), dtype=rho_dtype)
+    rho_slice = np.zeros((npts,), dtype=rho_dtype)
 
-   
-    # i is frame
-    for i in xrange(block):
-        prot_tree = cKDTree(prot_heavies[i])
-        prot_neighbors = prot_tree.query_ball_tree(tree, cutoff, p=float('inf'))
+    prot_tree = cKDTree(prot_heavies)
+    prot_neighbors = prot_tree.query_ball_tree(tree, cutoff, p=float('inf'))
 
-        # position of each atom at frame i
-        for atm_idx, pos in enumerate(prot_heavies[i]):
+    # position of each atom at frame i
+    for atm_idx, pos in enumerate(prot_heavies):
 
-            #pos = atom.position
-            # Indices of all gridpoints within cutoff of atom's position
-            neighboridx = np.array(prot_neighbors[atm_idx])
-            if neighboridx.size == 0:
-                continue
-            neighborpts = gridpts[neighboridx]
+        #pos = atom.position
+        # Indices of all gridpoints within cutoff of atom's position
+        neighboridx = np.array(prot_neighbors[atm_idx])
+        if neighboridx.size == 0:
+            continue
+        neighborpts = gridpts[neighboridx]
 
-            dist_vectors = neighborpts[:, ...] - pos
+        dist_vectors = neighborpts[:, ...] - pos
+        dist_vectors = dist_vectors.astype(rho_dtype)
+        # Distance array between atom and neighbor grid points
+        #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
+        #                                       'sqeuclidean').reshape(neighboridx.shape)
 
-            # Distance array between atom and neighbor grid points
-            #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
-            #                                       'sqeuclidean').reshape(neighboridx.shape)
+        rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
+        rho_prot_slice[neighboridx] += rhovals
 
-            rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-            rho_prot_slice[i, neighboridx] += rhovals
+        del dist_vectors, neighborpts
 
-        # find all gridpoints within 12 A of protein atoms
-        #   so we can set the rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
-        neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=12)
-        neighbor_list = itertools.chain(*neighbor_list_by_point)
-        # neighbor_idx is a unique list of all grid_pt *indices* that are within r=12 from
-        #   *any* atom in prot_heavies
-        neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
+    # find all gridpoints within 12 A of protein atoms
+    #   so we can set the rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
+    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=water_cutoff-3)
+    neighbor_list = itertools.chain(*neighbor_list_by_point)
+    # neighbor_idx is a unique list of all grid_pt *indices* that are within r=12 from
+    #   *any* atom in prot_heavies
+    neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
-        # Find indices of all grid points that are *farther* than 12 A from protein
-        far_pt_idx = np.setdiff1d(np.arange(npts), neighbor_idx)
+    # Find indices of all grid points that are *farther* than 12 A from protein
+    far_pt_idx = np.setdiff1d(np.arange(npts), neighbor_idx)
 
-        assert neighbor_idx.shape[0] + far_pt_idx.shape[0] == npts
+    assert neighbor_idx.shape[0] + far_pt_idx.shape[0] == npts
 
-        del prot_tree, prot_neighbors, neighbor_list_by_point, neighbor_list, neighbor_idx
+    del prot_tree, prot_neighbors, neighbor_list_by_point, neighbor_list, neighbor_idx
 
-        water_tree = cKDTree(water_ow[i])
-        water_neighbors = water_tree.query_ball_tree(tree, cutoff, p=float('inf'))
+    water_tree = cKDTree(water_ow)
+    water_neighbors = water_tree.query_ball_tree(tree, cutoff, p=float('inf'))
 
-        for atm_idx, pos in enumerate(water_ow[i]):
-            neighboridx = np.array(water_neighbors[atm_idx])
-            if neighboridx.size == 0:
-                continue
-            neighborpts = gridpts[neighboridx]
+    for atm_idx, pos in enumerate(water_ow):
+        neighboridx = np.array(water_neighbors[atm_idx])
+        if neighboridx.size == 0:
+            continue
+        neighborpts = gridpts[neighboridx]
 
-            dist_vectors = neighborpts[:, ...] - pos
+        dist_vectors = neighborpts[:, ...] - pos
+        dist_vectors = dist_vectors.astype(rho_dtype)
 
-            rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-            rho_water_slice[i, neighboridx] += rhovals
+        rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
+        rho_water_slice[neighboridx] += rhovals
 
-        del water_tree, water_neighbors
-        # Can probably move this out of here and perform at end
-        rho_slice[i, :] = rho_prot_slice[i, :]/rho_prot_bulk \
-            + rho_water_slice[i, :]/rho_water_bulk
-        rho_slice[i, far_pt_idx] = 1.0
+        del dist_vectors, neighborpts
 
-    return (rho_slice, lb, ub)
+    del water_tree, water_neighbors
+    # Can probably move this out of here and perform at end
+    rho_slice = rho_prot_slice/rho_prot_bulk \
+        + rho_water_slice/rho_water_bulk
+    rho_slice[far_pt_idx] = 1.0
+
+    return (rho_slice, frame_idx)
 
 class Interface(ParallelTool):
     prog='interface'
@@ -145,6 +148,8 @@ Command-line options
 
         # consider interfaces near walls
         self.wall = None
+        # sel_spec (string) for selecting solute atoms
+        self.mol_sel_spec = None
 
         self.init_from_args = False
 
@@ -213,12 +218,20 @@ Command-line options
         self.outxtc = args.outxtc
 
         self.wall = args.wall
+        if self.wall:
+            self.mol_sel_spec = sel_spec_heavies
+        else:
+            self.mol_sel_spec = sel_spec_heavies_nowall
 
         self.init_from_args = True
 
         self._setup_grid()
 
+    #@profile
     def calc_rho(self):
+
+        water_dist_cutoff = int(np.sqrt(3*self.cutoff**2))
+        water_dist_cutoff += 1
 
         rho_water = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
         rho_prot = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
@@ -230,55 +243,40 @@ Command-line options
         except AttributeError:
             n_workers = 1
 
-        blocksize = self.n_frames // n_workers
         log.info('n workers: {}'.format(n_workers))
         log.info('n frames: {}'.format(self.n_frames))
-        if self.n_frames % n_workers > 0:
-            blocksize += 1
-        log.info('blocksize: {}'.format(blocksize))
+
 
         def task_gen():
-            if self.wall:
-                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL) and not (name CL or name NA or name DUM) and not resname INT")
-            else:
-                prot_heavies = self.univ.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
 
-            water_ow = self.univ.select_atoms("name OW")
+            for frame_idx in xrange(self.start_frame, self.last_frame):
 
-            if __debug__:
-                checkset = set()
-            for lb_frame in xrange(self.start_frame, self.last_frame, blocksize):
-                ub_frame = min(self.last_frame, lb_frame+blocksize)
-                lb = lb_frame - self.start_frame
-                ub = ub_frame - self.start_frame
-                if __debug__:
-                    checkset.update(set(xrange(lb_frame,ub_frame)))
-
-                # Shape is (nframes, natoms, 3)
-                prot_heavies_pos = np.zeros((ub-lb, len(prot_heavies), 3), dtype=rho_dtype)
-                water_ow_pos = np.zeros((ub-lb, len(water_ow), 3), dtype=rho_dtype)
-                for i, frame_idx in enumerate(xrange(lb_frame, ub_frame)):
-                    self.univ.trajectory[frame_idx]
-                    prot_heavies_pos[i, ...] = prot_heavies.positions
-                    water_ow_pos[i, ...] = water_ow.positions
+                self.univ.trajectory[frame_idx]
+                prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
+                water_ow = self.univ.select_atoms("name OW and around {} ({})".format(water_dist_cutoff, self.mol_sel_spec))
+                #water_ow = self.univ.select_atoms('name OW')
+                prot_heavies_pos = prot_heavies.positions
+                water_ow_pos = water_ow.positions
 
                 args = ()
-                kwargs = dict(lb=lb, ub=ub, prot_heavies=prot_heavies_pos, water_ow=water_ow_pos,
+                kwargs = dict(frame_idx=frame_idx, prot_heavies=prot_heavies_pos, water_ow=water_ow_pos,
                               cutoff=self.cutoff, sigma=self.sigma, gridpts=self.gridpts, npts=self.npts, 
                               rho_prot_bulk=self.rho_prot_bulk, rho_water_bulk=self.rho_water_bulk,
-                              tree=self.tree)
-                log.info("Sending job batch (from frame {} to {})".format(lb_frame, ub_frame))
+                              tree=self.tree, water_cutoff=water_dist_cutoff)
+                log.info("Sending job (frame {})".format(frame_idx))
                 yield (_calc_rho, args, kwargs)
 
-            if __debug__:
-                assert checkset == set(xrange(self.start_frame, self.last_frame)), 'frames missing: {}'.format(set(xrange(self.start_frame, self.last_frame)) - checkset)
-
         # Splice together results into final array of densities
-        for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-            rho_slice, lb, ub = future.get_result(discard=True)
-            self.rho[lb:ub, :] = rho_slice
-            del rho_slice
-            
+        #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
+        #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
+            #import pdb; pdb.set_trace()
+        #    rho_slice, lb, ub = future.get_result(discard=True)
+        #    self.rho[lb:ub, :] = rho_slice
+        #   del rho_slice
+        for (fn, args, kwargs) in task_gen():
+            rho_slice, frame_idx = fn(*args, **kwargs) 
+            self.rho[frame_idx-self.start_frame, :] = rho_slice
+            del rho_slice  
 
     def get_rho_avg(self, weights=None):
         if self.rho is None:
