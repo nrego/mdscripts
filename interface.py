@@ -271,7 +271,7 @@ Command-line options
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
             #import pdb; pdb.set_trace()
             rho_slice, frame_idx = future.get_result(discard=True)
-            self.rho[frame_idx, :] = rho_slice
+            self.rho[frame_idx-self.start_frame, :] = rho_slice
             del rho_slice
         #for (fn, args, kwargs) in task_gen():
         #    rho_slice, frame_idx = fn(*args, **kwargs) 
