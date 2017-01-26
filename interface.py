@@ -268,15 +268,12 @@ Command-line options
 
         # Splice together results into final array of densities
         #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-        #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
+        for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
             #import pdb; pdb.set_trace()
-        #    rho_slice, lb, ub = future.get_result(discard=True)
-        #    self.rho[lb:ub, :] = rho_slice
-        #   del rho_slice
-        for (fn, args, kwargs) in task_gen():
-            rho_slice, frame_idx = fn(*args, **kwargs) 
-            self.rho[frame_idx-self.start_frame, :] = rho_slice
-            del rho_slice  
+            rho_slice, lb, ub = future.get_result(discard=True)
+            self.rho[lb:ub, :] = rho_slice
+            del rho_slice
+
 
     def get_rho_avg(self, weights=None):
         if self.rho is None:
