@@ -17,6 +17,10 @@ cdef double MAX_BOND_LEN=4.0
 
 
 #Enforce pbc for all atoms in u
+#  May break up molecules/residues
+#  Not this tool doesn't have any knowledge
+#  of molecule definitions (e.g. bonds)
+#  and works on an atom-wise basis
 def pbc(object u):
     assert np.array_equal(u.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
 
@@ -29,8 +33,29 @@ def pbc(object u):
 
     u.atoms.positions = pos
 
+# Make specified 'mol_atoms' (an MDAnalysis.AtomGroup instance) whole
+#   by reflecting broken atoms across box boundaries
+#   
+#   This function attempts to reconstruct the whole molecule by moving all 
+#     broken atoms into the box image containing the *most* box atoms
+def make_res_whole_again(object u, object mol_atoms):
+    assert np.array_equal(u.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
+
+    box = u.dimensions[:3]
+
+    if mol_broken(mol_atoms):
+        pass
+
+    return mol_atoms
+
+# Check that 'mol_atoms' (an MDAnalysis.AtomGroup) a broken
+#   Requires 'bond' data for 'mol_atoms' - a topology file must 
+#   be provided
 def mol_broken(object mol_atoms):
+    assert mol_atoms.bonds.values() is not None, "No bond data provided for mol_atoms - did you specify a topology?"
+        
     return mol_atoms.bonds.values().max() > MAX_BOND_LEN
+
 
 # NOTE: Only works on broken molecule
 #   NOT USED

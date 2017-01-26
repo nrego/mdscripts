@@ -18,8 +18,10 @@ from selection_specs import sel_spec_nowall, sel_spec_not_nowall
 def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall):
 
     mol_group = univ.select_atoms(mol_spec)
+    assert mol_group.bonds.values() is not None, "No bond data provided for mol_group - did you provide a topology?"
     box = (univ.dimensions[:3]).astype(DTYPE)
     assert np.array_equal(univ.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
+
 
     box_center = box / 2.0
     broken_mol = mol_broken(mol_group)
