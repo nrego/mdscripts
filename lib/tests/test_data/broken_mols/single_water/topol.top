@@ -1,0 +1,40 @@
+;
+;	File 'topol.top' was generated
+;	By user: nick (1000)
+;	On host: nick-ThinkPad-T440p
+;	At date: Thu Jan 26 18:57:40 2017
+;
+;	This is a standalone topology file
+;
+;	It was generated using program:
+;	pdb2gmx - VERSION 4.5.3
+;
+;	Command line was:
+;	pdb2gmx -f spc216.gro -o single_water.gro 
+;
+;	Force field was read from current directory or a relative path - path added.
+;
+
+; Include forcefield parameters
+#include "./amber99sb.ff/forcefield.itp"
+
+; Include water topology
+#include "./amber99sb.ff/spce.itp"
+
+#ifdef POSRES_WATER
+; Position restraint for each water oxygen
+[ position_restraints ]
+;  i funct       fcx        fcy        fcz
+   1    1       1000       1000       1000
+#endif
+
+; Include topology for ions
+#include "./amber99sb.ff/ions.itp"
+
+[ system ]
+; Name
+water  
+
+[ molecules ]
+; Compound        #mols
+SOL                 1

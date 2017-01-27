@@ -38,7 +38,7 @@ def pbc(object u):
 #   
 #   This function attempts to reconstruct the whole molecule by moving all 
 #     broken atoms into the box image containing the *most* box atoms
-def make_res_whole_again(object u, object mol_atoms):
+def make_grp_whole_again(object u, object mol_atoms):
     assert np.array_equal(u.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
 
     box = u.dimensions[:3]
