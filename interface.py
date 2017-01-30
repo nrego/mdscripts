@@ -176,7 +176,9 @@ Command-line options
         sgroup.add_argument('-d', '--cutoff', type=float, default=7.0,
                             help='Cutoff distance for coarse grained gaussian, in Angstroms (default: 7 A)')
         sgroup.add_argument('-b', '--start', type=int, default=0,
-                        help='First timepoint (in ps)')
+                            help='First timepoint (in ps)')
+        sgroup.add_argument('-e', '--end', type=int, 
+                            help='Last timepoint (in ps)')
         sgroup.add_argument('--wall', action='store_true', 
                             help='If true, consider interace near walls (default False)')
         sgroup.add_argument('--rhoprot', default=40, type=float,
@@ -209,7 +211,10 @@ Command-line options
                              .format(args.start, (u.trajectory.n_frames * u.trajectory.dt)))
 
         self.start_frame = int(args.start / u.trajectory.dt)
-        self.last_frame = u.trajectory.n_frames
+        if args.end is not None:
+            self.last_frame = int(args.end / u.trajectory.dt)
+        else:
+            self.last_frame = u.trajectory.n_frames
 
         self.npts = 0
 
