@@ -103,6 +103,26 @@ def test_mol_broken_ids_whole_molecule_large():
 
     assert not mol_broken(mol_group)
 
+def test_mol_broken_ids_single_whole_water():
+
+    univ = MDAnalysis.Universe('test_data/broken_mols/single_water/single_water.tpr', 'test_data/broken_mols/single_water/single_water.gro')
+
+    mol_group = univ.select_atoms('resname SOL')
+
+    assert mol_group.n_atoms == 3
+
+    assert not mol_broken(mol_group)
+
+def test_mol_broken_ids_single_broken_water():
+
+    univ = MDAnalysis.Universe('test_data/broken_mols/single_water/single_water.tpr', 'test_data/broken_mols/single_water/single_water_broken.gro')
+
+    mol_group = univ.select_atoms('resname SOL')
+
+    assert mol_group.n_atoms == 3
+
+    assert mol_broken(mol_group)
+
 def test_get_fragmented_groups_broken_molecule():
     ref_top_filepath = os.path.join(root_dir, 'test_data/top.tpr')
     struct_filepath = os.path.join(root_dir, 'test_data/ala_shifted_broken.gro')

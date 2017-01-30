@@ -68,6 +68,8 @@ Command-line options
                             help='Input file to fit to reference. can be GRO or XTC')
         sgroup.add_argument('-b', '--start', type=int, default=0,
                             help='First timepoint (in ps)')
+        sgroup.add_argument('-e', '--end', type=int, 
+                            help='Last timepoint (in ps) - default is last available')
         sgroup.add_argument('--fitspec', type=str, default=sel_spec_heavies_nowall,
                             help='MDAnalysis selection string for fitting. Default selects all protein heavy atoms')
 
@@ -99,7 +101,10 @@ Command-line options
                              .format(args.start, (other_univ.trajectory.n_frames * other_univ.trajectory.dt)))
 
         self.start_frame = int(args.start / other_univ.trajectory.dt)
-        self.last_frame = other_univ.trajectory.n_frames
+        if args.end is not None:
+            self.last_frame = args.end
+        else:
+            self.last_frame = other_univ.trajectory.n_frames
 
         self.sel_spec = args.fitspec
 
