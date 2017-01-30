@@ -125,7 +125,7 @@ Command-line options
 
                     center_mol(self.other_univ)
                     rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
-                    if i_frame == 0:
+                    if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
                     W.write(self.other_univ.atoms)
         
