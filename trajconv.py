@@ -119,13 +119,14 @@ Command-line options
         if self.do_traj:
             with MDAnalysis.Writer(self.outfile + ".xtc", self.other_univ.atoms.n_atoms) as W:
                 for i_frame in range(self.start_frame, self.last_frame):
-                    
                     if i_frame % 100 == 0:
                         print("\r doing frame {} of {}".format(i_frame, self.last_frame))
                     curr_ts = self.other_univ.trajectory[i_frame]
 
                     center_mol(self.other_univ)
                     rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+                    if i_frame == 0:
+                        self.other_univ.atoms.write('first_frame_fit.gro')
                     W.write(self.other_univ.atoms)
         
 
