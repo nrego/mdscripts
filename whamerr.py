@@ -16,7 +16,7 @@ from fasthist import normhistnd
 
 from mdtools import ParallelTool
 
-from wham import gen_U_nm, kappa, grad_kappa, gen_pdist
+from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist
 
 import matplotlib as mpl
 
@@ -69,11 +69,12 @@ def parse_np_array(inputarr):
 # phivals is (nphi, ) array of phi values (in kT)
 def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
                n_boot_sample_diag, n_tot, n_boot_tot, n_windows, autocorr_nsteps, 
-               xweights):
+               xweights, binbounds, all_data_N):
 
     np.random.seed()
     batch_size = ub - lb
     logweights_ret = np.zeros((batch_size, n_windows), dtype=np.float32)
+    neglogpdist_N_ret = np.zeros((batch_size, binbounds.shape[0]-1))
 
     for batch_num in xrange(batch_size):
 
@@ -111,11 +112,18 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
             i_start += n_sample
             i_boot_start += boot_n_sample
 
+        # WHAM this bootstrap sample
         myargs = (bias_mat_boot, n_boot_sample_diag, ones_m, ones_n, n_boot_tot)
         this_weights = -np.array(fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
         logweights_ret[batch_num, 1:] = this_weights
 
-    return (logweights_ret, lb, ub)
+        # Get -ln(Pv(N)) using WHAM results for this bootstrap sample
+        this_pdist_N = gen_pdist(all_data_N, bias_mat, n_samples, logweights_ret[batch_num].astype(np.float64), binbounds)
+        this_pdist_N /= (this_pdist_N * np.diff(binbounds)).sum()
+            
+        neglogpdist_N_ret[batch_num, :] = -np.log(this_pdist_N)
+
+    return (logweights_ret, neglogpdist_N_ret, lb, ub)
 
 
 class WHAMmer(ParallelTool):
@@ -203,6 +211,8 @@ Command-line options
                             help='Number of bootstrap samples to perform')   
         sgroup.add_argument('--autocorr', '-ac', type=float, help='Autocorrelation time (in ps); this can be \ '
                             'a single float, or one for each window') 
+        sgroup.add_argument('--min-autocorr-time', type=float, default=0,
+                            help='The minimum autocorrelation time to use (in ps). Default is no minimum')
         sgroup.add_argument('--nbins', type=int, default=25, help='number of bins, if plotting prob dist (default 25)')
         sgroup.add_argument('--logweights', type=str, default=None,
                             help='(optional) previously calculated logweights file for INDUS simulations - \ '
@@ -227,6 +237,7 @@ Command-line options
         except:
             raise IOError("Error: Unable to successfully load inputs")
 
+        self.min_autocorr_time = args.min_autocorr_time
 
         self.beta = 1
         if args.T:
@@ -284,7 +295,7 @@ Command-line options
 
             if do_autocorr:
                 autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
-                self.autocorr[i] = self.ts * autocorr_len
+                self.autocorr[i] = max(self.ts * autocorr_len, self.min_autocorr_time)
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
@@ -333,7 +344,7 @@ Command-line options
                             autocorr_nsteps = autocorr_res
                     except:
                         continue
-                self.autocorr[i] = self.ts * autocorr_nsteps * 0.5
+                self.autocorr[i] = max(self.ts * autocorr_nsteps * 0.5, self.min_autocorr_time)
                 log.info("      Tau={} ps".format(self.autocorr[i]))
             bias = self.beta*dataframe # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
@@ -372,26 +383,10 @@ Command-line options
         logweights_actual = -np.append(0, logweights_actual[0])
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
 
-
-        # Calculate and output probability distributions..
-        if self.fmt == 'phi':
-            data_range = (0, self.all_data_N.max()+1)
-            binbounds_N, pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, data_range, self.nbins)
-            pdist_N /= pdist_N.sum()
-
-            neglogpdist_N = -np.log(pdist_N)
-            arr = np.dstack((binbounds_N[:-1]+np.diff(binbounds_N)/2.0, neglogpdist_N))
-            arr = arr.squeeze()
-            np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
-
-            data_range = (0, self.all_data.max()+1)
-            binbounds, pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, data_range, self.nbins)
-            pdist /= pdist.sum()
-            neglogpdist = -np.log(pdist)
-
-            arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
-            arr = arr.squeeze()
-            np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
+        max_n = int(np.ceil(max(self.all_data_N.max(), self.all_data.max())))
+        min_n = int(np.floor(min(self.all_data_N.min(), self.all_data.min())))
+        log.info("Min: {:d}, Max: {:d}".format(min_n, max_n))
+        binbounds = np.arange(min_n,max_n+2,1)
 
         np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
         
@@ -403,8 +398,8 @@ Command-line options
             batch_size += 1
         log.info("batch size: {}".format(batch_size))
 
-        logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float32)
-
+        logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
+        neglogpdist_N_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
         # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
         autocorr_nsteps = np.ceil(2*self.autocorr/self.ts).astype(int)
         log.info("autocorr length: {} ps".format(self.autocorr))
@@ -439,7 +434,8 @@ Command-line options
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, bias_mat=self.bias_mat,
                               n_samples=self.n_samples, n_boot_samples=n_boot_samples, n_boot_sample_diag=n_boot_sample_diag, n_tot=self.n_tot, n_boot_tot=n_boot_tot, 
-                              n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=-logweights_actual[1:])
+                              n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=-logweights_actual[1:],
+                              binbounds=binbounds, all_data_N=self.all_data_N)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
 
@@ -447,22 +443,41 @@ Command-line options
         log.info("Beginning {} bootstrap iterations".format(self.n_bootstrap))
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-            logweights_slice, lb, ub = future.get_result(discard=True)
+            logweights_slice, neglogpdist_N_slice, lb, ub = future.get_result(discard=True)
             log.info("Receiving result")
             logweights_boot[lb:ub, :] = logweights_slice
+            neglogpdist_N_boot[lb:ub, :] = neglogpdist_N_slice
             del logweights_slice
 
         # Get SE from bootstrapped samples
         logweights_boot_mean = logweights_boot.mean(axis=0)
         logweights_se = np.sqrt(logweights_boot.var(axis=0))
-
-        np.savetxt('err_logweights.dat', logweights_se, fmt='%3.6f')
-
-        ## Print some stdout
         print('logweights (boot mean): {}'.format(logweights_boot_mean))
         print('logweights: {}'.format(logweights_actual))
         print('se: {}'.format(logweights_se))
+        np.savetxt('err_logweights.dat', logweights_se, fmt='%3.6f')
 
+        if self.fmt == 'phi':
+            # Get bootstrap errors for -log(Pv(N))
+            neglogpdist_N_boot_mean = neglogpdist_N_boot.mean(axis=0)
+            neglogpdist_N_se = np.sqrt(neglogpdist_N_boot.var(axis=0))
+
+            pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, binbounds)
+            
+            pdist_N /= (pdist_N * np.diff(binbounds)).sum()
+
+            neglogpdist_N = -np.log(pdist_N)
+
+            ## Print some stdout
+            print('-ln(P(N)) (boot mean): {}'.format(neglogpdist_N_boot_mean))
+            print('-ln(P(N)) (all data): {}'.format(neglogpdist_N))
+            print('-ln(P(N)) se: {}'.format(neglogpdist_N_se))
+
+            arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist_N))
+            arr = arr.squeeze()
+            
+            np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
+            np.savetxt('err_neglogpdist_N.dat', neglogpdist_N_se, fmt='%3.6f')
 
 if __name__=='__main__':
     WHAMmer().main()

@@ -5,7 +5,7 @@ import logging
 from mdtools import dr
 
 import matplotlib as mpl
-
+from matplotlib import pyplot as plt
 
 mpl.rcParams.update({'axes.labelsize': 40})
 mpl.rcParams.update({'xtick.labelsize': 30})
@@ -103,6 +103,11 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             total_stuff = dr.plotHistAll(start=start, end=end, nbins=nbins)
             if outfile:
                 np.savetxt(outfile, total_stuff)
+
+            #for ds in dr.datasets.values():
+            #    hist, binbounds = np.histogram(ds.data[start:end]['N'],  normed=True)
+            #    plt.plot(binbounds[:-1]+np.diff(binbounds)/2.0, -np.log(hist))
+            #plt.show()
         if (args.plotN):
             title = r"$\langle{\~N}\rangle_\phi$"
             num = 1
