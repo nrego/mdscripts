@@ -6,11 +6,13 @@ import sys
 import numpy as np
 from math import sqrt
 import argparse
+from argparse import ArgumentTypeError
 import logging
 
 from IPython import embed
 
 import MDAnalysis
+from MDAnalysis import SelectionError
 #from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
 from scipy.spatial import cKDTree
@@ -29,7 +31,7 @@ log = logging.getLogger('mdtools.interface')
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
 
-def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water_bulk, tree):  
+def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water_bulk, tree, max_water_dist, min_water_dist):  
 
     # Length of grid voxel
     grid_cutoff = dgrid[0] / 2.0
@@ -39,20 +41,20 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water
 
     prot_tree = cKDTree(prot_heavies)
 
-    # find all gridpoints within 12 A of protein atoms
-    #   so we can set the rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
-    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=12)
+    # find all gridpoints within max_water_dist A of solute atoms
+    #   so we can set the (normalized) rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
+    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=max_water_dist)
     neighbor_list = itertools.chain(*neighbor_list_by_point)
-    # neighbor_idx is a unique list of all grid_pt *indices* that are within r=12 from
+    # neighbor_idx is a unique list of all grid_pt *indices* that are within max_water_dist from
     #   *any* atom in prot_heavies
     neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
-    # Find indices of all grid points that are *farther* than 12 A from protein
+    # Find indices of all grid points that are *farther* than max_water_dist A from solute
     far_pt_idx = np.setdiff1d(np.arange(npts), neighbor_idx)
 
-    # Now find all gridpoints **closer** than 3A to protein
-    #   so we can set the rho to 1.0 (so we don't produce interface over protein's excluded volume)
-    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=3)
+    # Now find all gridpoints **closer** than min_water_dist A to solute
+    #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
+    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=min_water_dist)
     neighbor_list = itertools.chain(*neighbor_list_by_point)
     # close_pt_idx is a unique list of all grid_pt *indices* that are within r=3 from
     #   *any* atom in prot_heavies
@@ -65,13 +67,19 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water
     # should only give exactly 0 or 1 gridpoint
     water_neighbors = water_tree.query_ball_tree(tree, grid_cutoff, p=float('inf'))
 
+    # n_grids_occupieds is number of voxels (grid points) which have a water OW
+    # n_total_grids is the total number of voxels (grid points) under consideration -
+    #   i.e. the gridpoints that fall between min_water_dist and max_water_dist of
+    #   solute. Can be used to come up with density/normalizing factor on-the-fly
+    n_grids_occupied = 0
+    n_total_grids = 0
     for atm_idx, pos in enumerate(water_ow):
         neighboridx = np.array(water_neighbors[atm_idx])
-        #assert neighboridx.size == 0 or neighboridx.size == 1
+        
         if neighboridx.size == 0:
             continue
-
         else:
+            assert rho_slice[neighboridx].sum() == 0
             rho_slice[neighboridx] += 1
 
     del water_tree, water_neighbors
@@ -111,7 +119,8 @@ Command-line options
         self.rho = None
         self.rho_avg = None
 
-        self.water_dist_cutoff = None
+        self.max_water_dist = None
+        self.min_water_dist = None
 
         self.dgrid = None
         self.grid_dl = None
@@ -159,10 +168,16 @@ Command-line options
                             help='First timepoint (in ps)')
         sgroup.add_argument('-e', '--end', type=int, 
                             help='Last timepoint (in ps)')
-        sgroup.add_argument('--water-dist-cutoff', type=float, default=13,
-                            help='maximum distance (in A) of waters from solute. Sets normalized density to 1.0 for any waters outside this distance')
+        sgroup.add_argument('--max-water-dist', type=float, default=13,
+                            help='maximum distance (in A), from the solute, for which to select voxels to calculate density for each frame. Default 13 A. Sets normalized density to 1.0 for any voxels outside this distance')
+        sgroup.add_argument('--min-water-dist', type=float, default=3,
+                            help='minimum distance (in A), from solute, for which to select voxels to calculate density for. Default 3 A. Sets normalized density to 1.0 for any voxels closer than this distance to the solute')
         sgroup.add_argument('--wall', action='store_true', 
                             help='If true, consider interace near walls (default False)')
+        sgroup.add_argument('--mol-sel-spec', type=str,
+                            help='A custom string specifier for selecting solute atoms, if desired')
+        sgroup.add_argument('--rho-water-bulk', type=float, default=0.033,
+                            help='Water density to normalize by, in waters per cubic Angstrom (default is 0.033 waters/A^3)')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-odx', '--outdx', default='interface.dx',
                         help='Output file to write instantaneous interface')
@@ -180,7 +195,8 @@ Command-line options
             print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
             sys.exit()
 
-        self.rho_water_bulk = 0.033
+        ## TODO: check this.
+        self.rho_water_bulk = args.rho_water_bulk
 
         if (args.start > (u.trajectory.n_frames * u.trajectory.dt)):
             raise ValueError("Error: provided start time ({} ps) is greater than total time ({} ps)"
@@ -194,14 +210,22 @@ Command-line options
 
         self.npts = 0
 
-        self.water_dist_cutoff = args.water_dist_cutoff
+        self.max_water_dist = args.max_water_dist
+        self.min_water_dist = args.min_water_dist
 
         self.outdx = args.outdx
         self.outgro = args.outgro
         self.outxtc = args.outxtc
 
         self.wall = args.wall
-        if self.wall:
+        if args.mol_sel_spec is not None:
+            self.mol_sel_spec = args.mol_sel_spec
+            try:
+                self.univ.select_atoms(self.mol_sel_spec)
+            except SelectionError:
+                raise ArgumentTypeError('invalid molecule selection spec: {}'.format(args.mol_sel_spec))
+
+        elif self.wall:
             self.mol_sel_spec = sel_spec_heavies
         else:
             self.mol_sel_spec = sel_spec_heavies_nowall
@@ -230,7 +254,7 @@ Command-line options
 
                 self.univ.trajectory[frame_idx]
                 prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
-                water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.water_dist_cutoff, self.mol_sel_spec))
+                water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.max_water_dist+3, self.mol_sel_spec))
                 #water_ow = self.univ.select_atoms('name OW')
                 prot_heavies_pos = prot_heavies.positions
                 water_ow_pos = water_ow.positions
@@ -238,7 +262,8 @@ Command-line options
                 args = ()
                 kwargs = dict(frame_idx=frame_idx, prot_heavies=prot_heavies_pos, water_ow=water_ow_pos,
                               dgrid=self.dgrid, gridpts=self.gridpts, npts=self.npts, 
-                              rho_water_bulk=self.rho_water_bulk, tree=self.tree)
+                              rho_water_bulk=self.rho_water_bulk, tree=self.tree, 
+                              max_water_dist=self.max_water_dist, min_water_dist=self.min_water_dist)
                 log.info("Sending job (frame {})".format(frame_idx))
                 yield (_calc_rho, args, kwargs)
 
@@ -254,18 +279,16 @@ Command-line options
         #    self.rho[frame_idx-self.start_frame, :] = rho_slice
         #    del rho_slice  
 
-    def get_rho_avg(self, weights=None):
+    def get_rho_avg(self):
         if self.rho is None:
             log.warning('Rho has not been calculated yet - must run calc_rho')
             return
-        if weights is None:
-            weights = np.ones((self.n_frames))
 
-        assert weights.size == self.rho.shape[0]
 
-        weights /= weights.sum()
 
-        self.rho_avg = np.sum((self.rho * weights[:, np.newaxis]), axis=0)
+
+        self.rho_avg = self.rho.mean(axis=0)
+
         min_rho = self.rho_avg.min()
         max_rho = self.rho_avg.max()
         log.info("Min rho: {}, Max rho: {}".format(min_rho, max_rho))
