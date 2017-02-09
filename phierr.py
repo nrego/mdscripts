@@ -263,8 +263,8 @@ Command-line options
 
         log.info("Var shape: {}".format(ntwid_se.shape))
 
-        # phi  <ntwid>'  \int <ntwid>'  <n>  \int <n>
-        out_actual = np.zeros((len(self.phidat), 6), dtype=np.float64)
+        out_header = "phi   <ntwid>'  integ(<ntwid>')  <n>'  <n>(reweighted)  integ(<n>(reweighted)) -phi*(n-ntwid)"
+        out_actual = np.zeros((len(self.phidat), 7), dtype=np.float64)
         out_actual[:, 0] = self.phivals
 
         for i, ds in enumerate(self.phidat):
@@ -272,12 +272,16 @@ Command-line options
             ntwid_all = np.array(ds.data[self.start:self.end]['$\~N$'])
             n_all = np.array(ds.data[self.start:self.end]['N'])
             out_actual[i, 1] = ntwid_all.mean()
+            # **Actual** average N under Ntwid*phi ensemble - i.e. *not* reweighted
+            out_actual[i, 3] = n_all.mean()
             n_reweight = np.exp(-self.phivals[i]*(n_all-ntwid_all))
-            out_actual[i, 3] = (n_all*n_reweight).mean() / (n_reweight).mean()
-            out_actual[i, 5] = np.log(n_reweight.mean())
+            # Average N under N*phi ensemble
+            out_actual[i, 4] = (n_all*n_reweight).mean() / (n_reweight).mean()
+            # why am I outputting log?
+            out_actual[i, 6] = np.log(n_reweight.mean())
 
         out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], self.phivals)
-        out_actual[1:, 4] = scipy.integrate.cumtrapz(out_actual[:, 3], self.phivals)
+        out_actual[1:, 5] = scipy.integrate.cumtrapz(out_actual[:, 3], self.phivals)
 
         log.info("outputting data to ntwid_err.dat, integ_err.dat, autocorr_len.dat, and {}".format(self.output_filename))
         np.savetxt('ntwid_err.dat', ntwid_se, fmt='%1.4e')
@@ -285,7 +289,7 @@ Command-line options
         np.savetxt('integ_ntwid_err.dat', integ_ntwid_se, fmt='%1.4e')
         np.savetxt('integ_n_err.dat', integ_n_se, fmt='%1.4e')
         np.savetxt('autocorr_len.dat', self.autocorr, fmt='%1.4f')
-        np.savetxt(self.output_filename, out_actual, fmt='%1.4f')
+        np.savetxt(self.output_filename, out_actual, fmt='%1.4f', header=out_header)
 
         if self.plot:
             if self.conv == 1:
