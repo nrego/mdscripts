@@ -207,9 +207,9 @@ Command-line options
             raise ValueError("Error: provided start time ({} ps) is greater than total time ({} ps)"
                              .format(args.start, (u.trajectory.n_frames * u.trajectory.dt)))
 
-        self.start_frame = int(args.start / u.trajectory.dt)
+        self.start_frame = int(args.start * u.trajectory.dt)
         if args.end is not None:
-            self.last_frame = int(args.end / u.trajectory.dt)
+            self.last_frame = int(args.end * u.trajectory.dt)
         else:
             self.last_frame = u.trajectory.n_frames
 
