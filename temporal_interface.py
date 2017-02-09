@@ -32,7 +32,7 @@ log = logging.getLogger('mdtools.temporal_interface')
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
 
-def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water_bulk, tree, max_water_dist, min_water_dist):  
+def _calc_rho(frame_idx, excluded_indices, water_ow, dgrid, gridpts, npts, rho_water_bulk, tree, max_water_dist, min_water_dist):  
 
     # Length of grid voxel
     grid_cutoff = dgrid[0] / 2.0
@@ -40,40 +40,10 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water
 
     rho_slice = np.zeros((npts,), dtype=rho_dtype)
 
-    prot_tree = cKDTree(prot_heavies)
-
-    # find all gridpoints within max_water_dist A of solute atoms
-    #   so we can set the (normalized) rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
-    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=max_water_dist)
-    neighbor_list = itertools.chain(*neighbor_list_by_point)
-    # neighbor_idx is a unique list of all grid_pt *indices* that are within max_water_dist from
-    #   *any* atom in prot_heavies
-    neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
-
-    # Find indices of all grid points that are *farther* than max_water_dist A from solute
-    far_pt_idx = np.setdiff1d(np.arange(npts), neighbor_idx)
-
-    # Now find all gridpoints **closer** than min_water_dist A to solute
-    #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
-    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=min_water_dist)
-    neighbor_list = itertools.chain(*neighbor_list_by_point)
-    # close_pt_idx is a unique list of all grid_pt *indices* that are within r=3 from
-    #   *any* atom in prot_heavies
-    close_pt_idx = np.unique( np.fromiter(neighbor_list, dtype=int) ) 
-
-
-    del prot_tree, neighbor_list_by_point, neighbor_list, neighbor_idx
-
     water_tree = cKDTree(water_ow)
     # should only give exactly 0 or 1 gridpoint
     water_neighbors = water_tree.query_ball_tree(tree, grid_cutoff, p=float('inf'))
 
-    # n_grids_occupieds is number of voxels (grid points) which have a water OW
-    # n_total_grids is the total number of voxels (grid points) under consideration -
-    #   i.e. the gridpoints that fall between min_water_dist and max_water_dist of
-    #   solute. Can be used to come up with density/normalizing factor on-the-fly
-    n_grids_occupied = 0
-    n_total_grids = 0
     for atm_idx, pos in enumerate(water_ow):
         neighboridx = np.array(water_neighbors[atm_idx])
         
@@ -85,9 +55,7 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water
 
     del water_tree, water_neighbors
     
-    #rho_slice = rho_water_bulk
-    rho_slice[far_pt_idx] = rho_water_bulk
-    rho_slice[close_pt_idx] = rho_water_bulk
+    rho_slice[excluded_indices] = rho_water_bulk
 
     return (rho_slice, frame_idx)
 
@@ -253,20 +221,43 @@ Command-line options
         log.info('n workers: {}'.format(n_workers))
         log.info('n frames: {}'.format(self.n_frames))
 
+        prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
+        prot_pos_initial = prot_heavies.positions
+        prot_tree = cKDTree(prot_pos_initial)
 
+        # find all gridpoints within max_water_dist A of solute atoms
+        #   so we can set the (normalized) rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
+        neighbor_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.max_water_dist+1)
+        neighbor_list = itertools.chain(*neighbor_list_by_point)
+        # neighbor_idx is a unique list of all grid_pt *indices* that are within max_water_dist from
+        #   *any* atom in prot_heavies
+        neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
+
+        # Find indices of all grid points that are *farther* than max_water_dist A from solute
+        far_pt_idx = np.setdiff1d(np.arange(self.npts), neighbor_idx)
+
+        # Now find all gridpoints **closer** than min_water_dist A to solute
+        #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
+        neighbor_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.min_water_dist)
+        neighbor_list = itertools.chain(*neighbor_list_by_point)
+        # close_pt_idx is a unique list of all grid_pt *indices* that are within r=3 from
+        #   *any* atom in prot_heavies
+        close_pt_idx = np.unique( np.fromiter(neighbor_list, dtype=int) ) 
+
+        self.excluded_indices = np.append(far_pt_idx, close_pt_idx)
+        assert self.excluded_indices.shape[0] == far_pt_idx.shape[0] + close_pt_idx.shape[0]
+        
         def task_gen():
 
             for frame_idx in xrange(self.start_frame, self.last_frame):
 
                 self.univ.trajectory[frame_idx]
-                prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
                 water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.max_water_dist+3, self.mol_sel_spec))
                 #water_ow = self.univ.select_atoms('name OW')
-                prot_heavies_pos = prot_heavies.positions
                 water_ow_pos = water_ow.positions
 
                 args = ()
-                kwargs = dict(frame_idx=frame_idx, prot_heavies=prot_heavies_pos, water_ow=water_ow_pos,
+                kwargs = dict(frame_idx=frame_idx, excluded_indices=self.excluded_indices, water_ow=water_ow_pos,
                               dgrid=self.dgrid, gridpts=self.gridpts, npts=self.npts, 
                               rho_water_bulk=self.rho_water_bulk, tree=self.tree, 
                               max_water_dist=self.max_water_dist, min_water_dist=self.min_water_dist)
