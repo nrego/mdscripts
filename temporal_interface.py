@@ -389,8 +389,8 @@ Command-line options
         neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
 
-        bfactors = 100*(1 - np.clip(self.rho_avg, 0.0, 1.0))
-        bfactors = np.clip(bfactors, .1, 99.9)
+        bfactors = 100*(1 - np.clip(self.rho_avg[neighbor_idx], 0.0, 1.0))
+        bfactors = np.clip(bfactors, 0, 99.99)
         
         top = mdtraj.Topology()
         c = top.add_chain()
