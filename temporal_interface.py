@@ -390,6 +390,8 @@ Command-line options
 
 
         bfactors = 100*(1 - np.clip(self.rho_avg, 0.0, 1.0))
+        bfactors = np.clip(bfactors, .1, 99.9)
+        
         top = mdtraj.Topology()
         c = top.add_chain()
 
