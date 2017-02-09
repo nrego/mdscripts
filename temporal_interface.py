@@ -18,6 +18,7 @@ from MDAnalysis import SelectionError
 from scipy.spatial import cKDTree
 import itertools
 #from skimage import measure
+import mdtraj
 
 from rhoutils import rho, cartesian
 from mdtools import ParallelTool
@@ -26,7 +27,7 @@ from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
 
 from fieldwriter import RhoField
 
-log = logging.getLogger('mdtools.interface')
+log = logging.getLogger('mdtools.temporal_interface')
 
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
@@ -84,9 +85,9 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, dgrid, gridpts, npts, rho_water
 
     del water_tree, water_neighbors
     
-    rho_slice /= rho_water_bulk
-    rho_slice[far_pt_idx] = 1.0
-    rho_slice[close_pt_idx] = 1.0
+    #rho_slice = rho_water_bulk
+    rho_slice[far_pt_idx] = rho_water_bulk
+    rho_slice[close_pt_idx] = rho_water_bulk
 
     return (rho_slice, frame_idx)
 
@@ -136,6 +137,9 @@ Command-line options
         self.outdx = None
         self.outgro = None
         self.outxtc = None
+        self.outpdb = None
+
+        self.box = None
 
         # consider interfaces near walls
         self.wall = None
@@ -185,7 +189,8 @@ Command-line options
                         help='output file to write instantaneous interface as GRO file')
         agroup.add_argument('-oxtc', '--outxtc',
                         help='Output file to write trajectory of instantaneous interfaces as XTC file')
-
+        agroup.add_argument('-opdb', '--outpdb', default='voxels.pdb',
+                        help='Output file to write pdb file of voxels')
 
     def process_args(self, args):
 
@@ -216,6 +221,7 @@ Command-line options
         self.outdx = args.outdx
         self.outgro = args.outgro
         self.outxtc = args.outxtc
+        self.outpdb = args.outpdb
 
         self.wall = args.wall
         if args.mol_sel_spec is not None:
@@ -274,6 +280,8 @@ Command-line options
             rho_slice, frame_idx = future.get_result(discard=True)
             self.rho[frame_idx-self.start_frame, :] = rho_slice
             del rho_slice
+
+        self.rho /= self.rho_water_bulk
         #for (fn, args, kwargs) in task_gen():
         #    rho_slice, frame_idx = fn(*args, **kwargs) 
         #    self.rho[frame_idx-self.start_frame, :] = rho_slice
@@ -284,14 +292,15 @@ Command-line options
             log.warning('Rho has not been calculated yet - must run calc_rho')
             return
 
-
-
-
         self.rho_avg = self.rho.mean(axis=0)
+
+        #non_excluded_indices = self.rho_avg < 0.1
+        #non_excluded_rho_avg = self.rho_avg[non_excluded_indices]
 
         min_rho = self.rho_avg.min()
         max_rho = self.rho_avg.max()
-        log.info("Min rho: {}, Max rho: {}".format(min_rho, max_rho))
+        mean_rho = self.rho_avg.mean()
+        log.info("Min rho: {}, Max rho: {}, avg rho: {}".format(min_rho, max_rho, mean_rho))
 
 
 
@@ -302,7 +311,7 @@ Command-line options
         # np 6d array of xyz dimensions - I assume last three dimensions are axis angles?
         # should modify in future to accomodate non cubic box
         #   In angstroms
-        box = np.ceil(self.univ.dimensions[:3])
+        self.box = box = np.ceil(self.univ.dimensions[:3])
 
         # Set up marching cube stuff - grids in Angstroms
         #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
@@ -367,6 +376,33 @@ Command-line options
         if self.outxtc is not None:
             writer.do_XTC(self.outxtc)
 
+    #TODO: move this elsewhere
+    def do_pdb_output(self):
+        self.univ.trajectory[0]
+        prot_atoms = self.univ.select_atoms(self.mol_sel_spec)
+        prot_tree = cKDTree(prot_atoms.positions)
+
+        neighbor_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.max_water_dist)
+        neighbor_list = itertools.chain(*neighbor_list_by_point)
+        # neighbor_idx is a unique list of all grid_pt *indices* that are within max_water_dist from
+        #   *any* atom in prot_heavies
+        neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
+
+
+        bfactors = 100*(1 - np.clip(self.rho_avg, 0.0, 1.0))
+        top = mdtraj.Topology()
+        c = top.add_chain()
+
+        cnt = 0
+        for i in range(neighbor_idx.size):
+            cnt += 1
+            r = top.add_residue('II', c)
+            a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
+
+        with mdtraj.formats.PDBTrajectoryFile(self.outpdb, 'w') as f:
+            # Mesh pts have to be in nm
+            f.write(self.gridpts[neighbor_idx], top, bfactors=bfactors)
+
 
     def go(self):
 
@@ -374,8 +410,10 @@ Command-line options
         # Split up frames, assign to work manager, splice back together into
         #   total rho array
         self.calc_rho()
+        self.get_rho_avg()
         #embed()
         self.do_output()
+        self.do_pdb_output()
 
 
 if __name__=='__main__':

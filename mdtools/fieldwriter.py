@@ -205,7 +205,7 @@ class RhoField:
 
         with md.formats.GroTrajectoryFile(fileout, 'w') as f:
             # Mesh pts have to be in nm
-            f.write(mesh/10, top, unitcell_vectors=self.box.reshape(1,3,3)/10, time=curr_time)
+            f.write(mesh/10, top, unitcell_vectors=self.box.reshape(1,3,3)/10)
 
     # time : array shape (n_frames); sim time for each frame, in ps
     def do_XTC(self, fileout):
