@@ -234,7 +234,7 @@ Command-line options
         neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
         # Find indices of all grid points that are *farther* than max_water_dist A from solute
-        far_pt_idx = np.setdiff1d(np.arange(self.npts), neighbor_idx)
+        far_pt_idx = np.setdiff1d(np.arange(self.npts), neighbor_idx, unique=True)
 
         # Now find all gridpoints **closer** than min_water_dist A to solute
         #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
@@ -379,6 +379,15 @@ Command-line options
         #   *any* atom in prot_heavies
         neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
+        # Now find all the points *closer* than min_water_dist to the protein, so we can
+        #   exclude them
+        close_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.min_water_dist)
+        close_list = itertools.chain(*close_list_by_point)
+        # close_pt_idx is a unique list of all grid_pt *indices* that are within r=3 from
+        #   *any* atom in prot_heavies
+        close_pt_idx = np.unique( np.fromiter(neighbor_list, dtype=int) ) 
+
+        neighbor_idx = np.setdiff1d(neighbor_idx, close_pt_idx, unique=True)
 
         bfactors = 100*(1 - np.clip(self.rho_avg[neighbor_idx], 0.0, 1.0))
         bfactors = np.clip(bfactors, 0, 100)
