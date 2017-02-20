@@ -32,7 +32,7 @@ log = logging.getLogger('mdtools.temporal_interface')
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
 
-def _calc_rho(frame_idx, excluded_indices, water_ow, dgrid, gridpts, npts, rho_water_bulk, tree, max_water_dist, min_water_dist):  
+def _calc_rho(frame_idx, water_ow, dgrid, gridpts, npts, rho_water_bulk, tree):  
 
     # Length of grid voxel
     grid_cutoff = dgrid[0] / 2.0
@@ -49,13 +49,15 @@ def _calc_rho(frame_idx, excluded_indices, water_ow, dgrid, gridpts, npts, rho_w
         
         if neighboridx.size == 0:
             continue
-        else:
-            assert rho_slice[neighboridx].sum() == 0
+
+        elif neighboridx.size >= 2:
+
+            rho_slice[neighboridx[0]] += 1
+        elif neighboridx.size == 1:
             rho_slice[neighboridx] += 1
 
+
     del water_tree, water_neighbors
-    
-    rho_slice[excluded_indices] = rho_water_bulk
 
     return (rho_slice, frame_idx)
 
@@ -95,7 +97,6 @@ Command-line options
         self.grid_dl = None
         self.ngrids = None
         self.gridpts = None
-        self.npts = None
 
         self.tree = None
 
@@ -181,7 +182,7 @@ Command-line options
         else:
             self.last_frame = u.trajectory.n_frames
 
-        self.npts = 0
+        
 
         self.max_water_dist = args.max_water_dist
         self.min_water_dist = args.min_water_dist
@@ -221,32 +222,7 @@ Command-line options
         log.info('n workers: {}'.format(n_workers))
         log.info('n frames: {}'.format(self.n_frames))
 
-        prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
-        prot_pos_initial = prot_heavies.positions
-        prot_tree = cKDTree(prot_pos_initial)
 
-        # find all gridpoints within max_water_dist A of solute atoms
-        #   so we can set the (normalized) rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
-        neighbor_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.max_water_dist+1)
-        neighbor_list = itertools.chain(*neighbor_list_by_point)
-        # neighbor_idx is a unique list of all grid_pt *indices* that are within max_water_dist from
-        #   *any* atom in prot_heavies
-        neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
-
-        # Find indices of all grid points that are *farther* than max_water_dist A from solute
-        far_pt_idx = np.setdiff1d(np.arange(self.npts), neighbor_idx, unique=True)
-
-        # Now find all gridpoints **closer** than min_water_dist A to solute
-        #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
-        neighbor_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.min_water_dist)
-        neighbor_list = itertools.chain(*neighbor_list_by_point)
-        # close_pt_idx is a unique list of all grid_pt *indices* that are within r=3 from
-        #   *any* atom in prot_heavies
-        close_pt_idx = np.unique( np.fromiter(neighbor_list, dtype=int) ) 
-
-        self.excluded_indices = np.append(far_pt_idx, close_pt_idx)
-        assert self.excluded_indices.shape[0] == far_pt_idx.shape[0] + close_pt_idx.shape[0]
-        
         def task_gen():
 
             for frame_idx in xrange(self.start_frame, self.last_frame):
@@ -257,10 +233,9 @@ Command-line options
                 water_ow_pos = water_ow.positions
 
                 args = ()
-                kwargs = dict(frame_idx=frame_idx, excluded_indices=self.excluded_indices, water_ow=water_ow_pos,
+                kwargs = dict(frame_idx=frame_idx, water_ow=water_ow_pos,
                               dgrid=self.dgrid, gridpts=self.gridpts, npts=self.npts, 
-                              rho_water_bulk=self.rho_water_bulk, tree=self.tree, 
-                              max_water_dist=self.max_water_dist, min_water_dist=self.min_water_dist)
+                              rho_water_bulk=self.rho_water_bulk, tree=self.tree)
                 log.info("Sending job (frame {})".format(frame_idx))
                 yield (_calc_rho, args, kwargs)
 
@@ -291,9 +266,13 @@ Command-line options
         min_rho = self.rho_avg.min()
         max_rho = self.rho_avg.max()
         mean_rho = self.rho_avg.mean()
-        log.info("Min rho: {}, Max rho: {}, avg rho: {}".format(min_rho, max_rho, mean_rho))
+        log.info("Min rho: {}, Max rho: {}, avg rho: {}, avg rho*npts: {}".format(min_rho, max_rho, mean_rho, mean_rho*self.npts))
 
 
+    @property
+    def npts(self):
+        return self.gridpts.shape[0]
+    
 
     def _setup_grid(self):
         grid_dl = 1 # Grid resolution at *most* 1 angstrom (when box dimension an integral number of angstroms)
@@ -316,8 +295,7 @@ Command-line options
         #    In grid units (i.e. inverse dgrid)
         #margin = (cutoff/dgrid).astype(int)
         margin = np.array([0,0,0], dtype=np.int)
-        # Number of actual unique points
-        self.npts = npts = ngrids.prod()
+
         # Number of real points plus margin of reflected pts
         n_pseudo_pts = (ngrids + 2*margin).prod()
 
@@ -337,73 +315,65 @@ Command-line options
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
         self.gridpts = gridpts = cartesian([coord_x, coord_y, coord_z])
-        
         self.tree = cKDTree(self.gridpts)
 
-        log.info("Point grid set up")   
+        # Exclude all gridpoints less than min_dist to protein and morre than max dist from prot
+        prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
+        prot_pos_initial = prot_heavies.positions
+        prot_tree = cKDTree(prot_pos_initial)
 
-
-    # rho: array, shape (n_frames, npts) - calculated coarse-grained rho for each grid point, for 
-    #         each frame
-    # weights: (optional) array, shape (n_frames,) - array of weights for averaging rho - default 
-    #         is array of equal weights
-    def do_output(self):
-
-        if self.rho is None:
-            log.warning("Rho not calculated - run calc_rho first")
-
-            return
-
-        log.info("Preparing to output data")
-
-        writer = RhoField(self.rho_shape, self.gridpts)
-
-        # Always do dx file output
-        writer.do_DX(self.outdx)
-
-        if self.outgro is not None:
-            writer.do_GRO(self.outgro, frame=0)
-
-        if self.outxtc is not None:
-            writer.do_XTC(self.outxtc)
-
-    #TODO: move this elsewhere
-    def do_pdb_output(self):
-        self.univ.trajectory[0]
-        prot_atoms = self.univ.select_atoms(self.mol_sel_spec)
-        prot_tree = cKDTree(prot_atoms.positions)
-
+        # find all gridpoints within max_water_dist A of solute atoms
+        #   so we can set the (normalized) rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
         neighbor_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.max_water_dist)
         neighbor_list = itertools.chain(*neighbor_list_by_point)
         # neighbor_idx is a unique list of all grid_pt *indices* that are within max_water_dist from
         #   *any* atom in prot_heavies
         neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
-        # Now find all the points *closer* than min_water_dist to the protein, so we can
-        #   exclude them
-        close_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.min_water_dist)
-        close_list = itertools.chain(*close_list_by_point)
+        # Find indices of all grid points that are *farther* than max_water_dist A from solute
+        far_pt_idx = np.setdiff1d(np.arange(self.npts), neighbor_idx)
+
+        # Now find all gridpoints **closer** than min_water_dist A to solute
+        #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
+        neighbor_list_by_point = prot_tree.query_ball_tree(self.tree, r=self.min_water_dist)
+        neighbor_list = itertools.chain(*neighbor_list_by_point)
         # close_pt_idx is a unique list of all grid_pt *indices* that are within r=3 from
         #   *any* atom in prot_heavies
         close_pt_idx = np.unique( np.fromiter(neighbor_list, dtype=int) ) 
 
-        neighbor_idx = np.setdiff1d(neighbor_idx, close_pt_idx, unique=True)
+        excluded_indices = np.append(far_pt_idx, close_pt_idx)
+        assert excluded_indices.shape[0] == far_pt_idx.shape[0] + close_pt_idx.shape[0]
+        
+        good_indices = np.setdiff1d(np.arange(self.npts), excluded_indices)
+        self.gridpts = self.gridpts[good_indices]
 
-        bfactors = 100*(1 - np.clip(self.rho_avg[neighbor_idx], 0.0, 1.0))
-        bfactors = np.clip(bfactors, 0, 100)
+        self.tree = cKDTree(self.gridpts)
+
+        log.info("Point grid set up")   
+
+
+
+
+    #TODO: move this elsewhere
+    def do_pdb_output(self):
+
+        norm_rho_p = 1 - self.rho_avg
+        n_depleted = np.sum(norm_rho_p) * self.rho_water_bulk
+        bfactors = 100*(1 - self.rho_avg)
+        bfactors = np.clip(bfactors, -10, 100)
         
         top = mdtraj.Topology()
         c = top.add_chain()
 
         cnt = 0
-        for i in range(neighbor_idx.size):
+        for i in range(self.npts):
             cnt += 1
             r = top.add_residue('II', c)
             a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
 
         with mdtraj.formats.PDBTrajectoryFile(self.outpdb, 'w') as f:
             # Mesh pts have to be in nm
-            f.write(self.gridpts[neighbor_idx], top, bfactors=bfactors)
+            f.write(self.gridpts, top, bfactors=bfactors)
 
 
     def go(self):
@@ -414,7 +384,7 @@ Command-line options
         self.calc_rho()
         self.get_rho_avg()
         #embed()
-        self.do_output()
+        #self.do_output()
         self.do_pdb_output()
 
 
