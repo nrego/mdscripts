@@ -360,7 +360,7 @@ Command-line options
         norm_rho_p = 1 - self.rho_avg
         n_depleted = np.sum(norm_rho_p) * self.rho_water_bulk
         bfactors = 100*(1 - self.rho_avg)
-        bfactors = np.clip(bfactors, -10, 100)
+        bfactors = np.clip(bfactors, 0, 100)
         
         top = mdtraj.Topology()
         c = top.add_chain()
