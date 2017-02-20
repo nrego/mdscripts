@@ -359,6 +359,10 @@ Command-line options
 
         norm_rho_p = 1 - self.rho_avg
         n_depleted = np.sum(norm_rho_p) * self.rho_water_bulk
+        n_avg = np.sum(self.rho_avg)
+        header = "<n>_phi   (<n>_0 - <n>_phi)"
+        myarr = np.array([n_avg, n_depleted])
+        np.savetxt("navg_ndep.dat", myarr)
         print("number depleted: {}".format(n_depleted))
         bfactors = 100*(1 - self.rho_avg)
         bfactors = np.clip(bfactors, 0, 100)
