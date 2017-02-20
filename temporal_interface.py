@@ -259,6 +259,7 @@ Command-line options
             return
 
         self.rho_avg = self.rho.mean(axis=0)
+        log.info("total : {}".format(self.rho_avg.sum()))
 
         #non_excluded_indices = self.rho_avg < 0.1
         #non_excluded_rho_avg = self.rho_avg[non_excluded_indices]
@@ -358,6 +359,8 @@ Command-line options
     def do_pdb_output(self):
 
         norm_rho_p = 1 - self.rho_avg
+        np.savetxt('norm_rho_p.dat', norm_rho_p)
+        np.savetxt('avg_rho', self.rho_avg*self.rho_water_bulk)
         n_depleted = np.sum(norm_rho_p) * self.rho_water_bulk
         n_avg = np.sum(self.rho_avg) * self.rho_water_bulk
         header = "<n>_phi   (<n>_0 - <n>_phi) npts"
