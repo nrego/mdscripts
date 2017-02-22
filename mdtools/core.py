@@ -204,6 +204,32 @@ class ParallelTool(Tool):
             else:
                 self.work_manager.run()
     
-    
-        
-        
+
+class Subcommand(ToolComponent):
+    '''This kind of mimics Tool (see below), except that it creates a new subparser and adds its args to that 
+    It hooks into a 'subparsers' instance (returned by the master parser's parser.add_subparsers command)
+    '''
+
+    subcommand = None
+    help_text = None
+    description = None
+
+    def __init__(self, parent):
+        # not running the constructor on ToolComponent here, I guess...?
+        self.parent = parent
+        self.subparser = None
+
+    def add_subparser(self, subparsers):
+        subparser = subparsers.add_parser(self.subcommand, help=self.help_text, description=self.description)
+
+        self.add_all_args(subparser)
+        subparser.set_defaults(subcommand=self)
+        self.subparser = subparser
+
+    @property
+    def work_manager(self):
+        '''get work manager from subcommand's parent. Raises AttributeError if parent does not exist of if parent does not support parallelization
+        (i.e. parent subclasses Tool, not ParallelTool)'''
+        return self.parent.work_manager
+
+

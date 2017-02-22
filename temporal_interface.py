@@ -21,7 +21,7 @@ import itertools
 import mdtraj
 
 from rhoutils import rho, cartesian
-from mdtools import ParallelTool
+from mdtools import ParallelTool, Subcommand
 
 from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
 
@@ -61,27 +61,20 @@ def _calc_rho(frame_idx, water_ow, dgrid, gridpts, npts, rho_water_bulk, tree):
 
     return (rho_slice, frame_idx)
 
-class TemporalInterface(ParallelTool):
-    prog='temporal_interface'
-    description = '''\
-Perform temporally-averaged interface analysis on simulation data. Requires 
-GROFILE and TRAJECTORY (XTC or TRR). Conduct time-averaged interface 
-analysis over specified trajectory range by .
 
-This tool supports parallelization (see options below)
+class TemporalInterfaceSubcommand(Subcommand):
+    ''' Note this will inherit a work manager from parent (which is always the TemporalInterface main instance.
+    Common args and methods for any Temporal Interface/Density subcommands; i.e. trajectory input processing, 
+    Rho calculation and averaging (assuming the inheriting subclass initializes the voxel grid appropriately'''
 
+    # Expect that derived subcommand classes will fill these in.
+    #   Specifies how to fill out subparser
+    subcommand = None
+    help_text = None
+    description = None
 
------------------------------------------------------------------------------
-Command-line options
------------------------------------------------------------------------------
-'''
-    
-    def __init__(self):
-        super(TemporalInterface,self).__init__()
-        
-        # Parallel processing by default (this is not actually necessary, but it is
-        # informative!)
-        self.wm_env.default_work_manager = self.wm_env.default_parallel_work_manager
+    def __init__(self, parent):
+        super(TemporalInterfaceSubcommand,self).__init__(parent)
 
         self.univ = None
 
@@ -132,7 +125,7 @@ Command-line options
         
     def add_args(self, parser):
         
-        sgroup = parser.add_argument_group('Instantaneous interface options')
+        sgroup = parser.add_argument_group('Trajectory Input Options')
         sgroup.add_argument('-c', '--grofile', metavar='INPUT', type=str, required=True,
                             help='Input structure file')
         sgroup.add_argument('-f', '--trajfile', metavar='XTC', type=str, required=True,
@@ -141,25 +134,9 @@ Command-line options
                             help='First timepoint (in ps)')
         sgroup.add_argument('-e', '--end', type=int, 
                             help='Last timepoint (in ps)')
-        sgroup.add_argument('--max-water-dist', type=float, default=13,
-                            help='maximum distance (in A), from the solute, for which to select voxels to calculate density for each frame. Default 13 A. Sets normalized density to 1.0 for any voxels outside this distance')
-        sgroup.add_argument('--min-water-dist', type=float, default=3,
-                            help='minimum distance (in A), from solute, for which to select voxels to calculate density for. Default 3 A. Sets normalized density to 1.0 for any voxels closer than this distance to the solute')
-        sgroup.add_argument('--wall', action='store_true', 
-                            help='If true, consider interace near walls (default False)')
         sgroup.add_argument('--mol-sel-spec', type=str,
                             help='A custom string specifier for selecting solute atoms, if desired')
-        sgroup.add_argument('--rho-water-bulk', type=float, default=0.033,
-                            help='Water density to normalize by, in waters per cubic Angstrom (default is 0.033 waters/A^3)')
-        agroup = parser.add_argument_group('other options')
-        agroup.add_argument('-odx', '--outdx', default='interface.dx',
-                        help='Output file to write instantaneous interface')
-        agroup.add_argument('-ogro', '--outgro',
-                        help='output file to write instantaneous interface as GRO file')
-        agroup.add_argument('-oxtc', '--outxtc',
-                        help='Output file to write trajectory of instantaneous interfaces as XTC file')
-        agroup.add_argument('-opdb', '--outpdb', default='voxels.pdb',
-                        help='Output file to write pdb file of voxels')
+
 
     def process_args(self, args):
 
@@ -207,7 +184,7 @@ Command-line options
 
         self.init_from_args = True
 
-        self._setup_grid()
+        
 
     def calc_rho(self):
 
@@ -273,9 +250,85 @@ Command-line options
     @property
     def npts(self):
         return self.gridpts.shape[0]
-    
 
-    def _setup_grid(self):
+    #TODO: move this elsewhere
+    def do_pdb_output(self):
+
+        norm_rho_p = 1 - self.rho_avg
+        np.savetxt('norm_rho_p.dat', norm_rho_p)
+        np.savetxt('avg_rho', self.rho_avg*self.rho_water_bulk)
+        n_depleted = np.sum(norm_rho_p) * self.rho_water_bulk
+        n_avg = np.sum(self.rho_avg) * self.rho_water_bulk
+        header = "<n>_phi   (<n>_0 - <n>_phi) npts"
+        myarr = np.array([[n_avg, n_depleted, self.npts]])
+        np.savetxt("navg_ndep.dat", myarr, header=header)
+        print("number depleted: {}".format(n_depleted))
+        bfactors = 100*(1 - self.rho_avg)
+        bfactors = np.clip(bfactors, 0, 100)
+        
+        top = mdtraj.Topology()
+        c = top.add_chain()
+
+        cnt = 0
+        for i in range(self.npts):
+            cnt += 1
+            r = top.add_residue('II', c)
+            a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
+
+        with mdtraj.formats.PDBTrajectoryFile(self.outpdb, 'w') as f:
+            # Mesh pts have to be in nm
+            f.write(self.gridpts, top, bfactors=bfactors)
+
+    def setup_grid(self):
+        ''' Derived classes must figure out how to appropriately initialize voxel grid'''
+        raise NotImplementedError
+
+    def go(self):
+
+        #self.setup_grid()
+        # Split up frames, assign to work manager, splice back together into
+        #   total rho array
+        self.setup_grid()
+        self.calc_rho()
+        self.get_rho_avg()
+        #embed()
+        #self.do_output()
+        self.do_pdb_output()
+
+
+class TemporalInterfaceInitSubcommand(TemporalInterfaceSubcommand):
+    subcommand='init'
+    help_text='Initialize voxel grid, determine voxels to include/exclude, and normalized rhos for each voxel'
+    description = '''\
+Initialize voxel grid from input args, calculte rho for each voxel from input data, and output voxel limits in each dimension, 
+    a list of excluded voxels, and the rho for each included voxel. All output to be used in subsequent analysis using the 'anal'
+    command
+            input args:
+                a) a structure and trajectory file for (presumably) an unbiased simulation
+                b) a solute definition (by --molspec)
+                c) a maximum distance (from solute); any voxels more than this distance are excluded
+                d) a minimum distance (from solute); any voxels less than this distance are excluded
+
+              Note: after excluding all voxels acccording to supplied min and max distances, any voxels that have a rho_i==0 will
+                 also be excluded from the final voxel list
+            outputs:
+                a) list of x, y and z limits of voxels (determined by initial box size)
+                b) boolean array of excluded, included indices (this, along with limits, above, can be used to reconstruct all included voxels)
+                c) list of rho_i's (from above) for each included voxel
+
+    '''
+
+    def __init__(self, parent):
+        super(TemporalInterfaceInitSubcommand,self).__init__(parent)
+
+    def add_args(parser):
+        group = parser.add_argument_group('Grid initialization options')
+        sgroup.add_argument('--max-water-dist', type=float, default=6,
+                            help='maximum distance (in A), from the solute, for which to select voxels to calculate density for each frame. Default 13 A. Sets normalized density to 1.0 for any voxels outside this distance')
+        sgroup.add_argument('--min-water-dist', type=float, default=0,
+                            help='minimum distance (in A), from solute, for which to select voxels to calculate density for. Default 0 A. Sets normalized density to 1.0 for any voxels closer than this distance to the solute')
+
+    def setup_grid(self):
         grid_dl = 1 # Grid resolution at *most* 1 angstrom (when box dimension an integral number of angstroms)
         natoms = self.univ.coord.n_atoms
 
@@ -292,13 +345,6 @@ Command-line options
         log.info("Box: {}".format(box))
         log.info("Ngrids: {}".format(ngrids))
 
-        # Extra number of grid points on each side to reflect pbc
-        #    In grid units (i.e. inverse dgrid)
-        #margin = (cutoff/dgrid).astype(int)
-        margin = np.array([0,0,0], dtype=np.int)
-
-        # Number of real points plus margin of reflected pts
-        n_pseudo_pts = (ngrids + 2*margin).prod()
 
         # Construct 'gridpts' array, over which we will perform
         #    nearest neighbor searching for each heavy prot and water atom
@@ -308,11 +354,11 @@ Command-line options
         #    within a distance (opp edge +- cutoff)
         #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
         #     to retrieve appropriate real point indices
-        coord_x = np.linspace(-margin[0],box[0]+margin[0],ngrids[0])
-        coord_y = np.linspace(-margin[1],box[1]+margin[1],ngrids[1])
-        coord_z = np.linspace(-margin[2],box[2]+margin[2],ngrids[2])
+        coord_x = np.linspace(0,box[0],ngrids[0])
+        coord_y = np.linspace(0,box[1],ngrids[1])
+        coord_z = np.linspace(0,box[2],ngrids[2])
 
-        # gridpts array shape: (n_pseudo_pts, 3)
+        # gridpts array shape: (n_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
         self.gridpts = gridpts = cartesian([coord_x, coord_y, coord_z])
@@ -352,48 +398,40 @@ Command-line options
 
         log.info("Point grid set up")   
 
+class TemporalInterfaceAnalSubcommand(TemporalInterfaceSubcommand):
+    subcommand='anal'
+    help_text=''
+    description = '''\
+Run time-averaged interace analysis on trajectory. Load pre-initialized voxel grid definitions and reference rho values for each voxel,
+And then calculates average rho and normalized rho values for input data trajectory
+
+    '''
+    def __init__(self, parent):
+        super(TemporalInterfaceAnalSubcommand,self).__init__(parent)
 
 
+class TemporalInterface(ParallelTool):
+    subcommands=[TemporalInterfaceInitSubcommand, TemporalInterfaceAnalSubcommand]
+    subparsers_title= 'Temporal density-averaging modes'
+    description = '''\
+Conduct time-averaged density analysis on a given dataset (contrast with interface.py, which coarse-grains the density field for each 
+iteration in the trajectory)
+'''
 
-    #TODO: move this elsewhere
-    def do_pdb_output(self):
+    def __init__(self):
+        super(TemporalInterface,self).__init__()
+        self._subcommand = None
+        self._avail_subcommand = {subcommand_class.subcommand: subcommand_class(self) for subcommand_class in self.subcommands}
 
-        norm_rho_p = 1 - self.rho_avg
-        np.savetxt('norm_rho_p.dat', norm_rho_p)
-        np.savetxt('avg_rho', self.rho_avg*self.rho_water_bulk)
-        n_depleted = np.sum(norm_rho_p) * self.rho_water_bulk
-        n_avg = np.sum(self.rho_avg) * self.rho_water_bulk
-        header = "<n>_phi   (<n>_0 - <n>_phi) npts"
-        myarr = np.array([[n_avg, n_depleted, self.npts]])
-        np.savetxt("navg_ndep.dat", myarr, header=header)
-        print("number depleted: {}".format(n_depleted))
-        bfactors = 100*(1 - self.rho_avg)
-        bfactors = np.clip(bfactors, 0, 100)
-        
-        top = mdtraj.Topology()
-        c = top.add_chain()
+    def add_args(self, parser):
+        subparsers = parser.add_subparsers(title=self.subparsers_title)
 
-        cnt = 0
-        for i in range(self.npts):
-            cnt += 1
-            r = top.add_residue('II', c)
-            a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
+        for instance in self._avail_subcommand.itervalues():
+            instance.add_subparser(subparsers)
 
-        with mdtraj.formats.PDBTrajectoryFile(self.outpdb, 'w') as f:
-            # Mesh pts have to be in nm
-            f.write(self.gridpts, top, bfactors=bfactors)
-
-
-    def go(self):
-
-        #self.setup_grid()
-        # Split up frames, assign to work manager, splice back together into
-        #   total rho array
-        self.calc_rho()
-        self.get_rho_avg()
-        #embed()
-        #self.do_output()
-        self.do_pdb_output()
+    def process_args(self, args):
+        self._subcommand = args.subcommand
+        self._subcommand.process_all_args(args)
 
 
 if __name__=='__main__':
