@@ -89,6 +89,26 @@ def merge_rects_z(patch):
 
     return rects_z
 
+def merge_rects_y(patch):
+    xvals = np.sort(np.unique(patch[:,0]))
+    yvals = np.sort(np.unique(patch[:,1]))
+    zvals = np.sort(np.unique(patch[:,2]))
+    rects_y = []
+    for xval in xvals:
+        patch_x = patch[patch[:,0] == xval]
+        for zval in zvals:
+            patch_z = patch_x[patch_x[:,2] == zval]
+            if patch_z.size == 0:
+                continue
+
+            curr_segs = get_all_segs_by_sep(patch_z[:,1])
+            for seg in curr_segs:
+                ymin = seg.min()
+                ymax = seg.max()
+                rects_y.append(rect(xval, ymin, zval, xval, ymax, zval))
+
+    return rects_y
+
 def get_rects_with_val(rects, val, axis=0):
     return_rects = []
     for curr_rect in rects:
@@ -113,40 +133,6 @@ def merge_rects(rect1, rect2, axis):
             new_rect.pts[i+3] = max(rect1.max_pt[i], rect2.max_pt[i])
 
     return new_rect
-
-
-
-# Merge round 2 - already merged along z
-def merge_rects_y(rects_z):
-    patch = extract_positions_min_max_from_rects(rects_z)
-    xvals = np.sort(np.unique(patch[:,0]))
-    yvals = np.sort(np.unique(patch[:,1]))
-
-    rects_y = []
-    for xval in xvals:
-        ## For each rectangle with xmin, xmax == xval
-        curr_rects = get_rects_with_val(rects_z, xval, axis=0)
-        if len(curr_rects) == 1:
-            rects_y.append(curr_rects)
-        # Try to merge adjacent rectangles along y
-        #   Every rectangle here is guaranteed to have the same x_min and x_max (==xval),
-        #   so just have to check that z_min and z_max line up among the two rects
-        else:
-            for i in range(len(curr_rects)-1):
-                rect1 = curr_rects[i]
-                prev_rect = rect1
-                for j in range(i+1, len(curr_rects)):
-                    rect2 = curr_rects[j]
-                    if rect1.zmin == rect2.zmin and rect1.zmax == rect2.zmax:
-                        prev_rect = merge_rects(rect1, rect2, axis=1)
-                    else:
-                        rects_y.append(prev_rect)
-                        prev_rect = rect2
-
-                rects_y.append(prev_rect)
-
-
-    return remove_dups_from_list(rects_y)
 
 
 

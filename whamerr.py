@@ -461,7 +461,7 @@ Command-line options
             # Get bootstrap errors for -log(Pv(N))
             neglogpdist_N_boot_mean = neglogpdist_N_boot.mean(axis=0)
             neglogpdist_N_se = np.sqrt(neglogpdist_N_boot.var(axis=0))
-
+            #embed()
             pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, binbounds)
             
             pdist_N /= (pdist_N * np.diff(binbounds)).sum()

@@ -5,23 +5,21 @@ import numpy as np
 # Generate a probability distribution over a variable by integrating
 # This currently works for phi datasets **ONLY**
 def gen_pdist(all_data, bias_mat, n_samples, logweights, binbounds):
-    bias_mat = np.exp(-bias_mat)
-    bias_mat = np.array(bias_mat)
-    #range_min, range_max = data_range
-    #nstep = float(range_max - range_min) / nbins
-    #binbounds = np.arange(range_min, range_max+nstep, nstep)
-    #binbounds = np.linspace(range_min, range_max, nbins+1)
+    #bias_mat = np.exp(-bias_mat)
 
     weights_prod_nsample = n_samples * np.exp(logweights)
 
     pdist = np.zeros(binbounds.shape[0]-1, dtype=np.float64)
 
     for n_idx in xrange(all_data.shape[0]):
+        denom_arr = logweights - bias_mat[n_idx, :]
+        denom_arr = n_samples * np.exp(denom_arr)
+        denom = denom_arr.sum()
         if all_data.ndim == 2:
             for k in xrange(all_data.shape[1]):
                 val = all_data[n_idx, k]
                 bin_assign = (val >= binbounds[:-1]) * (val < binbounds[1:])
-                denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
+                #denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
                 pdist[bin_assign] += 1.0/denom
 
         elif all_data.ndim == 1:
@@ -31,7 +29,7 @@ def gen_pdist(all_data, bias_mat, n_samples, logweights, binbounds):
             # Might want to assert sum==1 here; i.e. it falls into exactly 1 bin
             bin_assign = (val >= binbounds[:-1]) * (val < binbounds[1:])
 
-            denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
+            #denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
 
             pdist[bin_assign] += 1.0/denom
 

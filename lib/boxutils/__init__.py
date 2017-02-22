@@ -15,7 +15,7 @@ from selection_specs import sel_spec_nowall, sel_spec_not_nowall
 #     orientations maintained
 #
 #  Modifies MDAnalysis Universe 'univ' in-place by working on atom groups
-def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall):
+def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall, pbc=False):
 
     mol_group = univ.select_atoms(mol_spec)
     assert mol_group.bonds.values() is not None, "No bond data provided for mol_group - did you provide a topology?"
@@ -43,7 +43,8 @@ def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall):
     except NoDataError:
         pass
 
-    pbc(univ)
+    if pbc:
+        pbc(univ)
 
     return univ
 
