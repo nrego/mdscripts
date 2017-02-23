@@ -35,25 +35,24 @@ from IPython import embed
 rho_dtype = np.float32
 
 
-def _calc_rho(frame_idx, water_ow, n_pts_included, rho_water_ref, gridpt_mask, x_bounds, y_bounds, z_bounds):
+def _calc_rho(frame_idx, water_ow, n_pts_included, gridpt_mask, x_bounds, y_bounds, z_bounds):
 
     rho_array_slice = np.zeros(n_pts_included, dtype=rho_dtype)
     # look-up of index (n_total_grids) = > index (n_included_grids)
-    grid_mask_assign = np.cumsum(gridpt_mask)
+    gridpt_mask_assign = np.cumsum(gridpt_mask, dtype=np.int32)
 
-    x_assign = np.digitize(water_ow[:,0], x_bounds)
-    y_assign = np.digitize(water_ow[:,1], y_bounds)
-    z_assign = np.digitize(water_ow[:,2], z_bounds)
+    x_assign = np.digitize(water_ow[:,0], x_bounds) - 1
+    y_assign = np.digitize(water_ow[:,1], y_bounds) - 1
+    z_assign = np.digitize(water_ow[:,2], z_bounds) - 1
 
-    y_len = y_bounds.size - 1
-    z_len = z_bounds.size - 1
+    y_len = y_bounds.size
+    z_len = z_bounds.size
 
     assign = z_assign + (y_assign*z_len) + (x_assign*y_len*z_len)
-    assign_included = grid_mask_assign[assign]
+    assign_included = gridpt_mask_assign[assign]
 
     rho_array_slice[assign_included[gridpt_mask]] = 1.0
 
-    rho_array_slice /= rho_water_ref
 
 
     return (rho_slice, frame_idx)
@@ -116,15 +115,15 @@ class TemporalInterfaceSubcommand(Subcommand):
 
     @property
     def x_len(self):
-        return self.x_bounds.size - 1
+        return self.x_bounds.size
 
     @property
     def y_len(self):
-        return self.y_bounds.size - 1
+        return self.y_bounds.size
 
     @property
     def z_len(self):
-        return self.z_bounds.size - 1
+        return self.z_bounds.size
     
     @property
     def n_pts_total(self):
@@ -151,7 +150,7 @@ class TemporalInterfaceSubcommand(Subcommand):
                             help='First timepoint (in ps)')
         sgroup.add_argument('-e', '--end', type=int, 
                             help='Last timepoint (in ps)')
-        sgroup.add_argument('--mol-sel-spec', type=str,
+        sgroup.add_argument('--mol-sel-spec', type=str, default=sel_spec_heavies,
                             help='A custom string specifier for selecting solute atoms, if desired')
 
 
@@ -184,7 +183,7 @@ class TemporalInterfaceSubcommand(Subcommand):
 
     def calc_rho(self):
 
-        self.rho = np.zeros((self.n_frames, self.n_included_gridpts), dtype=rho_dtype)
+        self.rho = np.zeros((self.n_frames, self.n_pts_included), dtype=rho_dtype)
 
         # Cut that shit up to send to work manager
         try:
@@ -200,11 +199,11 @@ class TemporalInterfaceSubcommand(Subcommand):
             for frame_idx in xrange(self.start_frame, self.last_frame):
 
                 self.univ.trajectory[frame_idx]
-                water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.water_dist_cutoff+3, self.mol_sel_spec)).positions
-
+                #water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.water_dist_cutoff+3, self.mol_sel_spec)).positions
+                water_ow = self.univ.select_atoms('name OW')
                 args = ()
                 kwargs = dict(frame_idx=frame_idx, water_ow=water_ow, n_pts_included=self.n_pts_included, 
-                              rho_water_ref=self.rho_water_ref, gridpt_mask=self.gridpt_mask, x_bounds=self.x_bounds,
+                              gridpt_mask=self.gridpt_mask, x_bounds=self.x_bounds,
                               y_bounds=self.y_bounds, z_bounds=self.z_bounds)
                 log.info("Sending job (frame {})".format(frame_idx))
                 yield (_calc_rho, args, kwargs)
@@ -305,9 +304,9 @@ command
 
     def add_args(self, parser):
         group = parser.add_argument_group('Grid initialization options')
-        group.add_argument('--max-water-dist', type=float, default=6,
+        group.add_argument('--max-water-dist', type=float, default=6.0,
                             help='maximum distance (in A), from the solute, for which to select voxels to calculate density for each frame. Default 13 A. Sets normalized density to 1.0 for any voxels outside this distance')
-        group.add_argument('--min-water-dist', type=float, default=0,
+        group.add_argument('--min-water-dist', type=float, default=0.0,
                             help='minimum distance (in A), from solute, for which to select voxels to calculate density for. Default 0 A. Sets normalized density to 1.0 for any voxels closer than this distance to the solute')
         group.add_argument('--grid-resolution', type=float, default=1.0,
                             help='Grid resolution (in A). Will construct initial grid in order to completely fill first frame box with an integral number of voxels')
@@ -320,11 +319,11 @@ command
     def setup_grid(self):
         
         n_atoms = self.univ.coord.n_atoms
-        self.box = box = np.ceil(self.univ.dimensions[:3])
+        box = np.ceil(self.univ.dimensions[:3])
 
         # Set up marching cube stuff - grids in Angstroms
         #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
-        self.ngrids = ngrids = (box / self.grid_resolution).astype(int)+1
+        n_grids = (box / self.grid_resolution).astype(int)+1
 
         log.info("Initializing grid from initial frame")
         log.info("Box: {}".format(box))
@@ -345,7 +344,7 @@ command
         # gridpts array shape: (n_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
-        gridpts = cartesian([self.x_bounds[:-1], self.y_bounds[:-1], self.z_bounds[:-1]])
+        gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds])
         tree = cKDTree(gridpts)
 
         # Exclude all gridpoints less than min_dist to protein and morre than max dist from prot
@@ -359,7 +358,7 @@ command
         neighbor_list = itertools.chain(*neighbor_list_by_point)
         neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
-        far_pt_idx = np.setdiff1d(np.arange(self.npts), neighbor_idx)
+        far_pt_idx = np.setdiff1d(np.arange(self.n_pts_total), neighbor_idx)
 
         # Now find all gridpoints **closer** than min_water_dist A to solute
         #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
@@ -370,14 +369,12 @@ command
 
         excluded_indices = np.append(far_pt_idx, close_pt_idx)
         assert excluded_indices.shape[0] == far_pt_idx.shape[0] + close_pt_idx.shape[0]
-        
-        good_indices = np.setdiff1d(np.arange(self.npts), excluded_indices)
 
-        # Finally, set up the initial grid_mask array
-        self.grid_mask = np.zeros(self.npts, dtype=bool)
-        self.grid_mask[good_indices] = True
+        # Finally, set up the initial gridpt_mask array
+        self.gridpt_mask = np.ones(self.n_pts_total, dtype=bool)
+        self.gridpt_mask[excluded_indices] = False
 
-        self.max_water_dist = self.water_dist_cutoff
+        self.max_water_dist_cutoff = self.max_water_dist
 
         log.info("Point grid set up")   
 
@@ -416,7 +413,6 @@ iteration in the trajectory)
 
     def process_args(self, args):
         self._subcommand = args.subcommand
-        embed()
         self._subcommand.process_all_args(args)
 
     def go(self):
