@@ -86,9 +86,9 @@ class TemporalInterfaceSubcommand(Subcommand):
         self.max_water_dist = None
         self.min_water_dist = None
 
-        self.dgrid = None
-        self.grid_dl = None
-        self.ngrids = None
+        self.x_bounds = None
+        self.y_bounds = None
+        self.z_bounds = None
         self.gridpts = None
 
         self.tree = None
@@ -146,6 +146,8 @@ class TemporalInterfaceSubcommand(Subcommand):
             print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
             sys.exit()
 
+        assert np.array_equal(self.univ.dimensions[3:], np.array([90.,90.,90.])), "not a cubic box!"
+
         ## TODO: check this.
         self.rho_water_bulk = args.rho_water_bulk
 
@@ -159,32 +161,17 @@ class TemporalInterfaceSubcommand(Subcommand):
         else:
             self.last_frame = u.trajectory.n_frames
 
-        
-
-        self.max_water_dist = args.max_water_dist
-        self.min_water_dist = args.min_water_dist
-
         self.outdx = args.outdx
         self.outgro = args.outgro
         self.outxtc = args.outxtc
         self.outpdb = args.outpdb
 
-        self.wall = args.wall
         if args.mol_sel_spec is not None:
             self.mol_sel_spec = args.mol_sel_spec
             try:
                 self.univ.select_atoms(self.mol_sel_spec)
             except SelectionError:
                 raise ArgumentTypeError('invalid molecule selection spec: {}'.format(args.mol_sel_spec))
-
-        elif self.wall:
-            self.mol_sel_spec = sel_spec_heavies
-        else:
-            self.mol_sel_spec = sel_spec_heavies_nowall
-
-        self.init_from_args = True
-
-        
 
     def calc_rho(self):
 
@@ -198,7 +185,6 @@ class TemporalInterfaceSubcommand(Subcommand):
 
         log.info('n workers: {}'.format(n_workers))
         log.info('n frames: {}'.format(self.n_frames))
-
 
         def task_gen():
 
@@ -225,10 +211,6 @@ class TemporalInterfaceSubcommand(Subcommand):
             del rho_slice
 
         self.rho /= self.rho_water_bulk
-        #for (fn, args, kwargs) in task_gen():
-        #    rho_slice, frame_idx = fn(*args, **kwargs) 
-        #    self.rho[frame_idx-self.start_frame, :] = rho_slice
-        #    del rho_slice  
 
     def get_rho_avg(self):
         if self.rho is None:
@@ -301,8 +283,8 @@ class TemporalInterfaceInitSubcommand(TemporalInterfaceSubcommand):
     help_text='Initialize voxel grid, determine voxels to include/exclude, and normalized rhos for each voxel'
     description = '''\
 Initialize voxel grid from input args, calculte rho for each voxel from input data, and output voxel limits in each dimension, 
-    a list of excluded voxels, and the rho for each included voxel. All output to be used in subsequent analysis using the 'anal'
-    command
+a list of excluded voxels, and the rho for each included voxel. All output to be used in subsequent analysis using the 'anal'
+command
             input args:
                 a) a structure and trajectory file for (presumably) an unbiased simulation
                 b) a solute definition (by --molspec)
@@ -321,30 +303,36 @@ Initialize voxel grid from input args, calculte rho for each voxel from input da
     def __init__(self, parent):
         super(TemporalInterfaceInitSubcommand,self).__init__(parent)
 
+        self.grid_resolution = None
+        # mask of gridpoints to include
+        self.grid_mask = None
+
     def add_args(parser):
         group = parser.add_argument_group('Grid initialization options')
-        sgroup.add_argument('--max-water-dist', type=float, default=6,
+        group.add_argument('--max-water-dist', type=float, default=6,
                             help='maximum distance (in A), from the solute, for which to select voxels to calculate density for each frame. Default 13 A. Sets normalized density to 1.0 for any voxels outside this distance')
-        sgroup.add_argument('--min-water-dist', type=float, default=0,
+        group.add_argument('--min-water-dist', type=float, default=0,
                             help='minimum distance (in A), from solute, for which to select voxels to calculate density for. Default 0 A. Sets normalized density to 1.0 for any voxels closer than this distance to the solute')
+        group.add_argument('--grid-resolution', type=float, default=1.0,
+                            help='Grid resolution (in A). Will construct initial grid in order to completely fill first frame box with an integral number of voxels')
+
+    def process_args(args):
+        self.grid_resolution = args.grid_resolution
+        self.min_water_dist = args.min_water_dist
+        self.max_water_dist = args.max_water_dist
 
     def setup_grid(self):
-        grid_dl = 1 # Grid resolution at *most* 1 angstrom (when box dimension an integral number of angstroms)
-        natoms = self.univ.coord.n_atoms
-
-        # np 6d array of xyz dimensions - I assume last three dimensions are axis angles?
-        # should modify in future to accomodate non cubic box
-        #   In angstroms
+        
+        n_atoms = self.univ.coord.n_atoms
         self.box = box = np.ceil(self.univ.dimensions[:3])
 
         # Set up marching cube stuff - grids in Angstroms
         #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
-        self.ngrids = ngrids = (box/ grid_dl).astype(int)+1
-        self.dgrid = dgrid = np.ones(3) * grid_dl
+        self.ngrids = ngrids = (box / self.grid_resolution).astype(int)+1
 
+        log.info("Initializing grid from initial frame")
         log.info("Box: {}".format(box))
         log.info("Ngrids: {}".format(ngrids))
-
 
         # Construct 'gridpts' array, over which we will perform
         #    nearest neighbor searching for each heavy prot and water atom
@@ -354,15 +342,15 @@ Initialize voxel grid from input args, calculte rho for each voxel from input da
         #    within a distance (opp edge +- cutoff)
         #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
         #     to retrieve appropriate real point indices
-        coord_x = np.linspace(0,box[0],ngrids[0])
-        coord_y = np.linspace(0,box[1],ngrids[1])
-        coord_z = np.linspace(0,box[2],ngrids[2])
+        self.x_bounds = np.linspace(0,box[0],n_grids[0])
+        self.y_bounds = np.linspace(0,box[1],n_grids[1])
+        self.z_bounds = np.linspace(0,box[2],n_grids[2])
 
         # gridpts array shape: (n_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
-        self.gridpts = gridpts = cartesian([coord_x, coord_y, coord_z])
-        self.tree = cKDTree(self.gridpts)
+        self.gridpts = gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds])
+        tree = cKDTree(self.gridpts)
 
         # Exclude all gridpoints less than min_dist to protein and morre than max dist from prot
         prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
