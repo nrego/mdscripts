@@ -35,12 +35,10 @@ from IPython import embed
 rho_dtype = np.float32
 
 
-def _calc_rho(frame_idx, water_ow, n_pts_included, gridpt_mask, x_bounds, y_bounds, z_bounds):
+def _calc_rho(frame_idx, water_ow, n_pts_included, gridpt_mask, gridpt_mask_assign, x_bounds, y_bounds, z_bounds):
 
-    rho_array_slice = np.zeros(n_pts_included, dtype=rho_dtype)
-    # look-up of index (n_total_grids) = > index (n_included_grids)
-    gridpt_mask_assign = np.cumsum(gridpt_mask, dtype=np.int32)
-
+    rho_slice = np.zeros(n_pts_included, dtype=rho_dtype)
+    
     x_assign = np.digitize(water_ow[:,0], x_bounds) - 1
     y_assign = np.digitize(water_ow[:,1], y_bounds) - 1
     z_assign = np.digitize(water_ow[:,2], z_bounds) - 1
@@ -48,11 +46,14 @@ def _calc_rho(frame_idx, water_ow, n_pts_included, gridpt_mask, x_bounds, y_boun
     y_len = y_bounds.size
     z_len = z_bounds.size
 
-    assign = z_assign + (y_assign*z_len) + (x_assign*y_len*z_len)
-    assign_included = gridpt_mask_assign[assign]
+    ## assignment of each water (indices in n_pts_total)
+    assign_all = z_assign + (y_assign*z_len) + (x_assign*y_len*z_len)
+    # assignments of only waters within included voxels (indices in n_pts_total)
+    assign_included = assign_all[gridpt_mask[assign_all]]
+    # assignments of only waters within included voxels (indices in n_pts_included)
+    assign_included_indices = gridpt_mask_assign[assign_included]
 
-    rho_array_slice[assign_included[gridpt_mask]] = 1.0
-
+    rho_slice[assign_included_indices] = 1.0
 
 
     return (rho_slice, frame_idx)
@@ -79,6 +80,8 @@ class TemporalInterfaceSubcommand(Subcommand):
         self.start_frame = None
         self.last_frame = None
 
+        self.outpdb = None
+
         # Initialized in setup_grid
         #   The specifics of this are handled by appropriate subclass:
         #      TemporalInterfaceInit: Initialize from first frame of input, 
@@ -93,8 +96,13 @@ class TemporalInterfaceSubcommand(Subcommand):
         self.z_bounds = None
 
         # shape (n_total_gridpts, ) binary array to mask excluded gridpts.
-        #    Indexing is C-style; i.e. 
+        #    Indexing is C-style; i.e. :
+        #    for xpt in x:
+        #        for ypt in y:
+        #            for zpt in z:
+        #                i += 1
         self.gridpt_mask = None
+        self._gridpt_mask_assign = None
 
         # shape (n_included_gridpts, ) of floats. Average reference water 'densities' for each voxel
         #    Initialized as array of 1's for Init, or from reference vals for Anal
@@ -108,8 +116,7 @@ class TemporalInterfaceSubcommand(Subcommand):
         self.rho = None
         # (n_included_pts,) : (non-normalized) number of waters in each voxel, averaged over all frames
         self.rho_avg = None
-        # (n_included_pts,) : (normalized by rho_water_ref) average number of waters in each voxel
-        self.rho_avg_norm = None
+
 
     # These properties and method will raise exceptions if 'setup_grid' not called
 
@@ -137,7 +144,21 @@ class TemporalInterfaceSubcommand(Subcommand):
     def n_frames(self):
         return self.last_frame - self.start_frame
 
+    # look-up that gives an index of an included voxel in n_pts_included,
+    #    given an index of the included voxel in n_pts_total 
+    #  i.e. - given the global index of a voxel (over the list of **all** voxels)
+    #     give the index of that voxel in the shortened list of only included voxels
+    @property
+    def gridpt_mask_assign(self):
+        if self._gridpt_mask_assign is None:
+            self._gridpt_mask_assign = np.cumsum(self.gridpt_mask, dtype=np.int) - 1
+    
+        return self._gridpt_mask_assign
 
+    @property
+    def rho_avg_norm(self):
+        return self.rho_avg / self.rho_water_ref
+    
     def add_args(self, parser):
         
         # Common args for trajectory processing
@@ -152,6 +173,9 @@ class TemporalInterfaceSubcommand(Subcommand):
                             help='Last timepoint (in ps)')
         sgroup.add_argument('--mol-sel-spec', type=str, default=sel_spec_heavies,
                             help='A custom string specifier for selecting solute atoms, if desired')
+        ogroup = parser.add_argument_group('Generalized output options')
+        ogroup.add_argument('-opdb', '--outpdb', type=str, default='voxels.pdb',
+                            help='Output voxels as PDB file with bfactors set to normalized rho')
 
 
     def process_args(self, args):
@@ -181,6 +205,9 @@ class TemporalInterfaceSubcommand(Subcommand):
             except SelectionError:
                 raise ArgumentTypeError('invalid molecule selection spec: {}'.format(args.mol_sel_spec))
 
+
+        self.outpdb = args.outpdb
+
     def calc_rho(self):
 
         self.rho = np.zeros((self.n_frames, self.n_pts_included), dtype=rho_dtype)
@@ -191,6 +218,10 @@ class TemporalInterfaceSubcommand(Subcommand):
         except AttributeError:
             n_workers = 1
 
+        block_size = self.n_frames // n_workers
+        if self.n_frames % n_workers != 0:
+            block_size += 1
+
         log.info('n workers: {}'.format(n_workers))
         log.info('n frames: {}'.format(self.n_frames))
 
@@ -200,12 +231,14 @@ class TemporalInterfaceSubcommand(Subcommand):
 
                 self.univ.trajectory[frame_idx]
                 #water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.water_dist_cutoff+3, self.mol_sel_spec)).positions
-                water_ow = self.univ.select_atoms('name OW')
+                water_ow = self.univ.select_atoms('name OW').positions
                 args = ()
                 kwargs = dict(frame_idx=frame_idx, water_ow=water_ow, n_pts_included=self.n_pts_included, 
-                              gridpt_mask=self.gridpt_mask, x_bounds=self.x_bounds,
-                              y_bounds=self.y_bounds, z_bounds=self.z_bounds)
-                log.info("Sending job (frame {})".format(frame_idx))
+                              gridpt_mask=self.gridpt_mask, gridpt_mask_assign=self.gridpt_mask_assign,
+                              x_bounds=self.x_bounds, y_bounds=self.y_bounds, z_bounds=self.z_bounds)
+                #log.info("Sending job (frame {})".format(frame_idx))
+                if frame_idx % 100 == 0:
+                    log.info("Sending frame {} of {}".format(frame_idx, self.last_frame))
                 yield (_calc_rho, args, kwargs)
 
         # Splice together results into final array of densities
@@ -229,48 +262,48 @@ class TemporalInterfaceSubcommand(Subcommand):
         min_rho = self.rho_avg.min()
         max_rho = self.rho_avg.max()
         mean_rho = self.rho_avg.mean()
-        log.info("Min rho: {}, Max rho: {}, avg rho: {}, avg rho*npts: {}".format(min_rho, max_rho, mean_rho, mean_rho*self.npts))
-
-        self.rho_avg_norm = self.rho_avg / self.rho_water_ref
+        log.info("Min rho: {}, Max rho: {}, avg rho: {}, avg rho*npts: {}".format(min_rho, max_rho, mean_rho, mean_rho*self.n_pts_included))
 
 
     #TODO: move this elsewhere
     def do_pdb_output(self):
 
-        norm_rho_p = 1 - self.rho_avg
-        np.savetxt('norm_rho_p.dat', norm_rho_p)
-        np.savetxt('avg_rho', self.rho_avg*self.rho_water_bulk)
-        n_depleted = np.sum(norm_rho_p) * self.rho_water_bulk
-        n_avg = np.sum(self.rho_avg) * self.rho_water_bulk
-        header = "<n>_phi   (<n>_0 - <n>_phi) npts"
-        myarr = np.array([[n_avg, n_depleted, self.npts]])
-        np.savetxt("navg_ndep.dat", myarr, header=header)
-        print("number depleted: {}".format(n_depleted))
-        bfactors = 100*(1 - self.rho_avg)
-        bfactors = np.clip(bfactors, 0, 100)
+        # Do we want to store this in memory instead?
+        gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds])
+        gridpts = gridpts[self.gridpt_mask]
+
+        log.info("outputing data for {} voxels".format(self.n_pts_included))
+
+        norm_rho_p = 1 - self.rho_avg_norm
+        # How often voxel is filled w.r.t. voxel under unbiased ensemble
+        bfactors = 100*(self.rho_avg_norm)
+        bfactors = np.clip(bfactors, 0, 99.9)
         
         top = mdtraj.Topology()
         c = top.add_chain()
 
         cnt = 0
-        for i in range(self.npts):
+        for i in range(self.n_pts_included):
             cnt += 1
             r = top.add_residue('II', c)
             a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
 
         with mdtraj.formats.PDBTrajectoryFile(self.outpdb, 'w') as f:
-            # Mesh pts have to be in nm
-            f.write(self.gridpts, top, bfactors=bfactors)
+            f.write(gridpts, top, bfactors=bfactors)
 
     def setup_grid(self):
         ''' Derived classes must figure out how to appropriately initialize voxel grid'''
+        raise NotImplementedError
+
+    def do_output(self):
+        '''Derived class should figure out what to output'''
         raise NotImplementedError
 
     def go(self):
 
         self.setup_grid()
         self.calc_rho()
-        self.do_pdb_output()
+        self.do_output()
 
 
 class TemporalInterfaceInitSubcommand(TemporalInterfaceSubcommand):
@@ -327,7 +360,7 @@ command
 
         log.info("Initializing grid from initial frame")
         log.info("Box: {}".format(box))
-        log.info("Ngrids: {}".format(ngrids))
+        log.info("Ngrids: {}".format(n_grids))
 
         # Construct 'gridpts' array, over which we will perform
         #    nearest neighbor searching for each heavy prot and water atom
@@ -347,7 +380,7 @@ command
         gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds])
         tree = cKDTree(gridpts)
 
-        # Exclude all gridpoints less than min_dist to protein and morre than max dist from prot
+        # Exclude all gridpoints less than min_dist to protein and more than max dist from prot
         prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
         prot_pos_initial = prot_heavies.positions
         prot_tree = cKDTree(prot_pos_initial)
@@ -374,9 +407,37 @@ command
         self.gridpt_mask = np.ones(self.n_pts_total, dtype=bool)
         self.gridpt_mask[excluded_indices] = False
 
+        self.rho_water_ref = np.ones(self.n_pts_included, dtype=rho_dtype)
         self.max_water_dist_cutoff = self.max_water_dist
 
         log.info("Point grid set up")   
+
+    def do_output(self):
+        ''' Need to remove any voxels that are always empty'''
+
+        log.info('Excluding voxels that are always empty...')
+        log.info('n_voxels prior to excluding empties: {}'.format(self.n_pts_included))
+
+        zero_indices = np.where(self.rho_avg==0)[0]
+        good_indices = np.arange(self.n_pts_included, dtype=np.int)
+        good_indices = np.setdiff1d(good_indices, zero_indices)
+        # index of included pt => its index in the global scheme
+        included_to_tot_indices = np.arange(self.n_pts_total, dtype=np.int)[self.gridpt_mask]
+        # Exclude the (global) indices of any voxels that have rho of zero
+        #   rho_avg is indexed by the indices in the range of [0, n_pts_included), while
+        #   gridpts_mask is indexed globally, hence the lookup array
+        global_indices_to_exclude = included_to_tot_indices[zero_indices]
+        log.info('  Excluding an additional {} voxels'.format(global_indices_to_exclude.shape[0]))
+        #update the gridpt_mask
+        self.gridpt_mask[global_indices_to_exclude] = False
+        self.rho_avg =  self.rho_avg[good_indices]
+        self.rho_water_ref = self.rho_water_ref[good_indices]
+        
+        embed()
+        assert np.array_equal(np.ones(self.n_pts_included), self.rho_water_ref)
+
+        self.do_pdb_output()
+
 
 class TemporalInterfaceAnalSubcommand(TemporalInterfaceSubcommand):
     subcommand='anal'
@@ -384,8 +445,8 @@ class TemporalInterfaceAnalSubcommand(TemporalInterfaceSubcommand):
     description = '''\
 Run time-averaged interace analysis on trajectory. Load pre-initialized voxel grid definitions and reference rho values for each voxel,
 And then calculates average rho and normalized rho values for input data trajectory
-
     '''
+
     def __init__(self, parent):
         super(TemporalInterfaceAnalSubcommand,self).__init__(parent)
 
