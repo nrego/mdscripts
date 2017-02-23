@@ -223,6 +223,7 @@ class Subcommand(ToolComponent):
         subparser = subparsers.add_parser(self.subcommand, help=self.help_text, description=self.description)
 
         self.add_all_args(subparser)
+        # Anthing processing args will be able to this instance as args.subcommand
         subparser.set_defaults(subcommand=self)
         self.subparser = subparser
 
