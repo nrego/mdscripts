@@ -233,4 +233,16 @@ class Subcommand(ToolComponent):
         (i.e. parent subclasses Tool, not ParallelTool)'''
         return self.parent.work_manager
 
+    @property
+    def max_queue_len(self):
+        '''Raises an AttributeError if parent is not parallel'''
+        return self.parent.max_queue_len
 
+    @property
+    def n_workers(self):
+        try:
+            return self.work_manager.n_workers
+        except AttributeError:
+            return 1
+    
+    

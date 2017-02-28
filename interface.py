@@ -313,19 +313,13 @@ Command-line options
         # Set up marching cube stuff - grids in Angstroms
         #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
         self.ngrids = ngrids = np.ceil(box/ grid_dl).astype(int)+1
-        self.dgrid = dgrid = box/(ngrids-1)
+        self.dgrid = np.ones(3) * grid_dl
 
         log.info("Box: {}".format(box))
         log.info("Ngrids: {}".format(ngrids))
 
-        # Extra number of grid points on each side to reflect pbc
-        #    In grid units (i.e. inverse dgrid)
-        #margin = (cutoff/dgrid).astype(int)
-        margin = np.array([0,0,0], dtype=np.int)
         # Number of actual unique points
         self.npts = npts = ngrids.prod()
-        # Number of real points plus margin of reflected pts
-        n_pseudo_pts = (ngrids + 2*margin).prod()
 
         # Construct 'gridpts' array, over which we will perform
         #    nearest neighbor searching for each heavy prot and water atom
@@ -335,9 +329,9 @@ Command-line options
         #    within a distance (opp edge +- cutoff)
         #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
         #     to retrieve appropriate real point indices
-        coord_x = np.linspace(-margin[0],box[0]+margin[0],ngrids[0])
-        coord_y = np.linspace(-margin[1],box[1]+margin[1],ngrids[1])
-        coord_z = np.linspace(-margin[2],box[2]+margin[2],ngrids[2])
+        coord_x = np.arange(0,ngrids[0],grid_dl)
+        coord_y = np.arange(0,ngrids[1],grid_dl)
+        coord_z = np.arange(0,ngrids[2],grid_dl)
 
         # gridpts array shape: (n_pseudo_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
@@ -361,7 +355,7 @@ Command-line options
             return
 
         log.info("Preparing to output data")
-
+        #embed()
         writer = RhoField(self.rho_shape, self.gridpts)
 
         # Always do dx file output

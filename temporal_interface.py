@@ -9,6 +9,8 @@ import argparse
 from argparse import ArgumentTypeError
 import logging
 
+import cPickle as pickle
+
 from IPython import embed
 
 import MDAnalysis
@@ -176,7 +178,8 @@ class TemporalInterfaceSubcommand(Subcommand):
         ogroup = parser.add_argument_group('Generalized output options')
         ogroup.add_argument('-opdb', '--outpdb', type=str, default='voxels.pdb',
                             help='Output voxels as PDB file with bfactors set to normalized rho')
-
+        parser.add_argument('--block-size', type=int,
+                            help='split jobs into blocks of this many frames')
 
     def process_args(self, args):
 
@@ -208,22 +211,13 @@ class TemporalInterfaceSubcommand(Subcommand):
 
         self.outpdb = args.outpdb
 
+        log.info('n workers: {}'.format(self.n_workers))
+        log.info('n frames: {}'.format(self.n_frames))
+
     def calc_rho(self):
 
         self.rho = np.zeros((self.n_frames, self.n_pts_included), dtype=rho_dtype)
 
-        # Cut that shit up to send to work manager
-        try:
-            n_workers = self.work_manager.n_workers or 1
-        except AttributeError:
-            n_workers = 1
-
-        block_size = self.n_frames // n_workers
-        if self.n_frames % n_workers != 0:
-            block_size += 1
-
-        log.info('n workers: {}'.format(n_workers))
-        log.info('n frames: {}'.format(self.n_frames))
 
         def task_gen():
 
@@ -233,7 +227,7 @@ class TemporalInterfaceSubcommand(Subcommand):
                 #water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.water_dist_cutoff+3, self.mol_sel_spec)).positions
                 water_ow = self.univ.select_atoms('name OW').positions
                 args = ()
-                kwargs = dict(frame_idx=frame_idx, water_ow=water_ow, n_pts_included=self.n_pts_included, 
+                kwargs = dict(frame_idx=frame_idx,  water_ow=water_ow, n_pts_included=self.n_pts_included, 
                               gridpt_mask=self.gridpt_mask, gridpt_mask_assign=self.gridpt_mask_assign,
                               x_bounds=self.x_bounds, y_bounds=self.y_bounds, z_bounds=self.z_bounds)
                 #log.info("Sending job (frame {})".format(frame_idx))
@@ -243,7 +237,7 @@ class TemporalInterfaceSubcommand(Subcommand):
 
         # Splice together results into final array of densities
         #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-        for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
+        for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
             #import pdb; pdb.set_trace()
             rho_slice, frame_idx = future.get_result(discard=True)
             self.rho[frame_idx-self.start_frame, :] = rho_slice
@@ -256,28 +250,42 @@ class TemporalInterfaceSubcommand(Subcommand):
         self.rho_avg = self.rho.mean(axis=0)
         log.info("total : {}".format(self.rho_avg.sum()))
 
+        if self.rho_avg.sum() == 0:
+            log.error('All voxels are empty')
+            raise 
         #non_excluded_indices = self.rho_avg < 0.1
         #non_excluded_rho_avg = self.rho_avg[non_excluded_indices]
 
         min_rho = self.rho_avg.min()
         max_rho = self.rho_avg.max()
         mean_rho = self.rho_avg.mean()
-        log.info("Min rho: {}, Max rho: {}, avg rho: {}, avg rho*npts: {}".format(min_rho, max_rho, mean_rho, mean_rho*self.n_pts_included))
+        log.info("Average Rho: Min rho: {}, Max rho: {}, avg rho: {}, avg rho*npts: {}".format(min_rho, max_rho, mean_rho, mean_rho*self.n_pts_included))
+
+        min_rho = self.rho_avg_norm.min()
+        max_rho = self.rho_avg_norm.max()
+        mean_rho = self.rho_avg_norm.mean()
+        err_rho = self.rho_avg_norm.std()
+        log.info("Normalized Average Rho: Min rho: {}, Max rho: {}, avg rho: {}, std rho: {}".format(min_rho, max_rho, mean_rho, err_rho))
+        anomalous_idx = np.where(self.rho_avg_norm - mean_rho >= 3*err_rho)
+        log.info("anomalous indices (rho - mean >= 3*std(normalized_rho)): {}".format(anomalous_idx))
 
 
     #TODO: move this elsewhere
     def do_pdb_output(self):
 
+        if self.n_pts_included == 0:
+            log.warning('No voxels included! Skipping PDB output.')
+            return
         # Do we want to store this in memory instead?
-        gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds])
+        gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds]) + 0.5
         gridpts = gridpts[self.gridpt_mask]
 
         log.info("outputing data for {} voxels".format(self.n_pts_included))
 
         norm_rho_p = 1 - self.rho_avg_norm
         # How often voxel is filled w.r.t. voxel under unbiased ensemble
-        bfactors = 100*(self.rho_avg_norm)
-        bfactors = np.clip(bfactors, 0, 99.9)
+        bfactors = self.rho_avg_norm
+        #bfactors = np.clip(bfactors, 0, 100)
         
         top = mdtraj.Topology()
         c = top.add_chain()
@@ -332,8 +340,7 @@ command
         super(TemporalInterfaceInitSubcommand,self).__init__(parent)
 
         self.grid_resolution = None
-        # mask of gridpoints to include
-        self.grid_mask = None
+        self.init_out = None
 
     def add_args(self, parser):
         group = parser.add_argument_group('Grid initialization options')
@@ -343,11 +350,15 @@ command
                             help='minimum distance (in A), from solute, for which to select voxels to calculate density for. Default 0 A. Sets normalized density to 1.0 for any voxels closer than this distance to the solute')
         group.add_argument('--grid-resolution', type=float, default=1.0,
                             help='Grid resolution (in A). Will construct initial grid in order to completely fill first frame box with an integral number of voxels')
+        ogroup = parser.add_argument_group('Initialization-specific output')
+        ogroup.add_argument('--init-data-out', type=str, default='init_data.pkl',
+                            help='Location to output initialized results for use by \'anal\'')
 
     def process_args(self, args):
         self.grid_resolution = args.grid_resolution
         self.min_water_dist = args.min_water_dist
         self.max_water_dist = args.max_water_dist
+        self.init_out = args.init_data_out
 
     def setup_grid(self):
         
@@ -378,6 +389,7 @@ command
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
         gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds])
+        gridpts += 0.5
         tree = cKDTree(gridpts)
 
         # Exclude all gridpoints less than min_dist to protein and more than max dist from prot
@@ -433,8 +445,13 @@ command
         self.rho_avg =  self.rho_avg[good_indices]
         self.rho_water_ref = self.rho_water_ref[good_indices]
         
-        embed()
         assert np.array_equal(np.ones(self.n_pts_included), self.rho_water_ref)
+
+
+        ## output some pickling stuff ##
+        output_payload = (self.x_bounds, self.y_bounds, self.z_bounds, self.gridpt_mask, self.rho_avg, self.water_dist_cutoff)
+        with open(self.init_out, 'w') as pickle_outfile:
+            pickle.dump(output_payload, pickle_outfile)
 
         self.do_pdb_output()
 
@@ -450,7 +467,35 @@ And then calculates average rho and normalized rho values for input data traject
     def __init__(self, parent):
         super(TemporalInterfaceAnalSubcommand,self).__init__(parent)
 
+        # pickled file output by 'Init'
+        self.init_data = None
 
+    def add_args(self, parser):
+        igroup = parser.add_argument_group('Anal-specific input options')
+        igroup.add_argument('--init-data', type=str, default='init_data.pkl',
+                            help='Filename of grid information outputted by \'init\'')
+
+    def process_args(self, args):
+        self.init_data = args.init_data
+
+    def setup_grid(self):
+
+        log.info('Loading data from initfile {}...'.format(self.init_data))
+        
+        try:
+            with open(self.init_data, 'r') as init_datafile:
+                init_dump = pickle.load(init_datafile)
+
+                self.x_bounds, self.y_bounds, self.z_bounds, self.gridpt_mask, self.rho_water_ref, self.max_water_dist = init_dump
+
+        except:
+            log.error('Could not load input file')
+            raise IOError 
+
+        log.info('...Grid successfully initialized')
+
+    def do_output(self):
+        self.do_pdb_output()
 
 class TemporalInterface(ParallelTool):
     prog = 'temporal interface'
