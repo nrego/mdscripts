@@ -284,7 +284,7 @@ class TemporalInterfaceSubcommand(Subcommand):
 
         norm_rho_p = 1 - self.rho_avg_norm
         # How often voxel is filled w.r.t. voxel under unbiased ensemble
-        bfactors = self.rho_avg_norm
+        bfactors = np.clip(self.rho_avg_norm, 0, 100)
         #bfactors = np.clip(bfactors, 0, 100)
         
         top = mdtraj.Topology()

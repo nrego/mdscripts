@@ -123,7 +123,7 @@ Command-line options
                         print("\r doing frame {} of {}".format(i_frame, self.last_frame))
                     curr_ts = self.other_univ.trajectory[i_frame]
 
-                    center_mol(self.other_univ)
+                    center_mol(self.other_univ, do_pbc=True)
                     rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
                     if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
