@@ -1,62 +1,48 @@
-import numpy as np
-
-mydat = np.loadtxt('avg_n_n_dep.dat')
-
 from __future__ import division
 
+import numpy as np
+import os
 
+n_0 = np.loadtxt('phi0.0/rho_avg.dat')
+actual_data = np.loadtxt('out.dat')
+actual_n_avg = actual_data[:,3]
+actual_n_dep = actual_n_avg[0] - actual_n_avg
 
-def get_data(phival, rho_norm):
+def get_data(phival):
 
-    
     dirname = 'phi{:0.1f}/'.format(phival)
 
-    n_avg_ndep = np.loadtxt(dirname + 'navg_ndep.dat')
-    n_avg = n_avg_ndep[0]
-    n_dep = n_avg_ndep[1]
 
-    idx = np.where(mydat[:,0] == phival)
-    n_avg_actual = mydat[idx, 1]
-    n_dep_actual = mydat[idx, 2]
+    rvals = np.loadtxt(os.path.join(dirname, 'rho_avg_norm.dat'))
+    nvals = np.loadtxt(os.path.join(dirname, 'rho_avg.dat'))
+    n_avg = nvals.sum()
 
-    #p_vals = np.clip(np.loadtxt(dirname + 'norm_rho_p.dat'), 0.0, 1.0)
-    p_vals = np.loadtxt(dirname + 'norm_rho_p.dat')
-    
+    act_n_dep_curr = actual_n_dep[actual_data[:,0] == phival]
+    act_n_avg_curr = actual_n_avg[actual_data[:,0] == phival]
 
-    plevels = np.append(np.linspace(p_vals.min(), 0, 51), np.linspace(0.02,1.0,50), axis=0)
-    myres = np.zeros_like(plevels)
-    for i, p_thres in enumerate(plevels):
-        myres[i] = (p_vals >= p_thres).sum() / p_vals.size
+    #estimate of total number of depleted waters
+    n_dep = np.sum(n_0) - n_avg
 
-    plt.plot(plevels, myres, '-o', label=r'$\phi={}$'.format(phival))
+    return (act_n_avg_curr, n_avg, act_n_dep_curr, n_dep, rvals, nvals)
 
 
-    return n_avg_actual[0,0], n_dep_actual[0,0], n_avg, n_dep
+phivals = np.arange(0.0, 6.5, 0.5)
 
+all_n_avg = np.zeros_like(phivals)
+all_act_n_avg = np.zeros_like(phivals)
+all_n_dep = np.zeros_like(phivals)
+all_act_n_dep = np.zeros_like(phivals)
 
-def get_data_2(phival, rho_norm):
+all_rvals = np.zeros((phivals.shape[0], n_0.shape[0]))
+all_nvals = np.zeros((phivals.shape[0], n_0.shape[0]))
 
-    #dirname = 'phi{:0.1f}/'.format(phival)
-    dirname = 'phi{:0.1f}/min_dist2.0/'.format(phival)
+for i,phival in enumerate(phivals):
+    act_n_avg_curr, n_avg, act_n_dep_curr, n_dep, rvals, nvals = get_data(phival)
 
-    n_avg_ndep = np.loadtxt(dirname + 'navg_ndep.dat')
-    n_avg = n_avg_ndep[0]
-    n_dep = n_avg_ndep[1]
+    all_n_avg[i] = n_avg
+    all_act_n_avg[i] = act_n_avg_curr
+    all_n_dep[i] = n_dep
+    all_act_n_dep[i] = act_n_dep_curr
+    all_rvals[i,...] = rvals
+    all_nvals[i,...] = nvals
 
-    idx = np.where(mydat[:,0] == phival)
-    n_avg_actual = mydat[idx, 1]
-    n_dep_actual = mydat[idx, 2]
-
-    p_vals = np.loadtxt(dirname + 'norm_rho_p.dat')
-    plevels = np.append(np.arange(p_vals.min(), 0, 0.02), np.linspace(0.02,1.0,50), axis=0)
-    
-    myres = np.zeros_like(plevels)
-
-    for i, p_thres in enumerate(plevels):
-        myres[i] = (p_vals >= p_thres).sum() / len(p_vals)
-
-    #plt.plot(1-plevels, myres, '-o', label=r'$\phi={}$'.format(phival))
-    hist, bb = np.histogram(1-p_vals, bins=100, normed=True)
-    plt.plot(bb[:-1]+np.diff(bb)/2.0, hist, label=r'$\phi={}$'.format(phival))
-
-    return n_avg_actual[0,0], n_dep_actual[0,0], n_avg, n_dep

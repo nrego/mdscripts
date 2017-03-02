@@ -176,8 +176,8 @@ class TemporalInterfaceSubcommand(Subcommand):
         sgroup.add_argument('--mol-sel-spec', type=str, default=sel_spec_heavies,
                             help='A custom string specifier for selecting solute atoms, if desired')
         ogroup = parser.add_argument_group('Generalized output options')
-        ogroup.add_argument('-opdb', '--outpdb', type=str, default='voxels.pdb',
-                            help='Output voxels as PDB file with bfactors set to normalized rho')
+        ogroup.add_argument('-opdb', '--outpdb', type=str, default='voxels',
+                            help='Output voxels as PDB files with this base name. Two files are outputted: [opdb]_norm.pdb and [opdb]_avg.pdb')
         parser.add_argument('--block-size', type=int,
                             help='split jobs into blocks of this many frames')
 
@@ -273,6 +273,9 @@ class TemporalInterfaceSubcommand(Subcommand):
     #TODO: move this elsewhere
     def do_pdb_output(self):
 
+        np.savetxt('rho_avg.dat', self.rho_avg)
+        np.savetxt('rho_avg_norm.dat', self.rho_avg_norm)
+
         if self.n_pts_included == 0:
             log.warning('No voxels included! Skipping PDB output.')
             return
@@ -282,7 +285,6 @@ class TemporalInterfaceSubcommand(Subcommand):
 
         log.info("outputing data for {} voxels".format(self.n_pts_included))
 
-        norm_rho_p = 1 - self.rho_avg_norm
         # How often voxel is filled w.r.t. voxel under unbiased ensemble
         bfactors = np.clip(self.rho_avg_norm, 0, 100)
         #bfactors = np.clip(bfactors, 0, 100)
@@ -296,7 +298,12 @@ class TemporalInterfaceSubcommand(Subcommand):
             r = top.add_residue('II', c)
             a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
 
-        with mdtraj.formats.PDBTrajectoryFile(self.outpdb, 'w') as f:
+        with mdtraj.formats.PDBTrajectoryFile('{}_norm.pdb'.format(self.outpdb), 'w') as f:
+            f.write(gridpts, top, bfactors=bfactors)
+
+        # Do it again with the absolute rho values (rho_avg instead of rho_avg_norm)
+        bfactors = self.rho_avg * 100
+        with mdtraj.formats.PDBTrajectoryFile('{}_avg.pdb'.format(self.outpdb), 'w') as f:
             f.write(gridpts, top, bfactors=bfactors)
 
     def setup_grid(self):
