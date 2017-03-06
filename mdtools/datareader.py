@@ -16,6 +16,8 @@ import collections
 log = logging.getLogger(__name__)
 
 
+from IPython import embed
+
 def normhistnd(hist, binbounds):
     '''Normalize the N-dimensional histogram ``hist`` with corresponding
     bin boundaries ``binbounds``.  Modifies ``hist`` in place and returns
@@ -354,13 +356,15 @@ class DataReader:
     def plotHistAll(cls, start=0, end=None, nbins=50):
         total_array = np.array([])
         for title, dataset in cls.datasets.iteritems():
-            total_array = np.append(total_array, dataset.data[start:end]['$\~N$'])
-            data = dataset.data[start:end]['$\~N$']
+            total_array = np.append(total_array, dataset.data[start:end]['N'])
+            data = dataset.data[start:end]['N']
             #pyplot.hist(np.array(data), bins=nbins, normed=True, label="phi: {} kj/mol".format(dataset.phi))
 
+        bins = np.arange(0, total_array.max()+2, 1)
+        #embed()
         pyplot.legend()
-        counts, centers = np.histogram(total_array, bins=nbins)
-        centers = np.diff(centers)/2.0 + centers[:-1]
+        counts, centers = np.histogram(total_array, bins=bins)
+        centers = centers[:-1]
         pyplot.bar(centers, counts, width=np.diff(centers)[0])
 
         retarr = np.zeros((centers.size, 2),dtype=np.float32)

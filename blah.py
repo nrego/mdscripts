@@ -26,7 +26,7 @@ def get_data(phival):
     return (act_n_avg_curr, n_avg, act_n_dep_curr, n_dep, rvals, nvals)
 
 
-phivals = np.arange(0.0, 6.5, 0.5)
+phivals = np.arange(0.0, 10, 1)
 
 all_n_avg = np.zeros_like(phivals)
 all_act_n_avg = np.zeros_like(phivals)
@@ -46,3 +46,47 @@ for i,phival in enumerate(phivals):
     all_rvals[i,...] = rvals
     all_nvals[i,...] = nvals
 
+
+thres_vals = np.linspace(0,1,500)
+m = n_0.shape[0]
+for i, phival in enumerate(phivals):
+    curr_nvals = all_nvals[i]
+    curr_data = np.zeros_like(thres_vals)
+    for j, thres in enumerate(thres_vals):
+        curr_data[j] = (curr_nvals <= thres).sum() / m
+    plt.plot(thres_vals, curr_data, '-o', label=r'$\phi={}$'.format(phival))
+
+thres_vals *= 5
+for i, phival in enumerate(phivals):
+    curr_rvals = all_rvals[i]
+    if i == 0:
+        curr_rvals /= curr_rvals
+    curr_data = np.zeros_like(thres_vals)
+    for j, thres in enumerate(thres_vals):
+        curr_data[j] = (curr_rvals <= thres).sum() / m
+    if i == 0:
+        plt.step(thres_vals, curr_data, '-o', label=r'$\phi={}$'.format(phival))
+    else:
+        plt.plot(thres_vals, curr_data, '-o', label=r'$\phi={}$'.format(phival))
+
+bins = np.linspace(0,0.1,50)
+for i, phival in enumerate(phivals):
+    curr_nvals = np.clip(all_nvals[i], 0, 0.1)
+    if curr_nvals.max() >= bins.max():
+        curr_bins = np.append(bins, curr_nvals.max()+0.01)
+    else:
+        curr_bins = bins.copy(0)
+    hist, curr_bins = np.histogram(curr_nvals, normed=True, bins=curr_bins)
+
+    plt.plot(curr_bins[:-1]+np.diff(curr_bins)/2.0, hist, label=r'$\phi={}$'.format(phival))
+
+bins = np.linspace(0,2.1,51)
+for i, phival in enumerate(phivals):
+    if i == 0:
+        continue
+    curr_rvals = np.clip(all_rvals[i], 0.0, 2.0)
+
+    curr_bins = bins.copy(0)
+    hist, curr_bins = np.histogram(curr_rvals, normed=True, bins=75)
+
+    plt.plot(curr_bins[:-1]+np.diff(curr_bins)/2.0, hist, label=r'$\phi={}$'.format(phival))
