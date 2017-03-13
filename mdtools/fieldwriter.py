@@ -48,10 +48,10 @@ def from_dx(infile):
             curr_idx += len(parts)
 
         rho = rho.astype(float)
-        rho = np.reshape(rho, (ngrids))
-        rho = rho[np.newaxis, :]
+        rho_reshape = np.reshape(rho, (ngrids))
+        rho_reshape = rho_reshape[np.newaxis, :]
 
-    return rho, gridpts
+    return rho, rho_reshape, gridpts
 
 
 #Input/output capabilities for handling volumetric density fields on a grid

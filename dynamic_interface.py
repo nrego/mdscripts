@@ -1,0 +1,279 @@
+'''
+Calculates time-averaged density profiles for a dynamic union of spherical probe volumes
+
+(E.g. spheres pegged to solute heavy atoms)
+
+"interface" may be a misnomer, and there is a lot of code copied from the other interface
+   tools. 
+
+   TODO: Refactor all interface tools to reduce code reuse; need base/core class/interface 
+   to handle shared functionality (e.g. calc_rho API, data i/o, etc)
+'''
+
+
+#Instantaneous interface
+# nrego sept 2015
+
+from __future__ import division; __metaclass__ = type
+import sys
+import numpy as np
+from math import sqrt
+import argparse
+import logging
+
+from IPython import embed
+
+import MDAnalysis
+#from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
+
+from scipy.spatial import cKDTree
+import itertools
+
+from mdtools import ParallelTool
+
+from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
+
+from fieldwriter import RhoField
+
+log = logging.getLogger('mdtools.interface')
+
+'''
+Returns:
+    solute_occ:  shape (n_solute_atoms,), list of ints of number of waters for each solute atom's spheres
+    total_n: (int); total number of waters in the union of subvolumes
+'''
+def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff):    
+
+    solute_occ = np.zeros((solute_pos.shape[0]), dtype=int)
+    solute_tree = cKDTree(solute_pos)
+    water_tree = cKDTree(water_pos)
+
+    solute_neighbors = solute_tree.query_ball_tree(water_tree, r=r_cutoff)
+
+    solute_occ = np.array([len(neighbors) for neighbors in solute_neighbors], dtype=int)
+
+    unique_neighbors = itertools.chain(*solute_neighbors)
+    unique_neighbors = np.unique( np.fromiter(unique_neighbors, dtype=int) )
+
+    total_n = unique_neighbors.size
+
+
+    return (solute_occ, total_n, frame_idx)
+
+class DynamicInterface(ParallelTool):
+    prog='dynamic interface'
+    description = '''\
+Perform interface/localized density analysis on a dynamic probe volume 
+(i.e. a union of spherical shells, each with the same radius, centered
+on user-specified atoms)
+
+-----------------------------------------------------------------------------
+Command-line options
+-----------------------------------------------------------------------------
+'''
+    
+    def __init__(self):
+        super(DynamicInterface,self).__init__()
+        
+        # Parallel processing by default (this is not actually necessary, but it is
+        # informative!)
+        self.wm_env.default_work_manager = self.wm_env.default_parallel_work_manager
+
+        self.univ = None
+
+        self.r_cutoff = None
+        self.rho_water_bulk = None
+
+        self._solute_atoms = None
+
+        # Shape (n_frames, n_solute_atoms)
+        self.rho = None
+        self._avg_rho = None
+
+        self.start_frame = None
+        self.last_frame = None
+
+        self.outpdb = None
+        self.outxtc = None
+
+        self.mol_sel_spec = None
+
+    @property
+    def n_frames(self):
+        return self.last_frame - self.start_frame
+
+    @property
+    def rho_shape(self):
+        if self.rho is not None and self._rho_shape is None:
+            self._rho_shape = self.rho.reshape((self.n_frames, self.ngrids[0], self.ngrids[1], self.ngrids[2]))
+       
+        return self._rho_shape
+
+    @property
+    def solute_atoms(self):
+        if self._solute_atoms is None:
+            self._solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
+
+        return self._solute_atoms
+
+    @property
+    def avg_rho(self):
+        if self._avg_rho is None:
+            self._avg_rho = self._get_avg_rho()
+        
+        return self._avg_rho
+    
+    @property
+    def n_solute_atoms(self):
+        return self.solute_atoms.n_atoms
+        
+    def add_args(self, parser):
+        
+        sgroup = parser.add_argument_group('Instantaneous interface options')
+        sgroup.add_argument('-c', '--grofile', metavar='INPUT', type=str, required=True,
+                            help='Input structure file')
+        sgroup.add_argument('-f', '--trajfile', metavar='XTC', type=str, required=True,
+                            help='Input XTC trajectory file')
+        sgroup.add_argument('--mol-sel-spec', type=str, required=True,
+                            help='MDAnalysis-style selection string for choosing solute atoms defining the spherical probe volume')
+        sgroup.add_argument('-rcut', '--rcutoff', type=float, default=6.0,
+                            help='Radius of individual spherical subvolumes, in A (default: 6.0)')
+        sgroup.add_argument('-b', '--start', type=int, default=0,
+                            help='First timepoint (in ps)')
+        sgroup.add_argument('-e', '--end', type=int, 
+                            help='Last timepoint (in ps)')
+        sgroup.add_argument('--rhowater', type=float, default=0.033,
+                            help='Mean water density to normalize occupancies, per A^3 (default: 0.033)')
+        agroup = parser.add_argument_group('other options')
+        agroup.add_argument('-opdb', '--outpdb', default='dynamic_volume.pdb',
+                        help='output file to write instantaneous interface as GRO file')
+        agroup.add_argument('-oxtc', '--outxtc',
+                        help='Output file to write trajectory of instantaneous interfaces as XTC file')
+
+
+    def process_args(self, args):
+
+        try:
+            self.univ = u = MDAnalysis.Universe(args.grofile, args.trajfile)
+        except:
+            print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
+            sys.exit()
+
+        self.r_cutoff = args.rcutoff
+        self.rho_water_bulk = args.rhowater
+
+        if (args.start > (u.trajectory.n_frames * u.trajectory.dt)):
+            raise ValueError("Error: provided start time ({} ps) is greater than total time ({} ps)"
+                             .format(args.start, (u.trajectory.n_frames * u.trajectory.dt)))
+
+        self.start_frame = int(args.start / u.trajectory.dt)
+        if args.end is not None:
+            self.last_frame = int(args.end / u.trajectory.dt)
+        else:
+            self.last_frame = u.trajectory.n_frames
+
+
+        self.outpdb = args.outpdb.split('.')[0]
+
+        self.mol_sel_spec = args.mol_sel_spec
+
+    #@profile
+    def calc_rho(self):
+
+        water_dist_cutoff = self.r_cutoff + 2 
+
+        self.rho = np.zeros((self.n_frames, self.n_solute_atoms), dtype=np.int8)
+
+        # Cut that shit up to send to work manager
+        try:
+            n_workers = self.work_manager.n_workers or 1
+        except AttributeError:
+            n_workers = 1
+
+        log.info('n workers: {}'.format(n_workers))
+        log.info('n frames: {}'.format(self.n_frames))
+
+
+        def task_gen():
+
+            for frame_idx in xrange(self.start_frame, self.last_frame):
+
+                self.univ.trajectory[frame_idx]
+                solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
+                water_atoms = self.univ.select_atoms("name OW and around {} ({})".format(water_dist_cutoff, self.mol_sel_spec))
+                solute_pos = solute_atoms.positions
+                water_pos = water_atoms.positions
+
+                args = ()
+                kwargs = dict(frame_idx=frame_idx, solute_pos=solute_pos, water_pos=water_pos,
+                              r_cutoff=self.r_cutoff)
+                log.info("Sending job (frame {})".format(frame_idx))
+                yield (_calc_rho, args, kwargs)
+
+        # Splice together results into final array of densities
+        #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
+        for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
+            #import pdb; pdb.set_trace()
+            rho_slice, total_n, frame_idx = future.get_result(discard=True)
+            self.rho[frame_idx-self.start_frame, :] = rho_slice
+            #self.total_n[frame_idx-self.start_frame, :] = total_n
+            del rho_slice
+
+
+    def _get_avg_rho(self):
+        if self.rho is None:
+            log.warning('Rho has not been calculated yet - must run calc_rho')
+            return
+
+        avg_rho = self.rho.mean(axis=0)
+        min_rho = avg_rho.min()
+        max_rho = avg_rho.max()
+        log.info("Min rho: {}, Max rho: {}".format(min_rho, max_rho))
+
+        return avg_rho
+
+
+    # rho: array, shape (n_frames, npts) - calculated coarse-grained rho for each grid point, for 
+    #         each frame
+    # weights: (optional) array, shape (n_frames,) - array of weights for averaging rho - default 
+    #         is array of equal weights
+    def do_output(self):
+
+        if self.rho is None:
+            log.warning("Rho not calculated - run calc_rho first")
+
+            return
+
+        log.info('Writing output to \'{}_norm.pdb\' and \'{}_avg.pdb\' '.format(self.outpdb, self.outpdb))
+
+        ##TODO: Outsource this to a dedicated data-manager
+        #embed()
+        norm_factor = ((4/3)*np.pi*self.r_cutoff**3) * self.rho_water_bulk
+        if self.outpdb:
+            self.univ.trajectory[0]
+            solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
+            solute_atoms.bfactors = self.avg_rho / norm_factor
+            solute_atoms.write('{}_norm.pdb'.format(self.outpdb))
+            solute_atoms.bfactors = self.avg_rho
+            solute_atoms.write('{}_avg.pdb'.format(self.outpdb))
+
+            solute_atoms[solute_atoms.bfactors==0].write('zero_density.pdb')
+
+        if self.outxtc:
+            print("xtc output not yet supported")
+
+
+    def go(self):
+
+        #self.setup_grid()
+        # Split up frames, assign to work manager, splice back together into
+        #   total rho array
+        self.calc_rho()
+        #embed()
+        self.do_output()
+
+
+if __name__=='__main__':
+    DynamicInterface().main()
+
+
