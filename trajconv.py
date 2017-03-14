@@ -60,8 +60,10 @@ Command-line options
     def add_args(self, parser):
         
         sgroup = parser.add_argument_group('Trajconv options')
-        sgroup.add_argument('-s', '--tprfile', metavar='TPR', type=str, required=True,
-                            help='Input topology file (tpr)')
+        sgroup.add_argument('-s1', '--tprfile1', metavar='TPR', type=str, required=True,
+                            help='Input topology file (tpr) for ref structure')
+        sgroup.add_argument('-s2', '--tprfile2', metavar='TPR', type=str, required=True,
+                            help='Input topology file (tpr) for structure/trajectory to fit')
         sgroup.add_argument('-c', '--grofile', metavar='GRO', type=str, required=True,
                             help='Input reference structure file')
         sgroup.add_argument('-f', '--fitfile', metavar='XTC', type=str, required=True,
@@ -81,13 +83,13 @@ Command-line options
     def process_args(self, args):
 
         #try:
-        self.ref_univ = MDAnalysis.Universe(args.tprfile, args.grofile)
+        self.ref_univ = MDAnalysis.Universe(args.tprfile1, args.grofile)
         ext = args.fitfile.split('.')[-1]
         if ext in ['trr', 'xtc']:
             self.do_traj = True
-            self.other_univ = other_univ = MDAnalysis.Universe(args.tprfile, args.fitfile)
+            self.other_univ = other_univ = MDAnalysis.Universe(args.tprfile2, args.fitfile)
         elif ext == 'gro':
-            self.other_univ = other_univ = MDAnalysis.Universe(args.tprfile, args.fitfile)
+            self.other_univ = other_univ = MDAnalysis.Universe(args.tprfile2, args.fitfile)
         else:
             print("unknown or missing extension")
             sys.exit()
@@ -131,7 +133,7 @@ Command-line options
         
 
         else:
-            center_mol(self.other_univ)
+            center_mol(self.other_univ, do_pbc=True)
             rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
             self.other_univ.atoms.write(self.outfile + ".gro")
 
