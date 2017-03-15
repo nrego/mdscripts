@@ -279,9 +279,9 @@ Command-line options
             solute_atoms.bfactors = self.avg_rho
             solute_atoms.write('{}_avg.pdb'.format(self.outpdb))
 
+
             if (solute_atoms.bfactors == 0).sum() > 0:
                 solute_atoms[solute_atoms.bfactors==0].write('zero_density.pdb')
-
 
         if self.outxtc:
             print("xtc output not yet supported")
