@@ -48,17 +48,21 @@ def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff):
     solute_tree = cKDTree(solute_pos)
     water_tree = cKDTree(water_pos)
 
-    solute_neighbors = solute_tree.query_ball_tree(water_tree, r=r_cutoff)
+    water_neighbors = solute_tree.query_ball_tree(water_tree, r=r_cutoff)
+    solute_neighbors = solute_tree.query_ball_tree(solute_tree, r=r_cutoff)
 
+    # number of water or solute atoms in each atom's subvol
+    water_occ = np.array([len(neighbors) for neighbors in water_neighbors], dtype=int)
     solute_occ = np.array([len(neighbors) for neighbors in solute_neighbors], dtype=int)
 
-    unique_neighbors = itertools.chain(*solute_neighbors)
-    unique_neighbors = np.unique( np.fromiter(unique_neighbors, dtype=int) )
+    water_unique_neighbors = itertools.chain(*solute_neighbors)
+    water_unique_neighbors = np.unique( np.fromiter(water_unique_neighbors, dtype=int) )
 
-    total_n = unique_neighbors.size
+    # Total number of waters in entire probe volume
+    total_n = water_unique_neighbors.size
 
 
-    return (solute_occ, total_n, frame_idx)
+    return (water_occ, solute_occ, total_n, frame_idx)
 
 class DynamicInterface(ParallelTool):
     prog='dynamic interface'
@@ -83,12 +87,18 @@ Command-line options
 
         self.r_cutoff = None
         self.rho_water_bulk = None
+        self.rho_solute_bulk = None
 
         self._solute_atoms = None
 
-        # Shape (n_frames, n_solute_atoms)
-        self.rho = None
+        # Shape: (n_frames, n_solute_atoms)
+        self.rho_water = None
+        self.rho_solute = None
         self._avg_rho = None
+
+        # Record of the total number of waters in the entire probe volume
+        # Shape: (n_frames,)
+        self.total_n = None
 
         self.start_frame = None
         self.last_frame = None
@@ -101,6 +111,10 @@ Command-line options
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
+
+    @property
+    def rho(self):
+        return self.rho_water + self.rho_solute
 
     @property
     def rho_shape(self):
@@ -144,6 +158,8 @@ Command-line options
                             help='Last timepoint (in ps)')
         sgroup.add_argument('--rhowater', type=float, default=0.033,
                             help='Mean water density to normalize occupancies, per A^3 (default: 0.033)')
+        sgroup.add_argument('--rhosolute', type=float, default=0.040,
+                            help='Mean solute density to normalize occupances, per A^3 (default: 0.040)')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-opdb', '--outpdb', default='dynamic_volume.pdb',
                         help='output file to write instantaneous interface as GRO file')
@@ -161,6 +177,7 @@ Command-line options
 
         self.r_cutoff = args.rcutoff
         self.rho_water_bulk = args.rhowater
+        self.rho_solute_bulk = args.rhosolute
 
         if (args.start > (u.trajectory.n_frames * u.trajectory.dt)):
             raise ValueError("Error: provided start time ({} ps) is greater than total time ({} ps)"
@@ -182,7 +199,10 @@ Command-line options
 
         water_dist_cutoff = self.r_cutoff + 2 
 
-        self.rho = np.zeros((self.n_frames, self.n_solute_atoms), dtype=np.int8)
+        self.rho_water = np.zeros((self.n_frames, self.n_solute_atoms), dtype=np.int)
+        self.rho_solute = np.zeros((self.n_frames, self.n_solute_atoms), dtype=np.int)
+
+        self.n_waters = np.zeros((self.n_frames, ), dtype=np.int)
 
         # Cut that shit up to send to work manager
         try:
@@ -214,10 +234,12 @@ Command-line options
         #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
             #import pdb; pdb.set_trace()
-            rho_slice, total_n, frame_idx = future.get_result(discard=True)
-            self.rho[frame_idx-self.start_frame, :] = rho_slice
-            #self.total_n[frame_idx-self.start_frame, :] = total_n
-            del rho_slice
+            water_occ_slice, solute_occ_slice, total_n, frame_idx = future.get_result(discard=True)
+            self.rho_water[frame_idx-self.start_frame, :] = water_occ_slice
+            self.rho_solute[frame_idx-self.start_frame, :] = solute_occ_slice
+
+            self.total_n[frame_idx-self.start_frame, :] = total_n
+            del water_occ_slice, solute_occ_slice
 
 
     def _get_avg_rho(self):
@@ -257,7 +279,9 @@ Command-line options
             solute_atoms.bfactors = self.avg_rho
             solute_atoms.write('{}_avg.pdb'.format(self.outpdb))
 
-            solute_atoms[solute_atoms.bfactors==0].write('zero_density.pdb')
+            if (solute_atoms.bfactors == 0).sum() > 0:
+                solute_atoms[solute_atoms.bfactors==0].write('zero_density.pdb')
+
 
         if self.outxtc:
             print("xtc output not yet supported")

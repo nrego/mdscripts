@@ -28,8 +28,8 @@ def pbc(object u):
 
     pos = u.atoms.positions
     for i, box_len in enumerate(box):
-        pos[pos[:,i] > box_len, i] -= box_len
-        pos[pos[:,i] < 0, i] += box_len
+        pos[pos[:,i] > box_len+1, i] -= box_len
+        pos[pos[:,i] < -1, i] += box_len
 
     u.atoms.positions = pos
 
