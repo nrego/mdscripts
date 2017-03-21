@@ -58,9 +58,9 @@ def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall, d
 #  Modifies MDAnalysis Universe 'univ' in-place
 def rotate_mol(ref_univ, other_univ, mol_spec=sel_spec_nowall):
 
-    alignto(other_univ, ref_univ, select=mol_spec)
+    rms1, rms2 = alignto(other_univ, ref_univ, select=mol_spec)
 
-    return ref_univ
+    return rms2
 
 
 # Gets subgroups of contiguous atoms form 'atom_group' (i.e. all within MAX_BOND_LEN of each other)

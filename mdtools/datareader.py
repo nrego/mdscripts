@@ -16,7 +16,7 @@ import collections
 log = logging.getLogger(__name__)
 
 
-from IPython import embed
+#from IPython import embed
 
 def normhistnd(hist, binbounds):
     '''Normalize the N-dimensional histogram ``hist`` with corresponding

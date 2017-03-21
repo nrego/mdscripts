@@ -52,6 +52,8 @@ Command-line options
 
         self.sel_spec = None
 
+        self.rmsd_out = None
+
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
@@ -76,9 +78,10 @@ Command-line options
                             help='MDAnalysis selection string for fitting. Default selects all protein heavy atoms')
 
         agroup = parser.add_argument_group('other options')
-        agroup.add_argument('-o', '--outfile', default='fit.gro',
+        agroup.add_argument('-o', '--outfile', type=str, default='fit.gro',
                         help='Output file to write fitted trajectory or structure. File type determined by input')
-
+        agroup.add_argument('-orms', '--outrmsd', type=str, default='rmsd_fit.dat',
+                        help='Output rmsd values for each frame after fitting')
 
     def process_args(self, args):
 
@@ -111,12 +114,13 @@ Command-line options
         self.sel_spec = args.fitspec
 
         self.outfile = args.outfile.split('.')[0]
+        self.rmsd_out = args.outrmsd
 
     def go(self):
 
         n_frames = self.last_frame - self.start_frame
         center_mol(self.ref_univ)
-
+        rmsd = np.zeros((self.last_frame-self.start_frame))
         self.ref_univ.atoms.write('fit_ref.gro')
         if self.do_traj:
             with MDAnalysis.Writer(self.outfile + ".xtc", self.other_univ.atoms.n_atoms) as W:
@@ -126,15 +130,16 @@ Command-line options
                     curr_ts = self.other_univ.trajectory[i_frame]
 
                     center_mol(self.other_univ, do_pbc=True)
-                    rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+                    rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
                     if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
                     W.write(self.other_univ.atoms)
-        
+                    rmsd[i_frame-self.start_frame] = rms
+            np.savetxt(self.rmsd_out, rmsd)
 
         else:
             center_mol(self.other_univ, do_pbc=True)
-            rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+            rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
             self.other_univ.atoms.write(self.outfile + ".gro")
 
 
