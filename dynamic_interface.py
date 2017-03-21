@@ -53,7 +53,7 @@ def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff):
 
     # number of water or solute atoms in each atom's subvol
     water_occ = np.array([len(neighbors) for neighbors in water_neighbors], dtype=int)
-    solute_occ = np.array([len(neighbors) for neighbors in solute_neighbors], dtype=int)
+    solute_occ = np.array([len(neighbors)-1 for neighbors in solute_neighbors], dtype=int)
 
     water_unique_neighbors = itertools.chain(*solute_neighbors)
     water_unique_neighbors = np.unique( np.fromiter(water_unique_neighbors, dtype=int) )
@@ -238,7 +238,7 @@ Command-line options
             self.rho_water[frame_idx-self.start_frame, :] = water_occ_slice
             self.rho_solute[frame_idx-self.start_frame, :] = solute_occ_slice
 
-            self.total_n[frame_idx-self.start_frame, :] = total_n
+            self.n_waters[frame_idx-self.start_frame] = total_n
             del water_occ_slice, solute_occ_slice
 
 
@@ -247,10 +247,15 @@ Command-line options
             log.warning('Rho has not been calculated yet - must run calc_rho')
             return
 
-        avg_rho = self.rho.mean(axis=0)
+        avg_rho_water = self.rho_water.mean(axis=0)
+        avg_rho_solute = self.rho_solute.mean(axis=0)
+        water_norm = (4/3) * np.pi * (self.r_cutoff**3) * self.rho_water_bulk
+        solute_norm = (4/3) * np.pi * (self.r_cutoff**3) * self.rho_solute_bulk
+        avg_rho = (avg_rho_water / water_norm) + (avg_rho_solute / solute_norm)
         min_rho = avg_rho.min()
         max_rho = avg_rho.max()
-        log.info("Min rho: {}, Max rho: {}".format(min_rho, max_rho))
+        mean_rho = avg_rho.mean()
+        log.info("Min rho: {}, Max rho: {}, Mean rho: {}".format(min_rho, max_rho, mean_rho))
 
         return avg_rho
 
@@ -270,14 +275,16 @@ Command-line options
 
         ##TODO: Outsource this to a dedicated data-manager
         #embed()
-        norm_factor = ((4/3)*np.pi*self.r_cutoff**3) * self.rho_water_bulk
+
         if self.outpdb:
             self.univ.trajectory[0]
             solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
-            solute_atoms.bfactors = self.avg_rho / norm_factor
+            solute_atoms.bfactors = self.avg_rho 
             solute_atoms.write('{}_norm.pdb'.format(self.outpdb))
-            solute_atoms.bfactors = self.avg_rho
-            solute_atoms.write('{}_avg.pdb'.format(self.outpdb))
+            solute_atoms.bfactors = self.rho_water.mean(axis=0)
+            solute_atoms.write('{}_water_avg.pdb'.format(self.outpdb))
+            solute_atoms.bfactors = self.rho_solute.mean(axis=0)
+            solute_atoms.write('{}_solute_avg.pdb'.format(self.outpdb))
 
 
             if (solute_atoms.bfactors == 0).sum() > 0:
