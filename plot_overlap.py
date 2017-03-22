@@ -9,7 +9,6 @@ from mdtools import dr
 import uwham
 import matplotlib.pyplot as plt
 
-
 import sys
 
 import matplotlib as mpl

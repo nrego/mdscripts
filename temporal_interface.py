@@ -30,7 +30,6 @@ from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.temporal_interface')
 
-from IPython import embed
 
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32

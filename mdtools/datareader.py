@@ -16,7 +16,6 @@ import collections
 log = logging.getLogger(__name__)
 
 
-
 def normhistnd(hist, binbounds):
     '''Normalize the N-dimensional histogram ``hist`` with corresponding
     bin boundaries ``binbounds``.  Modifies ``hist`` in place and returns

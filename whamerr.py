@@ -10,7 +10,6 @@ from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
 import pymbar
 import time
 
-
 from fasthist import normhistnd
 
 from mdtools import ParallelTool

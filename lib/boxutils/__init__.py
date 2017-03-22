@@ -15,13 +15,12 @@ from selection_specs import sel_spec_nowall, sel_spec_not_nowall
 #     orientations maintained
 #
 #  Modifies MDAnalysis Universe 'univ' in-place by working on atom groups
-def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall, do_pbc=False):
+def center_mol(univ, mol_spec=sel_spec_nowall, do_pbc=False):
 
     mol_group = univ.select_atoms(mol_spec)
     assert mol_group.bonds.values() is not None, "No bond data provided for mol_group - did you provide a topology?"
     box = (univ.dimensions[:3]).astype(DTYPE)
     assert np.array_equal(univ.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
-
 
     box_center = box / 2.0
     broken_mol = mol_broken(mol_group)
@@ -37,7 +36,7 @@ def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall, d
     mol_group.positions += shift_vec
     
     try:
-        other_atoms = univ.select_atoms(sel_spec_not_nowall)
+        other_atoms = univ.select_atoms('not ({})'.format(mol_spec))
         #for atom in other_atoms:
         #    atom.position = get_minimum_image(com, atom.position, box)
 
@@ -58,9 +57,9 @@ def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall, d
 #  Modifies MDAnalysis Universe 'univ' in-place
 def rotate_mol(ref_univ, other_univ, mol_spec=sel_spec_nowall):
 
-    alignto(other_univ, ref_univ, select=mol_spec)
+    rms1, rms2 = alignto(other_univ, ref_univ, select=mol_spec)
 
-    return ref_univ
+    return rms2
 
 
 # Gets subgroups of contiguous atoms form 'atom_group' (i.e. all within MAX_BOND_LEN of each other)
