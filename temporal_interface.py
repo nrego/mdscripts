@@ -11,7 +11,6 @@ import logging
 
 import cPickle as pickle
 
-from IPython import embed
 
 import MDAnalysis
 from MDAnalysis import SelectionError
