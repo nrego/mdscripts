@@ -37,7 +37,7 @@ def center_mol(univ, mol_spec=sel_spec_nowall, other_spec=sel_spec_not_nowall, d
     mol_group.positions += shift_vec
     
     try:
-        other_atoms = univ.select_atoms(sel_spec_not_nowall)
+        other_atoms = univ.select_atoms(other_spec)
         #for atom in other_atoms:
         #    atom.position = get_minimum_image(com, atom.position, box)
 
