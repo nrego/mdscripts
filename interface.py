@@ -8,8 +8,6 @@ from math import sqrt
 import argparse
 import logging
 
-#from IPython import embed
-
 import MDAnalysis
 #from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 

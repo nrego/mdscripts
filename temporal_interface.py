@@ -11,7 +11,6 @@ import logging
 
 import cPickle as pickle
 
-#from IPython import embed
 
 import MDAnalysis
 from MDAnalysis import SelectionError
@@ -31,7 +30,6 @@ from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.temporal_interface')
 
-from IPython import embed
 
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32

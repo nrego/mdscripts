@@ -21,8 +21,6 @@ from math import sqrt
 import argparse
 import logging
 
-#from IPython import embed
-
 import MDAnalysis
 #from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
@@ -53,7 +51,7 @@ def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff):
 
     # number of water or solute atoms in each atom's subvol
     water_occ = np.array([len(neighbors) for neighbors in water_neighbors], dtype=int)
-    solute_occ = np.array([len(neighbors)-1 for neighbors in solute_neighbors], dtype=int)
+    solute_occ = np.array([len(neighbors) for neighbors in solute_neighbors], dtype=int)
 
     water_unique_neighbors = itertools.chain(*solute_neighbors)
     water_unique_neighbors = np.unique( np.fromiter(water_unique_neighbors, dtype=int) )
@@ -158,8 +156,8 @@ Command-line options
                             help='Last timepoint (in ps)')
         sgroup.add_argument('--rhowater', type=float, default=0.033,
                             help='Mean water density to normalize occupancies, per A^3 (default: 0.033)')
-        sgroup.add_argument('--rhosolute', type=float, default=0.040,
-                            help='Mean solute density to normalize occupances, per A^3 (default: 0.040)')
+        sgroup.add_argument('--rhosolute', type=float, default=0.050,
+                            help='Mean solute density to normalize occupances, per A^3 (default: 0.050)')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-opdb', '--outpdb', default='dynamic_volume.pdb',
                         help='output file to write instantaneous interface as GRO file')

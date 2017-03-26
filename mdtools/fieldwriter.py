@@ -10,7 +10,6 @@ import mdtraj as md
 
 from skimage import measure
 
-#from IPython import embed
 
 def extractInt(string):
     return map(int, re.findall(r"[-+]?\d*\.\d+|\d+", string))
