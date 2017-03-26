@@ -11,6 +11,8 @@ from selection_specs import sel_spec_heavies_nowall
 
 from mdtools import ParallelTool
 
+from MDAnalysis.analysis.rms import rmsd
+
 import sys
 
 class Trajconv(ParallelTool):
@@ -51,6 +53,7 @@ Command-line options
         self.end_frame = None
 
         self.sel_spec = None
+        self.rmsd_spec = None
 
         self.rmsd_out = None
 
@@ -76,7 +79,8 @@ Command-line options
                             help='Last timepoint (in ps) - default is last available')
         sgroup.add_argument('--fitspec', type=str, default=sel_spec_heavies_nowall,
                             help='MDAnalysis selection string for fitting. Default selects all protein heavy atoms')
-
+        sgroup.add_argument('--rmsdspec', type=str, 
+                            help='MDAnalysis selection string for rmsd (after fitting on fitspec). Optional.')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-o', '--outfile', type=str, default='fit.gro',
                         help='Output file to write fitted trajectory or structure. File type determined by input')
@@ -113,6 +117,8 @@ Command-line options
 
         self.sel_spec = args.fitspec
 
+        self.rmsd_spec = args.rmsdspec
+
         self.outfile = args.outfile.split('.')[0]
         self.rmsd_out = args.outrmsd
 
@@ -120,8 +126,16 @@ Command-line options
 
         n_frames = self.last_frame - self.start_frame
         center_mol(self.ref_univ)
-        rmsd = np.zeros((self.last_frame-self.start_frame))
+
+        ndim = 2 if self.rmsd_spec is None else 3
+        rmsd_arr = np.zeros((self.last_frame-self.start_frame, ndim))
+
         self.ref_univ.atoms.write('fit_ref.gro')
+
+        if self.rmsd_spec is not None:
+            ref_struct = self.ref_univ.select_atoms(self.rmsd_spec)
+            other_struct = self.other_univ.select_atoms(self.rmsd_spec)
+
         if self.do_traj:
             with MDAnalysis.Writer(self.outfile + ".xtc", self.other_univ.atoms.n_atoms) as W:
                 for i_frame in range(self.start_frame, self.last_frame):
@@ -134,8 +148,14 @@ Command-line options
                     if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
                     W.write(self.other_univ.atoms)
-                    rmsd[i_frame-self.start_frame] = rms
-            np.savetxt(self.rmsd_out, rmsd)
+                    rmsd_arr[i_frame-self.start_frame, 0] = curr_ts.time
+                    rmsd_arr[i_frame-self.start_frame, 1] = rms
+
+                    if self.rmsd_spec is not None:
+                        rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
+                        rmsd_arr[i_frame-self.start_frame, 2] = rms_other
+
+            np.savetxt(self.rmsd_out, rmsd_arr)
 
         else:
             center_mol(self.other_univ, do_pbc=True)
