@@ -72,7 +72,10 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
     np.random.seed()
     batch_size = ub - lb
     logweights_ret = np.zeros((batch_size, n_windows), dtype=np.float32)
-    neglogpdist_N_ret = np.zeros((batch_size, binbounds.shape[0]-1))
+    if binbounds is not None and all_data_N is not None:
+        neglogpdist_N_ret = np.zeros((batch_size, binbounds.shape[0]-1))
+    else:
+        neglogpdist_N_ret = None
 
     for batch_num in xrange(batch_size):
 
@@ -116,10 +119,11 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
         logweights_ret[batch_num, 1:] = this_weights
 
         # Get -ln(Pv(N)) using WHAM results for this bootstrap sample
-        this_pdist_N = gen_pdist(all_data_N, bias_mat, n_samples, logweights_ret[batch_num].astype(np.float64), binbounds)
-        this_pdist_N /= (this_pdist_N * np.diff(binbounds)).sum()
+        if binbounds is not None and all_data_N is not None:
+            this_pdist_N = gen_pdist(all_data_N, bias_mat, n_samples, logweights_ret[batch_num].astype(np.float64), binbounds)
+            this_pdist_N /= (this_pdist_N * np.diff(binbounds)).sum()
             
-        neglogpdist_N_ret[batch_num, :] = -np.log(this_pdist_N)
+            neglogpdist_N_ret[batch_num, :] = -np.log(this_pdist_N)
 
     return (logweights_ret, neglogpdist_N_ret, lb, ub)
 
@@ -333,8 +337,8 @@ Command-line options
             if do_autocorr:
                 log.info("    Calculating autocorrelation time...")
                 autocorr_nsteps = 1
-                for k in xrange(self.n_windows):
-                    if k == i:
+                for k in [i-1, i+1]:
+                    if k < 0:
                         continue
                     try:
                         autocorr_res = 2 * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:,k]))
@@ -346,6 +350,8 @@ Command-line options
                 log.info("      Tau={} ps".format(self.autocorr[i]))
             bias = self.beta*dataframe # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
+
+            np.savetxt('autocorr', self.autocorr)
 
             if self.all_data is None:
                 self.all_data = dataframe
@@ -380,11 +386,14 @@ Command-line options
         
         logweights_actual = -np.append(0, logweights_actual[0])
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
-
-        max_n = int(np.ceil(max(self.all_data_N.max(), self.all_data.max())))
-        min_n = int(np.floor(min(self.all_data_N.min(), self.all_data.min())))
-        log.info("Min: {:d}, Max: {:d}".format(min_n, max_n))
-        binbounds = np.arange(min_n,max_n+2,1)
+        if self.fmt == 'phi':
+            max_n = int(np.ceil(max(self.all_data_N.max(), self.all_data.max())))
+            min_n = int(np.floor(min(self.all_data_N.min(), self.all_data.min())))
+            log.info("Min: {:d}, Max: {:d}".format(min_n, max_n))
+            binbounds = np.arange(min_n,max_n+2,1)
+            neglogpdist_N_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
+        else:
+            binbounds = None
 
         np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
         
@@ -397,7 +406,7 @@ Command-line options
         log.info("batch size: {}".format(batch_size))
 
         logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
-        neglogpdist_N_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
+        
         # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
         autocorr_nsteps = np.ceil(2*self.autocorr/self.ts).astype(int)
         log.info("autocorr length: {} ps".format(self.autocorr))
@@ -444,7 +453,8 @@ Command-line options
             logweights_slice, neglogpdist_N_slice, lb, ub = future.get_result(discard=True)
             log.info("Receiving result")
             logweights_boot[lb:ub, :] = logweights_slice
-            neglogpdist_N_boot[lb:ub, :] = neglogpdist_N_slice
+            if self.fmt=='phi':
+                neglogpdist_N_boot[lb:ub, :] = neglogpdist_N_slice
             del logweights_slice
 
         # Get SE from bootstrapped samples
