@@ -68,7 +68,7 @@ def parse_np_array(inputarr):
 # phidat is datareader (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
 def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
-               n_boot_sample_diag, n_tot, n_boot_tot, n_windows, autocorr_nsteps, 
+               n_boot_sample_diag, n_boot_tot, n_windows, autocorr_nsteps, 
                xweights, binbounds, all_data_N):
 
     np.random.seed()
@@ -94,9 +94,8 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
 
             block_size = autocorr_nsteps[i]
             num_blocks = n_sample // block_size
-            mod_block = n_sample % block_size
-
-            boot_n_sample = num_blocks #* block_size
+            
+            boot_n_sample = num_blocks * block_size
 
             # Slice of the bootstrap matrix for this window
             bias_mat_boot_window = bias_mat_boot[i_boot_start:i_boot_start+boot_n_sample, :]
@@ -107,21 +106,13 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
             assert avail_start_indices <= n_sample
 
             boot_start_indices = np.random.randint(avail_start_indices, size=num_blocks)
-            boot_start_index = np.random.randint(mod_block)
-            ## Construct uncorrelated bias matrix for window k's data by 
-            #     averaging blocks of data
-            uncorr_samples = np.zeros_like(bias_mat_boot_window)
-            for k in range(num_blocks):
-                uncorr_samples[k] = bias_mat_window[boot_start_index:boot_start_index+block_size, :].mean(axis=0)
-                boot_start_index += block_size
-
-            boot_indices = np.random.randint(boot_n_sample, size=boot_n_sample)
+            
             #embed()
             # k runs from 0 to num_blocks for window i
-            #for k, boot_start_idx in enumerate(boot_start_indices):
-                #start_idx = k*block_size
-            #    bias_mat_boot_window[k, :] = bias_mat_window[boot_indices, :]
-            bias_mat_boot_window[...] = uncorr_samples[boot_indices, :]
+            for k, boot_start_idx in enumerate(boot_start_indices):
+                start_idx = k*block_size
+                bias_mat_boot_window[start_idx:start_idx+block_size, :] = bias_mat_window[boot_start_idx:boot_start_idx+block_size, :]
+            
             i_start += n_sample
             i_boot_start += boot_n_sample
 
@@ -411,12 +402,12 @@ Command-line options
         # Find the number of **uncorrelated** samples for each window
         n_uncorr_samples = n_blocks #* autocorr_nsteps
         # Size of each bootstrap for each window
-        n_uncorr_tot = n_uncorr_samples.sum()
+        n_uncorr_tot  = n_uncorr_samples.sum()
         assert n_uncorr_tot <= self.n_tot
 
         # Diagonal is fractional n_boot_samples for each window - should be 
         #    float because future's division function
-        n_uncorr_sample_diag = np.matrix( np.diag(n_uncorr_samples / n_uncorr_tot), dtype=np.float32 )
+        n_uncorr_sample_diag = n_boot_sample_diag = np.matrix( np.diag(n_uncorr_samples / n_uncorr_tot), dtype=np.float32 )
 
         # Run WHAM on entire dataset - use the logweights as inputs to future bootstrap runs
         # (k x 1) ones vector; k is number of windows
@@ -462,8 +453,10 @@ Command-line options
         log.info("batch size: {}".format(batch_size))
 
         logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
-
+        # For each window, we will grab n_blocks of blocked data of length autocorr_nsteps
+        n_boot_samples = n_blocks * autocorr_nsteps
         # We must redefine ones_n vector to reflect boot_n_tot
+        n_boot_tot = n_boot_samples.sum()
         ones_n = np.matrix(np.ones(n_boot_tot), dtype=np.float32).T
 
 
@@ -479,7 +472,7 @@ Command-line options
 
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, bias_mat=self.bias_mat,
-                              n_samples=self.n_samples, n_boot_samples=n_boot_samples, n_boot_sample_diag=n_boot_sample_diag, n_tot=self.n_tot, n_boot_tot=n_boot_tot, 
+                              n_samples=self.n_samples, n_boot_samples=n_boot_samples, n_boot_sample_diag=n_boot_sample_diag, n_boot_tot=n_boot_tot, 
                               n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=-logweights_actual[1:],
                               binbounds=binbounds, all_data_N=self.all_data_N)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
