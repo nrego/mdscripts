@@ -28,6 +28,8 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
+from IPython import embed
+
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
 #    Note for .xvg datasets (alchemical free energy calcs in gromacs), each file must contain *every* other window
@@ -87,14 +89,14 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
 
         # We will get n_sample datapoints from window i for this bootstrap batch_num
         for i, n_sample in enumerate(n_samples):
-
+            #embed()
             # the entire bias matrix for window i, shape (nsample, nwindows)
             bias_mat_window = bias_mat[i_start:i_start+n_sample, :]
 
             block_size = autocorr_nsteps[i]
             num_blocks = n_sample // block_size
 
-            boot_n_sample = num_blocks * block_size
+            boot_n_sample = num_blocks #* block_size
 
             # Slice of the bootstrap matrix for this window
             bias_mat_boot_window = bias_mat_boot[i_boot_start:i_boot_start+boot_n_sample, :]
@@ -106,9 +108,10 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
 
             boot_start_indices = np.random.randint(avail_start_indices, size=num_blocks)
 
+            # k runs from 0 to num_blocks for window i
             for k, boot_start_idx in enumerate(boot_start_indices):
-                start_idx = k*block_size
-                bias_mat_boot_window[start_idx:start_idx+block_size, :] = bias_mat_window[boot_start_idx:boot_start_idx+block_size, :]
+                #start_idx = k*block_size
+                bias_mat_boot_window[k, :] = bias_mat_window[boot_start_idx:boot_start_idx+block_size, :].mean(axis=0)
 
             i_start += n_sample
             i_boot_start += boot_n_sample
@@ -199,7 +202,7 @@ Command-line options
         
         sgroup = parser.add_argument_group('(Binless) WHAM/MBAR error options')
         sgroup.add_argument('input', metavar='INPUT', type=str, nargs='+',
-                            help='Input file names - Must be in ps units!')
+                            help='Input file names')
         sgroup.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
                             help='Format of input data files:  \'phi\' for phiout.dat; \ '
                             '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
@@ -213,6 +216,8 @@ Command-line options
                             help='Number of bootstrap samples to perform')   
         sgroup.add_argument('--autocorr', '-ac', type=float, help='Autocorrelation time (in ps); this can be \ '
                             'a single float, or one for each window') 
+        sgroup.add_argument('--autocorr-file', '-af', type=str, 
+                            help='Name of autocorr file (with times in ps for each window), if previously calculated')
         sgroup.add_argument('--min-autocorr-time', type=float, default=0,
                             help='The minimum autocorrelation time to use (in ps). Default is no minimum')
         sgroup.add_argument('--nbins', type=int, default=25, help='number of bins, if plotting prob dist (default 25)')
@@ -248,19 +253,32 @@ Command-line options
         # Number of bootstrap samples to perform
         self.n_bootstrap = args.bootstrap
 
-        if args.autocorr:
-            self._parse_autocorr(args.autocorr)
-
         if args.logweights:
             self.start_weights = -np.loadtxt(args.logweights)
             log.info("starting weights: {}".format(self.start_weights))
 
         self.unpack_data(args.start, args.end)
+        if args.autocorr_file:
+            self._parse_autocorr_list(args.autocorr_file)
+        if args.autocorr:
+            self._parse_autocorr(args.autocorr)
         self.nbins = args.nbins
-    # TODO: Parse lists as well
+    
     def _parse_autocorr(self, autocorr):
         self.autocorr = np.ones(self.n_windows)
-        self.autocorr *= autocorr
+        if autocorr < self.min_autocorr_time:
+            log.warning("Supplied autocorr time ({} ps) is less than minimum autocorr time ({} ps). Setting autocorr times to {} ps.".format(autocorr, self.min_autocorr_time, self.min_autocorr_time))
+        self.autocorr *= max(autocorr, self.min_autocorr_time)
+
+    def _parse_autocorr_list(self, autocorrfile):
+        autocorr_times = np.loadtxt(autocorrfile)
+
+        for i, autocorr in enumerate(autocorr_times):
+            if autocorr < self.min_autocorr_time:
+                log.warning("Supplied autocorr time ({} ps) is less than minimum autocorr time ({} ps). Setting autocorr times to {} ps.".format(autocorr, self.min_autocorr_time, self.min_autocorr_time))
+                autocorr_times[i] = self.min_autocorr_time
+
+        self.autocorr = autocorr_times
 
     # Note: sets self.ts, as well
     def unpack_data(self, start, end):
@@ -319,13 +337,14 @@ Command-line options
         self.n_samples = np.array([], dtype=np.int32)
         self.bias_mat = None
 
-        if self.autocorr is None:
+        if self.autocorr is None and self.autocorr_file is None:
             do_autocorr = True
             self.autocorr = np.zeros(self.n_windows)
         else:
             do_autocorr = False
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+
             log.info("Unpacking {}th dataset ({:s})".format(i, ds_name))
 
             if self.ts == None:
@@ -337,6 +356,8 @@ Command-line options
             if do_autocorr:
                 log.info("    Calculating autocorrelation time...")
                 autocorr_nsteps = 1
+                n_samples = dataframe.shape[0]
+                max_autocorr_len = n_samples // 50
                 for k in [i-1, i+1]:
                     if k < 0:
                         continue
@@ -367,13 +388,23 @@ Command-line options
         
     def go(self):
 
+        # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
+        autocorr_nsteps = np.ceil(2*self.autocorr/self.ts).astype(int)
+        log.info("autocorr length: {} ps".format(self.autocorr))
+        log.info("data time step: {} ps".format(self.ts))
+        log.info("autocorr nsteps: {}".format(autocorr_nsteps))
+        # Number of complete blocks for each sample window - the effective 
+        #    number of uncorrelated samples for each window
+        n_blocks = self.n_samples // autocorr_nsteps
+
         # Run WHAM on entire dataset - use the logweights as inputs to future bootstrap runs
         # (k x 1) ones vector; k is number of windows
         ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float32).T
         # (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
         ones_n = np.matrix(np.ones(self.n_tot,), dtype=np.float32).T
-        n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32 )
-
+        #TODO: weight n_samples by their inverse autocorr time
+        #n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32 )
+        n_sample_diag = np.matrix( np.diag(n_blocks / np.sum(n_blocks)), dtype=np.float32 )
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
@@ -406,16 +437,8 @@ Command-line options
         log.info("batch size: {}".format(batch_size))
 
         logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
-        
-        # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
-        autocorr_nsteps = np.ceil(2*self.autocorr/self.ts).astype(int)
-        log.info("autocorr length: {} ps".format(self.autocorr))
-        log.info("data time step: {} ps".format(self.ts))
-        log.info("autocorr nsteps: {}".format(autocorr_nsteps))
 
-        # Number of complete blocks for each sample window
-        n_blocks = self.n_samples // autocorr_nsteps
-        n_boot_samples = n_blocks * autocorr_nsteps
+        n_boot_samples = n_blocks #* autocorr_nsteps
         # Size of each bootstrap for each window
         n_boot_tot = n_boot_samples.sum()
         assert n_boot_tot <= self.n_tot

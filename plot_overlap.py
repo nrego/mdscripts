@@ -6,7 +6,6 @@ from matplotlib import pyplot
 import argparse
 import logging
 from mdtools import dr
-import uwham
 import matplotlib.pyplot as plt
 
 import sys
@@ -21,6 +20,21 @@ mpl.rcParams.update({'xtick.labelsize': 18})
 mpl.rcParams.update({'ytick.labelsize': 18})
 mpl.rcParams.update({'axes.titlesize': 36})
 
+'''
+A dirty, catch-all analysis script for assessing overlap in alchemical (lambda) 
+    transformations (for use with MBAR/binless WHAM)
+
+Analysis:
+
+    *assume our dataset is an XVG of Delta U's for K windows (w/ lambda_i; i=0 to K-1)
+    *Let Delta U_i = U_i+1 - U_i for all i = 0 to K-2
+    *Analysis runs over pairs of windows (i, i+1), where i=0 to K-2
+    *For each pair of windows (K-1 total pairs), we do:
+        # plot P_i(DeltaU_i), P_{i+1}(Delta U_i)
+        # calculate shannon entropy between each
+        # plot log(P_i+1 (du)) - log(P_i (du)) + beta*du vs. du
+'''
+
 
 if __name__ == "__main__":
 
@@ -34,28 +48,24 @@ if __name__ == "__main__":
                         help='last timepoint (in ps) - default is last available time point')
     parser.add_argument('--logweights', default='logweights.dat', 
                         help='Input file for WHAM logweights, if previously calculated')
-    parser.add_argument('--logpdist', default='neglogpdist.dat', 
-                        help='Name of calculated - log pdist file (default: neglogpdist.dat)')
     parser.add_argument('--debug', action='store_true',
                         help='print debugging info')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='be verbose')
     parser.add_argument('-T', metavar='TEMP', type=float,
                         help='convert Phi values to kT, for TEMP (K)')
-    parser.add_argument('--plotPdist', action='store_true',
-                        help='Plot resulting probability distribution')
-    parser.add_argument('--plotE', action='store_true',
-                        help='Plot resulting (free) energy distribution (-log(P))')
-    parser.add_argument('--plotLogP', action='store_true',
-                        help='Plot resulting log probability (log(P))')
     parser.add_argument('--nbins', type=int, default=50,
                         help='Number of bins for each histogram (default 50)')
-    parser.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
-                        help='Format of input data files:  \'phi\' for phiout.dat;' \
-                        '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
+    parser.add_argument('--outname', default='{}_to_{}',
+                        help='base name for output plots. for every consecutive pair \
+                        of windows i and i+1, an output file will be generated \
+                        using python string formatting as follows: [outfile].format(i, i+1). \
+                        The default is \'{}_{}\'; i.e. if i and i+1 are 0 and 1, the out \
+                        file name is \'0_1\'.png')
+
 
     args = parser.parse_args()
-
+    outname = args.outname
     if args.verbose:
         log.setLevel(logging.INFO)
     if args.debug:
@@ -65,34 +75,86 @@ if __name__ == "__main__":
 
     log.info("Loading input files")
 
-    if args.fmt == 'phi':
-        for infile in args.input:
-            dr.loadPhi(infile)
-    elif args.fmt == 'xvg':
-        for infile in args.input:
+    logweights = np.loadtxt(args.logweights)
+
+    d_g = np.diff(logweights)
+
+    for infile in args.input:
+        try:
             dr.loadXVG(infile)
+            log.info("loaded file {}".format(infile))
+        except:
+            log.error('error loading input {}'.format(infile))
+            sys.exit()
 
     log.info("   ...Done")
 
     start = args.start
     end = args.end 
 
-    if args.fmt == 'xvg':
-        for i, ds in enumerate(dr.datasets.values()):
-            data = np.array(ds.data[start:end])
+    beta = 1/(8.3145e-3 * args.T)
 
-            lmbda = ds.lmbda
+    dsnames = dr.datasets.keys()
+    n_windows = len(dsnames)
 
-            if lmbda == 0:
-                hist, bb = np.histogram(-data[:,-1], bins=nbins)
+    entropies = np.zeros((n_windows-1, 4))
+    for i in range(n_windows-1):
+        ds_0 = dr.datasets[dsnames[i]]
+        ds_1 = dr.datasets[dsnames[i+1]]
 
-            else:
-                # maybe try always comparing to lambda==1??
-                hist, bb = np.histogram(data[:,0][np.abs(data[:,0]<1000.0)], bins=nbins)
-                    
-            bctrs = np.diff(bb)/2.0 + bb[:-1]
-            plt.plot(bctrs, hist, label='$\lambda={}$'.format(lmbda))
-            #embed()
+        lmbda_0 = ds_0.lmbda
+        lmbda_1 = ds_1.lmbda
 
+        entropies[i,0] = lmbda_0
+        entropies[i,1] = lmbda_1
+
+        dat_0 = np.array(beta*ds_0.data[start:end][lmbda_1])
+        dat_1 = np.array(-beta*ds_1.data[start:end][lmbda_0])
+
+        # Plot each distribution
+        min_val = np.floor(min(dat_0.min(), dat_1.min()))
+        max_val = np.ceil(max(dat_0.max(), dat_1.max()))
+
+        bb = np.linspace(min_val, max_val, nbins)
+        hist_0, blah = np.histogram(dat_0, bins=bb, normed=True)
+        hist_1, blah = np.histogram(dat_1, bins=bb, normed=True)
+
+        bc = np.diff(bb)/2.0 + bb[:-1]
+
+        # only look at bins with non-zero probability for shannon entropy
+        mask = (hist_0 > 0) & (hist_1 > 0)
+        # Get shannon entropies
+        int_0 = hist_0 * np.log(hist_0/hist_1)
+        s_0 = np.trapz(int_0[mask], bc[mask])
+        int_1 = hist_1 * np.log(hist_1/hist_0)
+        s_1 = np.trapz(int_1[mask], bc[mask])
+
+        entropies[i, 2] = s_0
+        entropies[i, 3] = s_1
+
+        # Find the 'overlapping distribution method' (odm)
+        g_0 = np.log(hist_0) - 0.5 * bc
+        g_1 = np.log(hist_1) + 0.5 * bc
+        odm = g_1 - g_0
+
+        plt.clf()
+        plt.plot(bc, hist_0, label=r'$P_{0} (\Delta U)$')
+        plt.plot(bc, hist_1, label=r'$P_{1} (\Delta U)$')
+        plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
+        plt.xlabel(r'$\beta \Delta U$')
+        plt.ylabel(r'$P(\Delta U)$')
         plt.legend()
-        plt.show()
+        out = outname + '_hist.png'
+        plt.savefig(out.format(i, i+1), bbox_inches='tight')
+        plt.clf()
+        plt.plot(bc, odm, '-o')
+        plt.plot([bc[0], bc[-1]], [d_g[i], d_g[i]], label=r'$\Delta G={}$'.format(d_g[i]))
+        plt.xlabel(r'$\beta \Delta U$')
+        plt.ylabel(r'$\ln{P_{1}(\Delta U)} - \ln{P_{0}(\Delta U)} + \beta \Delta U$ $(k_B T)$')
+        plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
+        plt.legend()
+        out = outname + '_ent.png'
+        plt.savefig(out.format(i, i+1), bbox_inches='tight')
+
+    headerstr = 'lambda_0 lambda_1 s_0 s_1'
+    np.savetxt('entropies.dat', entropies, fmt='%1.2f %1.2f %1.5f %1.5f', header=headerstr)

@@ -50,8 +50,8 @@ class DataSet:
             return -1
         else:
             return np.diff(self.data.index)[0]
-    
 
+    
     def plot(self, ylim=None, start=0, block=1):
         raise NotImplemetedError
 
