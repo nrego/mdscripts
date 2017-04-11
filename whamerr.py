@@ -89,12 +89,12 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
 
         # We will get n_sample datapoints from window i for this bootstrap batch_num
         for i, n_sample in enumerate(n_samples):
-            #embed()
             # the entire bias matrix for window i, shape (nsample, nwindows)
             bias_mat_window = bias_mat[i_start:i_start+n_sample, :]
 
             block_size = autocorr_nsteps[i]
             num_blocks = n_sample // block_size
+            mod_block = n_sample % block_size
 
             boot_n_sample = num_blocks #* block_size
 
@@ -107,16 +107,26 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
             assert avail_start_indices <= n_sample
 
             boot_start_indices = np.random.randint(avail_start_indices, size=num_blocks)
+            boot_start_index = np.random.randint(mod_block)
+            ## Construct uncorrelated bias matrix for window k's data by 
+            #     averaging blocks of data
+            uncorr_samples = np.zeros_like(bias_mat_boot_window)
+            for k in range(num_blocks):
+                uncorr_samples[k] = bias_mat_window[boot_start_index:boot_start_index+block_size, :].mean(axis=0)
+                boot_start_index += block_size
 
+            boot_indices = np.random.randint(boot_n_sample, size=boot_n_sample)
+            #embed()
             # k runs from 0 to num_blocks for window i
-            for k, boot_start_idx in enumerate(boot_start_indices):
+            #for k, boot_start_idx in enumerate(boot_start_indices):
                 #start_idx = k*block_size
-                bias_mat_boot_window[k, :] = bias_mat_window[boot_start_idx:boot_start_idx+block_size, :].mean(axis=0)
-
+            #    bias_mat_boot_window[k, :] = bias_mat_window[boot_indices, :]
+            bias_mat_boot_window[...] = uncorr_samples[boot_indices, :]
             i_start += n_sample
             i_boot_start += boot_n_sample
 
         # WHAM this bootstrap sample
+
         myargs = (bias_mat_boot, n_boot_sample_diag, ones_m, ones_n, n_boot_tot)
         this_weights = -np.array(fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
         logweights_ret[batch_num, 1:] = this_weights
@@ -398,15 +408,26 @@ Command-line options
         #    number of uncorrelated samples for each window
         n_blocks = self.n_samples // autocorr_nsteps
 
+        # Find the number of **uncorrelated** samples for each window
+        n_uncorr_samples = n_blocks #* autocorr_nsteps
+        # Size of each bootstrap for each window
+        n_uncorr_tot = n_uncorr_samples.sum()
+        assert n_uncorr_tot <= self.n_tot
+
+        # Diagonal is fractional n_boot_samples for each window - should be 
+        #    float because future's division function
+        n_uncorr_sample_diag = np.matrix( np.diag(n_uncorr_samples / n_uncorr_tot), dtype=np.float32 )
+
         # Run WHAM on entire dataset - use the logweights as inputs to future bootstrap runs
         # (k x 1) ones vector; k is number of windows
         ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float32).T
         # (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
         ones_n = np.matrix(np.ones(self.n_tot,), dtype=np.float32).T
-        #TODO: weight n_samples by their inverse autocorr time
-        #n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32 )
-        n_sample_diag = np.matrix( np.diag(n_blocks / np.sum(n_blocks)), dtype=np.float32 )
-        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
+
+        # Do MBAR on *entire* dataset, but weight each window's contribution according
+        #    to its number of *uncorrelated* samples
+        myargs = (self.bias_mat, n_uncorr_sample_diag, ones_m, ones_n, self.n_tot)
+        
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
             xweights = self.start_weights[1:]
@@ -414,10 +435,13 @@ Command-line options
             xweights = np.zeros(self.n_windows-1)
 
         log.info("Running MBAR on entire dataset")
-        logweights_actual = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)
-        
-        logweights_actual = -np.append(0, logweights_actual[0])
+        # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
+        logweights_actual = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0]
+        logweights_actual = -np.append(0, logweights_actual)
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
+
+        ## TODO: this is messy - this if statement is only used for plotting/reweighing
+        #       purposes when using INDUS datasets (which I misleadingly call 'phi' data)
         if self.fmt == 'phi':
             max_n = int(np.ceil(max(self.all_data_N.max(), self.all_data.max())))
             min_n = int(np.floor(min(self.all_data_N.min(), self.all_data.min())))
@@ -438,15 +462,6 @@ Command-line options
         log.info("batch size: {}".format(batch_size))
 
         logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
-
-        n_boot_samples = n_blocks #* autocorr_nsteps
-        # Size of each bootstrap for each window
-        n_boot_tot = n_boot_samples.sum()
-        assert n_boot_tot <= self.n_tot
-
-        # Diagonal is fractional n_boot_samples for each window - should be 
-        #    float because future's division function
-        n_boot_sample_diag = np.matrix( np.diag(n_boot_samples / n_boot_tot), dtype=np.float32 )
 
         # We must redefine ones_n vector to reflect boot_n_tot
         ones_n = np.matrix(np.ones(n_boot_tot), dtype=np.float32).T
