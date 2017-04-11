@@ -257,11 +257,12 @@ Command-line options
             self.start_weights = -np.loadtxt(args.logweights)
             log.info("starting weights: {}".format(self.start_weights))
 
-        self.unpack_data(args.start, args.end)
         if args.autocorr_file:
             self._parse_autocorr_list(args.autocorr_file)
         if args.autocorr:
             self._parse_autocorr(args.autocorr)
+        self.unpack_data(args.start, args.end)
+
         self.nbins = args.nbins
     
     def _parse_autocorr(self, autocorr):
@@ -337,7 +338,7 @@ Command-line options
         self.n_samples = np.array([], dtype=np.int32)
         self.bias_mat = None
 
-        if self.autocorr is None and self.autocorr_file is None:
+        if self.autocorr is None:
             do_autocorr = True
             self.autocorr = np.zeros(self.n_windows)
         else:
