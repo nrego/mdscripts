@@ -59,11 +59,11 @@ if __name__ == "__main__":
     parser.add_argument('--nbins', type=int, default=50,
                         help='Number of bins for each histogram (default 50)')
     parser.add_argument('--outname', default='{}_to_{}',
-                        help='base name for output plots. for every consecutive pair \
+                        help='''base name for output plots. for every consecutive pair \
                         of windows i and i+1, an output file will be generated \
                         using python string formatting as follows: [outfile].format(i, i+1). \
                         The default is \'{}_{}\'; i.e. if i and i+1 are 0 and 1, the out \
-                        file name is \'0_1\'.png')
+                        file name is \'0_1\'.png''')
 
 
     args = parser.parse_args()
@@ -123,17 +123,22 @@ if __name__ == "__main__":
         # Plot each distribution
         min_val = np.floor(min(dat_0.min(), dat_1.min()))
         max_val = np.ceil(max(dat_0.max(), dat_1.max()))
-        min_val = -5
-        max_val = -1.5
 
-        #bb = np.linspace(min_val, max_val, nbins)
+        bb = np.arange(min_val, max_val, 0.01)
+        hist_0, blah = np.histogram(dat_0, bins=bb)
+        hist_1, blah = np.histogram(dat_1, bins=bb)
+
+        # only look at bins with non-zero probability for shannon entropy
+        mask = (hist_0 > 0) & (hist_1 > 0)
+        min_val = np.floor(min(bb[mask]))
+        max_val = np.ceil(max(bb[mask]))
+
         bb = np.arange(min_val, max_val, 0.01)
         hist_0, blah = np.histogram(dat_0, bins=bb, normed=True)
         hist_1, blah = np.histogram(dat_1, bins=bb, normed=True)
 
         bc = np.diff(bb)/2.0 + bb[:-1]
 
-        # only look at bins with non-zero probability for shannon entropy
         mask = (hist_0 > 0) & (hist_1 > 0)
         # Get shannon entropies
         int_0 = hist_0 * np.log(hist_0/hist_1)
@@ -150,16 +155,17 @@ if __name__ == "__main__":
         odm = g_1 - g_0
 
         plt.clf()
-        plt.plot(bc, hist_0, label=r'$P_{0} (\Delta U)$')
-        plt.plot(bc, hist_1, label=r'$P_{1} (\Delta U)$')
+        plt.plot(bc, np.log(hist_0), label=r'$\ln{P_{0} (\Delta U)}$')
+        plt.plot(bc, np.log(hist_1), label=r'$\ln{P_{1} (\Delta U)}$')
+        plt.plot(bc, np.log(hist_1) - np.log(hist_0))
         
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.xlabel(r'$\beta \Delta U$')
-        plt.ylabel(r'$P(\Delta U)$')
+        plt.ylabel(r'$\ln{P(\Delta U)} \; (k_B T)$')
         
-        #plt.legend()
+        plt.legend()
         out = outname + '_hist.png'
-        plt.show()
+        
         plt.savefig(out.format(i, i+1), bbox_inches='tight')
         plt.clf()
         plt.plot(bc, odm, '-o')
@@ -169,6 +175,7 @@ if __name__ == "__main__":
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.legend()
         out = outname + '_ent.png'
+        #plt.show()
         plt.savefig(out.format(i, i+1), bbox_inches='tight')
 
     headerstr = 'lambda_0 lambda_1 s_0 s_1'
