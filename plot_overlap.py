@@ -54,6 +54,8 @@ if __name__ == "__main__":
                         help='be verbose')
     parser.add_argument('-T', metavar='TEMP', type=float,
                         help='convert Phi values to kT, for TEMP (K)')
+    parser.add_argument('--dt', default=None, type=float,
+                        help='only take data over this many time steps (in ps). Default: every data point')
     parser.add_argument('--nbins', type=int, default=50,
                         help='Number of bins for each histogram (default 50)')
     parser.add_argument('--outname', default='{}_to_{}',
@@ -91,8 +93,9 @@ if __name__ == "__main__":
 
     start = args.start
     end = args.end 
+    dt = args.dt
 
-    beta = 1/(8.3145e-3 * args.T)
+    beta = 1/(8.3144598e-3 * args.T)
 
     dsnames = dr.datasets.keys()
     n_windows = len(dsnames)
@@ -108,14 +111,23 @@ if __name__ == "__main__":
         entropies[i,0] = lmbda_0
         entropies[i,1] = lmbda_1
 
-        dat_0 = np.array(beta*ds_0.data[start:end][lmbda_1])
-        dat_1 = np.array(-beta*ds_1.data[start:end][lmbda_0])
+        if dt is not None:
+            dt_0 = int(dt/ds_0.ts)
+            dt_1 = int(dt/ds_1.ts)
+        else:
+            dt_0 = dt_1 = dt
+
+        dat_0 = np.array(beta*ds_0.data[start:end:dt_0][lmbda_1])
+        dat_1 = np.array(-beta*ds_1.data[start:end:dt_0][lmbda_0])
 
         # Plot each distribution
         min_val = np.floor(min(dat_0.min(), dat_1.min()))
         max_val = np.ceil(max(dat_0.max(), dat_1.max()))
+        min_val = -5
+        max_val = -1.5
 
-        bb = np.linspace(min_val, max_val, nbins)
+        #bb = np.linspace(min_val, max_val, nbins)
+        bb = np.arange(min_val, max_val, 0.01)
         hist_0, blah = np.histogram(dat_0, bins=bb, normed=True)
         hist_1, blah = np.histogram(dat_1, bins=bb, normed=True)
 
@@ -140,11 +152,14 @@ if __name__ == "__main__":
         plt.clf()
         plt.plot(bc, hist_0, label=r'$P_{0} (\Delta U)$')
         plt.plot(bc, hist_1, label=r'$P_{1} (\Delta U)$')
+        
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.xlabel(r'$\beta \Delta U$')
         plt.ylabel(r'$P(\Delta U)$')
-        plt.legend()
+        
+        #plt.legend()
         out = outname + '_hist.png'
+        plt.show()
         plt.savefig(out.format(i, i+1), bbox_inches='tight')
         plt.clf()
         plt.plot(bc, odm, '-o')
