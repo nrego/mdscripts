@@ -409,6 +409,7 @@ Command-line options
         #    float because future's division function
         n_uncorr_sample_diag = n_boot_sample_diag = np.matrix( np.diag(n_uncorr_samples / n_uncorr_tot), dtype=np.float32 )
 
+        n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32)
         # Run WHAM on entire dataset - use the logweights as inputs to future bootstrap runs
         # (k x 1) ones vector; k is number of windows
         ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float32).T
@@ -417,7 +418,7 @@ Command-line options
 
         # Do MBAR on *entire* dataset, but weight each window's contribution according
         #    to its number of *uncorrelated* samples
-        myargs = (self.bias_mat, n_uncorr_sample_diag, ones_m, ones_n, self.n_tot)
+        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
