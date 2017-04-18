@@ -56,8 +56,10 @@ if __name__ == "__main__":
                         help='convert Phi values to kT, for TEMP (K)')
     parser.add_argument('--dt', default=None, type=float,
                         help='only take data over this many time steps (in ps). Default: every data point')
-    parser.add_argument('--nbins', type=int, default=50,
-                        help='Number of bins for each histogram (default 50)')
+    parser.add_argument('--bin_width', type=float, default=0.01,
+                        help='Bin width over region of interest for delta U, in kT (default is 0.01 kT)')
+    parser.add_argument('--overlap-cutoff', type=float, default=2.0,
+                        help='Determines over which range to plot (and construct equal-spaced bins). Default: 2kT')
     parser.add_argument('--outname', default='{}_to_{}',
                         help='''base name for output plots. for every consecutive pair \
                         of windows i and i+1, an output file will be generated \
@@ -73,7 +75,6 @@ if __name__ == "__main__":
     if args.debug:
         log.setLevel(logging.DEBUG)
 
-    nbins = args.nbins
 
     log.info("Loading input files")
 
@@ -100,6 +101,9 @@ if __name__ == "__main__":
     dsnames = dr.datasets.keys()
     n_windows = len(dsnames)
 
+    bin_width = args.bin_width
+    overlap_cutoff = args.overlap_cutoff
+
     entropies = np.zeros((n_windows-1, 4))
     for i in range(n_windows-1):
         ds_0 = dr.datasets[dsnames[i]]
@@ -120,22 +124,56 @@ if __name__ == "__main__":
         dat_0 = np.array(beta*ds_0.data[start:end:dt_0][lmbda_1])
         dat_1 = np.array(-beta*ds_1.data[start:end:dt_0][lmbda_0])
 
-        # Plot each distribution
-        min_val = np.floor(min(dat_0.min(), dat_1.min()))
-        max_val = np.ceil(max(dat_0.max(), dat_1.max()))
+        # Plot each distribution - initial plotting which might contain
+        #   many wasted bins with little overlap
+        abs_min_val = np.floor(min(dat_0.min(), dat_1.min()))
+        abs_max_val = np.ceil(max(dat_0.max(), dat_1.max()))
 
-        bb = np.arange(min_val, max_val, 0.01)
+        assert abs_min_val < abs_max_val
+        log.info("Abs min delta U: {}; Abs max deta U: {}".format(abs_min_val, abs_max_val))
+
+        bb = np.arange(abs_min_val, abs_max_val, bin_width)
+        hist_0, blah = np.histogram(dat_0, bins=bb, normed=True)
+        hist_1, blah = np.histogram(dat_1, bins=bb, normed=True)
+
+        # Find out data range with at least minimum overlap
+        hist_diff = np.abs(np.log(hist_1)-np.log(hist_0))
+        hist_diff[np.isnan(hist_diff) | np.isinf(hist_diff)] = np.float('inf')
+
+        indices = np.where(hist_diff < overlap_cutoff)[0]
+        min_index = indices.min()
+        max_index = indices.max()
+        min_val = np.floor(bb[min_index])
+        max_val = np.ceil(bb[max_index])
+
+        assert min_val < max_val
+
+        log.info("Min delta U: {}; Max deta U: {}".format(min_val, max_val))
+
+        # Now remake histograms
+        #    Equal width bins are only assured over the region with 
+        #    High overlap. large 'catch-all' bins are added to 
+        #    capture datapoints outside this range. We do this, 
+        #    rather than make all bins equal over the entire range
+        #     in order to avoid possible rounding errors with np.arange 
+        #       over an unnecessarily large range
+        bb = np.arange(min_val, max_val, bin_width)
+        if abs_min_val < min_val:
+            bb = np.append(abs_min_val, bb)
+        if abs_max_val > max_val:
+            bb = np.append(bb, abs_max_val)
+
         hist_0, blah = np.histogram(dat_0, bins=bb)
         hist_1, blah = np.histogram(dat_1, bins=bb)
 
-        # only look at bins with non-zero probability for shannon entropy
-        mask = (hist_0 > 0) & (hist_1 > 0)
-        min_val = np.floor(min(bb[mask]))
-        max_val = np.ceil(max(bb[mask]))
+        hist_0 = hist_0 / np.diff(bb)
+        hist_1 = hist_1 / np.diff(bb)
 
-        bb = np.arange(min_val, max_val, 0.01)
-        hist_0, blah = np.histogram(dat_0, bins=bb, normed=True)
-        hist_1, blah = np.histogram(dat_1, bins=bb, normed=True)
+        norm_fac = np.sum(hist_0 * np.diff(bb))
+
+        assert np.abs(norm_fac - np.sum(hist_1 * np.diff(bb))) < 1e-5
+        hist_0 = hist_0 / norm_fac
+        hist_1 = hist_1 / norm_fac
 
         bc = np.diff(bb)/2.0 + bb[:-1]
 
@@ -150,31 +188,32 @@ if __name__ == "__main__":
         entropies[i, 3] = s_1
 
         # Find the 'overlapping distribution method' (odm)
-        g_0 = np.log(hist_0) - 0.5 * bc
-        g_1 = np.log(hist_1) + 0.5 * bc
-        odm = g_1 - g_0
+        odm = np.log(hist_1) - np.log(hist_0) + bc
 
         plt.clf()
         plt.plot(bc, np.log(hist_0), label=r'$\ln{P_{0} (\Delta U)}$')
         plt.plot(bc, np.log(hist_1), label=r'$\ln{P_{1} (\Delta U)}$')
-        plt.plot(bc, np.log(hist_1) - np.log(hist_0))
+        plt.plot(bc, np.log(hist_1) - np.log(hist_0), label=r'$\ln{P_{1} (\Delta U)}-\ln{P_{0} (\Delta U)}$')
         
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
+        plt.xlim(min_val, max_val)
+        plt.ylim(-6,3)
         plt.xlabel(r'$\beta \Delta U$')
         plt.ylabel(r'$\ln{P(\Delta U)} \; (k_B T)$')
-        
         plt.legend()
         out = outname + '_hist.png'
-        
         plt.savefig(out.format(i, i+1), bbox_inches='tight')
+
         plt.clf()
         plt.plot(bc, odm, '-o')
         plt.plot([bc[0], bc[-1]], [d_g[i], d_g[i]], label=r'$\Delta G={}$'.format(d_g[i]))
+        plt.xlim(min_val, max_val)
+        plt.ylim(d_g[i]-2, d_g[i]+2)
         plt.xlabel(r'$\beta \Delta U$')
         plt.ylabel(r'$\ln{P_{1}(\Delta U)} - \ln{P_{0}(\Delta U)} + \beta \Delta U$ $(k_B T)$')
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.legend()
-        out = outname + '_ent.png'
+        out = outname + '_odm.png'
         #plt.show()
         plt.savefig(out.format(i, i+1), bbox_inches='tight')
 
