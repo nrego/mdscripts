@@ -15,6 +15,8 @@ log = logging.getLogger()
 log.addHandler(logging.StreamHandler())
 Nfeval = 1
 
+from IPython import embed
+
 mpl.rcParams.update({'axes.labelsize': 30})
 mpl.rcParams.update({'xtick.labelsize': 18})
 mpl.rcParams.update({'ytick.labelsize': 18})
@@ -132,19 +134,20 @@ if __name__ == "__main__":
         assert abs_min_val < abs_max_val
         log.info("Abs min delta U: {}; Abs max deta U: {}".format(abs_min_val, abs_max_val))
 
-        bb = np.arange(abs_min_val, abs_max_val, bin_width)
-        hist_0, blah = np.histogram(dat_0, bins=bb, normed=True)
-        hist_1, blah = np.histogram(dat_1, bins=bb, normed=True)
+        bb2 = np.linspace(abs_min_val, abs_max_val, 500)
+        bc2 = np.diff(bb2)/2.0 + bb2[:-1]
+        hist_02, blah = np.histogram(dat_0, bins=bb2, normed=True)
+        hist_12, blah = np.histogram(dat_1, bins=bb2, normed=True)
 
         # Find out data range with at least minimum overlap
-        hist_diff = np.abs(np.log(hist_1)-np.log(hist_0))
+        hist_diff = np.abs(np.log(hist_12)-np.log(hist_02))
         hist_diff[np.isnan(hist_diff) | np.isinf(hist_diff)] = np.float('inf')
-
+        #embed()
         indices = np.where(hist_diff < overlap_cutoff)[0]
         min_index = indices.min()
         max_index = indices.max()
-        min_val = np.floor(bb[min_index])
-        max_val = np.ceil(bb[max_index])
+        min_val = np.floor(bb2[min_index])
+        max_val = np.ceil(bb2[max_index])
 
         assert min_val < max_val
 
@@ -171,7 +174,9 @@ if __name__ == "__main__":
 
         norm_fac = np.sum(hist_0 * np.diff(bb))
 
-        assert np.abs(norm_fac - np.sum(hist_1 * np.diff(bb))) < 1e-5
+        norm_diff = np.abs(norm_fac - np.sum(hist_1 * np.diff(bb)))
+        if norm_diff > 1e-5:
+            log.warning("  WARNING: difference in norm factors of {}".format(norm_diff))
         hist_0 = hist_0 / norm_fac
         hist_1 = hist_1 / norm_fac
 
@@ -214,6 +219,35 @@ if __name__ == "__main__":
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.legend()
         out = outname + '_odm.png'
+        #plt.show()
+        plt.savefig(out.format(i, i+1), bbox_inches='tight')
+
+        # Find the 'overlapping distribution method' (odm)
+        odm2 = np.log(hist_12) - np.log(hist_02) + bc2
+
+        plt.clf()
+        plt.plot(bc2, np.log(hist_02), label=r'$\ln{P_{0} (\Delta U)}$')
+        plt.plot(bc2, np.log(hist_12), label=r'$\ln{P_{1} (\Delta U)}$')
+        plt.plot(bc2, np.log(hist_12) - np.log(hist_02), label=r'$\ln{P_{1} (\Delta U)}-\ln{P_{0} (\Delta U)}$')
+        
+        plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
+        plt.xlim(max(abs_min_val, -50), min(abs_max_val, 50))
+        plt.xlabel(r'$\beta \Delta U$')
+        plt.ylabel(r'$\ln{P(\Delta U)} \; (k_B T)$')
+        plt.legend()
+        out = outname + '_hist2.png'
+        plt.savefig(out.format(i, i+1), bbox_inches='tight')
+
+        plt.clf()
+        plt.plot(bc2, odm2, '-o')
+        plt.plot([bc2[0], bc2[-1]], [d_g[i], d_g[i]], label=r'$\Delta G={}$'.format(d_g[i]))
+        plt.xlim(max(abs_min_val, -50), min(abs_max_val, 50))
+        plt.ylim(d_g[i]-2, d_g[i]+2)
+        plt.xlabel(r'$\beta \Delta U$')
+        plt.ylabel(r'$\ln{P_{1}(\Delta U)} - \ln{P_{0}(\Delta U)} + \beta \Delta U$ $(k_B T)$')
+        plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
+        plt.legend()
+        out = outname + '_odm2.png'
         #plt.show()
         plt.savefig(out.format(i, i+1), bbox_inches='tight')
 
