@@ -58,7 +58,7 @@ if __name__ == "__main__":
                         help='convert Phi values to kT, for TEMP (K)')
     parser.add_argument('--dt', default=None, type=float,
                         help='only take data over this many time steps (in ps). Default: every data point')
-    parser.add_argument('--bin_width', type=float, default=0.01,
+    parser.add_argument('--binwidth', type=float, default=0.01,
                         help='Bin width over region of interest for delta U, in kT (default is 0.01 kT)')
     parser.add_argument('--overlap-cutoff', type=float, default=2.0,
                         help='Determines over which range to plot (and construct equal-spaced bins). Default: 2kT')
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     dsnames = dr.datasets.keys()
     n_windows = len(dsnames)
 
-    bin_width = args.bin_width
+    bin_width = args.binwidth
     overlap_cutoff = args.overlap_cutoff
 
     entropies = np.zeros((n_windows-1, 4))
@@ -168,7 +168,12 @@ if __name__ == "__main__":
 
         hist_0, blah = np.histogram(dat_0, bins=bb)
         hist_1, blah = np.histogram(dat_1, bins=bb)
+        #embed()
+        min_count = 200
 
+        min_count_idx = max(np.argmax(hist_0[1:] > min_count), np.argmax(hist_1[1:] > min_count)) + 1
+        max_count_idx = max(np.argmax(hist_0[-1::-1] > min_count), np.argmax(hist_1[-1::-1] > min_count)) + 1
+        max_count_idx = len(hist_0) - max_count_idx - 1
         hist_0 = hist_0 / np.diff(bb)
         hist_1 = hist_1 / np.diff(bb)
 
@@ -212,8 +217,8 @@ if __name__ == "__main__":
         plt.clf()
         plt.plot(bc, odm, '-o')
         plt.plot([bc[0], bc[-1]], [d_g[i], d_g[i]], label=r'$\Delta G={}$'.format(d_g[i]))
-        plt.xlim(min_val, max_val)
-        plt.ylim(d_g[i]-2, d_g[i]+2)
+        plt.xlim(bc[min_count_idx], bc[max_count_idx])
+        plt.ylim(d_g[i]-0.2, d_g[i]+0.2)
         plt.xlabel(r'$\beta \Delta U$')
         plt.ylabel(r'$\ln{P_{1}(\Delta U)} - \ln{P_{0}(\Delta U)} + \beta \Delta U$ $(k_B T)$')
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))

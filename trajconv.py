@@ -162,7 +162,13 @@ Command-line options
             rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
             self.other_univ.atoms.write(self.outfile + ".gro")
 
+            rmsd_arr[0, 0] = 0.0
+            rmsd_arr[0,1] = rms
+            if self.rmsd_spec is not None:
+                rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
+                rmsd_arr[0,2] = rms_other
 
+            np.savetxt(self.rmsd_out, rmsd_arr)
 
 
 if __name__=='__main__':
