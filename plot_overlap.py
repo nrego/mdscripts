@@ -218,14 +218,14 @@ if __name__ == "__main__":
         plt.plot(bc, odm, '-o')
         plt.plot([bc[0], bc[-1]], [d_g[i], d_g[i]], label=r'$\Delta G={}$'.format(d_g[i]))
         plt.xlim(bc[min_count_idx], bc[max_count_idx])
-        plt.ylim(d_g[i]-0.2, d_g[i]+0.2)
+        #plt.ylim(d_g[i]-0.2, d_g[i]+0.2)
         plt.xlabel(r'$\beta \Delta U$')
         plt.ylabel(r'$\ln{P_{1}(\Delta U)} - \ln{P_{0}(\Delta U)} + \beta \Delta U$ $(k_B T)$')
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.legend()
         out = outname + '_odm.png'
-        #plt.show()
-        plt.savefig(out.format(i, i+1), bbox_inches='tight')
+        plt.show()
+        #plt.savefig(out.format(i, i+1), bbox_inches='tight')
 
         # Find the 'overlapping distribution method' (odm)
         odm2 = np.log(hist_12) - np.log(hist_02) + bc2
@@ -247,7 +247,7 @@ if __name__ == "__main__":
         plt.plot(bc2, odm2, '-o')
         plt.plot([bc2[0], bc2[-1]], [d_g[i], d_g[i]], label=r'$\Delta G={}$'.format(d_g[i]))
         plt.xlim(max(abs_min_val, -50), min(abs_max_val, 50))
-        plt.ylim(d_g[i]-2, d_g[i]+2)
+        #plt.ylim(d_g[i]-2, d_g[i]+2)
         plt.xlabel(r'$\beta \Delta U$')
         plt.ylabel(r'$\ln{P_{1}(\Delta U)} - \ln{P_{0}(\Delta U)} + \beta \Delta U$ $(k_B T)$')
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))

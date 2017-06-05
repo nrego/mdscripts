@@ -504,10 +504,11 @@ Command-line options
             neglogpdist_N_se = np.sqrt(neglogpdist_N_boot.var(axis=0))
             #embed()
             pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, binbounds)
-            
+            pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, binbounds)
             pdist_N /= (pdist_N * np.diff(binbounds)).sum()
-
+            pdist /= (pdist_N * np.diff(binbounds)).sum()
             neglogpdist_N = -np.log(pdist_N)
+            neglogpdist = -np.log(pdist)
 
             ## Print some stdout
             print('-ln(P(N)) (boot mean): {}'.format(neglogpdist_N_boot_mean))
@@ -518,6 +519,9 @@ Command-line options
             arr = arr.squeeze()
             
             np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
+            arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
+            arr = arr.squeeze()
+            np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
             np.savetxt('err_neglogpdist_N.dat', neglogpdist_N_se, fmt='%3.6f')
 
 if __name__=='__main__':
