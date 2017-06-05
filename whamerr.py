@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot
 import argparse
 import logging
@@ -192,6 +193,7 @@ Command-line options
         self.output_filename = None
 
         self.start_weights = None
+        self.for_lmbdas = []
     
     # Total number of samples - sum of n_samples from each window
     @property
@@ -240,11 +242,13 @@ Command-line options
                 if self.fmt == 'phi': 
                     self.dr.loadPhi(infile) 
                 elif self.fmt == 'xvg': 
-                    self.dr.loadXVG(infile)
+                    ds = self.dr.loadXVG(infile)
+                    self.for_lmbdas.append(ds.lmbda)
                 self.n_windows += 1
         except:
             raise IOError("Error: Unable to successfully load inputs")
-
+        #embed()
+        self.for_lmbdas = pd.Index(sorted(self.for_lmbdas))
         self.min_autocorr_time = args.min_autocorr_time
 
         self.beta = 1
@@ -346,6 +350,7 @@ Command-line options
             do_autocorr = False
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+            #embed()
 
             log.info("Unpacking {}th dataset ({:s})".format(i, ds_name))
 
@@ -353,7 +358,7 @@ Command-line options
                 self.ts = ds.ts
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
-            dataframe = np.array(ds.data[start:end], dtype=np.float32)
+            dataframe = np.array(ds.data[start:end][self.for_lmbdas], dtype=np.float32)
 
             if do_autocorr:
                 log.info("    Calculating autocorrelation time...")

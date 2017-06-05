@@ -7,6 +7,7 @@ import argparse
 import logging
 from mdtools import dr
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import sys
 
@@ -83,15 +84,16 @@ if __name__ == "__main__":
     logweights = np.loadtxt(args.logweights)
 
     d_g = np.diff(logweights)
-
+    dsnames = []
     for infile in args.input:
         try:
-            dr.loadXVG(infile)
+            ds = dr.loadXVG(infile)
+            dsnames.append(infile)
             log.info("loaded file {}".format(infile))
         except:
             log.error('error loading input {}'.format(infile))
             sys.exit()
-
+    
     log.info("   ...Done")
 
     start = args.start
@@ -100,13 +102,13 @@ if __name__ == "__main__":
 
     beta = 1/(8.3144598e-3 * args.T)
 
-    dsnames = dr.datasets.keys()
     n_windows = len(dsnames)
 
     bin_width = args.binwidth
     overlap_cutoff = args.overlap_cutoff
 
     entropies = np.zeros((n_windows-1, 4))
+    #embed()
     for i in range(n_windows-1):
         ds_0 = dr.datasets[dsnames[i]]
         ds_1 = dr.datasets[dsnames[i+1]]
@@ -180,6 +182,7 @@ if __name__ == "__main__":
         norm_fac = np.sum(hist_0 * np.diff(bb))
 
         norm_diff = np.abs(norm_fac - np.sum(hist_1 * np.diff(bb)))
+        embed()
         if norm_diff > 1e-5:
             log.warning("  WARNING: difference in norm factors of {}".format(norm_diff))
         hist_0 = hist_0 / norm_fac
@@ -224,8 +227,8 @@ if __name__ == "__main__":
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.legend()
         out = outname + '_odm.png'
-        plt.show()
-        #plt.savefig(out.format(i, i+1), bbox_inches='tight')
+        #plt.show()
+        plt.savefig(out.format(i, i+1), bbox_inches='tight')
 
         # Find the 'overlapping distribution method' (odm)
         odm2 = np.log(hist_12) - np.log(hist_02) + bc2
