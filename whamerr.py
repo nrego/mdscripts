@@ -122,6 +122,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
         myargs = (bias_mat_boot, n_boot_sample_diag, ones_m, ones_n, n_boot_tot)
         this_weights = -np.array(fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
         logweights_ret[batch_num, 1:] = this_weights
+        del bias_mat_boot, bias_mat_window, bias_mat_boot_window
 
         # Get -ln(Pv(N)) using WHAM results for this bootstrap sample
         if binbounds is not None and all_data_N is not None:
@@ -491,6 +492,7 @@ Command-line options
             logweights_slice, neglogpdist_N_slice, lb, ub = future.get_result(discard=True)
             log.info("Receiving result")
             logweights_boot[lb:ub, :] = logweights_slice
+            log.info("this boot weights: {}".format(logweights_slice))
             if self.fmt=='phi':
                 neglogpdist_N_boot[lb:ub, :] = neglogpdist_N_slice
             del logweights_slice
