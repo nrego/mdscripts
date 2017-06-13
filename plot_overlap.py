@@ -182,7 +182,7 @@ if __name__ == "__main__":
         norm_fac = np.sum(hist_0 * np.diff(bb))
 
         norm_diff = np.abs(norm_fac - np.sum(hist_1 * np.diff(bb)))
-        embed()
+        #embed()
         if norm_diff > 1e-5:
             log.warning("  WARNING: difference in norm factors of {}".format(norm_diff))
         hist_0 = hist_0 / norm_fac
@@ -227,7 +227,7 @@ if __name__ == "__main__":
         plt.title('$\lambda_{}={}$ to $\lambda_{}={}$'.format(0, lmbda_0, 1, lmbda_1))
         plt.legend()
         out = outname + '_odm.png'
-        #plt.show()
+        plt.show()
         plt.savefig(out.format(i, i+1), bbox_inches='tight')
 
         # Find the 'overlapping distribution method' (odm)
