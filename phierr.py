@@ -140,6 +140,8 @@ Command-line options
                             help='convert Phi values to kT, for TEMP (K)')
         sgroup.add_argument('--bootstrap', type=int, default=1000,
                             help='Number of bootstrap samples to perform')      
+        sgroup.add_argument('--autocorr', '-ac', type=float, help='Autocorrelation time (in ps); this can be \ '
+                            'a single float, or one for each window') 
         sgroup.add_argument('--mode', choices=['ntwid', 'n'], default='ntwid',
                             help='''(Plotting option) integrate and calculate <Ntwid> for \phi Ntwid ensemble (ntwid, default) or <N> \
                                   for phi N ensemble using reweighting. (n)\
@@ -176,18 +178,22 @@ Command-line options
                     self.ts = ds.ts
                 else:
                     np.testing.assert_almost_equal(self.ts, ds.ts)
-                try:
-                # Estimate autocorrelation time from entire data set
-                    autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(ds.data[start:]['$\~N$'])))
-                except:
-                    autocorr.append(self.ts * 10)
+                if args.autocorr:
+                    autocorr.append(args.autocorr)
+                else:
+                    try:
+                        dataframe = np.array(ds.data[start:]['$\~N$'])
+                    # Estimate autocorrelation time from entire data set
+                        autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe)))
+                    except:
+                        autocorr.append(self.ts * 10)
 
                 # save phi val and phi dataset
                 phivals.append(ds.phi * self.conv)
                 phidat.append(ds)
         except:
             raise IOError("Error: Unable to successfully load inputs")
-
+        #embed()
 
         phivals = np.array(phivals)
         phidat = np.array(phidat)
@@ -218,7 +224,6 @@ Command-line options
         n_boot = np.zeros_like(ntwid_boot)
         integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
-
 
         autocorr_nsteps = (2*self.autocorr/self.ts).astype(int)
         log.info('autocorr nsteps: {}'.format(autocorr_nsteps))

@@ -87,7 +87,7 @@ Command-line options
         #polar = self.univ.select_atoms(polar_str)
 
         for atom in prot:
-            atom.resname = 'SHEL'
+            atom.residue.resname = 'SHEL'
         prot.write(self.output_filename)
         #for atom in non_polar:
         #    atom.resname = 'NOP'
