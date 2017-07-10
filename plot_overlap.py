@@ -155,6 +155,7 @@ if __name__ == "__main__":
         hist_0 = hist_0 / np.diff(bb)
         hist_1 = hist_1 / np.diff(bb)
 
+
         hist_0 /= np.sum(hist_0 * np.diff(bb))
         hist_1 /= np.sum(hist_1 * np.diff(bb))
 
@@ -174,7 +175,9 @@ if __name__ == "__main__":
 
         plt.title(r'$\lambda_0={}$ to $\lambda_1={}$'.format(lmbda_0, lmbda_1))
         plt.plot(bc, odm, '-o')
+
         plt.plot([bc[0], bc[-1]], [logweight_diff[i], logweight_diff[i]], label=r'\Delta A')
+
         plt.xlabel(r'$\beta \Delta U$')
         plt.ylabel(r'$\ln{P_1(\Delta U)} - \ln{P_0(\Delta U)} + \beta \Delta U$')
 
