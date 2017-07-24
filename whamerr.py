@@ -351,7 +351,7 @@ Command-line options
             do_autocorr = False
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-            #embed()
+            embed()
 
             log.info("Unpacking {}th dataset ({:s})".format(i, ds_name))
 
