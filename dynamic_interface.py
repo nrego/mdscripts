@@ -34,7 +34,7 @@ from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
 from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
-from IPython import embed
+#from IPython import embed
 
 '''
 Returns:
