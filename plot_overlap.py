@@ -140,7 +140,7 @@ if __name__ == "__main__":
         log.info("Abs min delta U: {}; Abs max deta U: {}".format(abs_min_val, abs_max_val))
 
         #bb = np.linspace(abs_min_val, abs_max_val, 500)
-        du = 0.1
+        du = 0.05
         if abs_min_val < min_floor:
             bb = np.arange(min_floor, abs_max_val+du, du)
             bb = np.append(abs_min_val-du, bb)
@@ -173,6 +173,7 @@ if __name__ == "__main__":
         plt.legend()
         plt.show()
 
+        plt.title(r'$\lambda_0={}$ to $\lambda_1={}$'.format(lmbda_0, lmbda_1))
         plt.plot(bc, odm, '-o')
 
         plt.plot([bc[0], bc[-1]], [logweight_diff[i], logweight_diff[i]], label=r'\Delta A')

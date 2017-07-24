@@ -34,6 +34,7 @@ from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
 from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
+#from IPython import embed
 
 '''
 Returns:
@@ -244,9 +245,11 @@ Command-line options
         if self.rho is None:
             log.warning('Rho has not been calculated yet - must run calc_rho')
             return
-
+        #embed()
         avg_rho_water = self.rho_water.mean(axis=0)
+        var_rho_water = self.rho_water.var(axis=0)
         avg_rho_solute = self.rho_solute.mean(axis=0)
+        var_rho_solute = self.rho_solute.var(axis=0)
         water_norm = (4/3) * np.pi * (self.r_cutoff**3) * self.rho_water_bulk
         solute_norm = (4/3) * np.pi * (self.r_cutoff**3) * self.rho_solute_bulk
         avg_rho = (avg_rho_water / water_norm) + (avg_rho_solute / solute_norm)
@@ -277,10 +280,14 @@ Command-line options
         if self.outpdb:
             self.univ.trajectory[0]
             solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
-            solute_atoms.bfactors = self.avg_rho 
-            solute_atoms.write('{}_norm.pdb'.format(self.outpdb))
+            solute_atoms.atoms.bfactors = self.avg_rho 
+            solute_atoms.atoms.write('{}_norm.pdb'.format(self.outpdb))
             solute_atoms.bfactors = self.rho_water.mean(axis=0)
             solute_atoms.write('{}_water_avg.pdb'.format(self.outpdb))
+            solute_atoms.bfactors = self.rho_water.var(axis=0)
+            solute_atoms.write('{}_water_var.pdb'.format(self.outpdb))
+            solute_atoms.bfactors = self.rho_water.var(axis=0) / self.rho_water.mean(axis=0)
+            solute_atoms.write('{}_water_var_norm.pdb'.format(self.outpdb))
             solute_atoms.bfactors = self.rho_solute.mean(axis=0)
             solute_atoms.write('{}_solute_avg.pdb'.format(self.outpdb))
 
