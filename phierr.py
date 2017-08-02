@@ -31,6 +31,7 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
     # batch_size is the number of independent bootstrap samples for this job
     batch_size = ub - lb
     ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
+    var_ntwid_ret 
     integ_ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
     n_ret = np.zeros_like(ntwid_ret)
     integ_n_ret = np.zeros_like(integ_ntwid_ret)
