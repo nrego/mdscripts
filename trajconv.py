@@ -57,6 +57,8 @@ Command-line options
 
         self.rmsd_out = None
 
+        self.center_only = None
+
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
@@ -79,6 +81,8 @@ Command-line options
                             help='Last timepoint (in ps) - default is last available')
         sgroup.add_argument('--fitspec', type=str, default=sel_spec_heavies_nowall,
                             help='MDAnalysis selection string for fitting. Default selects all protein heavy atoms')
+        sgroup.add_argument('--center-only', action='store_true', 
+                            help='If true, only center molecule (no fitting)')
         sgroup.add_argument('--rmsdspec', type=str, 
                             help='MDAnalysis selection string for rmsd (after fitting on fitspec). Optional.')
         agroup = parser.add_argument_group('other options')
@@ -122,6 +126,8 @@ Command-line options
         self.outfile = args.outfile.split('.')[0]
         self.rmsd_out = args.outrmsd
 
+        self.center_only = args.center_only
+
     def go(self):
 
         n_frames = self.last_frame - self.start_frame
@@ -144,18 +150,22 @@ Command-line options
                     curr_ts = self.other_univ.trajectory[i_frame]
 
                     center_mol(self.other_univ, do_pbc=True)
-                    rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+                    if not self.center_only:
+                        rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+                        rmsd_arr[i_frame-self.start_frame, 0] = curr_ts.time
+                        rmsd_arr[i_frame-self.start_frame, 1] = rms          
+
                     if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
                     W.write(self.other_univ.atoms)
-                    rmsd_arr[i_frame-self.start_frame, 0] = curr_ts.time
-                    rmsd_arr[i_frame-self.start_frame, 1] = rms
 
-                    if self.rmsd_spec is not None:
+
+                    if self.rmsd_spec is not None and not self.center_only:
                         rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
                         rmsd_arr[i_frame-self.start_frame, 2] = rms_other
 
-            np.savetxt(self.rmsd_out, rmsd_arr)
+            if not self.center_only:
+                np.savetxt(self.rmsd_out, rmsd_arr)
 
         else:
             center_mol(self.other_univ, do_pbc=True)
