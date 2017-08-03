@@ -28,7 +28,7 @@ log = logging.getLogger('mdtools.interface')
 
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
-ZMIN = 60.0
+ZMIN = 130.0
 
 def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree, water_cutoff):    
     cutoff_sq = cutoff**2
