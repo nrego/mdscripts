@@ -28,7 +28,7 @@ log = logging.getLogger('mdtools.interface')
 
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
-ZMIN = 130.0
+ZMIN = 60.0
 
 def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree, water_cutoff):    
     cutoff_sq = cutoff**2
@@ -100,7 +100,7 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
 
         del dist_vectors, neighborpts
 
-    far_pt_idx = (gridpts[:,0] > 20) & (gridpts[:,0] < 40) & (gridpts[:,2] < ZMIN) #& (gridpts[:,1] > 10) & (gridpts[:,1] < 50)
+    far_pt_idx = (gridpts[:,2] < ZMIN) #& (gridpts[:,1] > 10) & (gridpts[:,1] < 50)
     del water_tree, water_neighbors
     # Can probably move this out of here and perform at end
     rho_slice = rho_prot_slice/rho_prot_bulk \
