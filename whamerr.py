@@ -29,7 +29,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-from IPython import embed
+#from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -351,7 +351,7 @@ Command-line options
             do_autocorr = False
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-            embed()
+            #embed()
 
             log.info("Unpacking {}th dataset ({:s})".format(i, ds_name))
 
