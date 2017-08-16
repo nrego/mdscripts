@@ -109,7 +109,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             #    plt.plot(binbounds[:-1]+np.diff(binbounds)/2.0, -np.log(hist))
             #plt.show()
         if (args.plotN):
-            title = r"$\langle{\~N}\rangle_\phi$"
+            title = r"$\langle{N}\rangle_\phi$"
             num = 1
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-', markersize=12, linewidth=4)
             #pyplot.fill_between(phi_vals[:,0], phi_vals[:,num], color='none', hatch='\\', edgecolor='b')
@@ -126,7 +126,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             num = 5
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-')
         if (args.plotSus):
-            title = r"$\langle{\delta \~N^2}\rangle_\phi$"
+            title = r"$\langle{\delta N^2}\rangle_\phi$"
             num = 7
             pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-', markersize=12, linewidth=4)
         if (args.plotBoth):
@@ -144,8 +144,10 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
                 pyplot.xlabel(r'$\phi$ (kJ/mol)')
             else:
                 pyplot.xlabel(r'$\beta\phi$ ($k_B T$)')
+            pyplot.tight_layout()
             pyplot.show()
         if (args.plotDist or args.plotDistAll):
+            pyplot.tight_layout()
             pyplot.show()
         else:
             #pyplot.plot(phi_vals[:, 0],phi_vals[:, num])
