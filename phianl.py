@@ -109,14 +109,16 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             #    plt.plot(binbounds[:-1]+np.diff(binbounds)/2.0, -np.log(hist))
             #plt.show()
         if (args.plotN):
-            title = r"$\langle{N}\rangle_\phi$"
+
+            title = r"$\langle{N_V}\rangle_\phi$"
             num = 1
             pyplot.plot(phi_vals[:, 0],phi_vals[:, num], 'o-', markersize=12, linewidth=4)
             #pyplot.fill_between(phi_vals[:,0], phi_vals[:,num], color='none', hatch='\\', edgecolor='b')
         if (args.plotInteg):
-            title = r'$\int{\langle{N}\rangle_\phi}d\phi$'
+            #title = r'$\int{\langle{N}\rangle_\phi}d\phi$'
+            title = r'$G(\phi)$'
             num = 2
-            pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-')
+            pyplot.plot(phi_vals[:, 0], phi_vals[:, num], 'o-', markersize=12, linewidth=4)
         if (args.plotLogN):
             title = r'$\ln{\langle{N}\rangle_\phi} + \beta\phi$'
             num = 4

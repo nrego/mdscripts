@@ -465,7 +465,7 @@ class TemporalInterfaceAnalSubcommand(TemporalInterfaceSubcommand):
     subcommand='anal'
     help_text=''
     description = '''\
-Run time-averaged interace analysis on trajectory. Load pre-initialized voxel grid definitions and reference rho values for each voxel,
+'Anal' is for analysis, not anal sex. Run time-averaged interace analysis on trajectory. Load pre-initialized voxel grid definitions and reference rho values for each voxel,
 And then calculates average rho and normalized rho values for input data trajectory
     '''
 

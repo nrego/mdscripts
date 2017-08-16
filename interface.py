@@ -11,6 +11,8 @@ import logging
 import MDAnalysis
 #from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
+#from IPython import embed
+
 from scipy.spatial import cKDTree
 import itertools
 #from skimage import measure
@@ -26,6 +28,7 @@ log = logging.getLogger('mdtools.interface')
 
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
+ZMIN = 0
 
 def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree, water_cutoff):    
     cutoff_sq = cutoff**2
@@ -33,6 +36,11 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
     rho_prot_slice = np.zeros((npts,), dtype=rho_dtype)
     rho_water_slice = np.zeros((npts,), dtype=rho_dtype)
     rho_slice = np.zeros((npts,), dtype=rho_dtype)
+
+    ### HACK to show interface without slowing everything to a crawl ###
+    #all_grid_indices = np.arange(npts)
+    #points_over_z = (gridpts[:,2] > 90.0) & (gridpts[:,2] < 100.0)
+    #indices_to_add = all_grid_indices[points_over_z]
 
     prot_tree = cKDTree(prot_heavies)
     prot_neighbors = prot_tree.query_ball_tree(tree, cutoff, p=float('inf'))
@@ -43,10 +51,12 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
         #pos = atom.position
         # Indices of all gridpoints within cutoff of atom's position
         neighboridx = np.array(prot_neighbors[atm_idx])
+        ## HACK, part 2 ##
+        #neighboridx = np.unique(np.append(neighboridx, indices_to_add))
         if neighboridx.size == 0:
             continue
         neighborpts = gridpts[neighboridx]
-
+        
         dist_vectors = neighborpts[:, ...] - pos
         dist_vectors = dist_vectors.astype(rho_dtype)
         # Distance array between atom and neighbor grid points
@@ -90,6 +100,7 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
 
         del dist_vectors, neighborpts
 
+    #far_pt_idx = (gridpts[:,2] < ZMIN) #& (gridpts[:,1] > 10) & (gridpts[:,1] < 50)
     del water_tree, water_neighbors
     # Can probably move this out of here and perform at end
     rho_slice = rho_prot_slice/rho_prot_bulk \
@@ -129,6 +140,8 @@ Command-line options
 
         self.rho = None
         self.rho_avg = None
+
+        self.all_waters = None
 
         self.dgrid = None
         self.ngrids = None
@@ -178,10 +191,11 @@ Command-line options
         sgroup.add_argument('-e', '--end', type=int, 
                             help='Last timepoint (in ps)')
         sgroup.add_argument('--wall', action='store_true', 
-                            help='If true, consider interace near walls (default False)')
+                            help='If true, consider interface near walls (default False)')
         sgroup.add_argument('--rhoprot', default=40, type=float,
                         help='Estimated protein density (heavy atoms per nm3)')
-
+        sgroup.add_argument('--all-waters', action='store_true',
+                            help='Consider *all* waters (not just those cloes to solute) - default is true')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-odx', '--outdx', default='interface.dx',
                         help='Output file to write instantaneous interface')
@@ -221,6 +235,7 @@ Command-line options
         self.outxtc = args.outxtc
 
         self.wall = args.wall
+        self.all_waters = args.all_waters
         if self.wall:
             self.mol_sel_spec = sel_spec_heavies
         else:
@@ -256,8 +271,12 @@ Command-line options
 
                 self.univ.trajectory[frame_idx]
                 prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
-                water_ow = self.univ.select_atoms("name OW and around {} ({})".format(water_dist_cutoff, self.mol_sel_spec))
-                #water_ow = self.univ.select_atoms('name OW')
+                
+                if self.all_waters:
+                    water_ow = self.univ.select_atoms('name OW')
+                else:
+                    water_ow = self.univ.select_atoms("(name OW and around {} ({}))".format(water_dist_cutoff, self.mol_sel_spec))
+
                 prot_heavies_pos = prot_heavies.positions
                 water_ow_pos = water_ow.positions
 
