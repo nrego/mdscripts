@@ -9,7 +9,7 @@ import pandas
 import mdtraj as md
 
 from skimage import measure
-from IPython import embed
+#from IPython import embed
 
 def extractInt(string):
     return map(int, re.findall(r"[-+]?\d*\.\d+|\d+", string))
@@ -183,7 +183,7 @@ class RhoField:
     #   Otherwise, write out rho_avg
     #   'time', optional, is timepoint of current frame.
     def do_GRO(self, fileout, frame=None, top=None):
-        embed()
+        #embed()
         if frame is not None:
             mesh = self.meshpts[frame]
             curr_time = np.array([self.time[frame]])
