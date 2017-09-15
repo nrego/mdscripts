@@ -362,7 +362,7 @@ Command-line options
 
             ## quick test that dataset makes sense - DU's for its own lambda should be all zeros
             arr_self = ds.data[ds.lmbda]
-            np.testing.assert_array_almost_equal(arr_self, np.zeros_like(arr_self), decimal=6)
+            np.testing.assert_array_almost_equal(arr_self, np.zeros_like(arr_self), decimal=5)
 
             dataframe = np.array(ds.data[start:end][self.for_lmbdas], dtype=np.float32)
 
