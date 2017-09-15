@@ -10,6 +10,8 @@ from scipy.spatial import cKDTree
 
 from MDAnalysis import Universe
 
+from selection_specs import sel_spec_heavies
+
 import argparse
 
 if __name__ == "__main__":
@@ -24,6 +26,12 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--traj",
                         help="trajectory file (optional) - if supplied, output heavy atoms with more than avg" \
                         "number of waters within radius")
+    parser.add_argument("--subvol", type=str, default=None,
+                        help="(Optional): supply a structure file (PDB only) with beta factors\
+                              used to determine subvolume atoms")
+    parser.add_argument("--subvol-threshold", type=float, default=0.5,
+                        help="(Only relevant if option '--subvol' is provided) threshold for which to select\
+                              subvol atoms - all atoms with bfactors *below* thresh are selected (default: 0.5)")
     parser.add_argument("-b", "--start", default=0, type=float,
                         help="Starting time of trajectory, in ps (default 0 ps)")
     parser.add_argument("-d", "--waterdist", default=5.5, type=float,
@@ -37,7 +45,7 @@ if __name__ == "__main__":
                         help="If true, generate conf file for STATIC INDUS (default: false)")
     parser.add_argument("-o", "--out", default="umbr.conf", dest="outfile",
                         help="output file name (default: umbr.conf)")
-    parser.add_argument("--sspec", type=str,
+    parser.add_argument("--sspec", type=str, default=sel_spec_heavies,
                         help="custom selection string (to select atoms over which to create umbrellas), default all prot heavies")
 
     args = parser.parse_args()
@@ -52,18 +60,24 @@ if __name__ == "__main__":
         "hydshell union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"        
 
     if args.traj is None:
+
+        do_subvol = False
+        if args.subvol is not None:
+            do_subvol = True
+            u_subvol = Universe(args.subvol)
+            subvol_threshold = args.subvol_threshold
+
         u = Universe(args.gro)
 
-        if args.sspec is not None:
-            prot_heavies = u.select_atoms(args.sspec)
-        else:
-            # Select peptide heavies - exclude water's and ions
-            prot_heavies = u.select_atoms("not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)")
+        prot_heavies = u.select_atoms(args.sspec)
+        if do_subvol:
+            u_subvol_prot = u_subvol.select_atoms(args.sspec)
+            indices = u_subvol_prot.bfactors < subvol_threshold
+            prot_heavies = prot_heavies[indices]
 
         if args.indices is not None:
             indices = np.loadtxt(args.indices).astype(int)
             prot_heavies = prot_heavies[indices]
-
 
         fout = open(args.outfile, 'w')
         fout.write(header_string)

@@ -183,7 +183,7 @@ class RhoField:
     #   Otherwise, write out rho_avg
     #   'time', optional, is timepoint of current frame.
     def do_GRO(self, fileout, frame=None, top=None):
-
+        #embed()
         if frame is not None:
             mesh = self.meshpts[frame]
             curr_time = np.array([self.time[frame]])
