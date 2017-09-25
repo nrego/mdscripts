@@ -29,7 +29,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whampmf')
 
-#from IPython import embed
+from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -70,7 +70,7 @@ def parse_np_array(inputarr):
 # phivals is (nphi, ) array of phi values (in kT)
 def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
                n_boot_sample_diag, n_boot_tot, n_windows, autocorr_nsteps, 
-               xweights, binbounds):
+               xweights, binbounds, all_data):
 
     np.random.seed()
     batch_size = ub - lb
@@ -148,7 +148,7 @@ Command-line options
 '''
     
     def __init__(self):
-        super(WHAMmer,self).__init__()
+        super(WHAMpmf,self).__init__()
         
         # Parallel processing by default (this is not actually necessary, but it is
         # informative!)
@@ -183,6 +183,8 @@ Command-line options
         self.ts = None
 
         self.output_filename = None
+
+        self.dr = dr
 
     
     # Total number of samples - sum of n_samples from each window
@@ -219,6 +221,7 @@ Command-line options
         self.n_windows = 0
         try:
             for i, infile in enumerate(args.input):
+                #embed()
                 log.info("loading {}th input: {}".format(i, infile))
 
                 self.dr.loadPmf(infile, kappa=args.kappa)
@@ -235,10 +238,6 @@ Command-line options
 
         # Number of bootstrap samples to perform
         self.n_bootstrap = args.bootstrap
-
-        if args.logweights:
-            self.start_weights = -np.loadtxt(args.logweights)
-            log.info("starting weights: {}".format(self.start_weights))
 
         if args.autocorr_file:
             self._parse_autocorr_list(args.autocorr_file)
@@ -285,7 +284,8 @@ Command-line options
                 np.testing.assert_almost_equal(self.ts, ds.ts)
 
             data = ds.data[start:end]
-            dataframe = np.array(data['solDZ']) + np.array(data)
+            #embed()
+            dataframe = np.array(data['solDZ'])
 
             if do_autocorr:
                 autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
@@ -336,11 +336,7 @@ Command-line options
         #    to its number of *uncorrelated* samples
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         
-        if self.start_weights is not None:
-            log.info("using initial weights: {}".format(self.start_weights))
-            xweights = self.start_weights[1:]
-        else:
-            xweights = np.zeros(self.n_windows-1)
+        xweights = np.zeros(self.n_windows-1)
 
         log.info("Running MBAR on entire dataset")
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
@@ -351,7 +347,7 @@ Command-line options
         ## Get ready for plotting P(r)
         max_r = self.all_data.max() + 0.1
         min_r = self.all_data.min() - 0.1
-        log.info("Min: {:d}, Max: {:d}".format(min_r, max_r))
+        log.info("Min: {:f}, Max: {:f}".format(min_r, max_r))
         binbounds = np.arange(min_r,max_r+2,0.05)
         neglogpdist_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
 
@@ -388,7 +384,7 @@ Command-line options
                 kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, bias_mat=self.bias_mat,
                               n_samples=self.n_samples, n_boot_samples=n_boot_samples, n_boot_sample_diag=n_boot_sample_diag, n_boot_tot=n_boot_tot, 
                               n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=-logweights_actual[1:],
-                              binbounds=binbounds)
+                              binbounds=binbounds, all_data=self.all_data)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
 
