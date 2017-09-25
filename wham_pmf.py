@@ -345,10 +345,10 @@ Command-line options
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
 
         ## Get ready for plotting P(r)
-        max_r = self.all_data.max() + 0.1
-        min_r = self.all_data.min() - 0.1
+        max_r = self.all_data.max()
+        min_r = self.all_data.min()
         log.info("Min: {:f}, Max: {:f}".format(min_r, max_r))
-        binbounds = np.arange(min_r,max_r+2,0.05)
+        binbounds = np.arange(0,max_r+.1,0.05)
         neglogpdist_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
 
 

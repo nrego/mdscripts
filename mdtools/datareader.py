@@ -326,7 +326,8 @@ class PMFDataSet(DataSet):
     def __init__(self, root_filename,  kappa=1000, corr_len=1):
         super(PMFDataSet, self).__init__()
 
-        data = np.abs(np.loadtxt("{}/pullx.xvg".format(root_filename), comments=['@','#']))
+        data = np.loadtxt("{}/pullx.xvg".format(root_filename), comments=['@','#'])
+        data[:,-1] = np.abs(data[:,-1])
         data_force = np.loadtxt("{}/pullf.xvg".format(root_filename), comments=['@','#'])
 
         dz_0 = data[-1, -1]
