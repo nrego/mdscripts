@@ -357,9 +357,10 @@ Command-line options
 
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
-        batch_size = self.n_bootstrap // n_workers
-        if self.n_bootstrap % n_workers != 0:
-            batch_size += 1
+        #batch_size = self.n_bootstrap // n_workers
+        #if self.n_bootstrap % n_workers != 0:
+        #    batch_size += 1
+        batch_size = 1
         log.info("batch size: {}".format(batch_size))
 
         logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
