@@ -301,8 +301,8 @@ Command-line options
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.rstar)**2) 
 
-        dr.clearData()
-
+        self.dr.clearData()
+        del self.dr
         
     def go(self):
 
@@ -351,9 +351,7 @@ Command-line options
         binbounds = np.arange(0,max_r+.1,0.05)
         neglogpdist_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
 
-
-        np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')
-        
+        np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')  
 
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
@@ -398,7 +396,7 @@ Command-line options
             logweights_boot[lb:ub, :] = logweights_slice
             log.info("this boot weights: {}".format(logweights_slice))
             neglogpdist_boot[lb:ub, :] = neglogpdist_slice
-            del logweights_slice
+            del logweights_slice, neglogpdist_slice
 
         # Get SE from bootstrapped samples
         logweights_boot_mean = logweights_boot.mean(axis=0)
