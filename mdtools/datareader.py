@@ -330,6 +330,13 @@ class PMFDataSet(DataSet):
         data[:,-1] = np.abs(data[:,-1])
         data_force = np.loadtxt("{}/pullf.xvg".format(root_filename), comments=['@','#'])
 
+        self.inter_pos = None
+        try:
+            self.inter_pos = np.loadtxt("{}/slab_position.dat".format(root_filename))
+            self.inter_pos /= 10.0 # in nm
+        except:
+            self.inter_pos = None
+
         dz_0 = data[-1, -1]
         force_0 = data_force[-1, -1]
 
@@ -452,13 +459,16 @@ class DataReader:
             dataset.plot(ylim=ylim, start=start, end=end, block=block)
 
     @classmethod
-    def plotHistAll(cls, start=0, end=None, nbins=50, idx='N', step=1):
+    def plotHistAll(cls, start=0, end=None, nbins=50, idx='N', step=1, min_arr=False):
         total_array = np.array([])
         for title, dataset in cls.datasets.iteritems():
             total_array = np.append(total_array, dataset.data[start:end][idx])
 
-        bins = np.arange(0, total_array.max()+2, step)
-        #embed()
+        if min_arr:
+            bins = np.arange(total_array.min(), total_array.max()+2*step, step)
+        else:
+            bins = np.arange(0, total_array.max()+2*step, step)
+            
         pyplot.legend()
         counts, centers = np.histogram(total_array, bins=bins)
         centers = centers[:-1]

@@ -29,7 +29,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whampmf')
 
-#from IPython import embed
+from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -186,6 +186,11 @@ Command-line options
 
         self.dr = dr
 
+        self.step = None
+
+        self.all_data_interpos = None
+        self.dum_pos_z = None
+
     
     # Total number of samples - sum of n_samples from each window
     @property
@@ -214,7 +219,8 @@ Command-line options
                             help='The minimum autocorrelation time to use (in ps). Default is no minimum')
         sgroup.add_argument('--nbins', type=int, default=25, help='number of bins, if plotting prob dist (default 25)')
         sgroup.add_argument('--kappa', type=float, default=1000, help='Kappa for COM pulling, in kJ/nm^2 (default 1000)')
-
+        sgroup.add_argument('--step', type=int, default=1, help='skip every STEP datapoints when loading input (default: step size 1; i.e. every datapoint)')
+        sgroup.add_argument('--dum-pos-z', type=float, default=0.0, help='z coordinate of reference dummy atom (from which pullx.xvg distances are reported). default is 0.0')
 
     def process_args(self, args):
 
@@ -224,13 +230,15 @@ Command-line options
                 #embed()
                 log.info("loading {}th input: {}".format(i, infile))
 
-                self.dr.loadPmf(infile, kappa=args.kappa)
+                self.dr.loadPmf(infile, kappa=args.kappa, corr_len=args.step)
                 self.n_windows += 1
         except:
             raise IOError("Error: Unable to successfully load inputs")
         #embed()
 
         self.min_autocorr_time = args.min_autocorr_time
+
+        self.dum_pos_z = args.dum_pos_z
 
         self.beta = 1
         if args.T:
@@ -246,6 +254,9 @@ Command-line options
         self.unpack_data(args.start, args.end)
 
         self.nbins = args.nbins
+        #embed()
+        self.dr.clearData()
+        del self.dr
     
     def _parse_autocorr(self, autocorr):
         self.autocorr = np.ones(self.n_windows)
@@ -267,6 +278,7 @@ Command-line options
     def unpack_data(self, start, end):
         self.all_data = np.array([], dtype=np.float32)
         self.n_samples = np.array([]).astype(int)
+        self.all_data_interpos = np.array([], dtype=np.float32)
 
         # No autocorr len provided - calculate from datasets
         if self.autocorr is None:
@@ -294,15 +306,15 @@ Command-line options
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
             self.all_data = np.append(self.all_data, dataframe)
+            self.all_data_interpos = np.append(self.all_data_interpos, ds.inter_pos[start:, 1])
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
+        self.all_data_interpos -= self.dum_pos_z
 
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.rstar)**2) 
 
-        self.dr.clearData()
-        del self.dr
         
     def go(self):
 
