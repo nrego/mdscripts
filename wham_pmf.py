@@ -191,6 +191,8 @@ Command-line options
         self.all_data_interpos = None
         self.dum_pos_z = None
 
+        self.binsize = None
+
     
     # Total number of samples - sum of n_samples from each window
     @property
@@ -221,6 +223,7 @@ Command-line options
         sgroup.add_argument('--kappa', type=float, default=1000, help='Kappa for COM pulling, in kJ/nm^2 (default 1000)')
         sgroup.add_argument('--step', type=int, default=1, help='skip every STEP datapoints when loading input (default: step size 1; i.e. every datapoint)')
         sgroup.add_argument('--dum-pos-z', type=float, default=0.0, help='z coordinate of reference dummy atom (from which pullx.xvg distances are reported). default is 0.0')
+        sgroup.add_argument('--binsize', type=float, default=0.05, help='binsize (in nm) for pmf. Default: 0.05 nm')
 
     def process_args(self, args):
 
@@ -254,6 +257,7 @@ Command-line options
         self.unpack_data(args.start, args.end)
 
         self.nbins = args.nbins
+        self.binsize = args.binsize
         #embed()
         self.dr.clearData()
         del self.dr
@@ -362,7 +366,7 @@ Command-line options
         max_r = self.all_data.max()
         min_r = self.all_data.min()
         log.info("Min: {:f}, Max: {:f}".format(min_r, max_r))
-        binbounds = np.arange(0,max_r+.1,0.05)
+        binbounds = np.arange(0,max_r+(2*self.binsize),self.binsize)
         neglogpdist_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
 
         np.savetxt('logweights.dat', logweights_actual, fmt='%3.6f')  
