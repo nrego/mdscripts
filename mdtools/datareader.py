@@ -341,8 +341,16 @@ class PMFDataSet(DataSet):
         force_0 = data_force[-1, -1]
 
         log.debug('Datareader {} reading input file {}'.format(self, "{}/pullx.xvg".format(root_filename)))
-        self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
-                                     columns=['r0', 'slabDZ', 'solDZ'])
+        
+        # Ugh really hackish
+        # NVT sim with 2 pull groups (slab, then solute)
+        if data.shape[1] == 4:
+            self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
+                                         columns=['r0', 'slabDZ', 'solDZ'])
+        # NPT binding sim with 1 pull group (solute to its binding partner)
+        if data.shape[1] == 3:
+            self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
+                                         columns=['r0', 'solDZ'])
         self.title = root_filename
         self.kappa = kappa
 
