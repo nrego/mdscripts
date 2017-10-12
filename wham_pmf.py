@@ -306,10 +306,12 @@ Command-line options
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
             self.all_data = np.append(self.all_data, dataframe)
-            self.all_data_interpos = np.append(self.all_data_interpos, ds.inter_pos[start:, 1])
+            if ds.inter_pos is not None:
+                self.all_data_interpos = np.append(self.all_data_interpos, ds.inter_pos[start:, 1])
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
-        self.all_data_interpos -= self.dum_pos_z
+        if self.all_data_interpos.size > 0:
+            self.all_data_interpos -= self.dum_pos_z
 
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
