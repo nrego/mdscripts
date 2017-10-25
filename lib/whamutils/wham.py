@@ -66,7 +66,6 @@ def kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
     logLikelihood = (ones_N.transpose()/n_tot)*np.log(( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1)) + \
                     np.dot(np.diag(nsample_diag), f)
 
-
     return float(logLikelihood)
 
 def grad_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):

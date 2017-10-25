@@ -28,7 +28,7 @@ log = logging.getLogger('mdtools.interface')
 
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
-ZMIN = 0
+ZMIN = 130
 
 def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree, water_cutoff):    
     cutoff_sq = cutoff**2
@@ -41,7 +41,7 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
     #all_grid_indices = np.arange(npts)
     #points_over_z = (gridpts[:,2] > 90.0) & (gridpts[:,2] < 100.0)
     #indices_to_add = all_grid_indices[points_over_z]
-
+    
     prot_tree = cKDTree(prot_heavies)
     prot_neighbors = prot_tree.query_ball_tree(tree, cutoff, p=float('inf'))
 
@@ -166,6 +166,8 @@ Command-line options
 
         self._rho_shape = None
 
+        self.grid_dl = None
+
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
@@ -192,10 +194,12 @@ Command-line options
                             help='Last timepoint (in ps)')
         sgroup.add_argument('--wall', action='store_true', 
                             help='If true, consider interface near walls (default False)')
+        sgroup.add_argument('--grid-dl', type=float, default=1.0,
+                            help='Size of grid spacing (resolution) in each dimension, in A (default: 1.0 A)')
         sgroup.add_argument('--rhoprot', default=40, type=float,
                         help='Estimated protein density (heavy atoms per nm3)')
         sgroup.add_argument('--all-waters', action='store_true',
-                            help='Consider *all* waters (not just those cloes to solute) - default is true')
+                            help='Consider *all* waters (not just those close to solute) - default is false')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-odx', '--outdx', default='interface.dx',
                         help='Output file to write instantaneous interface')
@@ -242,6 +246,8 @@ Command-line options
             self.mol_sel_spec = sel_spec_heavies_nowall
 
         self.init_from_args = True
+
+        self.grid_dl = args.grid_dl
 
         self._setup_grid()
 
@@ -319,7 +325,7 @@ Command-line options
 
 
     def _setup_grid(self):
-        grid_dl = 1 # Grid resolution at *most* 1 angstrom (when box dimension an integral number of angstroms)
+        grid_dl = self.grid_dl # Grid resolution at *most* 1 angstrom (when box dimension an integral number of angstroms)
         natoms = self.univ.coord.n_atoms
 
         # np 6d array of xyz dimensions - I assume last three dimensions are axis angles?
@@ -330,6 +336,7 @@ Command-line options
         # Set up marching cube stuff - grids in Angstroms
         #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
         self.ngrids = ngrids = np.ceil(box/ grid_dl).astype(int)+1
+        box = (self.ngrids-1) * grid_dl
         self.dgrid = np.ones(3) * grid_dl
 
         log.info("Box: {}".format(box))
@@ -346,9 +353,9 @@ Command-line options
         #    within a distance (opp edge +- cutoff)
         #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
         #     to retrieve appropriate real point indices
-        coord_x = np.arange(0,ngrids[0],grid_dl)
-        coord_y = np.arange(0,ngrids[1],grid_dl)
-        coord_z = np.arange(0,ngrids[2],grid_dl)
+        coord_x = np.linspace(0,box[0],ngrids[0])
+        coord_y = np.linspace(0,box[1],ngrids[1])
+        coord_z = np.linspace(0,box[2],ngrids[2])
 
         # gridpts array shape: (n_pseudo_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
@@ -358,7 +365,6 @@ Command-line options
         self.tree = cKDTree(self.gridpts)
 
         log.info("Point grid set up")   
-
 
     # rho: array, shape (n_frames, npts) - calculated coarse-grained rho for each grid point, for 
     #         each frame
@@ -372,7 +378,7 @@ Command-line options
             return
 
         log.info("Preparing to output data")
-        #embed()
+
         writer = RhoField(self.rho_shape, self.gridpts)
 
         # Always do dx file output
@@ -391,7 +397,7 @@ Command-line options
         # Split up frames, assign to work manager, splice back together into
         #   total rho array
         self.calc_rho()
-        #embed()
+        
         self.do_output()
 
 
