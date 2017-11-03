@@ -147,7 +147,7 @@ Command-line options
                             help='Input structure file')
         sgroup.add_argument('-f', '--trajfile', metavar='XTC', type=str, required=True,
                             help='Input XTC trajectory file')
-        sgroup.add_argument('--mol-sel-spec', type=str, required=True,
+        sgroup.add_argument('--mol-sel-spec', type=str, default=sel_spec_heavies,
                             help='MDAnalysis-style selection string for choosing solute atoms defining the spherical probe volume')
         sgroup.add_argument('-rcut', '--rcutoff', type=float, default=6.0,
                             help='Radius of individual spherical subvolumes, in A (default: 6.0)')
