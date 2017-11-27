@@ -130,6 +130,7 @@ Command-line options
 
     def go(self):
 
+        header_str = "fitspec: {}; rmsdspec: {}".format(self.sel_spec, self.rmsd_spec)
         n_frames = self.last_frame - self.start_frame
         center_mol(self.ref_univ)
 
@@ -149,7 +150,7 @@ Command-line options
                         print("\r doing frame {} of {}".format(i_frame, self.last_frame))
                     curr_ts = self.other_univ.trajectory[i_frame]
 
-                    center_mol(self.other_univ, do_pbc=True)
+                    center_mol(self.other_univ, do_pbc=False)
                     if not self.center_only:
                         rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
                         rmsd_arr[i_frame-self.start_frame, 0] = curr_ts.time
@@ -165,10 +166,10 @@ Command-line options
                         rmsd_arr[i_frame-self.start_frame, 2] = rms_other
 
             if not self.center_only:
-                np.savetxt(self.rmsd_out, rmsd_arr)
+                np.savetxt(self.rmsd_out, rmsd_arr, header=header_str)
 
         else:
-            center_mol(self.other_univ, do_pbc=True)
+            center_mol(self.other_univ, do_pbc=False)
             rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
             self.other_univ.atoms.write(self.outfile + ".gro")
 
@@ -178,7 +179,7 @@ Command-line options
                 rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
                 rmsd_arr[0,2] = rms_other
 
-            np.savetxt(self.rmsd_out, rmsd_arr)
+            np.savetxt(self.rmsd_out, rmsd_arr, header=header_str)
 
 
 if __name__=='__main__':

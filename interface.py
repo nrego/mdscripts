@@ -200,6 +200,8 @@ Command-line options
                         help='Estimated protein density (heavy atoms per nm3)')
         sgroup.add_argument('--all-waters', action='store_true',
                             help='Consider *all* waters (not just those close to solute) - default is false')
+        sgroup.add_argument('--sspec', default=sel_spec_heavies, type=str,
+                            help='Selection spec for chosing solute atoms (default: all protein heavies)')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-odx', '--outdx', default='interface.dx',
                         help='Output file to write instantaneous interface')
@@ -240,10 +242,8 @@ Command-line options
 
         self.wall = args.wall
         self.all_waters = args.all_waters
-        if self.wall:
-            self.mol_sel_spec = sel_spec_heavies
-        else:
-            self.mol_sel_spec = sel_spec_heavies_nowall
+        
+        self.mol_sel_spec = args.sspec
 
         self.init_from_args = True
 
