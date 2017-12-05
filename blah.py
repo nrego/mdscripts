@@ -1,92 +1,45 @@
-from __future__ import division
 
-import numpy as np
-import os
+shelltypes=[r'$R=3.0 \; \AA$', r'$R=3.5 \; \AA', r'$R=4.0 \; \AA', r'$R=4.5 \; \AA', r'$R=5.0 \; \AA', r'$R=5.5 \; \AA', r'$R=6.0 \; \AA', 'excluded volume', 'VdW radius']
 
-n_0 = np.loadtxt('phi0.0/rho_avg.dat')
-actual_data = np.loadtxt('out.dat')
-actual_n_avg = actual_data[:,3]
-actual_n_dep = actual_n_avg[0] - actual_n_avg
+for i,dirname in enumerate(dirnames):
+    print("doing {}".format(dirname))
+    lam_00 = np.loadtxt('{}/lambda_{:02d}/dhdl.xvg'.format(dirname, 0), comments=['@', '#'])
+    lam_05 = np.loadtxt('{}/lambda_{:02d}/dhdl.xvg'.format(dirname, 5), comments=['@', '#'])
+    lam_10 = np.loadtxt('{}/lambda_{:02d}/dhdl.xvg'.format(dirname, 10), comments=['@', '#'])
 
-def get_data(phival):
+    lam_00 = lam_00[50000:]
+    lam_05 = lam_05[50000:]
+    lam_10 = lam_10[50000:]
 
-    dirname = 'phi{:0.1f}/'.format(phival)
+    avg_du_00 = lam_00[:,1].mean()
+    avg_du_05 = lam_05[:,1].mean()
+    avg_du_10 = lam_10[:,1].mean()
 
+    min_val = min(lam_00[:,-1].min(), lam_10[:,-3].min())
+    max_val = max(lam_00[:,-1].max(), lam_10[:,-3].max())
+    bins = np.arange(min_val, max_val, 0.1)
+    hist_00, bb0 = np.histogram(lam_00[:,-1], bins=bins, normed=True)
+    hist_10, bb1 = np.histogram(-lam_10[:,-3], bins=bins, normed=True)
 
-    rvals = np.loadtxt(os.path.join(dirname, 'rho_avg_norm.dat'))
-    nvals = np.loadtxt(os.path.join(dirname, 'rho_avg.dat'))
-    n_avg = nvals.sum()
+    loghist_00 = np.log(hist_00)
+    #loghist_00 -= loghist_00.min()
 
-    act_n_dep_curr = actual_n_dep[actual_data[:,0] == phival]
-    act_n_avg_curr = actual_n_avg[actual_data[:,0] == phival]
+    loghist_10 = np.log(hist_10)
+    #loghist_10 -= loghist_10.min()
 
-    #estimate of total number of depleted waters
-    n_dep = np.sum(n_0) - n_avg
+    bc0 = np.diff(bb0) + bb0[:-1]
+    bc1 = np.diff(bb1) + bb1[:-1]
 
-    return (act_n_avg_curr, n_avg, act_n_dep_curr, n_dep, rvals, nvals)
+    plt.plot(bc0, loghist_00, label=r'$P_0 (\Delta U)$')
+    plt.plot(bc1, loghist_10, label=r'$P_1 (\Delta U)$')
+    plt.xlabel(r'$\Delta U$')
+    plt.ylabel(r'$\ln {P_{\lambda} (\Delta U)}$')
 
+    plt.legend()
+    plt.show()
 
-phivals = np.arange(0.0, 10, 1)
+    plt.plot([0.0, 0.5, 1.0], [avg_du_00, avg_du_05, avg_du_10], '-o')
+    plt.xlabel(r'$\lambda$')
+    plt.ylabel(r'$\langle \Delta U \rangle_{\lambda}$')
 
-all_n_avg = np.zeros_like(phivals)
-all_act_n_avg = np.zeros_like(phivals)
-all_n_dep = np.zeros_like(phivals)
-all_act_n_dep = np.zeros_like(phivals)
-
-all_rvals = np.zeros((phivals.shape[0], n_0.shape[0]))
-all_nvals = np.zeros((phivals.shape[0], n_0.shape[0]))
-
-for i,phival in enumerate(phivals):
-    act_n_avg_curr, n_avg, act_n_dep_curr, n_dep, rvals, nvals = get_data(phival)
-
-    all_n_avg[i] = n_avg
-    all_act_n_avg[i] = act_n_avg_curr
-    all_n_dep[i] = n_dep
-    all_act_n_dep[i] = act_n_dep_curr
-    all_rvals[i,...] = rvals
-    all_nvals[i,...] = nvals
-
-
-thres_vals = np.linspace(0,1,500)
-m = n_0.shape[0]
-for i, phival in enumerate(phivals):
-    curr_nvals = all_nvals[i]
-    curr_data = np.zeros_like(thres_vals)
-    for j, thres in enumerate(thres_vals):
-        curr_data[j] = (curr_nvals <= thres).sum() / m
-    plt.plot(thres_vals, curr_data, '-o', label=r'$\phi={}$'.format(phival))
-
-thres_vals *= 5
-for i, phival in enumerate(phivals):
-    curr_rvals = all_rvals[i]
-    if i == 0:
-        curr_rvals /= curr_rvals
-    curr_data = np.zeros_like(thres_vals)
-    for j, thres in enumerate(thres_vals):
-        curr_data[j] = (curr_rvals <= thres).sum() / m
-    if i == 0:
-        plt.step(thres_vals, curr_data, '-o', label=r'$\phi={}$'.format(phival))
-    else:
-        plt.plot(thres_vals, curr_data, '-o', label=r'$\phi={}$'.format(phival))
-
-bins = np.linspace(0,0.1,50)
-for i, phival in enumerate(phivals):
-    curr_nvals = np.clip(all_nvals[i], 0, 0.1)
-    if curr_nvals.max() >= bins.max():
-        curr_bins = np.append(bins, curr_nvals.max()+0.01)
-    else:
-        curr_bins = bins.copy(0)
-    hist, curr_bins = np.histogram(curr_nvals, normed=True, bins=curr_bins)
-
-    plt.plot(curr_bins[:-1]+np.diff(curr_bins)/2.0, hist, label=r'$\phi={}$'.format(phival))
-
-bins = np.linspace(0,2.1,51)
-for i, phival in enumerate(phivals):
-    if i == 0:
-        continue
-    curr_rvals = np.clip(all_rvals[i], 0.0, 2.0)
-
-    curr_bins = bins.copy(0)
-    hist, curr_bins = np.histogram(curr_rvals, normed=True, bins=75)
-
-    plt.plot(curr_bins[:-1]+np.diff(curr_bins)/2.0, hist, label=r'$\phi={}$'.format(phival))
+    plt.show()
