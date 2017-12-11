@@ -15,23 +15,25 @@ for i,dirname in enumerate(dirnames):
     avg_du_05 = lam_05[:,1].mean()
     avg_du_10 = lam_10[:,1].mean()
 
-    min_val = min(lam_00[:,-1].min(), lam_10[:,-3].min())
-    max_val = max(lam_00[:,-1].max(), lam_10[:,-3].max())
+    min_val = max(min(lam_00[:,-1].min(), lam_10[:,-3].min()), -1000)
+    max_val = min(max(lam_00[:,-1].max(), lam_10[:,-3].max()), 1000)
     bins = np.arange(min_val, max_val, 0.1)
-    hist_00, bb0 = np.histogram(lam_00[:,-1], bins=bins, normed=True)
-    hist_10, bb1 = np.histogram(-lam_10[:,-3], bins=bins, normed=True)
+    hist_00, bb0 = np.histogram(lam_00[:,-2], bins=bins, normed=True)
+    hist_05, bb05 = np.histogram(-lam_05[:,-3], bins=bins, normed=True)
+    hist_10, bb1 = np.histogram(-lam_10[:,-2], bins=bins, normed=True)
 
     loghist_00 = np.log(hist_00)
     #loghist_00 -= loghist_00.min()
-
+    loghist_05 = np.log(hist_05)
     loghist_10 = np.log(hist_10)
     #loghist_10 -= loghist_10.min()
 
     bc0 = np.diff(bb0) + bb0[:-1]
     bc1 = np.diff(bb1) + bb1[:-1]
 
-    plt.plot(bc0, loghist_00, label=r'$P_0 (\Delta U)$')
-    plt.plot(bc1, loghist_10, label=r'$P_1 (\Delta U)$')
+    plt.plot(bc0, loghist_00, label=r'$P_{0.0} (0.5*\Delta U)$')
+    plt.plot(bc0, loghist_05, label=r'$P_{0.5} (0.5*\Delta U)$')
+    plt.plot(bc1, loghist_10, label=r'$P_{1.0} (0.5*\Delta U)$')
     plt.xlabel(r'$\Delta U$')
     plt.ylabel(r'$\ln {P_{\lambda} (\Delta U)}$')
 
