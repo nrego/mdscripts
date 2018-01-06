@@ -57,7 +57,7 @@ if __name__ == "__main__":
                         help='be verbose')
     parser.add_argument('-T', metavar='TEMP', type=float,
                         help='convert Phi values to kT, for TEMP (K)')
-    parser.add_argument('--dt', default=None, type=float,
+    parser.add_argument('--skip', default=None, type=float,
                         help='only take data over this many time steps (in ps). Default: every data point')
     parser.add_argument('--binwidth', type=float, default=0.01,
                         help='Bin width over region of interest for delta U, in kT (default is 0.01 kT)')
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     start = args.start
     end = args.end 
-    dt = args.dt
+    dt = args.skip
 
     beta = 1/(8.3144598e-3 * args.T)
 
