@@ -449,17 +449,21 @@ Command-line options
             uncorr_start_idx += this_n_uncorr_sample
             start_idx += this_n_sample
 
-        myargs = (uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n, n_uncorr_tot)
+        
 
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
-            xweights = self.start_weights[1:]
+            xweights = self.start_weights
         else:
-            xweights = np.zeros(self.n_windows-1)
+            xweights = np.zeros(self.n_windows)
 
+        assert xweights[0] == 0
+
+        myargs = (uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n, n_uncorr_tot)
         log.info("Running MBAR on entire dataset")
+        
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
-        logweights_actual = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0]
+        logweights_actual = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=myargs)[0]
         logweights_actual = -np.append(0, logweights_actual)
         log.info("MBAR results on entire dataset: {}".format(logweights_actual))
 
@@ -486,7 +490,7 @@ Command-line options
 
         # the bootstrap estimates of free energies wrt window i=0
         logweights_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
-
+        assert logweights_actual[0] == 0
         def task_gen():
             
             if __debug__:
