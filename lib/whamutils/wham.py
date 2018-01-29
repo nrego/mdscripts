@@ -1,6 +1,7 @@
 ## My set of WHAM/MBAR utilities
 
 import numpy as np
+from IPython import embed
 
 # Generate a probability distribution over a variable by integrating
 # This currently works for phi datasets **ONLY**
@@ -53,17 +54,21 @@ def gen_U_nm(all_data, nsims, beta, start, end=None):
 
 # Log likelihood
 def kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
+    #embed()
     #u_nm = np.exp(-bias_mat)
     f = np.append(0, xweights)
+    
     #z = np.exp(-f)
 
     #Q = np.dot(u_nm, np.diag(z))
 
     Q = bias_mat + f
-    #Q = np.exp(-Q)
-    #logLikelihood = (ones_N.transpose()/n_tot)*np.log(Q*nsample_diag.diagonal().T) + \
-    #                np.dot(np.diag(nsample_diag), f)
-    logLikelihood = (ones_N.transpose()/n_tot)*np.log(( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1)) + \
+
+    Q = -Q + np.log(nsample_diag.diagonal())
+    c = Q.max(axis=1)
+    Q -= c
+
+    logLikelihood = (ones_N.transpose()/n_tot)*(c+np.log(np.exp(Q).sum(axis=1))) + \
                     np.dot(np.diag(nsample_diag), f)
 
     return float(logLikelihood)
@@ -72,13 +77,13 @@ def grad_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
 
     #u_nm = np.exp(-bias_mat)
     f = np.append(0, xweights)
+    
     #z = np.exp(-f) # Partition functions relative to first window
 
     #Q = np.dot(u_nm, np.diag(z))
 
     Q = bias_mat + f
-    #Q = np.exp(-Q)
-    #denom = (Q*nsample_diag).sum(axis=1)
+
     denom = ( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1) 
 
     W = np.exp(-Q)/denom

@@ -11,7 +11,7 @@ import numpy as np
 
 thresh = 1
 
-initial_file_paths = sorted(glob.glob('phi_*/dynamic_volume_targ_water_avg.pdb'))
+initial_file_paths = sorted(glob.glob('phi_*/dynamic_volume_water_avg.pdb'))
 
 univ = MDAnalysis.Universe(initial_file_paths[0])
 buried_mask = univ.atoms.bfactors < thresh
