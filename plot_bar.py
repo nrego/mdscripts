@@ -9,8 +9,6 @@ mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 40})
 
-
-
 fig, ax = plt.subplots()
 ind = np.arange(4)
 width = 1
@@ -22,5 +20,7 @@ names = ('Wt', 'Cent', 'Ring', 'Edge')
 ax.set_xticklabels(names)
 #ax.legend((rects1[0], rects2[0]), ('bind', 'cav'))
 
-#rects2 = ax.bar(ind+width, cav_unbound[1:] - cav_unbound[0], width=width, edgecolor='k', color='r')
+rects2 = ax.bar(ind[1::4], dat[:,1], width=width, edgecolor='k', color='g')
+rects3 = ax.bar(ind[2::4], dat[:,2], width=width, edgecolor='k', color='b')
+ax.legend((rects1[0], rects2[0], rects3[0]), (r'$\Delta \Delta G$', r'$\Delta \Delta G_{\rm{SR}}$', r'$\Delta \Delta G_{\rm{ins}}$'))
 
