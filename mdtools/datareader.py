@@ -223,6 +223,8 @@ class XvgDataSet(DataSet):
         self.lmbda = None
         self.temp = None
 
+        self.dhdl = None
+
         self.title=filename
         self.header = ''
         with open(filename, 'r') as f:
@@ -247,6 +249,7 @@ class XvgDataSet(DataSet):
         data = np.loadtxt(filename, comments=['#', '@'])
         log.debug('Datareader {} reading input file {}'.format(self, filename))
 
+        self.dhdl = pandas.DataFrame(data[::corr_len, 1], index=data[::corr_len, 0])
         # Data has biases in kJ/mol !
         self.data = pandas.DataFrame(data[::corr_len, 2:], index=data[::corr_len, 0],
                                      columns=self.lmbdas)
