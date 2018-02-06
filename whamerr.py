@@ -68,7 +68,7 @@ def parse_np_array(inputarr):
 
 # phidat is datareader (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
-def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_uncorr_samples,
+def _bootstrap(lb, ub, ones_m, ones_n, ones_n_uncorr, bias_mat, n_samples, n_uncorr_samples,
                n_uncorr_sample_diag, n_uncorr_tot, n_windows, autocorr_nsteps, 
                xweights, binbounds, all_data_N):
 
@@ -108,7 +108,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_uncorr_samples,
 
         # WHAM this bootstrap sample
 
-        myargs = (boot_uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n, n_uncorr_tot)
+        myargs = (boot_uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n_uncorr, n_uncorr_tot)
         boot_weights = -np.array(fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
         logweights_ret[batch_num, 1:] = boot_weights
         del boot_uncorr_bias_mat
@@ -423,12 +423,12 @@ Command-line options
         # Diagonal is fractional n_uncorr_samples for each window - should be 
         #    float because future's division function
         n_uncorr_sample_diag = np.matrix( np.diag(n_uncorr_samples / n_uncorr_tot), dtype=np.float32 )
-
+        n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32)
         # Run MBAR once before bootstrapping
         ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float32).T
         # (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
-        ones_n = np.matrix(np.ones(n_uncorr_tot,), dtype=np.float32).T
-
+        ones_n_uncorr = np.matrix(np.ones(n_uncorr_tot,), dtype=np.float32).T
+        ones_n = np.matrix(np.ones(self.n_tot,), dtype=np.float32).T
         ## Fill up the uncorrelated bias matrix
         uncorr_bias_mat = np.zeros((n_uncorr_tot, self.n_windows), dtype=np.float32)
         start_idx = 0
@@ -459,7 +459,8 @@ Command-line options
 
         assert xweights[0] == 0
 
-        myargs = (uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n, n_uncorr_tot)
+        #myargs = (uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n, n_uncorr_tot)
+        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
@@ -502,7 +503,7 @@ Command-line options
                     checkset.update(set(xrange(lb,ub)))
 
                 args = ()
-                kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, bias_mat=self.bias_mat,
+                kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, ones_n_uncorr=ones_n_uncorr, bias_mat=self.bias_mat,
                               n_samples=self.n_samples, n_uncorr_samples=n_uncorr_samples, n_uncorr_sample_diag=n_uncorr_sample_diag, n_uncorr_tot=n_uncorr_tot, 
                               n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=-logweights_actual[1:],
                               binbounds=binbounds, all_data_N=self.all_data_N)
