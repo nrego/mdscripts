@@ -76,7 +76,7 @@ def kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
     #z = np.exp(-f)
 
     #Q = np.dot(u_nm, np.diag(z))
-
+    
     Q = bias_mat + f
 
     Q = -Q + np.log(nsample_diag.diagonal())
@@ -97,7 +97,9 @@ def grad_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
 
     #Q = np.dot(u_nm, np.diag(z))
 
-    Q = bias_mat + f
+    Q = np.matrix(bias_mat + f)
+    c = Q.min(axis=1)
+    Q -= c
 
     denom = ( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1) 
 

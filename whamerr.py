@@ -421,8 +421,8 @@ Command-line options
 
         # Fix bias matrix so each column lam_i is now U_i-U_0; i.e. bias w.r.t window 0
         col0 = self.bias_mat[:, 0].copy()
-        for i in xrange(self.n_windows):
-            self.bias_mat[:, i] = self.bias_mat[:, i] - col0
+        #for i in xrange(self.n_windows):
+        #   self.bias_mat[:, i] = self.bias_mat[:, i] - col0
         
         if do_autocorr:
             log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
@@ -487,8 +487,8 @@ Command-line options
 
         assert xweights[0] == 0
 
-        myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
-        #myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
+        #myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
+        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
