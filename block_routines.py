@@ -5,12 +5,12 @@ start = 2000
 dat = np.squeeze(-np.array(mydat.data[start:][0.1]))
 
 size = dat.size
-block_sizes = np.arange(1, size/4, 1)
+block_sizes = np.arange(1, size//4, 1)
 
 std_errs = np.zeros_like(block_sizes).astype(float)
 
 for i, block_size in enumerate(block_sizes):
-    n_blocks = size / block_size
+    n_blocks = size // block_size
     rem = size % block_size
 
     this_dat = dat[rem:].reshape((n_blocks, block_size))

@@ -69,7 +69,7 @@ def parse_np_array(inputarr):
 # phidat is datareader (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
 def _bootstrap(lb, ub, ones_m, ones_n, ones_n_uncorr, bias_mat, n_samples, n_uncorr_samples,
-               n_uncorr_sample_diag, n_uncorr_tot, n_windows, autocorr_nsteps, 
+               n_uncorr_sample_diag, n_uncorr_tot, n_windows, autocorr_blocks, 
                xweights, binbounds, all_data_N):
 
     np.random.seed()
@@ -91,18 +91,16 @@ def _bootstrap(lb, ub, ones_m, ones_n, ones_n_uncorr, bias_mat, n_samples, n_unc
         #embed()
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
-        for i, block_size in enumerate(autocorr_nsteps):
+        for i, block_size in enumerate(autocorr_blocks):
             this_n_uncorr_sample = n_uncorr_samples[i] # number of rows
             this_n_sample = n_samples[i]
             
             # start indices (rows in bias_mat) for each block for this window
-            avail_indices = this_n_sample - block_size + 1
+            avail_indices = np.arange(this_n_sample)
             this_indices = start_idx + np.random.choice(avail_indices, size=this_n_uncorr_sample, replace=True)
+
+            boot_uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample, :] = bias_mat[this_indices, :]
             
-            for k, k_indices in enumerate(this_indices):
-                # dat is a block of data for this window, which we will sum
-                dat = bias_mat[k_indices:k_indices+block_size,:].mean(axis=0) # should be shape (n_windows,)
-                boot_uncorr_bias_mat[uncorr_start_idx+k,:] = dat
             uncorr_start_idx += this_n_uncorr_sample
             start_idx += this_n_sample
 
@@ -156,6 +154,11 @@ Command-line options
         # All data from all windows to be WHAMed, in 1-d array
         # shape: (n_tot,)
         self.all_data = None
+
+        # shape (n_tot,)
+        # Du/Dl for each window at each timepoint (i.e. Delta U=U1 - U0 when simple linear interp)
+        # Then the *bias* this observation feels at window i is self.dudl * lambda_i
+        self.dudl = None
 
         # Only initialized for 'phi' datasets - same shape as above
         self.all_data_N = None
@@ -345,7 +348,6 @@ Command-line options
         if skip is not None:
             do_skip = True
 
-        step = 1 # by default take every data point
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             #embed()
 
@@ -360,6 +362,7 @@ Command-line options
                     step = int(skip / self.ts)
                     log.info("only grabbing data every {} ps ({} steps)".format(skip, step))
                 else:
+                    step = 1 # by default take every data point
                     log.info("grabbing data every step ({} ps)".format(self.ts))
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
@@ -368,29 +371,41 @@ Command-line options
             arr_self = ds.data[ds.lmbda]
             np.testing.assert_array_almost_equal(arr_self, np.zeros_like(arr_self), decimal=5)
 
+
+            ## Sanity checks done. Now grab this window's data (i.e. its du's) and poss. calc the iact
             dataframe = np.array(ds.data[start:end:step][self.for_lmbdas], dtype=np.float32)
 
             if do_autocorr:
                 log.info("    Calculating autocorrelation time...")
-                autocorr_nsteps = 1
+                
                 n_samples = dataframe.shape[0]
-                max_autocorr_len = n_samples // 50
+                max_autocorr_len = n_samples // 50 # Can only accurately get tau if (n_samples > 50*tau)
+                iact = 0 # initial guess
+                # Get autocorr time for this lambda window by looking at its dU's for its adjacent windows
                 for k in [i-1, i+1]:
+                    
                     if k < 0:
                         continue
                     try:
-                        autocorr_res = 2 * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:,k]))
-                        if autocorr_res > autocorr_nsteps:
-                            autocorr_nsteps = autocorr_res
+                        # iact in units of *steps*, *NOT* time
+                        curr_iact = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:,k], fast=True))
+                        if curr_iact > iact:
+                            iact = curr_iact
                     except:
                         continue
-                self.autocorr[i] = max(self.ts * autocorr_nsteps * 0.5, self.min_autocorr_time)
-                log.info("      Tau={} ps".format(self.autocorr[i]))
-                np.savetxt('autocorr', self.autocorr)
+                # self.autocorr is IACT in **ps**
+                self.autocorr[i] = max(self.ts * iact, self.min_autocorr_time)
+                log.info("      Tau={} ps ({}) steps".format(self.autocorr[i], iact))
+                
 
             bias = self.beta*dataframe # biased values for all windows
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
-
+            
+            this_dudl = self.beta * np.array(ds.dhdl[start:end:step], dtype=np.float32)
+            if self.dudl is None:
+                self.dudl = this_dudl
+            else:
+                self.dudl = np.vstack((self.dudl, this_dudl))
             if self.all_data is None:
                 self.all_data = dataframe
             else:
@@ -401,55 +416,68 @@ Command-line options
             else:
                 self.bias_mat = np.vstack((self.bias_mat, bias))
 
+        ## Finished unpacking all data windows - now rearrange the bias matrix, clean up, etc
+        self.dudl = np.squeeze(self.dudl)
+
+        # Fix bias matrix so each column lam_i is now U_i-U_0; i.e. bias w.r.t window 0
+        col0 = self.bias_mat[:, 0].copy()
+        for i in xrange(self.n_windows):
+            self.bias_mat[:, i] = self.bias_mat[:, i] - col0
+        
+        if do_autocorr:
+            log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
+            np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
         dr.clearData()
         
     def go(self):
-
+        
         # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
         #    i.e. the number of subsequent data points for each window over which data is uncorrelated
-        autocorr_nsteps = np.ceil(2*self.autocorr/self.ts).astype(int)
+        autocorr_blocks = np.ceil(1+2*self.autocorr/self.ts).astype(int)
 
-        log.info("autocorr length: {} ps".format(self.autocorr))
+        log.info("Tau for each window: {} ps".format(self.autocorr))
         log.info("data time step: {} ps".format(self.ts))
-        log.info("autocorr nsteps: {}".format(autocorr_nsteps))
+        log.info("autocorr nsteps: {}".format(autocorr_blocks))
 
         # Number of complete blocks for each sample window - the effective 
         #    number of uncorrelated samples for each window
-        n_uncorr_samples = self.n_samples // autocorr_nsteps
+        uncorr_n_samples = self.n_samples // autocorr_blocks
+        remainders = self.n_samples % autocorr_blocks
         # Total number of effective uncorrelated samples
-        n_uncorr_tot  = n_uncorr_samples.sum()
-        assert n_uncorr_tot <= self.n_tot
+        uncorr_n_tot  = uncorr_n_samples.sum()
+        assert uncorr_n_tot <= self.n_tot
 
         # Diagonal is fractional n_uncorr_samples for each window - should be 
         #    float because future's division function
-        n_uncorr_sample_diag = np.matrix( np.diag(n_uncorr_samples / n_uncorr_tot), dtype=np.float32 )
+        uncorr_n_sample_diag = np.matrix( np.diag(uncorr_n_samples / uncorr_n_tot), dtype=np.float32 )
         n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32)
         # Run MBAR once before bootstrapping
-        ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float32).T
+        ones_m = uncorr_ones_m = np.matrix(np.ones(self.n_windows,), dtype=np.float32).T
         # (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
-        ones_n_uncorr = np.matrix(np.ones(n_uncorr_tot,), dtype=np.float32).T
+        uncorr_ones_n = np.matrix(np.ones(uncorr_n_tot,), dtype=np.float32).T
         ones_n = np.matrix(np.ones(self.n_tot,), dtype=np.float32).T
+
+
         ## Fill up the uncorrelated bias matrix
-        uncorr_bias_mat = np.zeros((n_uncorr_tot, self.n_windows), dtype=np.float32)
+        uncorr_bias_mat = np.zeros((uncorr_n_tot, self.n_windows), dtype=np.float32)
         start_idx = 0
         uncorr_start_idx = 0
-        #embed()
+        
+
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
-        for i, block_size in enumerate(autocorr_nsteps):
-            this_n_uncorr_sample = n_uncorr_samples[i] # number of rows
+        for i, block_size in enumerate(autocorr_blocks):
+            this_n_uncorr_sample = uncorr_n_samples[i] # number of rows
             this_n_sample = self.n_samples[i]
-            
-            # start indices (rows in bias_mat) for each block for this window
-            this_indices = start_idx + np.arange(0, this_n_uncorr_sample*block_size, block_size)
-            for k, k_indices in enumerate(this_indices):
-                # dat is a block of data for this window, which we will sum
-                dat = self.bias_mat[k_indices:k_indices+block_size,:].mean(axis=0) # should be shape (n_windows,)
-                uncorr_bias_mat[uncorr_start_idx+k,:] = dat
+
+            # Start offset so the number of uncorrelated data points lines up
+            remainder = remainders[i]
+
+            uncorr_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size, :]
+            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample] = uncorr_data_slice
+
             uncorr_start_idx += this_n_uncorr_sample
             start_idx += this_n_sample
-
-        
 
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
@@ -459,8 +487,8 @@ Command-line options
 
         assert xweights[0] == 0
 
-        #myargs = (uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n, n_uncorr_tot)
-        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
+        myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
+        #myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
@@ -503,9 +531,9 @@ Command-line options
                     checkset.update(set(xrange(lb,ub)))
 
                 args = ()
-                kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, ones_n_uncorr=ones_n_uncorr, bias_mat=self.bias_mat,
-                              n_samples=self.n_samples, n_uncorr_samples=n_uncorr_samples, n_uncorr_sample_diag=n_uncorr_sample_diag, n_uncorr_tot=n_uncorr_tot, 
-                              n_windows=self.n_windows, autocorr_nsteps=autocorr_nsteps, xweights=-logweights_actual[1:],
+                kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, ones_n_uncorr=uncorr_ones_n, bias_mat=self.bias_mat,
+                              n_samples=self.n_samples, n_uncorr_samples=uncorr_n_samples, n_uncorr_sample_diag=uncorr_n_sample_diag, n_uncorr_tot=uncorr_n_tot, 
+                              n_windows=self.n_windows, autocorr_blocks=autocorr_blocks, xweights=-logweights_actual[1:],
                               binbounds=binbounds, all_data_N=self.all_data_N)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
@@ -530,6 +558,7 @@ Command-line options
         print('se: {}'.format(logweights_se))
         np.savetxt('err_logweights.dat', logweights_se, fmt='%3.6f')
 
+        
         if self.fmt == 'phi':
             # Get bootstrap errors for -log(Pv(N))
             neglogpdist_N_boot_mean = neglogpdist_N_boot.mean(axis=0)

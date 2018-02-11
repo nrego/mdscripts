@@ -249,10 +249,12 @@ class XvgDataSet(DataSet):
         data = np.loadtxt(filename, comments=['#', '@'])
         log.debug('Datareader {} reading input file {}'.format(self, filename))
 
-        self.dhdl = pandas.DataFrame(data[::corr_len, 1], index=data[::corr_len, 0])
+        #self.dhdl1 = pandas.DataFrame(data[::corr_len, 1], index=data[::corr_len, 0])
         # Data has biases in kJ/mol !
         self.data = pandas.DataFrame(data[::corr_len, 2:], index=data[::corr_len, 0],
                                      columns=self.lmbdas)
+
+        self.dhdl = pandas.DataFrame(self.data[self.lmbdas[-1]] - self.data[self.lmbdas[0]])
 
     def blockAvg(self, start=None, end=None, outfile=None):
         blocks = np.arange(1,min(len(self.data)//2, 5000))

@@ -36,8 +36,23 @@ def gen_pdist(all_data, bias_mat, n_samples, logweights, binbounds):
 
     return pdist
 
-def gen_pdist_xvg(all_data, bias_mat, n_samples, logweights, data_range, nbins):
-    pass
+# This will only work for linear interpolated du/dl for now...
+def gen_pdist_xvg(dudl, bias_mat, n_samples, logweights, lmbdas, binbounds):
+
+    n_lambdas = lmbdas.size
+
+    pdist = np.zeros(binbounds.shape[0]-1, dtype=np.float64)
+    for n_idx in range(dudl.size):
+        denom_arr = logweights - bias_mat[n_idx, :]
+        denom_arr = n_samples * np.exp(denom_arr)
+        denom = denom_arr.sum()
+
+        val = dudl[n_idx]
+        bin_assign = (val >= binbounds[:-1]) * (val < binbounds[1:])
+
+        pdist[bin_assign] += 1.0/denom
+
+    return pdist
 
 # U[i,j] is exp(-beta * Uj(n_i))
 # This is equivalent to the bias mat in whamerr.py, right??
