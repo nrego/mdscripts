@@ -29,7 +29,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-from IPython import embed
+#from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)

@@ -7,10 +7,35 @@ import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
 #import visvis as vv
+
 from IPython import embed
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
+
+
+def iter_wham(weights, n_tots, bias_mat):
+
+    n_tot = n_tots.sum()
+    n_windows = weights.size
+    new_weights = np.zeros_like(weights)
+
+    exp = weights - bias_mat
+    denom = np.dot(np.exp(exp), n_tots)
+    
+    for k in range(n_windows):
+    # for each observation i...
+        #for i in range(n_tot):
+        #    num = np.exp(-bias_mat[i,k])
+        #    exp = weights - bias_mat[i, :]
+        #    denom = n_tots * np.exp(exp)
+        #    denom = denom.sum()
+
+        #   new_weights[k] += num / denom
+        num = np.exp(-bias_mat[:, k])
+        new_weights[k] = -np.log(np.sum(num/denom))
+
+    return new_weights
 
 binbounds = [np.arange(-181,184,4), np.arange(-181,184,4), np.arange(0.0, 80.25, 1)]
 phi_binbounds = binbounds[0]
@@ -45,13 +70,40 @@ for filename in files:
 # Total number of samples (n_iter * n_segs_per_iter) for each window
 n_tots = np.zeros(phi_vals.size, dtype=int)
 
+all_data = []
+all_ntwids = []
+all_weights = []
+
+avg_ntwids = []
 for i,dm in enumerate(data_managers):
     iter_stop = dm.current_iteration
-    n_tot = dm.we_h5file['summary']['n_particles'][iter_start:iter_stop-1].sum()
+    n_tot = dm.we_h5file['summary']['n_particles'][iter_start-1:iter_stop-1].sum()
 
     n_tots[i] = n_tot
 
 embed()
+
+    iter_stop = dm.current_iteration
+    this_ntwid = 0
+    for n_iter in xrange(iter_start, iter_stop):
+        iter_group = dm.get_iter_group(n_iter)
+        ntwids = iter_group['auxdata/ntwid'][:,-1]
+        weights = iter_group['seg_index']['weight']
+        this_ntwid += np.dot(ntwids, weights)
+        all_data.append(ntwids*weights)
+        all_ntwids.append(ntwids)
+        all_weights.append(weights)
+
+    avg_ntwids.append(this_ntwid/(iter_stop-iter_start))
+
+all_data = np.concatenate(all_data)
+all_ntwids = np.concatenate(all_ntwids)
+all_weights = np.concatenate(all_weights)
+bias_mat = np.zeros((all_data.size, n_windows), dtype=np.float32)
+
+for i, phi in enumerate(phi_vals):
+    bias_mat[:,i] = -np.log(all_weights) + (phi * all_ntwids)
+
 ## Now for the meat...
 
 # total histogram

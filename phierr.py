@@ -185,7 +185,7 @@ Command-line options
                     try:
                         dataframe = np.array(ds.data[start:]['$\~N$'])
                     # Estimate autocorrelation time from entire data set
-                        autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe)))
+                        autocorr.append(self.ts * np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe, fast=True)))
                     except:
                         autocorr.append(self.ts * 10)
 
@@ -226,7 +226,7 @@ Command-line options
         integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
 
-        autocorr_nsteps = (2*self.autocorr/self.ts).astype(int)
+        autocorr_nsteps = (1+2*self.autocorr/self.ts).astype(int)
         log.info('autocorr nsteps: {}'.format(autocorr_nsteps))
 
         n_workers = self.work_manager.n_workers or 1

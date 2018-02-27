@@ -12,6 +12,8 @@ import numpy as np
 from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
 import pymbar
 
+from matplotlib import pyplot as plt
+
 from IPython import embed
 
 
@@ -70,6 +72,11 @@ if __name__ == "__main__":
     n_windows = len(datasets)
 
     autocorr = []
+    logweights = []
+    err_logweights = []
+
+    n_boot = 128
+    binwidth = 0.05
 
     for i in xrange(n_windows-1):
         ds0 = datasets[i]
@@ -81,12 +88,18 @@ if __name__ == "__main__":
         dat0 = beta * np.array(ds0.data[2000:][lmbda_1])
         dat1 = beta *-np.array(ds1.data[2000:][lmbda_0])
 
+        minval = min(dat0.min(), dat1.min())
+        maxval = max(dat0.max(), dat1.max())
+
+        binbounds = np.arange(minval, maxval, binwidth)
+        bc = (binbounds[:-1] + binbounds[1:]) / 2.0
+
         assert dat0.size == dat1.size
 
         n_samples = dat0.size
 
-        iact0 = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dat0, fast=True))
-        iact1 = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dat1, fast=True))
+        iact0 = pymbar.timeseries.integratedAutocorrelationTime(dat0, fast=True)
+        iact1 = pymbar.timeseries.integratedAutocorrelationTime(dat1, fast=True)
 
         print("lambda_0: {}".format(ds0.lmbda))
         print("    iact: {}".format(iact0))
@@ -95,16 +108,56 @@ if __name__ == "__main__":
 
         print(" ")
 
-        iact = max(iact0, iact1)
 
         # Number of steps (*0.02 gives time in ps) to extract uncorrelated samples
-        ac_block = 1+(2*iact)
-        autocorr.append(ac_block)
+        ac_block0 = int(np.ceil(1+(2*iact0)))
+        ac_block1 = int(np.ceil(1+(2*iact1)))
+        #autocorr.append(ac_block)
 
-        #uncorr_n_sample = size // ac_block
+        uncorr_n_sample = np.array([n_samples / ac_block0, n_samples / ac_block1]).astype(int)
+        uncorr_n_sample += 1
+        
+        # Number of effective total samples
+        uncorr_n_tot = uncorr_n_sample.sum()
+        
+        uncorr_bias_mat = np.zeros((uncorr_n_tot, 2))
+        uncorr_bias_mat[:uncorr_n_sample[0], 1] = dat0[::ac_block0]
+        uncorr_bias_mat[uncorr_n_sample[0]:, 1] = dat1[::ac_block1]
+        
+        uncorr_n_sample_diag = np.matrix(np.diag(uncorr_n_sample / uncorr_n_tot), dtype=np.float32)
+        uncorr_ones_m = np.matrix(np.ones(2,), dtype=np.float32).T
+        uncorr_ones_n = np.matrix(np.ones(uncorr_n_tot,), dtype=np.float32).T
 
-        indices = np.arange(n_samples, dtype=np.int)
+        uncorr_myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
+        xweights = np.array([0.])
 
-    autocorr = np.array(autocorr).astype(int)
+        hist0, bb = np.histogram(dat0[::ac_block0], bins=binbounds, normed=True)
+        hist1, bb = np.histogram(dat1[::ac_block1], bins=binbounds, normed=True)
 
-embed()
+        boot_bias_mat = np.zeros_like(uncorr_bias_mat)
+        ## Bootstrap 
+        boot_wts = np.zeros((n_boot, 1))
+
+        for i in xrange(n_boot):
+            indices0 = np.random.choice(n_samples, uncorr_n_sample[0])
+            indices1 = np.random.choice(n_samples, uncorr_n_sample[1])
+
+            boot_bias_mat[:uncorr_n_sample[0], 1] = dat0[indices0]
+            boot_bias_mat[uncorr_n_sample[0]:, 1] = dat1[indices1]
+            
+            boot_args = (boot_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
+            res = fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=boot_args)[0]
+
+            boot_wts[i] = -res[0]
+
+        logwt = boot_wts.mean()
+        logweights.append(logwt)
+        err_logweights.append(boot_wts.std(ddof=1))
+
+        plt.plot(bc, np.log(hist1)-np.log(hist0)+bc, '-o')
+        plt.plot([bc[0], bc[-1]], [logwt, logwt])
+        plt.show()
+    
+    logweights = np.array(logweights)
+    err_logweights = np.array(err_logweights)
+    embed()

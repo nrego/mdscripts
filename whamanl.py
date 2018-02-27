@@ -1,17 +1,20 @@
 from __future__ import division, print_function
 
-import numpy
+import numpy as np
 from scipy.optimize import fmin_bfgs
 from matplotlib import pyplot
 import argparse
 import logging
 from mdtools import dr
 
-
+from whamutils import gen_pdist
 
 import sys
 
 import matplotlib as mpl
+
+from IPython import embed
+
 log = logging.getLogger()
 log.addHandler(logging.StreamHandler())
 Nfeval = 1
@@ -48,9 +51,6 @@ if __name__ == "__main__":
                         help='Plot resulting (free) energy distribution (-log(P))')
     parser.add_argument('--plotLogP', action='store_true',
                         help='Plot resulting log probability (log(P))')
-    parser.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
-                        help='Format of input data files:  \'phi\' for phiout.dat;' \
-                        '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
 
     args = parser.parse_args()
 
@@ -61,76 +61,88 @@ if __name__ == "__main__":
 
     log.info("Loading input files")
 
-    if args.fmt == 'phi':
-        for infile in args.input:
-            dr.loadPhi(infile)
-    elif args.fmt == 'xvg':
-        for infile in args.input:
-            dr.loadXVG(infile)
-
-    log.info("   ...Done")
-
     start = args.start
     end = args.end 
 
-    logweights = numpy.loadtxt(args.logweights)
-    weights = numpy.exp(logweights)
-
-    logP = numpy.loadtxt(args.logpdist)
-    logP[:,1] = -logP[:,1]
-    probDist = logP.copy()
-    probDist[:,1] = numpy.exp(probDist[:,1])
-    binctrs = probDist[:, 0]
-    binlen = numpy.diff(binctrs)[0] # Assume equal sized bins
-
-    # Contains calculated weights (i.e. relative partition coef for each sim)
-    #   And shannon entropy over consensus and observed distributions
-    outarr = numpy.zeros((len(args.input), 3))
+    n_windows = len(args.input)
+    all_dat = np.array([])
+    n_samples = []
 
     beta = 1
     if args.T:
-        beta /= (args.T * 8.314462e-3)
+        beta /= (args.T * 8.3144598e-3)
 
-    for i, ds_item in enumerate(dr.datasets.iteritems()):
-        ds_name, ds = ds_item
-        bias = numpy.exp(-beta*(0.5*ds.kappa*(binctrs-ds.Nstar)**2 + ds.phi*binctrs))
-        calcWeight = (probDist[:, 1] * bias * binlen).sum()
-        log.info("Calculated weight for nstar={}, phi={}:  f={}".format(ds.Nstar, ds.phi, -numpy.log(calcWeight)))
+    for infile in args.input:
+        log.info("Loading data {}".format(infile))
+        ds = dr.loadPhi(infile)
+        dat = np.array(ds.data[start:end]['$\~N$'])
+        all_dat = np.append(all_dat, dat)
+        n_samples.append(all_dat.size)
+
+    n_samples = np.array(n_samples)
+
+    bias_mat = np.zeros((all_dat.size, n_windows))
+    for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
+        bias_mat[:,i] = beta * (((ds.kappa)/2.0) * (all_dat-ds.Nstar)**2 + (ds.phi*all_dat))
+    
+    #embed()
+
+    min_pt = all_dat.min()
+    max_pt = all_dat.max()
+
+    binspace = 0.05
+    binbounds = np.arange(0, np.ceil(max_pt)+binspace, binspace)
+    bc = binbounds[:-1] + np.diff(binbounds)/2.0
+
+    log.info("   ...Done")
+
+    logweights = np.loadtxt(args.logweights)
+    weights = np.exp(logweights) # for generating consensus distributions
+
+    pdist = gen_pdist(all_dat, bias_mat, n_windows, logweights, binbounds)
+
+    outarr = np.zeros((len(args.input), 3))
+
+    for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
+        #if i > 0:
+        #    embed()
+        bias = beta*(0.5*ds.kappa*(bc-ds.Nstar)**2 + ds.phi*bc)
+
         # Consensus histogram
-        biasDist = (probDist[:, 1] * bias * binlen) / calcWeight
+        consensus_pdist = np.exp(logweights[i] - bias) * pdist
+        consensus_pdist = consensus_pdist / np.diff(binbounds)
+        consensus_pdist = consensus_pdist / consensus_pdist.sum()
 
-        range_max = (binctrs + (numpy.diff(binctrs)/2.0)[0])[-1]
-        #print('max: {}'.format(range_max))
-        range_min = (binctrs - (numpy.diff(binctrs)/2.0)[0])[0]
-        #print('min: {}'.format(range_min))
+        # Observed (biased) histogram for this window i
+        this_dat = np.array(ds.data[start:end]['$\~N$'])
+        obs_hist, bb = np.histogram(this_dat, bins=binbounds)
+        obs_hist = obs_hist / np.diff(binbounds)
+        obs_hist = obs_hist / obs_hist.sum()
 
-        data_arr = numpy.array(ds.data[start:end]['$\~N$'])
-        obs_hist, bb = numpy.histogram(data_arr, range=(range_min, range_max), bins=len(binctrs), normed=True)
+        comp_arr = np.zeros((bc.size, 3))
+        comp_arr[:,0] = bc
+        comp_arr[:,1] = obs_hist
+        comp_arr[:,2] = consensus_pdist
 
-        comp_arr = numpy.zeros((obs_hist.shape[0], 3))
-        comp_arr[:, 0] = (bb[:-1] + numpy.diff(bb)/2.0)
-        comp_arr[:, 1] = obs_hist[:]
-        comp_arr[:, 2] = biasDist[:]
+        np.savetxt('nstar-{:05g}_phi-{:05g}_consensus.dat'.format(ds.Nstar, ds.phi*1000), comp_arr)
 
-        numpy.savetxt('nstar-{:05g}_phi-{:05g}_consensus.dat'.format(ds.Nstar, ds.phi*1000), comp_arr)
-
-        shannonEntropy = numpy.nansum(obs_hist*numpy.log(obs_hist/biasDist))
+        shannonEntropy = np.nansum(obs_hist*np.log(obs_hist/consensus_pdist))
         log.info("  Shannon Entropy: {}".format(shannonEntropy))
 
-        outarr[i, 0] = beta*ds.phi
-        outarr[i, 1] = -numpy.log(calcWeight)
+        outarr[i, 0] = ds.phi
+        outarr[i, 1] = ds.Nstar
         outarr[i, 2] = shannonEntropy
 
-    numpy.savetxt('wham_anl.dat', outarr, fmt='%3.3f')
+    np.savetxt('wham_anl.dat', outarr, fmt='%1.2f %1.2f %1.4e')
 
     if args.plotPdist:
         pyplot.plot(probDist[:,0], probDist[:,1])
         pyplot.show()
 
     elif args.plotE:
-        pyplot.plot(probDist[:,0], -numpy.log(probDist[:,1]))
+        pyplot.plot(probDist[:,0], -np.log(probDist[:,1]))
         pyplot.show()
 
     elif args.plotLogP:
-        pyplot.plot(probDist[:,0], numpy.log(probDist[:,1]))
+        pyplot.plot(probDist[:,0], np.log(probDist[:,1]))
         pyplot.show()

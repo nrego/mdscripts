@@ -230,7 +230,7 @@ if __name__ == "__main__":
         d_ui = this_dat - neg_u0[:, np.newaxis]
 
         bias_mat[start_idx:start_idx+n_samples[i], :] = beta * (d_ui)
-
+        #bias_mat[start_idx:start_idx+n_samples[i], :] = beta * this_dat
         start_idx += n_samples[i]
     
     pdist = gen_pdist_xvg(dudl, bias_mat, n_samples, logweights, lmbdas, binbounds)
@@ -262,5 +262,6 @@ if __name__ == "__main__":
     plt.show()
     loghist = -np.log(pdist)
     loghist -= loghist.min()
+    embed()
     plt.plot(bc, loghist)
     plt.show()

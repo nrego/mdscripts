@@ -15,9 +15,11 @@ for i, block_size in enumerate(block_sizes):
 
     this_dat = dat[rem:].reshape((n_blocks, block_size))
 
-    std_errs[i] = this_dat.mean(axis=1).std(ddof=1)
+    n_eff = size-block_size
 
+    std_errs[i] = this_dat.mean(axis=1).var(ddof=1) * (n_eff**2/size)
 
+std_errs = np.sqrt(std_errs) / block_sizes
 num_blocks = size / block_sizes
 
-plt.plot(block_sizes, std_errs / np.sqrt(num_blocks - 1))
+plt.plot(block_sizes, std_errs)
