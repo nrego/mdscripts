@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
-import visvis as vv
+#import visvis as vv
+from IPython import embed
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
@@ -50,13 +51,13 @@ for i,dm in enumerate(data_managers):
 
     n_tots[i] = n_tot
 
-
+embed()
 ## Now for the meat...
 
 # total histogram
 hist = np.zeros((phi_binbounds.size-1, psi_binbounds.size-1, ntwid_binbounds.size-1), dtype=np.float64)
 
-## For each window
+## For each Phi window
 for i, dm in enumerate(data_managers):
     iter_stop = dm.current_iteration
     # For each iteration
