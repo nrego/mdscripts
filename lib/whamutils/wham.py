@@ -1,7 +1,7 @@
 ## My set of WHAM/MBAR utilities
 
 import numpy as np
-from IPython import embed
+#from IPython import embed
 
 # Generate a probability distribution over a variable by integrating
 # This currently works for phi datasets **ONLY**
@@ -44,6 +44,7 @@ def gen_pdist_xvg(dudl, bias_mat, n_samples, logweights, lmbdas, binbounds):
     pdist = np.zeros(binbounds.shape[0]-1, dtype=np.float64)
     for n_idx in range(dudl.size):
         denom_arr = logweights - bias_mat[n_idx, :]
+        
         denom_arr = n_samples * np.exp(denom_arr)
         denom = denom_arr.sum()
 
