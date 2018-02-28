@@ -146,7 +146,7 @@ for i, dm in enumerate(data_managers):
         histnd(vals, binbounds, n_segs*weights/denom, out=hist, binbound_check=False)
 
         # Just this we run
-        histnd(np.array([phis,psis]).T, binbounds[:-1], weights, out=this_phi_hist, binbound_check=False)
+        histnd(np.array([phis,psis,ntwids]).T, binbounds, weights, out=this_phi_hist, binbound_check=False)
 
     this_phi_hist /= this_phi_hist.sum()
     phi_hist.append(this_phi_hist)
@@ -160,7 +160,7 @@ normhistnd(hist, binbounds)
 phi_binctrs = phi_binbounds[:-1] + np.diff(phi_binbounds)/2.0
 psi_binctrs = psi_binbounds[:-1] + np.diff(psi_binbounds)/2.0
 
-vmin, vmax = 0, 10
+vmin, vmax = 0, 12
 norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
 extent = (phi_binbounds[0], phi_binbounds[-1], psi_binbounds[0], psi_binbounds[-1])
 
@@ -172,6 +172,10 @@ for i in range(64):
     if loghist.min() < min_energy:
         print(i)
         min_energy = loghist.min()
+
+dirnames = np.array([0, 20, 40, 50, 55, 60, 80, 100, 150, 200])
+forw_initial = np.loadtxt('phi_sims/forw/rama.xvg', usecols=(0,1), comments=['@','#'])
+revr_initial = np.loadtxt('phi_sims/revr/rama.xvg', usecols=(0,1), comments=['@','#'])
 
 for i in range(n_windows):
     phi_val = phi_vals[i] / beta
@@ -195,13 +199,26 @@ for i in range(n_windows):
     plt.tight_layout()
     plt.savefig('plot_phi_{:0.1f}.png'.format(phi_val))
 
+    forw_rama = np.loadtxt("phi_sims/forw/phi_{:03d}/rama.xvg".format(dirnames[i]), usecols=(0,1), comments=['@','#'])
+    revr_rama = np.loadtxt("phi_sims/revr/phi_{:03d}/rama.xvg".format(dirnames[i]), usecols=(0,1), comments=['@','#'])
+
+    plt.plot(forw_rama[:,0], forw_rama[:,1], 'o', label='Forward', color='r', alpha=0.7)
+    plt.plot(revr_rama[:,0], revr_rama[:,1], 'x', label='Reverse', markeredgecolor='k', alpha=0.7)
+
+    plt.plot(forw_initial[0], forw_initial[1], 'o', label='Forward start', color='r', markeredgecolor='k', markersize=18)
+    plt.plot(revr_initial[0], revr_initial[1], 'X', label='Reverse start', color='r', markeredgecolor='k', markersize=18)
+
+    plt.legend(loc=8)
+    plt.savefig('plot_phi_marker{:0.1f}.png'.format(phi_val))
+
 for i in range(63):
     plt.figure()
     ax = plt.gca()
     thishist = hist[:,:,i].copy()
     normhistnd(thishist, binbounds[0:2])
     loghist = -np.log(thishist)
-    loghist -= min_energy
+    #loghist -= min_energy
+    loghist -= loghist.min()
     
     loghist[loghist==float('inf')] = vmax
 
