@@ -4,6 +4,7 @@ import westpa
 from fasthist import histnd, normhistnd
 import numpy as np
 import matplotlib
+mpl = matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
 #import visvis as vv
@@ -13,6 +14,10 @@ from IPython import embed
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
+mpl.rcParams.update({'axes.labelsize': 30})
+mpl.rcParams.update({'xtick.labelsize': 20})
+mpl.rcParams.update({'ytick.labelsize': 20})
+mpl.rcParams.update({'axes.titlesize': 50})
 
 def iter_wham(weights, n_tots, bias_mat):
 
@@ -48,11 +53,10 @@ iter_start = 1000
 temp = 300
 beta = 1/(temp*8.3144598e-3)
 phi_vals = np.array([0, 2.0, 4.0, 5.0, 5.5, 6.0, 8.0, 10.0, 15.0, 20])
-free_energies = np.array([0.0, 44.8679, 83.9841, 99.9221, 105.7545, 109.7683, 116.7351, 119.2037, 121.2738, 121.8349])
+
+free_energies = np.array([  -0, 44.589521, 83.541158, 99.606209, 105.466612, 109.408471,116.394083, 118.821335, 120.544176, 121.066123])
 
 files = ['phi_{:05g}/west.h5'.format(phi*1000) for phi in phi_vals]
-
-
 
 # Phi biases - Not to be confused with phi angles of pcoord
 phi_vals = beta * phi_vals
@@ -81,8 +85,6 @@ for i,dm in enumerate(data_managers):
 
     n_tots[i] = n_tot
 
-embed()
-
     iter_stop = dm.current_iteration
     this_ntwid = 0
     for n_iter in xrange(iter_start, iter_stop):
@@ -109,9 +111,12 @@ for i, phi in enumerate(phi_vals):
 # total histogram
 hist = np.zeros((phi_binbounds.size-1, psi_binbounds.size-1, ntwid_binbounds.size-1), dtype=np.float64)
 
+## torsional histogram for each phi value (WE simulation)
+phi_hist = []
 ## For each Phi window
 for i, dm in enumerate(data_managers):
     iter_stop = dm.current_iteration
+    this_phi_hist = np.zeros((phi_binbounds.size-1, psi_binbounds.size-1), dtype=np.float64)
     # For each iteration
     for n_iter in xrange(iter_start, iter_stop):
         iter_group = dm.get_iter_group(n_iter)
@@ -140,6 +145,12 @@ for i, dm in enumerate(data_managers):
 
         histnd(vals, binbounds, n_segs*weights/denom, out=hist, binbound_check=False)
 
+        # Just this we run
+        histnd(np.array([phis,psis]).T, binbounds[:-1], weights, out=this_phi_hist, binbound_check=False)
+
+    this_phi_hist /= this_phi_hist.sum()
+    phi_hist.append(this_phi_hist)
+
 for dm in data_managers:
     dm.close_backing()
 
@@ -161,6 +172,28 @@ for i in range(64):
     if loghist.min() < min_energy:
         print(i)
         min_energy = loghist.min()
+
+for i in range(n_windows):
+    phi_val = phi_vals[i] / beta
+    plt.figure()
+    ax = plt.gca()
+    thishist = phi_hist[i]
+    loghist = -np.log(thishist)
+    loghist -= loghist.min()
+
+    loghist[loghist==float('inf')] = vmax
+
+    im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+                   cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+    cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                      colors='k', linewidths=1.0)
+    cb = plt.colorbar(im)
+    ax.set_title('$\phi={:0.1f}$'.format(phi_val), fontsize=30)
+    ax.set_xlim(-180,100)
+    ax.set_ylabel(r"$\Psi$")
+    ax.set_xlabel(r"$\Phi$")
+    plt.tight_layout()
+    plt.savefig('plot_phi_{:0.1f}.png'.format(phi_val))
 
 for i in range(63):
     plt.figure()
