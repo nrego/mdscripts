@@ -101,10 +101,10 @@ for i,dm in enumerate(data_managers):
 all_data = np.concatenate(all_data)
 all_ntwids = np.concatenate(all_ntwids)
 all_weights = np.concatenate(all_weights)
-bias_mat = np.zeros((all_data.size, n_windows), dtype=np.float32)
+#bias_mat = np.zeros((all_data.size, n_windows), dtype=np.float32)
 
-for i, phi in enumerate(phi_vals):
-    bias_mat[:,i] = -np.log(all_weights) + (phi * all_ntwids)
+#for i, phi in enumerate(phi_vals):
+#    bias_mat[:,i] = -np.log(all_weights) + (phi * all_ntwids)
 
 ## Now for the meat...
 
@@ -146,7 +146,7 @@ for i, dm in enumerate(data_managers):
         histnd(vals, binbounds, n_segs*weights/denom, out=hist, binbound_check=False)
 
         # Just this we run
-        histnd(np.array([phis,psis,ntwids]).T, binbounds, weights, out=this_phi_hist, binbound_check=False)
+        histnd(np.array([phis,psis]).T, binbounds[:-1], weights, out=this_phi_hist, binbound_check=False)
 
     this_phi_hist /= this_phi_hist.sum()
     phi_hist.append(this_phi_hist)
@@ -229,6 +229,7 @@ for i in range(63):
     cb = plt.colorbar(im)
     ax.set_title('$N_V={:02g}$'.format(i), fontsize=30)
     ax.set_xlim(-180,100)
+    plt.tight_layout()
     plt.savefig('plot_{:02g}.png'.format(i))
 
 fig = plt.figure()
