@@ -116,7 +116,7 @@ phi_hist = []
 ## For each Phi window
 for i, dm in enumerate(data_managers):
     iter_stop = dm.current_iteration
-    this_phi_hist = np.zeros((phi_binbounds.size-1, psi_binbounds.size-1), dtype=np.float64)
+    this_phi_hist = np.zeros((phi_binbounds.size-1, psi_binbounds.size-1, ntwid_binbounds.size-1), dtype=np.float64)
     # For each iteration
     for n_iter in xrange(iter_start, iter_stop):
         iter_group = dm.get_iter_group(n_iter)
