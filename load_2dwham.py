@@ -16,6 +16,8 @@ from IPython import embed
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
+from mdtools import dr
+
 import os
 import glob
 
@@ -41,11 +43,17 @@ psi_stars = []
 
 n_samples = []
 
+nreg_dat = []
+ntwid_dat = []
+
 start = 500
 
 for fname in fnames:
     rama = np.loadtxt(fname, usecols=(0,1), comments=['@','#'])
     dirname = os.path.dirname(fname)
+    ds = dr.loadPhi('{}/phiout.dat'.format(dirname))
+    n_dat = ds.data[start::10]
+
     with open("{}/topol.top".format(dirname), "r") as f:
         lines = f.readlines()
         phi_line = lines[-34].strip().split()
@@ -57,16 +65,24 @@ for fname in fnames:
         psi_kappas.append(float(psi_line[-1]))
         psi_stars.append(float(psi_line[-2]))
 
-        print("dir: {}, kap_phi: {}, phi_star: {}, kap_psi: {}, psi_star: {}".format(dirname, float(phi_line[-1]), float(phi_line[-2]), float(psi_line[-1]), float(psi_line[-2])))
+        print("dir: {}, mu: {}, kap_phi: {}, phi_star: {}, kap_psi: {}, psi_star: {}".format(dirname, ds.phi, float(phi_line[-1]), float(phi_line[-2]), float(psi_line[-1]), float(psi_line[-2])))
 
+    
+    nreg_dat.append(n_dat['N'])
+    ntwid_dat.append(n_dat['$\~N$'])
     phi_vals.append(rama[start:, 0])
     psi_vals.append(rama[start:, 1])
     n_samples.append(rama[start:].shape[0])
+    dr.clearData()
+
 
 phi_vals = np.concatenate(phi_vals)
 psi_vals = np.concatenate(psi_vals)
 
-assert phi_vals.size == psi_vals.size
+nreg_dat = np.concatenate(nreg_dat)
+ntwid_dat = np.concatenate(ntwid_dat)
+
+assert phi_vals.size == psi_vals.size == ntwid_dat.size == nreg_dat.size
 
 n_samples = np.array(n_samples)
 
@@ -95,7 +111,7 @@ for i in range(n_windows):
 
     bias_mat[:,i] = beta * ((phi_kappa*0.5)*(min_dist(phi_star,phi_vals))**2 + (psi_kappa*0.5)*(min_dist(psi_star,psi_vals))**2)
 
-binbounds = np.arange(-180,187,6)
+binbounds = np.arange(-180,187,4)
 
 bc = (binbounds[:-1] + binbounds[1:]) / 2.0
 
@@ -103,18 +119,6 @@ hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds])
 
 loghist = -np.log(hist)
 loghist -= loghist.min()
-
-extent = (-180,180,-180,180)
-vmin, vmax = 0, 16
-norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-fig = plt.figure()
-ax = plt.gca()
-
-im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
-               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
-cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
-                  colors='k', linewidths=1.0)
-cb = plt.colorbar(im)
 
 
 n_sample_diag = np.matrix( np.diag(n_samples / n_tot), dtype=np.float32)
@@ -133,6 +137,22 @@ logweights = -np.append(0, logweights)
 q = logweights - bias_mat
 denom = np.dot(np.exp(q), n_samples)
 weights = 1/denom
+weights /= weights.sum()
 
 hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
+
+loghist = -np.log(hist)
+loghist -= loghist.min()
+extent = (-180,180,-180,180)
+vmin, vmax = 0, 16
+norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+fig = plt.figure()
+ax = plt.gca()
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+
 
