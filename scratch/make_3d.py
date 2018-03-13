@@ -273,3 +273,159 @@ ax.set_zlabel('$N_V$')
 ax.set_xlabel('$\Phi$')
 ax.set_ylabel('$\Psi$')
 
+
+phi_hist = hist.sum(axis=1)
+phi_hist /= phi_hist.sum(axis=0) # Normalize conditional on each value N
+psi_hist = hist.sum(axis=0)
+psi_hist /= psi_hist.sum(axis=0)
+
+# Just from Phi = -180 to 0
+left_psi_hist = hist[:45].sum(axis=0)
+left_psi_hist /= left_psi_hist.sum(axis=0)
+
+# Just from Phi = 0 to 180
+right_psi_hist = hist[45:].sum(axis=0)
+right_psi_hist /= right_psi_hist.sum(axis=0)
+
+
+phi_binctrs = phi_binbounds[:-1] + np.diff(phi_binbounds)/2.0
+psi_binctrs = psi_binbounds[:-1] + np.diff(psi_binbounds)/2.0
+
+vmin, vmax = 0, 16
+norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+extent = (-180,180,0,80)
+
+
+# Plot N v Phi
+plt.figure()
+ax = plt.gca()
+loghist = -np.log(phi_hist)
+loghist -= np.nanmin(loghist)
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+ax.set_xlim(-180,100)
+ax.set_ylim(0,70)
+ax.set_xlabel(r'$\Phi$')
+ax.set_ylabel(r'$N_V$')
+ax.set_title(r'$\Phi$ (all)')
+plt.tight_layout()
+plt.savefig('N_v_phi.png')
+
+extent = (0,80,-180,180)
+
+# Plot N v Psi
+plt.figure()
+ax = plt.gca()
+loghist = -np.log(psi_hist)
+loghist -= np.nanmin(loghist)
+
+im = ax.imshow(loghist, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+ax.set_xlabel(r'$N_V$')
+ax.set_xlim(0,70)
+ax.set_ylabel(r'$\Psi$')
+ax.set_title(r'$\Psi$ (all)')
+plt.tight_layout()
+plt.savefig('N_v_psi.png')
+
+extent = (-180,180,0,80)
+
+# Plot N v Psi
+plt.figure()
+ax = plt.gca()
+loghist = -np.log(psi_hist)
+loghist -= np.nanmin(loghist)
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+ax.set_xlabel(r'$\Psi$')
+ax.set_ylabel(r'$N_V$')
+ax.set_ylim(0,70)
+ax.set_title(r'$\Psi$ (all)')
+plt.tight_layout()
+plt.savefig('N_v_psi_flip.png')
+
+extent = (0,80,-180,180)
+# Plot N v Psi (left region of Phi)
+ax = plt.gca()
+loghist = -np.log(left_psi_hist)
+loghist -= np.nanmin(loghist)
+
+im = ax.imshow(loghist, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+ax.set_xlabel(r'$N_V$')
+ax.set_xlim(0,70)
+ax.set_ylabel(r'$\Psi$')
+ax.set_title(r'$\Psi$ ($\Phi=-180$ to $0$)')
+plt.tight_layout()
+plt.savefig('N_v_psi_left.png')
+
+extent = (-180,180,0,80)
+# Plot N v Psi (left region of Phi), flipped
+ax = plt.gca()
+loghist = -np.log(left_psi_hist)
+loghist -= np.nanmin(loghist)
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+ax.set_ylabel(r'$N_V$')
+ax.set_ylim(0,70)
+ax.set_xlabel(r'$\Psi$')
+ax.set_title(r'$\Psi$ ($\Phi=-180$ to $0$)')
+plt.tight_layout()
+plt.savefig('N_v_psi_left_flip.png')
+
+
+
+extent = (0,80,-180,180)
+# Plot N v Psi (right region of Phi)
+ax = plt.gca()
+loghist = -np.log(right_psi_hist)
+loghist -= np.nanmin(loghist)
+
+im = ax.imshow(loghist, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+ax.set_xlabel(r'$N_V$')
+ax.set_xlim(0,70)
+ax.set_ylabel(r'$\Psi$')
+ax.set_title(r'$\Psi$ ($\Phi=0$ to $180$)')
+plt.tight_layout()
+plt.savefig('N_v_psi_right.png')
+
+extent = (-180,180,0,80)
+# Plot N v Psi (right region of Phi) (flip)
+ax = plt.gca()
+loghist = -np.log(right_psi_hist)
+loghist -= np.nanmin(loghist)
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+ax.set_ylabel(r'$N_V$')
+ax.set_ylim(0,70)
+ax.set_xlabel(r'$\Psi$')
+ax.set_title(r'$\Psi$ ($\Phi=0$ to $180$)')
+plt.tight_layout()
+plt.savefig('N_v_psi_right_flip.png')

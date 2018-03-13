@@ -21,6 +21,10 @@ from mdtools import dr
 import os
 import glob
 
+mpl.rcParams.update({'axes.labelsize': 20})
+mpl.rcParams.update({'xtick.labelsize': 20})
+mpl.rcParams.update({'ytick.labelsize': 20})
+mpl.rcParams.update({'axes.titlesize': 20})
 
 def min_dist(center,x):
     dx = np.abs(x-center)
@@ -47,11 +51,15 @@ nreg_dat = []
 ntwid_dat = []
 
 start = 500
-
+this_phi = None
 for fname in fnames:
     rama = np.loadtxt(fname, usecols=(0,1), comments=['@','#'])
     dirname = os.path.dirname(fname)
     ds = dr.loadPhi('{}/phiout.dat'.format(dirname))
+    if this_phi is None:
+        this_phi = ds.phi
+    else:
+        assert this_phi == ds.phi
     n_dat = ds.data[start::10]
 
     with open("{}/topol.top".format(dirname), "r") as f:
@@ -120,6 +128,30 @@ hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds])
 loghist = -np.log(hist)
 loghist -= loghist.min()
 
+# Save overlap plot
+
+extent = (-180,180,-180,180)
+vmin, vmax = 0, 8
+norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+fig = plt.figure()
+ax = plt.gca()
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+
+ax.set_xlim(-180,100)
+ax.set_ylim(-180,180)
+
+ax.set_xlabel(r'$\Phi$')
+ax.set_ylabel(r'$\Psi$')
+
+ax.set_title(r'$\phi={}$ kJ/mol'.format(ds.phi))
+fig.tight_layout()
+plt.savefig('overlap_phi_{:03g}'.format(ds.phi*10))
 
 n_sample_diag = np.matrix( np.diag(n_samples / n_tot), dtype=np.float32)
 
@@ -143,9 +175,13 @@ hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=
 
 loghist = -np.log(hist)
 loghist -= loghist.min()
+
+
 extent = (-180,180,-180,180)
 vmin, vmax = 0, 16
 norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+
 fig = plt.figure()
 ax = plt.gca()
 
@@ -155,4 +191,16 @@ cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmi
                   colors='k', linewidths=1.0)
 cb = plt.colorbar(im)
 
+ax.set_xlim(-180,100)
+ax.set_ylim(-180,180)
 
+ax.set_xlabel(r'$\Phi$')
+ax.set_ylabel(r'$\Psi$')
+
+ax.set_title(r'$\phi={}$ kJ/mol'.format(ds.phi))
+fig.tight_layout()
+plt.savefig('phi_{:03g}'.format(ds.phi*10))
+
+payload_arr = np.dstack((phi_vals,psi_vals, ntwid_dat, nreg_dat, weights)).squeeze()
+
+np.savez_compressed('data_arr', payload_arr)
