@@ -31,6 +31,7 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
     # batch_size is the number of independent bootstrap samples for this job
     batch_size = ub - lb
     ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
+    ntwid_var_ret = np.zeros_like(ntwid_ret)
     
     integ_ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
     n_ret = np.zeros_like(ntwid_ret)
@@ -68,6 +69,7 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
             assert ntwid_boot_sample.shape[0] == n_boot_sample.shape[0]
 
             ntwid_ret[i,batch_num] = ntwid_boot_sample.mean()
+            ntwid_var_ret[i,batch_num] = ntwid_boot_sample.var(ddof=1)
 
             n_reweight = np.exp(-phivals[i]*(n_boot_sample - ntwid_boot_sample))
             n_ret[i,batch_num] = (n_boot_sample*n_reweight).mean() / (n_reweight).mean()
@@ -75,7 +77,7 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
         integ_ntwid_ret[1:,batch_num] = scipy.integrate.cumtrapz(ntwid_ret[:,batch_num], phivals)
         integ_n_ret[1:,batch_num] = scipy.integrate.cumtrapz(n_ret[:,batch_num], phivals)
 
-    return (ntwid_ret, integ_ntwid_ret, n_ret, integ_n_ret, lb, ub)
+    return (ntwid_ret, ntwid_var_ret, integ_ntwid_ret, n_ret, integ_n_ret, lb, ub)
 
 
 class Phierr(ParallelTool):
@@ -222,6 +224,7 @@ Command-line options
     def go(self):
 
         ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
+        ntwid_var_boot = np.zeros_like(ntwid_boot)
         n_boot = np.zeros_like(ntwid_boot)
         integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
@@ -255,22 +258,24 @@ Command-line options
 
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-            ntwid_slice, integ_ntwid_slice, n_slice, integ_n_slice, lb, ub = future.get_result(discard=True)
+            ntwid_slice, ntwid_var_slice, integ_ntwid_slice, n_slice, integ_n_slice, lb, ub = future.get_result(discard=True)
             ntwid_boot[:, lb:ub] = ntwid_slice
+            ntwid_var_boot[:, lb:ub] = ntwid_var_slice
             n_boot[:, lb:ub] = n_slice
             integ_ntwid_boot[:, lb:ub] = integ_ntwid_slice
             integ_n_boot[:, lb:ub] = integ_n_slice
             del ntwid_slice, integ_ntwid_slice, n_slice, integ_n_slice
 
-        ntwid_se = np.sqrt(ntwid_boot.var(axis=1))
-        n_se = np.sqrt(n_boot.var(axis=1))
-        integ_ntwid_se = np.sqrt(integ_ntwid_boot.var(axis=1))
-        integ_n_se = np.sqrt(integ_n_boot.var(axis=1))
+        ntwid_se = np.sqrt(ntwid_boot.var(axis=1, ddof=1))
+        ntwid_var_se = np.sqrt(ntwid_var_boot.var(axis=1, ddof=1))
+        n_se = np.sqrt(n_boot.var(axis=1, ddof=1))
+        integ_ntwid_se = np.sqrt(integ_ntwid_boot.var(axis=1, ddof=1))
+        integ_n_se = np.sqrt(integ_n_boot.var(axis=1, ddof=1))
 
         log.info("Var shape: {}".format(ntwid_se.shape))
 
-        out_header = "phi   <ntwid>'  integ(<ntwid>')  <n>'  <n>(reweighted)  integ(<n>(reweighted)) -phi*(n-ntwid)"
-        out_actual = np.zeros((len(self.phidat), 7), dtype=np.float64)
+        out_header = "phi   <ntwid>'  integ(<ntwid>')  <n>'  <n>(reweighted)  integ(<n>(reweighted)) -phi*(n-ntwid) <d ntwid^2>'"
+        out_actual = np.zeros((len(self.phidat), 8), dtype=np.float64)
         out_actual[:, 0] = self.phivals
 
         for i, ds in enumerate(self.phidat):
@@ -286,11 +291,15 @@ Command-line options
             # why am I outputting log?
             out_actual[i, 6] = np.log(n_reweight.mean())
 
+            # Variance of ntwid for this phi
+            out_actual[i, 7] = ntwid_all.var(ddof=1)
+
         out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], self.phivals)
         out_actual[1:, 5] = scipy.integrate.cumtrapz(out_actual[:, 3], self.phivals)
 
         log.info("outputting data to ntwid_err.dat, integ_err.dat, autocorr_len.dat, and {}".format(self.output_filename))
         np.savetxt('ntwid_err.dat', ntwid_se, fmt='%1.4e')
+        np.savetxt('ntwid_var_err.dat', ntwid_var_se, fmt='%1.4e')
         np.savetxt('n_err.dat', n_se, fmt='%1.4e')
         np.savetxt('integ_ntwid_err.dat', integ_ntwid_se, fmt='%1.4e')
         np.savetxt('integ_n_err.dat', integ_n_se, fmt='%1.4e')

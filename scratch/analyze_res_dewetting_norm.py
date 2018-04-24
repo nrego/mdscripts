@@ -10,21 +10,31 @@ import os, glob
 import numpy as np
 
 
-thresh = 0.6
-excl_thresh = 1.0
+thresh = 1
+excl_thresh = 5
 
 initial_file_paths = sorted(glob.glob('phi_*/dynamic_volume_norm.pdb'))
 
-univ = MDAnalysis.Universe('phi_000/dynamic_volume_water_avg.pdb')
-buried_mask = univ.atoms.bfactors < excl_thresh
+univ_wat0 = MDAnalysis.Universe('phi_000/dynamic_volume_water_avg.pdb') # avg number of water O atoms w/in 6 A of each protein atom
+univ_prot0 = MDAnalysis.Universe('phi_000/dynamic_volume_solute_avg.pdb') # avg number of protein atoms w/in 6 A of each protein atom
+buried_mask = univ_wat0.atoms.bfactors < excl_thresh # exclude buried protein atoms - if they don't have many neighboring waters
 
 for fpath in initial_file_paths:
     
     dirname = os.path.dirname(fpath)
     print("dir: {}".format(dirname))
-    univ = MDAnalysis.Universe(fpath)
-    univ.atoms[buried_mask].bfactors = 1.0
+
+    univ = MDAnalysis.Universe("{}/dynamic_volume_norm.pdb".format(dirname))
+
+    univ_wat = MDAnalysis.Universe("{}/dynamic_volume_water_avg.pdb".format(dirname))
+    univ_prot = MDAnalysis.Universe("{}/dynamic_volume_solute_avg.pdb".format(dirname))
     #Write out new file where buried atoms are masked
+
+    univ.atoms.bfactors = 0.5*( (univ_wat.atoms.bfactors / univ_wat0.atoms.bfactors) + (univ_prot.atoms.bfactors / univ_prot0.atoms.bfactors) )
+    #univ.atoms.bfactors = (univ_wat.atoms.bfactors + univ_prot.atoms.bfactors) / (univ_wat0.atoms.bfactors + univ_prot0.atoms.bfactors)
+    univ.atoms[buried_mask].bfactors = 1.0
+
+    univ.atoms.write("{}/normed.pdb".format(dirname))
 
     # Get all atoms that are dry, not including buried ones
     indices = univ.atoms.bfactors < thresh

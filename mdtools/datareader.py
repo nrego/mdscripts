@@ -205,7 +205,8 @@ class PhiDataSet(DataSet):
         #denom = np.exp(bphi*(Ntwid-N))
 
         #return numer.mean() / denom.mean()
-        return ((Ntwid - N_avg)**2).mean()
+        #return ((Ntwid - N_avg)**2).mean()
+        return Ntwid.var(ddof=1)
 
     def getHist(self, start=0, nbins=50, end=None):
         return np.histogram(self.data[start:end]['$\~N$'], bins=nbins)
