@@ -290,10 +290,14 @@ Command-line options
             solute_atoms.write('{}_water_var_norm.pdb'.format(self.outpdb))
             solute_atoms.bfactors = self.rho_solute.mean(axis=0)
             solute_atoms.write('{}_solute_avg.pdb'.format(self.outpdb))
-
+            
 
             if (solute_atoms.bfactors == 0).sum() > 0:
                 solute_atoms[solute_atoms.bfactors==0].write('zero_density.pdb')
+
+            ## Dump all data for each atom with each frame
+            np.savez_compressed('rho_data_dump.dat', rho_water=self.rho_water, rho_solute=self.rho_solute, 
+                                header='start_frame: {}   end_frame: {}   n_frames: {}    n_solute_atoms: {}'.format(self.start_frame, self.last_frame, self.n_frames, self.n_solute_atoms))
 
         if self.outxtc:
             print("xtc output not yet supported")
