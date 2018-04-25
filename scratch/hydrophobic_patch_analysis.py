@@ -8,9 +8,14 @@ import numpy as np
 import matplotlib 
 from matplotlib import cm
 
+base_univ = MDAnalysis.Universe('phi_000/confout.gro')
+base_prot_group = base_univ.select_atoms('protein and not name H*')
 univ = MDAnalysis.Universe('phi_000/dynamic_volume_water_avg.pdb')
 prot_atoms = univ.atoms
+assert base_prot_group.n_atoms == prot_atoms.n_atoms
+
 # Note: 0-indexed!
+all_atom_lookup = base_prot_group.indices # Lookup table from prot_atoms index to all-H index
 atm_indices = prot_atoms.indices
 
 max_water = 33.0 * (4./3.)*np.pi*(0.6)**3
@@ -21,7 +26,7 @@ avg_water_thresh = 5
 #   its value at phi=0
 per_dewetting_thresh = 0.5
 # Threshold for determining if two atoms are correlated
-corr_thresh = 0.2
+corr_thresh = 0.3
 
 ds_0 = np.load('phi_000/rho_data_dump.dat.npz')
 
@@ -55,11 +60,15 @@ del ds_0
 
 paths = sorted(glob.glob('phi*/rho_data_dump.dat.npz'))
 
-for fpath in [paths[5]]:
+for fpath in paths:
     dirname = os.path.dirname(fpath)
 
+    all_h_univ = MDAnalysis.Universe('{}/confout.gro'.format(dirname))
+    all_h_univ.atoms.bfactors = 0
+    all_prot_atoms = all_h_univ.select_atoms('protein and not name H*')
     univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
     univ.atoms[~surf_mask].bfactors = max_water
+    all_prot_atoms[~surf_mask].bfactors = max_water
     univ.atoms.write('{}/surf_masked.pdb'.format(dirname))
 
     ds = np.load(fpath)
@@ -78,7 +87,9 @@ for fpath in [paths[5]]:
     # percentage each atom is dewet (w.r.t. its phi=0.0 value)
     per_dewet = (rho_avg_water/rho_avg_water0)
     univ.atoms[surf_mask].bfactors = per_dewet
+    all_prot_atoms[surf_mask].bfactors = per_dewet
     univ.atoms.write('{}/per_dewet.pdb'.format(dirname))
+    all_h_univ.atoms.write('{}/all_per_dewet.pdb'.format(dirname))
 
     dewet_mask = per_dewet < per_dewetting_thresh
     dewet_mask_2d = np.matmul(dewet_mask[:,np.newaxis], dewet_mask[np.newaxis,:])
@@ -106,36 +117,49 @@ for fpath in [paths[5]]:
 
     ## Put together list of atoms with correlated water numbers
     univ.atoms.bfactors = 1
-    n_corr_atoms = 0
-    marked_idxs = []
-    for idx, atm_i in enumerate(surf_indices[dewet_mask]):
+    all_h_univ.atoms.bfactors = 1
+    
+    clusters = []
+    dewet_atm_indices = surf_indices[dewet_mask]
+    for i, atm_i in enumerate(dewet_atm_indices):
         
-        this_indices = []
-        corr_i = masked_corr[idx]
-        cand_atms_i = surf_indices[corr_i > corr_thresh] 
-        n_corr_atoms += cand_atms_i.size
-        univ.atoms[cand_atms_i].bfactors = 0
+        
+        corr_i = masked_corr[i]
+        corr_atms_i = surf_indices[corr_i > corr_thresh] 
+        assert atm_i in corr_atms_i
+        
+        univ.atoms[corr_atms_i].bfactors = 0
+        all_prot_atoms[corr_atms_i].bfactors = 0
 
-        seen = False
-        seen_idx = 0
-        for cand_idx in cand_atms_i:
-            this_indices.append(cand_idx)
+        clusters.append(corr_atms_i)
 
-            for j in range(idx):
-                if cand_idx in marked_idxs[j]:
-                    seen = True
-                    seen_idx = j
-                    break
-            if seen:
+    # Merge into unique clusters
+    uniq_clusters = []
+    n_clusters = 0
+    n_corr_atoms = 0
+    for i, cluster in enumerate(clusters):
+        if cluster.size == 0:
+            continue
+
+        # For each previous cluster j,
+        #   check if any shared atoms - if so, merge
+        new_group = True
+        for j in range(i):
+            corr_atms_j = clusters[j]
+            if (np.intersect1d(corr_atms_i, cluster)).size > 0:
+                new_group = False
+                grp_idx = j
+                clusters[j] = np.unique(np.concatenate((corr_atms_i, corr_atms_j)))
                 break
-        if seen:
-            univ.atoms[cand_atms_i].segids = str(seen_idx)
-        else:
-            univ.atoms[cand_atms_i].segids = str(idx)
 
+        if new_group:
+            uniq_clusters.append(cluster)
+        univ.atoms[cluster].segids = str(i)
+        all_prot_atoms[cluster].segids = str(i)
 
-        marked_idxs.append(cand_atms_i)
-
-    print("{}: n_corr_atoms: {}".format(dirname, n_corr_atoms))
+    print("{}: n_clusters: {}  n_corr_atoms: {}".format(dirname, n_clusters, n_corr_atoms))
 
     univ.atoms.write('{}/correlated_groups.pdb'.format(dirname))
+    all_h_univ.atoms.write('{}/all_correlated_groups.pdb'.format(dirname))
+
+
