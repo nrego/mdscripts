@@ -8,8 +8,8 @@ import numpy as np
 import matplotlib 
 from matplotlib import cm
 
-
-sel_spec = "protein and not name H*"
+# Only look at given phi - compare different threshold values
+fpath = 'phi_050/rho_data_dump.dat.npz'
 
 base_univ = MDAnalysis.Universe('phi_000/confout.gro')
 base_prot_group = base_univ.select_atoms('protein and not name H*')
@@ -33,9 +33,7 @@ max_water = 33.0 * (4./3.)*np.pi*(0.6)**3
 
 # To determine if atom buried (if avg waters fewer than thresh) or not
 avg_water_thresh = -1
-# atom is 'dewet' if its average number of is less than this percent of
-#   its value at phi=0
-per_dewetting_thresh = 0.65
+
 
 ds_0 = np.load('phi_000/rho_data_dump.dat.npz')
 
@@ -59,46 +57,50 @@ rho_var_water0 = cov_rho_water0.diagonal()
 
 del ds_0
 
-paths = sorted(glob.glob('phi*/rho_data_dump.dat.npz'))
+#paths = sorted(glob.glob('phi*/rho_data_dump.dat.npz'))
 
-roc = np.zeros((len(paths), 2))
 
-for i, fpath in enumerate(paths):
-    dirname = os.path.dirname(fpath)
+dirname = os.path.dirname(fpath)
+phi_val = float(dirname.split('_')[-1]) / 10
 
-    all_h_univ = MDAnalysis.Universe('{}/confout.gro'.format(dirname))
-    all_h_univ.atoms.bfactors = 0
-    all_prot_atoms = all_h_univ.select_atoms(sel_spec)
-    univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
+all_h_univ = MDAnalysis.Universe('{}/confout.gro'.format(dirname))
+all_h_univ.atoms.bfactors = 0
+all_prot_atoms = all_h_univ.select_atoms('protein and not name H*')
+univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
 
-    ds = np.load(fpath)
-    rho_solute = (ds['rho_solute'].T)
-    rho_water = (ds['rho_water'].T)
-    del ds
+ds = np.load(fpath)
+rho_solute = (ds['rho_solute'].T)
+rho_water = (ds['rho_water'].T)
+del ds
 
-    # can't assume all datasets have the same number of frames in analysis
-    #    (though they should!)
-    n_frames = rho_water.shape[1]
+# can't assume all datasets have the same number of frames in analysis
+#    (though they should!)
+n_frames = rho_water.shape[1]
 
-    rho_avg_solute = rho_solute.mean(axis=1)
-    rho_avg_water = rho_water.mean(axis=1)
+rho_avg_solute = rho_solute.mean(axis=1)
+rho_avg_water = rho_water.mean(axis=1)
 
-    # New, normalized water and protein density
-    #   hopefully accounts for case when exposed atom becomes buried at phi>0
-    #   (and would possibly be a false dewet positive otherwise)
-    per_dewet = wt*(rho_avg_water/rho_avg_water0) + (1-wt)*(rho_avg_solute/rho_avg_solute0)
-    rho_norm = (rho_avg_water/max_water) + (rho_avg_solute/max_solute)
+# New, normalized water and protein density
+#   hopefully accounts for case when exposed atom becomes buried at phi>0
+#   (and would possibly be a false dewet positive otherwise)
+per_dewet = wt*(rho_avg_water/rho_avg_water0) + (1-wt)*(rho_avg_solute/rho_avg_solute0)
+rho_norm = (rho_avg_water/max_water) + (rho_avg_solute/max_solute)
 
-    univ.atoms.bfactors = per_dewet
-    all_prot_atoms.bfactors = per_dewet
-    all_h_univ.atoms.write('{}/all_per_atom_norm.pdb'.format(dirname))
-    univ.atoms.write('{}/per_atom_norm.pdb'.format(dirname))
+univ.atoms.bfactors = per_dewet
+all_prot_atoms.bfactors = per_dewet
+all_h_univ.atoms.write('{}/all_per_atom_norm.pdb'.format(dirname))
+univ.atoms.write('{}/per_atom_norm.pdb'.format(dirname))
 
-    univ.atoms.bfactors = rho_norm
-    all_prot_atoms.bfactors = rho_norm
-    all_h_univ.atoms.write('{}/all_global_norm.pdb'.format(dirname))
-    univ.atoms.write('{}/global_norm.pdb'.format(dirname))
+univ.atoms.bfactors = rho_norm
+all_prot_atoms.bfactors = rho_norm
+all_h_univ.atoms.write('{}/all_global_norm.pdb'.format(dirname))
+univ.atoms.write('{}/global_norm.pdb'.format(dirname))
 
+thresholds = np.arange(0, 1.05, 0.05)
+roc = np.zeros((thresholds.size, 2))
+
+for i, per_dewetting_thresh in enumerate(thresholds):
+    print('S={}'.format(per_dewetting_thresh))
     dewet_mask = per_dewet < per_dewetting_thresh
     univ.atoms.bfactors = 1
     univ.atoms[dewet_mask].bfactors = 0
@@ -115,8 +117,8 @@ for i, fpath in enumerate(paths):
     all_prot_atoms[dewet_mask].bfactors = 0
     univ.atoms.write('{}/norm_dewet.pdb'.format(dirname))
     all_h_univ.atoms.write('{}/all_norm_dewet.pdb'.format(dirname))
-    print("dir: {}  n_dewet (global norm): {} of {}".format(dirname, dewet_mask.sum(), prot_atoms.n_atoms))
-    
+    print("S: {}  n_dewet (global norm): {} of {}".format(per_dewetting_thresh, dewet_mask.sum(), prot_atoms.n_atoms))
+
     if nat_contacts is not None:
         true_pos = dewet_mask & nat_contacts
         false_pos = dewet_mask & ~nat_contacts
@@ -141,5 +143,10 @@ for i, fpath in enumerate(paths):
 plt.plot(roc[:,0], roc[:,1], '-o')
 plt.xlabel('FPR')
 plt.ylabel('TPR')
+plt.title(r'$\phi={}$'.format(phi_val))
+plt.tight_layout()
 
-plt.ylim(0,1)
+roc_arr = np.hstack((thresholds[:,None], roc)).squeeze()
+np.savetxt('{}/roc.dat'.format(dirname), roc_arr)
+
+
