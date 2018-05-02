@@ -16,7 +16,10 @@ for path in fpaths:
 
     roc = np.loadtxt(path)
 
-    plt.plot(roc[:,1], roc[:,2], '-o', label=r'$\phi={}$'.format(phi_val))
+    plt.plot(roc[:,1], roc[:,2], '-o', label=r'$\phi={}$'.format(phi_val), linewidth=2, markersize=6)
+
+plt.plot(0,1,'ok')
+plt.plot([0,1],[0,1], 'k--')
 
 plt.legend()
 

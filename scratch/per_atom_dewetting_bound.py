@@ -21,8 +21,8 @@ prot_atoms = univ.atoms
 assert base_prot_group.n_atoms == prot_atoms.n_atoms
 
 try:
-    nat_contacts = MDAnalysis.Universe('nat_contacts.pdb').atoms.bfactors == 0
-    print("total native contacts: {}".format(nat_contacts.sum()))
+    nat_contacts = MDAnalysis.Universe('nat_contacts.pdb')
+    
 except:
     nat_contacts = None
 # weight for calculating per-atom norm density
@@ -124,6 +124,7 @@ if nat_contacts is not None:
     thresholds = np.arange(0, 1.05, 0.05)
 
     contact_mask = nat_contacts.atoms.bfactors == 0
+    print("total native contacts: {}".format(contact_mask.sum()))
 
     roc = np.zeros((thresholds.size, 2))
 
@@ -151,11 +152,11 @@ if nat_contacts is not None:
         roc[i] = fpr, tpr
 
 
-plt.plot(roc[:,0], roc[:,1], '-o')
-plt.xlabel('FPR')
-plt.ylabel('TPR')
-#plt.title(r'$\phi={}$'.format(phi_val))
-plt.tight_layout()
+    plt.plot(roc[:,0], roc[:,1], '-o')
+    plt.xlabel('FPR')
+    plt.ylabel('TPR')
+    #plt.title(r'$\phi={}$'.format(phi_val))
+    plt.tight_layout()
 
-roc_arr = np.hstack((thresholds[:,None], roc)).squeeze()
-np.savetxt('{}/roc.dat'.format(dirname), roc_arr)
+    roc_arr = np.hstack((thresholds[:,None], roc)).squeeze()
+    np.savetxt('{}/roc.dat'.format(dirname), roc_arr)
