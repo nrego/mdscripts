@@ -13,9 +13,11 @@ fnames = sorted(glob.glob('*/phiout.dat'))
 
 
 
+
 bc = dat[:,0]
 pdist = np.exp(-dat[:,1])
 pdist /= np.trapz(pdist, bc)
+
 
 neglogpdist = -np.log(pdist)
 mask = ~np.ma.masked_invalid(neglogpdist).mask

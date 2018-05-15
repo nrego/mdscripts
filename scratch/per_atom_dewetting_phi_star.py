@@ -8,8 +8,8 @@ import numpy as np
 import matplotlib 
 from matplotlib import cm
 
-# Only look at given phi - compare different threshold values
-fpath = 'phi_050/rho_data_dump.dat.npz'
+# Only look at given phi - compare diffrent threshold values
+fpath = 'phi_020/rho_data_dump.dat.npz'
 
 base_univ = MDAnalysis.Universe('phi_000/confout.gro')
 base_prot_group = base_univ.select_atoms('protein and not name H*')
@@ -141,6 +141,8 @@ for i, per_dewetting_thresh in enumerate(thresholds):
 
 
 plt.plot(roc[:,0], roc[:,1], '-o')
+plt.plot(0,1,'o')
+plt.plot([0,1],[0,1], '--')
 plt.xlabel('FPR')
 plt.ylabel('TPR')
 plt.title(r'$\phi={}$'.format(phi_val))
