@@ -296,7 +296,7 @@ Command-line options
                 solute_atoms[solute_atoms.bfactors==0].write('zero_density.pdb')
 
             ## Dump all data for each atom with each frame
-            np.savez_compressed('rho_data_dump_rad_{}.dat'.format(self.r_cutoff, rho_water=self.rho_water, rho_solute=self.rho_solute, 
+            np.savez_compressed('rho_data_dump_rad_{}.dat'.format(self.r_cutoff), rho_water=self.rho_water, rho_solute=self.rho_solute, 
                                 header='start_frame: {}   end_frame: {}   n_frames: {}    n_solute_atoms: {}'.format(self.start_frame, self.last_frame, self.n_frames, self.n_solute_atoms))
 
         if self.outxtc:
