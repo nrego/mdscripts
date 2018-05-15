@@ -567,7 +567,7 @@ Command-line options
             pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, binbounds)
             pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, binbounds)
             pdist_N /= (pdist_N * np.diff(binbounds)).sum()
-            pdist /= (pdist_N * np.diff(binbounds)).sum()
+            pdist /= (pdist * np.diff(binbounds)).sum()
             neglogpdist_N = -np.log(pdist_N)
             neglogpdist = -np.log(pdist)
 

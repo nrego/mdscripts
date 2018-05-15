@@ -8,20 +8,36 @@ import numpy as np
 import matplotlib 
 from matplotlib import cm
 
-fpaths = sorted( glob.glob('phi_*/roc.dat') )
+dat = np.loadtxt('logweights.dat')
+fnames = sorted(glob.glob('*/phiout.dat'))
 
-for path in fpaths:
-    dirname = os.path.dirname(path)
-    phi_val = float(dirname.split('_')[-1]) / 10.0
 
-    roc = np.loadtxt(path)
 
-    plt.plot(roc[:,1], roc[:,2], '-o', label=r'$\phi={}$'.format(phi_val))
+bc = dat[:,0]
+pdist = np.exp(-dat[:,1])
+pdist /= np.trapz(pdist, bc)
 
-plt.legend()
+neglogpdist = -np.log(pdist)
+mask = ~np.ma.masked_invalid(neglogpdist).mask
 
-plt.xlabel('FPR')
-plt.ylabel('TPR')
-plt.tight_layout()
+beta = 1/(k*300.)
 
-plt.show()
+phi_vals = np.arange(0,10.1,0.1)
+
+avg_N = []
+var_N = []
+
+for phi in phi_vals:
+    bias = beta*phi*bc
+    bias_fe = neglogpdist[mask] + bias[mask]
+    bias_fe -= bias_fe.min()
+
+    bias_pdist = np.exp(-bias_fe)
+
+    bias_pdist /= np.trapz(bias_pdist, bc[mask])
+
+    this_avg_N = np.trapz(bias_pdist*bc[mask], bc[mask])
+    this_avg_N_sq = np.trapz(bias_pdist*bc[mask]**2, bc[mask])
+
+    avg_N.append(this_avg_N)
+    var_N.append(this_avg_N_sq - this_avg_N**2)
