@@ -35,10 +35,10 @@ atm_indices = prot_atoms.indices
 max_water = 33.0 * (4./3.)*np.pi*(0.6)**3
 
 # To determine if atom buried (if avg waters fewer than thresh) or not
-avg_water_thresh = -1
+avg_water_thresh = 6
 # atom is 'dewet' if its average number of is less than this percent of
 #   its value at phi=0
-per_dewetting_thresh = 0.65
+per_dewetting_thresh = 0.5
 
 ds_0 = np.load('phi_000/rho_data_dump.dat.npz')
 
@@ -54,6 +54,10 @@ rho_avg_solute0 = rho_solute0.mean(axis=1)
 rho_avg_water0 = rho_water0.mean(axis=1)
 
 max_solute = rho_avg_solute0.max()
+max_water = rho_avg_water0.max()
+
+buried_mask = rho_avg_water0 < avg_water_thresh
+surf_mask = ~buried_mask
 
 # variance and covariance
 delta_rho_water0 = rho_water0 - rho_avg_water0[:,np.newaxis]
@@ -87,19 +91,26 @@ rho_avg_water = rho_water.mean(axis=1)
 #   hopefully accounts for case when exposed atom becomes buried at phi>0
 #   (and would possibly be a false dewet positive otherwise)
 per_dewet = wt*(rho_avg_water/rho_avg_water0) + (1-wt)*(rho_avg_solute/rho_avg_solute0)
+#per_dewet = (rho_avg_water/rho_avg_water0)
 rho_norm = (rho_avg_water/max_water) + (rho_avg_solute/max_solute)
 
-univ.atoms.bfactors = per_dewet
-all_prot_atoms.bfactors = per_dewet
-all_h_univ.atoms.write('{}/all_per_atom_norm.pdb'.format(dirname))
-univ.atoms.write('{}/per_atom_norm.pdb'.format(dirname))
-
 univ.atoms.bfactors = rho_norm
+univ.atoms[buried_mask].bfactors = 1
 all_prot_atoms.bfactors = rho_norm
-all_h_univ.atoms.write('{}/all_global_norm.pdb'.format(dirname))
-univ.atoms.write('{}/global_norm.pdb'.format(dirname))
+all_prot_atoms[buried_mask].bfactors = 1
 
-dewet_mask = per_dewet < per_dewetting_thresh
+univ.atoms.write('{}/global_norm.pdb'.format(dirname))
+all_h_univ.atoms.write('{}/all_global_norm.pdb'.format(dirname))
+
+univ.atoms.bfactors = per_dewet
+univ.atoms[buried_mask].bfactors = 1
+all_prot_atoms.bfactors = per_dewet
+all_prot_atoms[buried_mask].bfactors = 1
+
+univ.atoms.write('{}/per_norm.pdb'.format(dirname))
+all_h_univ.atoms.write('{}/all_per_norm.pdb'.format(dirname))
+
+dewet_mask = (per_dewet < per_dewetting_thresh) & surf_mask
 univ.atoms.bfactors = 1
 univ.atoms[dewet_mask].bfactors = 0
 all_prot_atoms.bfactors = 1
@@ -108,7 +119,7 @@ univ.atoms.write('{}/per_atom_dewet.pdb'.format(dirname))
 all_h_univ.atoms.write('{}/all_per_atom_dewet.pdb'.format(dirname))
 #print("dir: {}  n_dewet (per-atom): {} of {}".format(dirname, dewet_mask.sum(), prot_atoms.n_atoms))
 
-dewet_mask = rho_norm < per_dewetting_thresh
+dewet_mask = (rho_norm < per_dewetting_thresh) & surf_mask
 univ.atoms.bfactors = 1
 univ.atoms[dewet_mask].bfactors = 0
 all_prot_atoms.bfactors = 1

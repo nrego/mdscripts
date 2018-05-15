@@ -32,7 +32,7 @@ atm_indices = prot_atoms.indices
 max_water = 33.0 * (4./3.)*np.pi*(0.6)**3
 
 # To determine if atom buried (if avg waters fewer than thresh) or not
-avg_water_thresh = -1
+avg_water_thresh = 0.1
 # atom is 'dewet' if its average number of is less than this percent of
 #   its value at phi=0
 per_dewetting_thresh = 0.65
@@ -51,6 +51,10 @@ rho_avg_solute0 = rho_solute0.mean(axis=1)
 rho_avg_water0 = rho_water0.mean(axis=1)
 
 max_solute = rho_avg_solute0.max()
+max_water = rho_avg_water0.max()
+
+buried_mask = rho_avg_water0 < avg_water_thresh
+surf_mask = ~buried_mask
 
 # variance and covariance
 delta_rho_water0 = rho_water0 - rho_avg_water0[:,np.newaxis]
