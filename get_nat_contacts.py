@@ -3,6 +3,7 @@ from __future__ import division, print_function
 import MDAnalysis
 import numpy as np
 import argparse
+from IPython import embed
 
 parser = argparse.ArgumentParser('find native contacts between target and partner')
 
@@ -33,9 +34,9 @@ targ_global_indices = targ.indices
 targ_local_indices = np.arange(targ.n_atoms)
 prot = univ.select_atoms("{} or {}".format(args.target, args.partner))
 
-contact_mask = np.ones((targ.atoms.n_atoms), dtype=bool)
-
-for i_frame in range(first_frame, last_frame):
+contacts = np.zeros((targ.atoms.n_atoms, last_frame-first_frame), dtype=bool)
+#embed()
+for idx, i_frame in enumerate(range(first_frame, last_frame)):
     ts = univ.trajectory[i_frame]
 
     if i_frame % 100 == 0:
@@ -46,11 +47,12 @@ for i_frame in range(first_frame, last_frame):
 
     this_contact_mask = targ.bfactors == 1
 
-    contact_mask &= this_contact_mask
+    contacts[:, idx] = targ.bfactors
 
+avg_contacts = contacts.mean(axis=1)
 ts = univ.trajectory[first_frame]
-prot.atoms.bfactors = 1
-targ.atoms[contact_mask].bfactors = 0
+prot.atoms.bfactors = 0
+targ.atoms.bfactors = avg_contacts
 prot.atoms.segids = 'P'
 targ.atoms.segids = 'T'
 
