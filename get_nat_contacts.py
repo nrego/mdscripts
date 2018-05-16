@@ -3,7 +3,7 @@ from __future__ import division, print_function
 import MDAnalysis
 import numpy as np
 import argparse
-from IPython import embed
+#from IPython import embed
 
 parser = argparse.ArgumentParser('find native contacts between target and partner')
 
