@@ -9,7 +9,7 @@ import matplotlib
 from matplotlib import cm
 
 # Only look at given phi - compare diffrent threshold values
-fpath = 'phi_020/rho_data_dump.dat.npz'
+fpath = 'phi_050/rho_data_dump.dat.npz'
 
 base_univ = MDAnalysis.Universe('phi_000/confout.gro')
 base_prot_group = base_univ.select_atoms('protein and not name H*')
