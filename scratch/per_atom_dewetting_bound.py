@@ -35,10 +35,10 @@ atm_indices = prot_atoms.indices
 max_water = 33.0 * (4./3.)*np.pi*(0.6)**3
 
 # To determine if atom buried (if avg waters fewer than thresh) or not
-avg_water_thresh = 0.5
+avg_water_thresh = 5
 # atom is 'dewet' if its average number of is less than this percent of
 #   its value at phi=0
-per_dewetting_thresh = 0.5
+per_dewetting_thresh = 0.4
 # native contact if w/in distance at least this percentage of the time
 contact_thresh = 0.5
 
@@ -61,7 +61,8 @@ max_water = rho_avg_water0.max()
 
 ds_buried0 = np.load('phi_000/rho_data_dump_rad_3.8.dat.npz')
 rho_water_buried0 = ds_buried0['rho_water'].T.mean(axis=1)
-buried_mask = (rho_water_buried0 < avg_water_thresh) #| (rho_avg_water0 < 2.)
+#buried_mask = (rho_water_buried0 <= avg_water_thresh) #| (rho_avg_water0 < 2.)
+buried_mask = rho_avg_water0 <= avg_water_thresh
 surf_mask = ~buried_mask
 univ.atoms.bfactors = 0
 univ.atoms[buried_mask].bfactors = 1
@@ -80,7 +81,8 @@ del ds_0
 fpath = './rho_data_dump.dat.npz'
 dirname = os.path.dirname(fpath)
 
-all_h_univ = MDAnalysis.Universe('prod.tpr', 'em.gro')
+#all_h_univ = MDAnalysis.Universe('prod.tpr', 'em.gro')
+all_h_univ = MDAnalysis.Universe('confout.gro')
 all_h_univ.atoms.bfactors = 0
 all_prot_atoms = all_h_univ.select_atoms(sel_spec)
 univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
