@@ -29,7 +29,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-#from IPython import embed
+from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -324,7 +324,7 @@ Command-line options
             self.all_data_N = np.append(self.all_data_N, dataframe_N)
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
-
+        
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 

@@ -153,7 +153,7 @@ for fpath in fnames:
     plt.ylabel('TPR')
     plt.title(r'$\phi={}$'.format(phi_val))
     plt.tight_layout()
-    plt.show()
+    #plt.show()
     roc_arr = np.hstack((thresholds[:,None], roc)).squeeze()
     np.savetxt('{}/roc_meth.dat'.format(dirname), roc_arr)
 
