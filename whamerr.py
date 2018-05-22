@@ -29,7 +29,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-from IPython import embed
+#from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -463,7 +463,7 @@ Command-line options
         start_idx = 0
         uncorr_start_idx = 0
         
-
+        uncorr_data = np.zeros((uncorr_n_tot, ), dtype=np.float32)
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
         for i, block_size in enumerate(autocorr_blocks):
@@ -473,6 +473,8 @@ Command-line options
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
             #embed()
+            uncorr_data[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample] = self.all_data[start_idx+remainder:start_idx+this_n_sample:block_size]
+
             uncorr_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size, :]
             uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample] = uncorr_data_slice
 
@@ -563,7 +565,7 @@ Command-line options
             # Get bootstrap errors for -log(Pv(N))
             neglogpdist_N_boot_mean = neglogpdist_N_boot.mean(axis=0)
             neglogpdist_N_se = np.sqrt(neglogpdist_N_boot.var(axis=0))
-            #embed()
+   
             pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, binbounds)
             pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, binbounds)
             pdist_N /= (pdist_N * np.diff(binbounds)).sum()
