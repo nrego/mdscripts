@@ -472,7 +472,7 @@ Command-line options
 
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
-
+            #embed()
             uncorr_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size, :]
             uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample] = uncorr_data_slice
 
@@ -487,8 +487,8 @@ Command-line options
 
         assert xweights[0] == 0
 
-        #myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
-        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
+        myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
+        #myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
