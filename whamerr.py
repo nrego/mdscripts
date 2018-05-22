@@ -328,6 +328,10 @@ Command-line options
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
+        
+        if do_autocorr:
+            log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
+            np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
 
         dr.clearData()
 
@@ -481,6 +485,10 @@ Command-line options
             uncorr_start_idx += this_n_uncorr_sample
             start_idx += this_n_sample
 
+        bins = np.arange(0, np.ceil(uncorr_data.max())+1, 1)
+        hist, bb = np.histogram(uncorr_data, bins=bins)
+        np.savetxt('uncorr_hist.dat', np.dstack((bb[:-1], hist)).squeeze())
+
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
             xweights = self.start_weights
@@ -489,8 +497,9 @@ Command-line options
 
         assert xweights[0] == 0
 
-        #myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
-        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
+        myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
+        #myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
+        #myargs = (self.bias_mat, uncorr_n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
@@ -566,8 +575,10 @@ Command-line options
             neglogpdist_N_boot_mean = neglogpdist_N_boot.mean(axis=0)
             neglogpdist_N_se = np.sqrt(neglogpdist_N_boot.var(axis=0))
    
-            pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, binbounds)
-            pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, binbounds)
+            #pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, logweights_actual, binbounds)
+            pdist_N = gen_pdist(self.all_data_N, self.bias_mat, uncorr_n_samples, logweights_actual, binbounds)
+            #pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, logweights_actual, binbounds)
+            pdist = gen_pdist(self.all_data, self.bias_mat, uncorr_n_samples, logweights_actual, binbounds)
             pdist_N /= (pdist_N * np.diff(binbounds)).sum()
             pdist /= (pdist * np.diff(binbounds)).sum()
             neglogpdist_N = -np.log(pdist_N)

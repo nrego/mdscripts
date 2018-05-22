@@ -38,22 +38,30 @@ all_dat = np.array([], dtype=dtype)
 all_dat_N = np.array([], dtype=dtype)
 n_windows = len(fnames)
 delta_gs = np.loadtxt('logweights.dat')
+autocorr_time = np.loadtxt('autocorr.dat')
 
 assert len(delta_gs) == n_windows
 n_samples = []
 
 print("loading files...")
 
+ts = None
 for fname in fnames:
     ds = dr.loadPhi(fname)
+    if ts is None:
+        ts = ds.ts
+    else:
+        assert ts == ds.ts
     dat = np.array(ds.data[500:])
 
     all_dat = np.append(all_dat, dat[:,1])
     all_dat_N = np.append(all_dat_N, dat[:,0])
     n_samples.append(dat.shape[0])
 
-
+autocorr_block = np.ceil(1+2*autocorr_time/ts).astype(int)
 n_samples = np.array(n_samples).astype(float)
+uncorr_n_samples = n_samples / autocorr_block
+
 n_tot = all_dat.size
 
 assert n_samples.sum() == n_tot
@@ -72,7 +80,7 @@ for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
 
 print("    ...done")
 
-Q = -bias_mat + delta_gs
+Q = -bias_mat + delta_gs + np.log(uncorr_n_samples)
 max_vals = Q.max(axis=1)
 Q -= max_vals[:,None]
 
