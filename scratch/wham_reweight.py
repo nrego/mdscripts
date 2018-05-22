@@ -37,9 +37,9 @@ fnames = sorted( glob.glob('*/phiout.dat') )
 all_dat = np.array([], dtype=dtype)
 all_dat_N = np.array([], dtype=dtype)
 n_windows = len(fnames)
-logweights = np.loadtxt('logweights.dat')
+delta_gs = np.loadtxt('logweights.dat')
 
-assert len(logweights) == n_windows
+assert len(delta_gs) == n_windows
 n_samples = []
 
 print("loading files...")
@@ -72,9 +72,30 @@ for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
 
 print("    ...done")
 
-Q = bias_mat - logweights
-max_val = Q.max()
-Q -= max_val
+Q = -bias_mat + delta_gs
+max_vals = Q.max(axis=1)
+Q -= max_vals[:,None]
 
+logweights = -( np.log( np.exp(Q).sum(axis=1) ) + max_vals )
+weights = np.exp(logweights)
+weights /= weights.sum()
 
+phi_vals = np.arange(0, 10.1, 0.1)
 
+avg_ns = []
+var_ns = []
+for phi in phi_vals:
+    bias = -beta*phi*all_dat
+    this_logweights = logweights+bias
+    this_logweights -= this_logweights.max()
+    this_weights = np.exp(this_logweights)
+    this_weights /= this_weights.sum()
+
+    this_avg_n = np.dot(this_weights, all_dat)
+    this_avg_n_sq = np.dot(this_weights, all_dat**2)
+
+    avg_ns.append(this_avg_n)
+    var_ns.append(this_avg_n_sq - this_avg_n**2)
+
+dat_arr = np.dstack((phi_vals, avg_ns, var_ns)).squeeze()
+np.savetxt('n_v_phi.dat', dat_arr)

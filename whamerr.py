@@ -489,8 +489,8 @@ Command-line options
 
         assert xweights[0] == 0
 
-        myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
-        #myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
+        #myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
+        myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
