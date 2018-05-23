@@ -24,7 +24,7 @@ import mdtraj
 from rhoutils import rho, cartesian
 from mdtools import ParallelTool, Subcommand
 
-from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
+from selection_specs import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 
 from fieldwriter import RhoField
 
@@ -171,7 +171,7 @@ class TemporalInterfaceSubcommand(Subcommand):
                             help='First timepoint (in ps)')
         sgroup.add_argument('-e', '--end', type=int, 
                             help='Last timepoint (in ps)')
-        sgroup.add_argument('--mol-sel-spec', type=str, default=sel_spec_heavies,
+        sgroup.add_argument('--mol-sel-spec', type=str, default=SEL_SPEC_HEAVIES,
                             help='A custom string specifier for selecting solute atoms, if desired')
         ogroup = parser.add_argument_group('Generalized output options')
         ogroup.add_argument('-opdb', '--outpdb', type=str, default='voxels',

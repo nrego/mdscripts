@@ -73,20 +73,21 @@ bias_mat = np.zeros((n_tot, n_windows), dtype=dtype)
 
 # Fill up bias matrix
 print("filling up bias matrix...")
-
+nstars = []
 for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
     assert fnames[i] == fname
+    nstars.append(ds.Nstar)
     bias_mat[:,i] = beta*((ds.phi*all_dat) + (ds.kappa/2.0)*(all_dat-ds.Nstar)**2)
 
 print("    ...done")
 
-Q = -bias_mat + delta_gs + np.log(uncorr_n_samples)
+Q = -bias_mat + delta_gs #+ np.log(uncorr_n_samples)
 max_vals = Q.max(axis=1)
 Q -= max_vals[:,None]
 
 logweights = -( np.log( np.exp(Q).sum(axis=1) ) + max_vals )
 weights = np.exp(logweights)
-weights /= weights.sum()
+#weights /= weights.sum()
 
 phi_vals = np.arange(0, 10.1, 0.1)
 

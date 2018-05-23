@@ -6,11 +6,14 @@
 #   wall (resname WAL)
 #   ions (CL and NA only)
 #   dummy (name DUM)
-sel_spec_heavies_nowall = "not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)"
-sel_spec_nowall = "not (resname SOL or resname WAL) and not (name CL or name NA or name DUM)"
+SEL_SPEC_HEAVIES_NOWALL = "not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM)"
+SEL_SPEC_NOWALL = "not (resname SOL or resname WAL) and not (name CL or name NA or name DUM)"
 
-sel_spec_heavies = "not (name H* or resname SOL) and not (name CL or name NA or name DUM) and not resname INT"
-sel_spec = "not resname SOL and not (name CL or name NA or name DUM) and not resname INT"
+SEL_SPEC_HEAVIES = "not (name H* or resname SOL) and not (name CL or name NA or name DUM) and not resname INT"
+SEL_SPEC = "not resname SOL and not (name CL or name NA or name DUM) and not resname INT"
 
-sel_spec_not_heavies_nowall = "not (not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM))"
-sel_spec_not_nowall = "not (not (resname SOL or resname WAL) and not (name CL or name NA or name DUM))"
+SEL_SPEC_NOT_HEAVIES_NOWALL = "not (not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM))"
+SEL_SPEC_NOT_NOWALL = "not (not (resname SOL or resname WAL) and not (name CL or name NA or name DUM))"
+
+
+

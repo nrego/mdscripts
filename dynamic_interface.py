@@ -29,7 +29,7 @@ import itertools
 
 from mdtools import ParallelTool
 
-from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
+from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 
 from fieldwriter import RhoField
 
@@ -147,7 +147,7 @@ Command-line options
                             help='Input structure file')
         sgroup.add_argument('-f', '--trajfile', metavar='XTC', type=str, required=True,
                             help='Input XTC trajectory file')
-        sgroup.add_argument('--mol-sel-spec', type=str, default=sel_spec_heavies,
+        sgroup.add_argument('--mol-sel-spec', type=str, default=SEL_SPEC_HEAVIES,
                             help='MDAnalysis-style selection string for choosing solute atoms defining the spherical probe volume')
         sgroup.add_argument('-rcut', '--rcutoff', type=float, default=6.0,
                             help='Radius of individual spherical subvolumes, in A (default: 6.0)')

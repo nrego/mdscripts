@@ -10,7 +10,7 @@ from scipy.spatial import cKDTree
 
 from MDAnalysis import Universe
 
-from selection_specs import sel_spec_heavies
+from constants import SEL_SPEC_HEAVIES
 
 import argparse
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
                         help="If true, generate conf file for STATIC INDUS (default: false)")
     parser.add_argument("-o", "--out", default="umbr.conf", dest="outfile",
                         help="output file name (default: umbr.conf)")
-    parser.add_argument("--sspec", type=str, default=sel_spec_heavies,
+    parser.add_argument("--sspec", type=str, default=SEL_SPEC_HEAVIES,
                         help="custom selection string (to select atoms over which to create umbrellas), default all prot heavies")
 
     args = parser.parse_args()

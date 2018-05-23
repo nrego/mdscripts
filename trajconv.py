@@ -7,7 +7,7 @@ import MDAnalysis
 
 from boxutils import center_mol, rotate_mol
 
-from selection_specs import sel_spec_heavies_nowall
+from constants import SEL_SPEC_HEAVIES_NOWALL
 
 from mdtools import ParallelTool
 
@@ -79,7 +79,7 @@ Command-line options
                             help='First timepoint (in ps)')
         sgroup.add_argument('-e', '--end', type=int, 
                             help='Last timepoint (in ps) - default is last available')
-        sgroup.add_argument('--fitspec', type=str, default=sel_spec_heavies_nowall,
+        sgroup.add_argument('--fitspec', type=str, default=SEL_SPEC_HEAVIES_NOWALL,
                             help='MDAnalysis selection string for fitting. Default selects all protein heavy atoms')
         sgroup.add_argument('--center-only', action='store_true', 
                             help='If true, only center molecule (no fitting)')

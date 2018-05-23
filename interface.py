@@ -20,7 +20,7 @@ import itertools
 from rhoutils import rho, cartesian
 from mdtools import ParallelTool
 
-from selection_specs import sel_spec_heavies, sel_spec_heavies_nowall
+from selection_specs import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 
 from fieldwriter import RhoField
 
@@ -200,7 +200,7 @@ Command-line options
                         help='Estimated protein density (heavy atoms per nm3)')
         sgroup.add_argument('--all-waters', action='store_true',
                             help='Consider *all* waters (not just those close to solute) - default is false')
-        sgroup.add_argument('--sspec', default=sel_spec_heavies, type=str,
+        sgroup.add_argument('--sspec', default=SEL_SPEC_HEAVIES, type=str,
                             help='Selection spec for chosing solute atoms (default: all protein heavies)')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-odx', '--outdx', default='interface.dx',

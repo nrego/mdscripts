@@ -27,7 +27,7 @@ mpl.rcParams.update({'axes.titlesize': 36})
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Run WHAM analysis")
+    parser = argparse.ArgumentParser(description="Run WHAM analysis (for INDUS datasets only!)")
 
     parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
                         help='Input file names (presumably in a sensible order)')
@@ -85,10 +85,10 @@ if __name__ == "__main__":
     for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
         bias_mat[:,i] = beta * (((ds.kappa)/2.0) * (all_dat-ds.Nstar)**2 + (ds.phi*all_dat))
     
-    #embed()
+    embed()
 
-    min_pt = all_dat.min()
-    max_pt = all_dat.max()
+    min_pt = 0
+    max_pt = np.ceil(all_dat.max())+1
 
     binspace = 0.05
     binbounds = np.arange(0, np.ceil(max_pt)+binspace, binspace)
