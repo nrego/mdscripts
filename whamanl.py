@@ -35,8 +35,10 @@ if __name__ == "__main__":
                         help='first timepoint (in ps)')
     parser.add_argument('-e', '--end', type=int, default=None,
                         help='last timepoint (in ps) - default is last available time point')
-    parser.add_argument('--logweights', default='logweights.dat', 
-                        help='Input file for WHAM logweights, if previously calculated')
+    parser.add_argument('--f_k', default='f_k.dat', 
+                        help='Input file for WHAM f_k, if previously calculated')
+    parser.add_argument('--autocorr', type=str, 
+                        help='If provided, load list of autocorrelation times, in ps (default: none; use all points per window)')
     parser.add_argument('--logpdist', default='neglogpdist.dat', 
                         help='Name of calculated - log pdist file (default: neglogpdist.dat)')
     parser.add_argument('--debug', action='store_true',
@@ -72,34 +74,46 @@ if __name__ == "__main__":
     if args.T:
         beta /= (args.T * 8.3144598e-3)
 
+    ts = None
     for infile in args.input:
         log.info("Loading data {}".format(infile))
         ds = dr.loadPhi(infile)
+        if ts is None:
+            ts = ds.ts
+        else:
+            assert ts == ds.ts
         dat = np.array(ds.data[start:end]['$\~N$'])
         all_dat = np.append(all_dat, dat)
-        n_samples.append(all_dat.size)
+        n_samples.append(dat.size)
 
+    if args.autocorr is not None:
+        autocorr_nsteps = (1 + 2*(np.loadtxt(args.autocorr) / ts)).astype(int)
+    else:
+        autocorr_nsteps = np.ones(n_windows, dtype=int)
+    
     n_samples = np.array(n_samples)
 
     bias_mat = np.zeros((all_dat.size, n_windows))
     for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
         bias_mat[:,i] = beta * (((ds.kappa)/2.0) * (all_dat-ds.Nstar)**2 + (ds.phi*all_dat))
-    
-    embed()
+
 
     min_pt = 0
-    max_pt = np.ceil(all_dat.max())+1
+    max_pt = np.ceil(all_dat.max())
 
-    binspace = 0.05
-    binbounds = np.arange(0, np.ceil(max_pt)+binspace, binspace)
+    binspace = 1
+    binbounds = np.arange(0, max_pt+binspace, binspace)
     bc = binbounds[:-1] + np.diff(binbounds)/2.0
 
     log.info("   ...Done")
 
-    logweights = np.loadtxt(args.logweights)
-    weights = np.exp(logweights) # for generating consensus distributions
+    f_k = np.loadtxt(args.f_k)
 
-    pdist = gen_pdist(all_dat, bias_mat, n_windows, logweights, binbounds)
+    embed()
+    weights = np.exp(f_k) # for generating consensus distributions
+
+
+    pdist = gen_pdist(all_dat, bias_mat, n_windows, f_k, binbounds)
 
     outarr = np.zeros((len(args.input), 3))
 
@@ -109,7 +123,7 @@ if __name__ == "__main__":
         bias = beta*(0.5*ds.kappa*(bc-ds.Nstar)**2 + ds.phi*bc)
 
         # Consensus histogram
-        consensus_pdist = np.exp(logweights[i] - bias) * pdist
+        consensus_pdist = np.exp(f_k[i] - bias) * pdist
         consensus_pdist = consensus_pdist / np.diff(binbounds)
         consensus_pdist = consensus_pdist / consensus_pdist.sum()
 

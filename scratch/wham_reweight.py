@@ -37,10 +37,10 @@ fnames = sorted( glob.glob('*/phiout.dat') )
 all_dat = np.array([], dtype=dtype)
 all_dat_N = np.array([], dtype=dtype)
 n_windows = len(fnames)
-delta_gs = np.loadtxt('logweights.dat')
+f_k = np.loadtxt('f_k.dat')
 autocorr_time = np.loadtxt('autocorr.dat')
 
-assert len(delta_gs) == n_windows
+assert len(f_k) == n_windows
 n_samples = []
 
 print("loading files...")
@@ -81,7 +81,7 @@ for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
 
 print("    ...done")
 
-Q = -bias_mat + delta_gs #+ np.log(uncorr_n_samples)
+Q = -bias_mat + f_k #+ np.log(uncorr_n_samples)
 max_vals = Q.max(axis=1)
 Q -= max_vals[:,None]
 
@@ -108,3 +108,5 @@ for phi in phi_vals:
 
 dat_arr = np.dstack((phi_vals, avg_ns, var_ns)).squeeze()
 np.savetxt('n_v_phi.dat', dat_arr)
+
+
