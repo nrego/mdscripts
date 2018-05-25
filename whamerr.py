@@ -329,9 +329,9 @@ Command-line options
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
         
-        if do_autocorr:
-            log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
-            np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
+        #if do_autocorr:
+        log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
+        np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
 
         dr.clearData()
 

@@ -46,6 +46,7 @@ n_samples = []
 print("loading files...")
 
 ts = None
+
 for fname in fnames:
     ds = dr.loadPhi(fname)
     if ts is None:
@@ -74,10 +75,12 @@ bias_mat = np.zeros((n_tot, n_windows), dtype=dtype)
 # Fill up bias matrix
 print("filling up bias matrix...")
 nstars = []
+avg_by_nstar = []
 for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
     assert fnames[i] == fname
     nstars.append(ds.Nstar)
     bias_mat[:,i] = beta*((ds.phi*all_dat) + (ds.kappa/2.0)*(all_dat-ds.Nstar)**2)
+    avg_by_nstar.append(ds.data[500:]['$\~N$'].mean())
 
 print("    ...done")
 

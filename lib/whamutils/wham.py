@@ -48,7 +48,7 @@ def gen_data_weights(bias_mat, n_samples, f_k):
     Q -= max_vals[:,None]
 
     logweights = -( np.log(np.exp(Q).sum(axis=1)) + max_vals )
-
+    
 
     return pdist
 
