@@ -7,7 +7,9 @@ import argparse
 import logging
 from mdtools import dr
 
-from whamutils import gen_pdist
+from whamutils import gen_pdist, gen_data_logweights
+
+from constants import k
 
 import sys
 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
 
     beta = 1
     if args.T:
-        beta /= (args.T * 8.3144598e-3)
+        beta /= (args.T * k)
 
     ts = None
     for infile in args.input:
@@ -109,43 +111,37 @@ if __name__ == "__main__":
 
     f_k = np.loadtxt(args.f_k)
 
-    embed()
-    weights = np.exp(f_k) # for generating consensus distributions
-
-
-    pdist = gen_pdist(all_dat, bias_mat, n_windows, f_k, binbounds)
+    logweights = gen_data_logweights(bias_mat, n_samples, f_k)
 
     outarr = np.zeros((len(args.input), 3))
-
     for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
-        #if i > 0:
-        #    embed()
-        bias = beta*(0.5*ds.kappa*(bc-ds.Nstar)**2 + ds.phi*bc)
+
+        bias = -beta*(0.5*ds.kappa*(all_dat-ds.Nstar)**2 + ds.phi*all_dat)
+        this_logweights = logweights+bias
+        this_logweights -= this_logweights.max()
+        this_weights = np.exp(this_logweights)
+        this_weights /= this_weights.sum()
 
         # Consensus histogram
-        consensus_pdist = np.exp(f_k[i] - bias) * pdist
-        consensus_pdist = consensus_pdist / np.diff(binbounds)
-        consensus_pdist = consensus_pdist / consensus_pdist.sum()
+        consensus_pdist, bb = np.histogram(all_dat, bins=binbounds, weights=this_weights, normed=True)
 
         # Observed (biased) histogram for this window i
         this_dat = np.array(ds.data[start:end]['$\~N$'])
-        obs_hist, bb = np.histogram(this_dat, bins=binbounds)
-        obs_hist = obs_hist / np.diff(binbounds)
-        obs_hist = obs_hist / obs_hist.sum()
+        obs_hist, bb = np.histogram(this_dat, bins=binbounds, normed=True)
 
         comp_arr = np.zeros((bc.size, 3))
         comp_arr[:,0] = bc
         comp_arr[:,1] = obs_hist
         comp_arr[:,2] = consensus_pdist
 
-        np.savetxt('nstar-{:05g}_phi-{:05g}_consensus.dat'.format(ds.Nstar, ds.phi*1000), comp_arr)
+        #np.savetxt('nstar-{:05g}_phi-{:05g}_consensus.dat'.format(ds.Nstar, ds.phi*1000), comp_arr)
 
-        shannonEntropy = np.nansum(obs_hist*np.log(obs_hist/consensus_pdist))
-        log.info("  Shannon Entropy: {}".format(shannonEntropy))
+        kl_entropy = np.trapz(obs_hist*np.ma.log(obs_hist/consensus_pdist), bc)
+        log.info("  Kullback-Leibler Relative Entropy: {}".format(kl_entropy))
 
         outarr[i, 0] = ds.phi
         outarr[i, 1] = ds.Nstar
-        outarr[i, 2] = shannonEntropy
+        outarr[i, 2] = kl_entropy
 
     np.savetxt('wham_anl.dat', outarr, fmt='%1.2f %1.2f %1.4e')
 

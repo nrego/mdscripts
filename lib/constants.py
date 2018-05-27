@@ -15,5 +15,5 @@ SEL_SPEC = "not resname SOL and not (name CL or name NA or name DUM) and not res
 SEL_SPEC_NOT_HEAVIES_NOWALL = "not (not (name H* or resname SOL or resname WAL) and not (name CL or name NA or name DUM))"
 SEL_SPEC_NOT_NOWALL = "not (not (resname SOL or resname WAL) and not (name CL or name NA or name DUM))"
 
-
-
+# boltzmann constant in kJ/(mol*K)
+k = 8.3144598e-3

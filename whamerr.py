@@ -568,6 +568,7 @@ Command-line options
         print('f_k: {}'.format(f_k_actual))
         print('se: {}'.format(f_k_se))
         np.savetxt('err_f_k.dat', f_k_se, fmt='%3.6f')
+        np.savetxt('boot_f_k.dat', f_k_boot)
 
         
         if self.fmt == 'phi':
