@@ -1,7 +1,6 @@
 ## My set of WHAM/MBAR utilities
 
 import numpy as np
-from IPython import embed
 
 # Generate a probability distribution over a variable by integrating
 # This currently works for phi datasets **ONLY**
