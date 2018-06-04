@@ -15,19 +15,21 @@ from selection_specs import sel_spec_nowall, sel_spec_not_nowall
 #     orientations maintained
 #
 #  Modifies MDAnalysis Universe 'univ' in-place by working on atom groups
-def center_mol(univ, mol_spec=sel_spec_nowall, do_pbc=False):
+def center_mol(univ, mol_spec=sel_spec_nowall, do_pbc=False, check_broken=True):
 
     mol_group = univ.select_atoms(mol_spec)
-    assert mol_group.bonds.values() is not None, "No bond data provided for mol_group - did you provide a topology?"
+    
+    if check_broken:
+        assert mol_group.bonds.values() is not None, "No bond data provided for mol_group - did you provide a topology?"
+        broken_mol = mol_broken(mol_group)
+        assert not broken_mol, "support for broken molecules currently not supported"
+
     box = (univ.dimensions[:3]).astype(DTYPE)
     assert np.array_equal(univ.dimensions[3:], np.ones(3)*90), "Not a cubic box!"
 
     box_center = box / 2.0
-    broken_mol = mol_broken(mol_group)
 
-    assert not broken_mol, "support for broken molecules currently not supported"
-
-    if broken_mol:
+    if check_broken and broken_mol:
         com = get_whole_com(mol_group, box)
     else:
         com = (mol_group.center_of_mass()).astype(DTYPE)

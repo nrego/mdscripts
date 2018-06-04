@@ -15,6 +15,8 @@ from MDAnalysis.analysis.rms import rmsd
 
 import sys
 
+from IPython import embed
+
 class Trajconv(ParallelTool):
     prog='trajconv'
     description = '''\
@@ -95,6 +97,7 @@ Command-line options
 
         #try:
         self.ref_univ = MDAnalysis.Universe(args.tprfile1, args.grofile)
+
         ext = args.fitfile.split('.')[-1]
         if ext in ['trr', 'xtc']:
             self.do_traj = True
@@ -132,7 +135,7 @@ Command-line options
 
         header_str = "fitspec: {}; rmsdspec: {}".format(self.sel_spec, self.rmsd_spec)
         n_frames = self.last_frame - self.start_frame
-        center_mol(self.ref_univ)
+        #center_mol(self.ref_univ)
 
         ndim = 2 if self.rmsd_spec is None else 3
         rmsd_arr = np.zeros((self.last_frame-self.start_frame, ndim))
@@ -169,7 +172,7 @@ Command-line options
                 np.savetxt(self.rmsd_out, rmsd_arr, header=header_str)
 
         else:
-            center_mol(self.other_univ, do_pbc=False)
+            center_mol(self.other_univ, do_pbc=False, check_broken=False)
             rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
             self.other_univ.atoms.write(self.outfile + ".gro")
 
