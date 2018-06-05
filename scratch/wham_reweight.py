@@ -84,7 +84,7 @@ for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
 
 print("    ...done")
 
-Q = -bias_mat + f_k #+ np.log(uncorr_n_samples)
+Q = -bias_mat + f_k + np.log(uncorr_n_samples)
 max_vals = Q.max(axis=1)
 Q -= max_vals[:,None]
 
@@ -97,8 +97,8 @@ phi_vals = np.arange(0, 10.1, 0.1)
 avg_ns = []
 var_ns = []
 for phi in phi_vals:
-    bias = -beta*phi*all_dat
-    this_logweights = logweights+bias
+    bias = beta*phi*all_dat
+    this_logweights = logweights - bias
     this_logweights -= this_logweights.max()
     this_weights = np.exp(this_logweights)
     this_weights /= this_weights.sum()
