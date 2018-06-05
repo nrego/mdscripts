@@ -9,6 +9,13 @@ fnames = fnames[1:]
 radii = []
 peak_sus = []
 
+
+alpha = lambda dat: 1/dat[0,2]
+c = lambda dat: 1 - (dat[0,1] / dat[0,2])
+
+avg_x = lambda dat: alpha(dat) * dat[:,1] + c(dat)
+var_x = lambda dat: alpha(dat)**2 * dat[:,2]
+
 for i, fname in enumerate(fnames):
     rad = float(os.path.dirname(fname).split('_')[-1]) / 10 # in angstroms
     #rad = labels[i]
@@ -16,10 +23,7 @@ for i, fname in enumerate(fnames):
 
     dat = np.loadtxt(fname)
 
-    n0 = dat[0,1]
-    alpha = n0 / np.sqrt(dat[0,2])
-
-    plt.plot(dat[:,0], ((alpha/n0)**1)*dat[:,1], label=r'$r={}$'.format(rad), linewidth=6)
+    plt.plot(dat[:,0], avg_x(dat), label=r'$r={}$'.format(rad), linewidth=6)
     max_idx = np.argmax(dat[:,2])
     max_phi = dat[max_idx,0]
     peak_sus.append(max_phi)
