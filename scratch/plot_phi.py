@@ -4,7 +4,7 @@ import os, glob
 
 
 fnames = sorted( glob.glob('*/n_v_phi.dat') )
-fnames = fnames[1:-1]
+fnames = fnames[1:]
 
 radii = []
 peak_sus = []
@@ -17,8 +17,9 @@ for i, fname in enumerate(fnames):
     dat = np.loadtxt(fname)
 
     n0 = dat[0,1]
-    alpha = 1
-    plt.plot(dat[:,0], alpha*(dat[:,1]/n0), label=r'$r={}$'.format(rad), linewidth=6)
+    alpha = n0 / np.sqrt(dat[0,2])
+
+    plt.plot(dat[:,0], ((alpha/n0)**1)*dat[:,1], label=r'$r={}$'.format(rad), linewidth=6)
     max_idx = np.argmax(dat[:,2])
     max_phi = dat[max_idx,0]
     peak_sus.append(max_phi)

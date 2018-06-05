@@ -16,7 +16,7 @@ import os, glob
 from fasthist import normhistnd
 
 from mdtools import ParallelTool
-from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist
+from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist, gen_data_logweights
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -84,11 +84,14 @@ for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
 
 print("    ...done")
 
-Q = -bias_mat + f_k + np.log(uncorr_n_samples)
-max_vals = Q.max(axis=1)
-Q -= max_vals[:,None]
 
-logweights = -( np.log( np.exp(Q).sum(axis=1) ) + max_vals )
+#Q = -bias_mat + f_k + np.log(uncorr_n_samples)
+#max_vals = Q.max(axis=1)
+#Q -= max_vals[:,None]
+
+#logweights = -( np.log( np.exp(Q).sum(axis=1) ) + max_vals )
+
+logweights = gen_data_logweights(bias_mat, f_k, uncorr_n_samples)
 weights = np.exp(logweights)
 #weights /= weights.sum()
 
@@ -96,6 +99,16 @@ phi_vals = np.arange(0, 10.1, 0.1)
 
 avg_ns = []
 var_ns = []
+
+# x1 = <N>_\phi / <N>_0
+avg_x1s = []
+var_x1s = []
+
+avg_x2s = []
+var_x2s = []
+
+avg_n0 = 0
+var_n0 = 0
 for phi in phi_vals:
     bias = beta*phi*all_dat
     this_logweights = logweights - bias
@@ -105,11 +118,35 @@ for phi in phi_vals:
 
     this_avg_n = np.dot(this_weights, all_dat)
     this_avg_n_sq = np.dot(this_weights, all_dat**2)
+    this_var = this_avg_n_sq - this_avg_n**2
 
     avg_ns.append(this_avg_n)
-    var_ns.append(this_avg_n_sq - this_avg_n**2)
+    var_ns.append(this_var)
+
+    if phi == 0:
+        avg_n0 = this_avg_n
+        var_n0 = this_var
+
+    alpha = 1
+    n0 = avg_n0
+
+    this_avg_x1 = (alpha/n0) * this_avg_n
+    this_var_x1 = (alpha/n0)**2 * this_var
+    avg_x1s.append(this_avg_x1)
+    var_x1s.append(this_var_x1)
+
+    alpha = (avg_n0/np.sqrt(var_n0))
+
+    this_avg_x2 = (alpha/n0) * this_avg_n
+    this_var_x2 = (alpha/n0)**2 * this_var
+    avg_x2s.append(this_avg_x2)
+    var_x2s.append(this_var_x2)
 
 dat_arr = np.dstack((phi_vals, avg_ns, var_ns)).squeeze()
 np.savetxt('n_v_phi.dat', dat_arr)
 
+dat_arr1 = np.dstack((phi_vals, avg_x1s, var_x1s)).squeeze()
+np.savetxt('x1_v_phi.dat', dat_arr)
 
+dat_arr = np.dstack((phi_vals, avg_x2s, var_x2s)).squeeze()
+np.savetxt('x2_v_phi.dat', dat_arr)

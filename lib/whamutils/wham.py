@@ -40,13 +40,13 @@ def gen_pdist(all_dat, bias_mat, n_samples, f_k, binbounds):
 #   and the generated f_k's (from WHAM, the free energy of applying each window's bias)
 #
 #   Returns:   weights  (n_tot, ) [weight for each datapoint]
-def gen_data_logweights(bias_mat, n_samples, f_k):
+def gen_data_logweights(bias_mat, f_k, n_samples):
 
     Q = f_k - bias_mat + np.log(n_samples)
     max_vals = Q.max(axis=1)
     Q -= max_vals[:,None]
 
-    logweights = -( np.log(np.exp(Q).sum(axis=1)) + max_vals )
+    logweights = -( np.log(np.exp(Q).sum(axis=1) ) + max_vals )
     logweights -= logweights.max()
 
     return logweights
