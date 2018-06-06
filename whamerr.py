@@ -5,7 +5,7 @@ import pandas as pd
 from matplotlib import pyplot
 import argparse
 import logging
-from mdtools import dr
+from mdtools import dr, get_object
 import scipy.integrate
 from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
 import pymbar
@@ -15,7 +15,7 @@ from fasthist import normhistnd
 
 from mdtools import ParallelTool
 
-from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist
+from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist, gen_data_logweights
 
 import matplotlib as mpl
 
@@ -28,8 +28,6 @@ mpl.rcParams.update({'axes.titlesize': 50})
 #mpl.rcParams.update({'titlesize': 42})
 
 log = logging.getLogger('mdtools.whamerr')
-
-#from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -68,57 +66,56 @@ def parse_np_array(inputarr):
 
 # phidat is datareader (could have different number of values for each ds)
 # phivals is (nphi, ) array of phi values (in kT)
-def _bootstrap(lb, ub, ones_m, ones_n, ones_n_uncorr, bias_mat, n_samples, n_uncorr_samples,
-               n_uncorr_sample_diag, n_uncorr_tot, n_windows, autocorr_blocks, 
-               xweights, binbounds, all_data_N):
+def _bootstrap(lb, ub, ones_m, ones_n, uncorr_ones_n, bias_mat, n_samples, uncorr_n_samples,
+               uncorr_n_sample_diag, uncorr_n_tot, n_windows, autocorr_blocks, 
+               xweights, all_data, all_data_N, boot_fn=None):
 
     np.random.seed()
     batch_size = ub - lb
     f_k_ret = np.zeros((batch_size, n_windows), dtype=np.float32)
+    boot_fn_ret = np.zeros(batch_size, dtype=object)
 
-    # for INDUS datasets
-    if binbounds is not None and all_data_N is not None:
-        neglogpdist_N_ret = np.zeros((batch_size, binbounds.shape[0]-1))
-    else:
-        neglogpdist_N_ret = None
+    # Get the associated bootstrapped (log of the) weights for each datapoint
+    logweights_ret = np.zeros((batch_size, uncorr_n_tot))
 
     # for each bootstrap sample in this batch
     for batch_num in xrange(batch_size):
+
         ## Fill up the uncorrelated bias matrix
-        boot_uncorr_bias_mat = np.zeros((n_uncorr_tot, n_windows), dtype=np.float32)
+        boot_uncorr_bias_mat = np.zeros((uncorr_n_tot, n_windows), dtype=np.float32)
         start_idx = 0
         uncorr_start_idx = 0
-        #embed()
-        # Now gather the effective reduced bias_mat by accounting for autocorrelation -
-        #   for each window i, average those rows into continuous blocks of size autocorr_nstep
+        boot_indices = np.array([], dtype=int)
+
         for i, block_size in enumerate(autocorr_blocks):
-            this_n_uncorr_sample = n_uncorr_samples[i] # number of rows
+            this_uncorr_n_sample = uncorr_n_samples[i] # number of rows
             this_n_sample = n_samples[i]
             
             # start indices (rows in bias_mat) for each block for this window
             avail_indices = np.arange(this_n_sample)
-            this_indices = start_idx + np.random.choice(avail_indices, size=this_n_uncorr_sample, replace=True)
-
-            boot_uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample, :] = bias_mat[this_indices, :]
+            this_indices = start_idx + np.random.choice(avail_indices, size=this_uncorr_n_sample, replace=True)
+            boot_indices = np.append(boot_indices, this_indices)
+            boot_uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample, :] = bias_mat[this_indices, :]
             
-            uncorr_start_idx += this_n_uncorr_sample
+            uncorr_start_idx += this_uncorr_n_sample
             start_idx += this_n_sample
 
         # WHAM this bootstrap sample
 
-        myargs = (boot_uncorr_bias_mat, n_uncorr_sample_diag, ones_m, ones_n_uncorr, n_uncorr_tot)
-        boot_weights = -np.array(fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
-        f_k_ret[batch_num, 1:] = boot_weights
+        myargs = (boot_uncorr_bias_mat, uncorr_n_sample_diag, ones_m, uncorr_ones_n, uncorr_n_tot)
+        boot_f_k = -np.append(0, fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
+
+        f_k_ret[batch_num,:] = boot_f_k
+        
+        if boot_fn is not None:
+            boot_logweights = gen_data_logweights(boot_uncorr_bias_mat, boot_f_k, uncorr_n_samples)
+
+            boot_fn_ret[batch_num] = boot_fn(all_data, all_data_N, boot_indices, boot_logweights)
+            del boot_logweights
+
         del boot_uncorr_bias_mat
 
-        # Get -ln(Pv(N)) using WHAM results for this bootstrap sample
-        if binbounds is not None and all_data_N is not None:
-            this_pdist_N = gen_pdist(all_data_N, bias_mat, n_samples, f_k_ret[batch_num].astype(np.float64), binbounds)
-            this_pdist_N /= (this_pdist_N * np.diff(binbounds)).sum()
-            
-            neglogpdist_N_ret[batch_num, :] = -np.log(this_pdist_N)
-
-    return (f_k_ret, neglogpdist_N_ret, lb, ub)
+    return (f_k_ret, boot_fn_ret, lb, ub)
 
 
 class WHAMmer(ParallelTool):
@@ -187,6 +184,8 @@ Command-line options
 
         self.start_weights = None
         self.for_lmbdas = []
+
+        self.boot_fn = None
     
     # Total number of samples - sum of n_samples from each window
     @property
@@ -224,6 +223,12 @@ Command-line options
                             'if \'phi\' format option also supplied, this will calculate the Pv(N) (and Ntwid). \ '
                             'For \'xvg\' formats, this will calculate the probability distribution of whatever \ '
                               'variable has been umbrella sampled')
+        sgroup.add_argument('--boot-fn', default=None, 
+                            help='function, loaded from file of the form \'module.function\', to be performed \ '
+                            'during each bootstrap iteration. If provided, the function is called during each bootstrap as: \ '
+                            'fn(all_data, all_data_N, boot_indices, boot_logweights) where boot_indices corresponds to the indices\ '
+                            'of this selected bootstrap sample, and boot_logweights are the corresponding (log of) statistical weights \ '
+                            'for each bootstrap sample calculated with WHAM/MBAR.')
 
 
     def process_args(self, args):
@@ -264,6 +269,9 @@ Command-line options
         self.unpack_data(args.start, args.end, args.skip)
 
         self.nbins = args.nbins
+
+        if args.boot_fn is not None:
+            self.boot_fn = get_object(args.boot_fn)
     
     def _parse_autocorr(self, autocorr):
         self.autocorr = np.ones(self.n_windows)
@@ -451,7 +459,7 @@ Command-line options
         uncorr_n_tot  = uncorr_n_samples.sum()
         assert uncorr_n_tot <= self.n_tot
 
-        # Diagonal is fractional n_uncorr_samples for each window - should be 
+        # Diagonal is fractional uncorr_n_samples for each window - should be 
         #    float because future's division function
         uncorr_n_sample_diag = np.matrix( np.diag(uncorr_n_samples / uncorr_n_tot), dtype=np.float32 )
         n_sample_diag = np.matrix( np.diag(self.n_samples / self.n_tot), dtype=np.float32)
@@ -471,18 +479,18 @@ Command-line options
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
         for i, block_size in enumerate(autocorr_blocks):
-            this_n_uncorr_sample = uncorr_n_samples[i] # number of rows
+            this_uncorr_n_sample = uncorr_n_samples[i] # number of rows
             this_n_sample = self.n_samples[i]
 
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
             #embed()
-            uncorr_data[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample] = self.all_data[start_idx+remainder:start_idx+this_n_sample:block_size]
+            uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.all_data[start_idx+remainder:start_idx+this_n_sample:block_size]
 
             uncorr_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size, :]
-            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_n_uncorr_sample] = uncorr_data_slice
+            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = uncorr_data_slice
 
-            uncorr_start_idx += this_n_uncorr_sample
+            uncorr_start_idx += this_uncorr_n_sample
             start_idx += this_n_sample
 
         bins = np.arange(0, np.ceil(uncorr_data.max())+1, 1)
@@ -499,7 +507,6 @@ Command-line options
 
         myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
         #myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
-        #myargs = (self.bias_mat, uncorr_n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
@@ -507,20 +514,8 @@ Command-line options
         f_k_actual = -np.append(0, f_k_actual)
         log.info("MBAR results on entire dataset: {}".format(f_k_actual))
 
-        ## TODO: this is messy - this if statement is only used for plotting/reweighing
-        #       purposes when using INDUS datasets (which I misleadingly call 'phi' data)
-        if self.fmt == 'phi':
-            max_n = int(np.ceil(max(self.all_data_N.max(), self.all_data.max())))
-            min_n = int(np.floor(min(self.all_data_N.min(), self.all_data.min())))
-            log.info("Min: {:d}, Max: {:d}".format(min_n, max_n))
-            binbounds = np.arange(min_n,max_n+2,1)
-            neglogpdist_N_boot = np.zeros((self.n_bootstrap, binbounds.shape[0]-1), dtype=np.float64)
-        else:
-            binbounds = None
-
-        np.savetxt('f_k.dat', f_k_actual, fmt='%3.6f')
+        np.savetxt('f_k_all.dat', f_k_actual, fmt='%3.6f')
         
-
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
         batch_size = self.n_bootstrap // n_workers
@@ -530,7 +525,8 @@ Command-line options
 
         # the bootstrap estimates of free energies wrt window i=0
         f_k_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
-        assert f_k_actual[0] == 0
+        boot_res = np.zeros(self.n_bootstrap, dtype=object)
+
         def task_gen():
             
             if __debug__:
@@ -542,10 +538,10 @@ Command-line options
                     checkset.update(set(xrange(lb,ub)))
 
                 args = ()
-                kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, ones_n_uncorr=uncorr_ones_n, bias_mat=self.bias_mat,
-                              n_samples=self.n_samples, n_uncorr_samples=uncorr_n_samples, n_uncorr_sample_diag=uncorr_n_sample_diag, n_uncorr_tot=uncorr_n_tot, 
-                              n_windows=self.n_windows, autocorr_blocks=autocorr_blocks, xweights=-f_k_actual[1:],
-                              binbounds=binbounds, all_data_N=self.all_data_N)
+                kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, uncorr_ones_n=uncorr_ones_n, bias_mat=self.bias_mat,
+                              n_samples=self.n_samples, uncorr_n_samples=uncorr_n_samples, uncorr_n_sample_diag=uncorr_n_sample_diag, 
+                              uncorr_n_tot=uncorr_n_tot, n_windows=self.n_windows, autocorr_blocks=autocorr_blocks, xweights=-f_k_actual[1:],
+                              all_data=self.all_data, all_data_N=self.all_data_N, boot_fn=self.boot_fn)
                 log.info("Sending job batch (from bootstrap sample {} to {})".format(lb, ub))
                 yield (_bootstrap, args, kwargs)
 
@@ -553,12 +549,12 @@ Command-line options
         log.info("Beginning {} bootstrap iterations".format(self.n_bootstrap))
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-            f_k_slice, neglogpdist_N_slice, lb, ub = future.get_result(discard=True)
+            f_k_slice, boot_res_slice, lb, ub = future.get_result(discard=True)
             log.info("Receiving result")
             f_k_boot[lb:ub, :] = f_k_slice
             log.debug("this boot weights: {}".format(f_k_slice))
-            if self.fmt=='phi':
-                neglogpdist_N_boot[lb:ub, :] = neglogpdist_N_slice
+            boot_res[lb:ub] = boot_res_slice
+
             del f_k_slice
 
         # Get SE from bootstrapped samples
@@ -570,34 +566,8 @@ Command-line options
         np.savetxt('err_f_k.dat', f_k_se, fmt='%3.6f')
         np.savetxt('boot_f_k.dat', f_k_boot)
 
-        
-        if self.fmt == 'phi':
-            # Get bootstrap errors for -log(Pv(N))
-            neglogpdist_N_boot_mean = neglogpdist_N_boot.mean(axis=0)
-            neglogpdist_N_se = np.sqrt(neglogpdist_N_boot.var(axis=0))
-   
-            #pdist_N = gen_pdist(self.all_data_N, self.bias_mat, self.n_samples, f_k_actual, binbounds)
-            pdist_N = gen_pdist(self.all_data_N, self.bias_mat, uncorr_n_samples, f_k_actual, binbounds)
-            #pdist = gen_pdist(self.all_data, self.bias_mat, self.n_samples, f_k_actual, binbounds)
-            pdist = gen_pdist(self.all_data, self.bias_mat, uncorr_n_samples, f_k_actual, binbounds)
-            pdist_N /= (pdist_N * np.diff(binbounds)).sum()
-            pdist /= (pdist * np.diff(binbounds)).sum()
-            neglogpdist_N = -np.log(pdist_N)
-            neglogpdist = -np.log(pdist)
-
-            ## Print some stdout
-            print('-ln(P(N)) (boot mean): {}'.format(neglogpdist_N_boot_mean))
-            print('-ln(P(N)) (all data): {}'.format(neglogpdist_N))
-            print('-ln(P(N)) se: {}'.format(neglogpdist_N_se))
-
-            arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist_N))
-            arr = arr.squeeze()
-            
-            np.savetxt('neglogpdist_N.dat', arr, fmt='%3.6f')
-            arr = np.dstack((binbounds[:-1]+np.diff(binbounds)/2.0, neglogpdist))
-            arr = arr.squeeze()
-            np.savetxt('neglogpdist.dat', arr, fmt='%3.6f')
-            np.savetxt('err_neglogpdist_N.dat', neglogpdist_N_se, fmt='%3.6f')
+        if self.boot_fn is not None:
+            np.save('boot_fn_payload.dat', boot_res)
 
 if __name__=='__main__':
     WHAMmer().main()

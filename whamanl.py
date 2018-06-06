@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
     f_k = np.loadtxt(args.f_k)
 
-    logweights = gen_data_logweights(bias_mat, n_samples, f_k)
+    logweights = gen_data_logweights(bias_mat, f_k, n_samples)
 
     outarr = np.zeros((len(args.input), 3))
     for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):

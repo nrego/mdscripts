@@ -4,14 +4,16 @@ import os, glob
 
 
 fnames = sorted( glob.glob('*/n_v_phi.dat') )
-fnames = fnames[1:]
 
 radii = []
 peak_sus = []
 
 
-alpha = lambda dat: 1/dat[0,2]
-c = lambda dat: 1 - (dat[0,1] / dat[0,2])
+#alpha = lambda dat: 1/dat[0,2]
+#c = lambda dat: 1 - (dat[0,1] / dat[0,2])
+
+alpha = lambda dat: 1/dat[0,1]
+c = lambda dat: 0
 
 avg_x = lambda dat: alpha(dat) * dat[:,1] + c(dat)
 var_x = lambda dat: alpha(dat)**2 * dat[:,2]

@@ -83,7 +83,7 @@ for i, (fname, ds) in enumerate(dr.datasets.iteritems()):
     avg_by_nstar.append(ds.data[500:]['$\~N$'].mean())
 
 print("    ...done")
-
+np.savetxt('nstars.dat', nstars)
 
 #Q = -bias_mat + f_k + np.log(uncorr_n_samples)
 #max_vals = Q.max(axis=1)
