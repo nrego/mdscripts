@@ -29,6 +29,8 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
+from IPython import embed
+
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
 #    Note for .xvg datasets (alchemical free energy calcs in gromacs), each file must contain *every* other window
@@ -269,7 +271,7 @@ Command-line options
         self.unpack_data(args.start, args.end, args.skip)
 
         self.nbins = args.nbins
-
+        
         if args.boot_fn is not None:
             self.boot_fn = get_object(args.boot_fn)
     
@@ -361,7 +363,6 @@ Command-line options
             do_skip = True
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-            #embed()
 
             log.info("Unpacking {}th dataset ({:s})".format(i, ds_name))
 
@@ -484,7 +485,6 @@ Command-line options
 
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
-            #embed()
             uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.all_data[start_idx+remainder:start_idx+this_n_sample:block_size]
 
             uncorr_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size, :]
