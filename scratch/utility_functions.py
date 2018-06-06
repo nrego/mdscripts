@@ -48,7 +48,7 @@ def get_n_v_phi(all_data, all_data_N, boot_indices, boot_logweights):
     avg_ns = np.zeros_like(phi_vals)
     var_ns = np.zeros_like(phi_vals)
 
-    boot_data_sq = boot_data**2
+    boot_data_N_sq = boot_data_N**2
     beta = 1/(k*300)
 
     for i, phi in enumerate(phi_vals):
@@ -59,8 +59,8 @@ def get_n_v_phi(all_data, all_data_N, boot_indices, boot_logweights):
         this_weights = np.exp(this_logweights)
         this_weights /= this_weights.sum()
 
-        this_avg_n = np.dot(this_weights, boot_data)
-        this_avg_n_sq = np.dot(this_weights, boot_data_sq)
+        this_avg_n = np.dot(this_weights, boot_data_N)
+        this_avg_n_sq = np.dot(this_weights, boot_data_N_sq)
         this_var_n = this_avg_n_sq - this_avg_n**2
 
         avg_ns[i] = this_avg_n
