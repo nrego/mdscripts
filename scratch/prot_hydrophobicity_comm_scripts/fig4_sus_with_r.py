@@ -23,7 +23,8 @@ avg_x = lambda dat: alpha(dat) * dat[:,1] + c(dat)
 var_x = lambda dat: alpha(dat)**2 * dat[:,2]
 
 fig = plt.figure(figsize=(8.5,7))
-for i, fname in enumerate(reversed(fnames[1:-1])):
+#for i, fname in enumerate(reversed(fnames[1:-1])):
+for i, fname in enumerate(reversed(fnames)):
     rad = float(os.path.dirname(fname).split('_')[-1]) / 100
     radii.append(rad)
     dirname = os.path.dirname(fname)
@@ -38,13 +39,15 @@ for i, fname in enumerate(reversed(fnames[1:-1])):
     peak_sus.append(max_phi)
 
 radii = np.array(radii)
-peak_sus = np.array(peak_sus)
+peak_sus = beta*np.array(peak_sus)
 
 #plt.ylabel(r'$\langle X_V \rangle_{\phi}$')
 plt.ylabel(r'$-\frac{d \langle N_V \rangle_{\phi}}{d \beta \phi}$')
 plt.xlabel(r'$\beta \phi$')
 plt.legend(loc=1, prop={'size':20})
 plt.xlim(1,2.5)
+ymin, ymax = plt.ylim()
+plt.ylim(0, ymax)
 plt.tight_layout()
 plt.show()
 
@@ -53,20 +56,19 @@ expt_slope = 40
 
 slope, inter, r, p, std = scipy.stats.linregress((1/radii), peak_sus)
 
-xvals = np.arange(0, 0.2, 0.001)
+xvals = np.arange(0, 2, 0.01)
 
 # get best fit line with expected slope
-slope_diff = peak_sus - r_red*expt_slope
-expt_inter = slope_diff.mean()
+slope_fit = np.sum(r_red*peak_sus)/np.sum(r_red*r_red)
+line_fit = slope_fit*xvals
 
-expt_slope = r_red*peak_sus
+slope_expt = beta*40/10
+inter_expt = np.mean(peak_sus - slope_expt*r_red)
+line_expt = slope_expt*xvals + inter_expt
 
-line_fit = slope*xvals + inter
-line_expt = expt_slope*xvals + expt_inter
-
-#plt.plot(xvals, line_fit, 'k-', label='fit', linewidth=6)
-#plt.plot(xvals, line_expt, 'k--', label='predicted', linewidth=4)
-#plt.plot(r_red, peak_sus, 'o', markersize=12)
-#plt.xlabel(r'$\frac{1}{R_V} \; \; (\AA^{-1})$')
-#plt.ylabel(r'$\phi^*$ (kJ/mol)')
-#plt.legend()
+plt.plot(xvals, line_fit, 'k-', label='fit', linewidth=6)
+plt.plot(xvals, line_expt, 'k--', label='predicted', linewidth=4)
+plt.plot(r_red, peak_sus, 'o', markersize=12)
+plt.xlabel(r'$\frac{1}{R_V} \; \; (nm^{-1})$')
+plt.ylabel(r'$\beta \phi^*$')
+plt.legend()
