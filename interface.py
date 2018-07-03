@@ -20,7 +20,7 @@ import itertools
 from rhoutils import rho, cartesian
 from mdtools import ParallelTool
 
-from selection_specs import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
+from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 
 from fieldwriter import RhoField
 
