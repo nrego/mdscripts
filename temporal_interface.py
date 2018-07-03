@@ -24,7 +24,7 @@ import mdtraj
 from rhoutils import rho, cartesian
 from mdtools import ParallelTool, Subcommand
 
-from selection_specs import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
+from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 
 from fieldwriter import RhoField
 
@@ -323,7 +323,7 @@ class TemporalInterfaceInitSubcommand(TemporalInterfaceSubcommand):
     subcommand='init'
     help_text='Initialize voxel grid, determine voxels to include/exclude, and normalized rhos for each voxel'
     description = '''\
-Initialize voxel grid from input args, calculte rho for each voxel from input data, and output voxel limits in each dimension, 
+Initialize voxel grid from input args, calculate rho for each voxel from input data, and output voxel limits in each dimension, 
 a list of excluded voxels, and the rho for each included voxel. All output to be used in subsequent analysis using the 'anal'
 command
             input args:

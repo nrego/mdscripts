@@ -49,6 +49,7 @@ for idir, fname in enumerate(fnames):
     ax.set_xlim(0, beta*10)
     ymin, ymax = ax.get_ylim()
     ax.set_ylim(0, ymax)
+    ax.set_title(order[idir])
     
 
 plt.tight_layout()

@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
 from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
 from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist
+import pymbar
 #import visvis as vv
 
 from IPython import embed
@@ -17,6 +18,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
 from mdtools import dr
+
+from constants import k
 
 import os
 import glob
@@ -40,27 +43,35 @@ n_windows = len(fnames)
 phi_vals = []
 psi_vals = []
 
+uncorr_phi_vals = []
+uncorr_psi_vals = []
+
 phi_kappas = []
 phi_stars = []
 psi_kappas = []
 psi_stars = []
 
 n_samples = []
+n_uncorr_samples = []
 
 nreg_dat = []
 ntwid_dat = []
+uncorr_nreg_dat = []
+uncorr_ntwid_dat = []
 
 start = 500
-this_phi = None
+this_mu = None
 for fname in fnames:
     rama = np.loadtxt(fname, usecols=(0,1), comments=['@','#'])
     dirname = os.path.dirname(fname)
     ds = dr.loadPhi('{}/phiout.dat'.format(dirname))
-    if this_phi is None:
-        this_phi = ds.phi
+    if this_mu is None:
+        this_mu = ds.phi
     else:
-        assert this_phi == ds.phi
+        assert this_mu == ds.phi
     n_dat = ds.data[start::10]
+    this_nreg_dat = np.array(n_dat['N'])
+    this_ntwid_dat = np.array(n_dat['$\~N$'])
 
     with open("{}/topol.top".format(dirname), "r") as f:
         lines = f.readlines()
@@ -75,12 +86,42 @@ for fname in fnames:
 
         print("dir: {}, mu: {}, kap_phi: {}, phi_star: {}, kap_psi: {}, psi_star: {}".format(dirname, ds.phi, float(phi_line[-1]), float(phi_line[-2]), float(psi_line[-1]), float(psi_line[-2])))
 
+
+    this_phi = rama[start:, 0]
+    this_psi = rama[start:, 1]
+
+    this_phi_diff = min_dist(phi_stars[-1], this_phi)
+    this_psi_diff = min_dist(psi_stars[-1], this_psi)
     
+    if fname.split('/')[0] == 'equil':
+        act = 1
+    else:
+        act1 = pymbar.timeseries.integratedAutocorrelationTime(this_phi_diff)
+        act2 = pymbar.timeseries.integratedAutocorrelationTime(this_psi_diff)
+        act = int((max(act1, act2) * 2) + 1)
+
+    n_sample = this_phi.size
+    n_uncorr_sample = n_sample // act
+    rem = n_sample % act
+
+    this_uncorr_phi = this_phi[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
+    this_uncorr_psi = this_psi[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
+    this_uncorr_nreg_dat = this_nreg_dat[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
+    this_uncorr_ntwid_dat = this_ntwid_dat[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
+
+    uncorr_phi_vals.append(this_uncorr_phi)
+    uncorr_psi_vals.append(this_uncorr_psi)
+    uncorr_nreg_dat.append(this_uncorr_nreg_dat)
+    uncorr_ntwid_dat.append(this_uncorr_ntwid_dat)
+
+    print("  n_samples: {}, n_uncorr_samples: {}".format(n_sample, n_uncorr_sample))
+
     nreg_dat.append(n_dat['N'])
     ntwid_dat.append(n_dat['$\~N$'])
-    phi_vals.append(rama[start:, 0])
-    psi_vals.append(rama[start:, 1])
-    n_samples.append(rama[start:].shape[0])
+    phi_vals.append(this_phi)
+    psi_vals.append(this_psi)
+    n_samples.append(n_sample)
+    n_uncorr_samples.append(n_uncorr_sample)
     dr.clearData()
 
 
@@ -93,11 +134,13 @@ ntwid_dat = np.concatenate(ntwid_dat)
 assert phi_vals.size == psi_vals.size == ntwid_dat.size == nreg_dat.size
 
 n_samples = np.array(n_samples)
+n_uncorr_samples = np.array(n_uncorr_samples)
 
 n_tot = phi_vals.size
+n_tot_uncorr = n_uncorr_samples.sum()
 assert n_samples.sum() == n_tot
 
-beta = 1/(8.3144598e-3 * 300)
+beta = 1/(k * 300)
 
 phi_kappas = np.array(phi_kappas)
 phi_kappas = (phi_kappas * np.pi**2) / (180.)**2
@@ -152,6 +195,9 @@ ax.set_ylabel(r'$\Psi$')
 ax.set_title(r'$\phi={}$ kJ/mol'.format(ds.phi))
 fig.tight_layout()
 plt.savefig('overlap_phi_{:03g}'.format(ds.phi*10))
+
+
+### Perform WHAM 
 
 n_sample_diag = np.matrix( np.diag(n_samples / n_tot), dtype=np.float32)
 

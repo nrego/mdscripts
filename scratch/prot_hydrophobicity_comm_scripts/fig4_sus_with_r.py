@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 
 import os, glob
-import scipy
+import scipy.stats
 
 from constants import k
 
@@ -67,8 +67,8 @@ inter_expt = np.mean(peak_sus - slope_expt*r_red)
 line_expt = slope_expt*xvals + inter_expt
 
 plt.plot(xvals, line_fit, 'k-', label='fit', linewidth=6)
-plt.plot(xvals, line_expt, 'k--', label='predicted', linewidth=4)
+#plt.plot(xvals, line_expt, 'k--', label='predicted', linewidth=4)
 plt.plot(r_red, peak_sus, 'o', markersize=12)
 plt.xlabel(r'$\frac{1}{R_V} \; \; (nm^{-1})$')
 plt.ylabel(r'$\beta \phi^*$')
-plt.legend()
+#plt.legend()

@@ -37,15 +37,14 @@ err_ntwid_revr2 = np.loadtxt('../phi_sims/revr2/ntwid_err.dat')
 
 fnames = sorted(glob.glob("mu_*/data_arr.npz"))
 
-logweights = np.loadtxt("logweights.dat")
 
 beta = 1/(0.0083144598*300)
-phi_vals = np.array([0.0, 2.0, 4.0, 5.0, 5.5, 6.0, 8.0, 10.0, 15.0, 20.0])
+phi_vals = np.array([0.0, 1.0, 2.0, 3.0, 4.0, 4.5, 5.0, 5.5, 6.0, 7.0, 8.0, 9.0, 10.0, 15.0, 20.0])
 phi_vals *= beta
 
 # Number of INDUS windows (each Phi/Psi landscape already unbiased)
 n_windows = len(fnames)
-assert phi_vals.size == logweights.size == n_windows
+assert phi_vals.size == n_windows
 
 avg_ntwid = []
 avg_ntwid_left = []
