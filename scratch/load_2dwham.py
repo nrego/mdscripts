@@ -8,7 +8,7 @@ mpl = matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
 from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
-from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist
+from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist, gen_data_logweights
 import pymbar
 #import visvis as vv
 
@@ -52,7 +52,7 @@ psi_kappas = []
 psi_stars = []
 
 n_samples = []
-n_uncorr_samples = []
+uncorr_n_samples = []
 
 nreg_dat = []
 ntwid_dat = []
@@ -114,30 +114,34 @@ for fname in fnames:
     uncorr_nreg_dat.append(this_uncorr_nreg_dat)
     uncorr_ntwid_dat.append(this_uncorr_ntwid_dat)
 
-    print("  n_samples: {}, n_uncorr_samples: {}".format(n_sample, n_uncorr_sample))
+    print("  n_samples: {}, uncorr_n_samples: {}".format(n_sample, n_uncorr_sample))
 
     nreg_dat.append(n_dat['N'])
     ntwid_dat.append(n_dat['$\~N$'])
     phi_vals.append(this_phi)
     psi_vals.append(this_psi)
     n_samples.append(n_sample)
-    n_uncorr_samples.append(n_uncorr_sample)
+    uncorr_n_samples.append(n_uncorr_sample)
     dr.clearData()
 
 
 phi_vals = np.concatenate(phi_vals)
 psi_vals = np.concatenate(psi_vals)
+uncorr_phi_vals = np.concatenate(uncorr_phi_vals)
+uncorr_psi_vals = np.concatenate(uncorr_psi_vals)
 
 nreg_dat = np.concatenate(nreg_dat)
 ntwid_dat = np.concatenate(ntwid_dat)
+uncorr_nreg_dat = np.concatenate(uncorr_nreg_dat)
+uncorr_ntwid_dat = np.concatenate(uncorr_ntwid_dat)
 
 assert phi_vals.size == psi_vals.size == ntwid_dat.size == nreg_dat.size
 
 n_samples = np.array(n_samples)
-n_uncorr_samples = np.array(n_uncorr_samples)
+uncorr_n_samples = np.array(uncorr_n_samples)
 
 n_tot = phi_vals.size
-n_tot_uncorr = n_uncorr_samples.sum()
+uncorr_n_tot = uncorr_n_samples.sum()
 assert n_samples.sum() == n_tot
 
 beta = 1/(k * 300)
@@ -152,6 +156,7 @@ psi_stars = np.array(psi_stars)
 assert phi_kappas.size == psi_kappas.size == n_windows
 
 bias_mat = np.zeros((n_tot, n_windows), dtype=np.float32)
+uncorr_bias_mat = np.zeros((uncorr_n_tot, n_windows), dtype=np.float32)
 
 for i in range(n_windows):
     phi_kappa = phi_kappas[i]
@@ -161,6 +166,7 @@ for i in range(n_windows):
     psi_star = psi_stars[i]
 
     bias_mat[:,i] = beta * ((phi_kappa*0.5)*(min_dist(phi_star,phi_vals))**2 + (psi_kappa*0.5)*(min_dist(psi_star,psi_vals))**2)
+    uncorr_bias_mat[:,i] = beta * ((phi_kappa*0.5)*(min_dist(phi_star,uncorr_phi_vals))**2 + (psi_kappa*0.5)*(min_dist(psi_star,uncorr_psi_vals))**2)
 
 binbounds = np.arange(-180,187,4)
 
@@ -209,12 +215,28 @@ xweights = np.zeros(n_windows)
 
 myargs = (bias_mat, n_sample_diag, ones_m, ones_n, n_tot)
 
-logweights = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=myargs)[0]
-logweights = -np.append(0, logweights)
+f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=myargs)[0]
+f_ks = -np.append(0, f_ks)
 
-q = logweights - bias_mat
-denom = np.dot(np.exp(q), n_samples)
-weights = 1/denom
+### WHAM on uncorrelated data only ###
+
+uncorr_n_sample_diag = np.matrix( np.diag(uncorr_n_samples / uncorr_n_tot), dtype=np.float32)
+
+# (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
+uncorr_ones_n = np.matrix(np.ones(uncorr_n_tot,), dtype=np.float32).T
+
+xweights = np.zeros(n_windows)
+
+uncorr_myargs = (uncorr_bias_mat, uncorr_n_sample_diag, ones_m, uncorr_ones_n, uncorr_n_tot)
+
+uncorr_f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=uncorr_myargs)[0]
+uncorr_f_ks = -np.append(0, uncorr_f_ks)
+
+
+### Get the unbiased histogram ###
+logweights = gen_data_logweights(bias_mat, uncorr_f_ks, uncorr_n_samples)
+
+weights = np.exp(logweights)
 weights /= weights.sum()
 
 hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
