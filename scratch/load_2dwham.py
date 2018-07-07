@@ -7,12 +7,12 @@ import matplotlib
 mpl = matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
-from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
-from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist, gen_data_logweights
+from scipy.optimize import minimize
+from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights
 import pymbar
 #import visvis as vv
 
-from IPython import embed
+#from IPython import embed
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
@@ -94,11 +94,11 @@ for fname in fnames:
     this_psi_diff = min_dist(psi_stars[-1], this_psi)
     
     if fname.split('/')[0] == 'equil':
-        act = 1
+        g_inef = 1
     else:
-        act1 = pymbar.timeseries.integratedAutocorrelationTime(this_phi_diff)
-        act2 = pymbar.timeseries.integratedAutocorrelationTime(this_psi_diff)
-        act = int((max(act1, act2) * 2) + 1)
+        tau1 = pymbar.timeseries.integratedAutocorrelationTime(this_phi_diff)
+        tau2 = pymbar.timeseries.integratedAutocorrelationTime(this_psi_diff)
+        g_inef = int((max(tau1, tau2) * 2) + 1)
 
     n_sample = this_phi.size
     n_uncorr_sample = n_sample // act
@@ -204,7 +204,7 @@ plt.savefig('overlap_phi_{:03g}'.format(ds.phi*10))
 
 
 ### Perform WHAM 
-
+print("doing WHAM with all data")
 n_sample_diag = np.matrix( np.diag(n_samples / n_tot), dtype=np.float32)
 
 ones_m = np.matrix(np.ones(n_windows,), dtype=np.float32).T
@@ -215,23 +215,26 @@ xweights = np.zeros(n_windows)
 
 myargs = (bias_mat, n_sample_diag, ones_m, ones_n, n_tot)
 
-f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=myargs)[0]
-f_ks = -np.append(0, f_ks)
+ret = minimize(kappa, xweights[1:], args=myargs, method='Newton-CG', jac=grad_kappa, hess=hess_kappa)
+f_ks = np.append(0, -ret['x'])
+
+np.savetxt('f_ks.dat', f_ks)
 
 ### WHAM on uncorrelated data only ###
-
-uncorr_n_sample_diag = np.matrix( np.diag(uncorr_n_samples / uncorr_n_tot), dtype=np.float32)
-
+print("Doing WHAM with uncorrelated data")
+uncorr_n_sample_diag = np.matrix( np.diag(uncorr_n_samples / uncorr_n_tot), dtype=np.float64)
+uncorr_n_sample_diag /= uncorr_n_sample_diag.sum()
 # (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
-uncorr_ones_n = np.matrix(np.ones(uncorr_n_tot,), dtype=np.float32).T
+uncorr_ones_n = np.matrix(np.ones(uncorr_n_tot,), dtype=np.float64).T
 
 xweights = np.zeros(n_windows)
 
 uncorr_myargs = (uncorr_bias_mat, uncorr_n_sample_diag, ones_m, uncorr_ones_n, uncorr_n_tot)
 
-uncorr_f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=uncorr_myargs)[0]
-uncorr_f_ks = -np.append(0, uncorr_f_ks)
+uncorr_ret = minimize(kappa, xweights[1:], args=uncorr_myargs, method='Newton-CG', jac=grad_kappa, hess=hess_kappa)
+uncorr_f_ks = np.append(0, -uncorr_ret['x'])
 
+np.savetxt('uncorr_fks.dat', uncorr_f_ks)
 
 ### Get the unbiased histogram ###
 logweights = gen_data_logweights(bias_mat, uncorr_f_ks, uncorr_n_samples)

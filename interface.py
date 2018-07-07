@@ -197,7 +197,7 @@ Command-line options
         sgroup.add_argument('--grid-dl', type=float, default=1.0,
                             help='Size of grid spacing (resolution) in each dimension, in A (default: 1.0 A)')
         sgroup.add_argument('--rhoprot', default=40, type=float,
-                        help='Estimated protein density (heavy atoms per nm3)')
+                        help='Estimated protein density (heavy atoms per nm3) (default: 40)')
         sgroup.add_argument('--all-waters', action='store_true',
                             help='Consider *all* waters (not just those close to solute) - default is false')
         sgroup.add_argument('--sspec', default=SEL_SPEC_HEAVIES, type=str,
