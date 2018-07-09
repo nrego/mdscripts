@@ -8,8 +8,8 @@ mpl = matplotlib
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
-from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
-from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist, gen_data_logweights
+from scipy.optimize import minimize
+from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights
 import pymbar
 #import visvis as vv
 
@@ -95,20 +95,20 @@ for fname in fnames:
     this_psi_diff = min_dist(psi_stars[-1], this_psi)
     
     if fname.split('/')[0] == 'equil':
-        act = 1
+        g_inef = 1
     else:
-        act1 = pymbar.timeseries.integratedAutocorrelationTime(this_phi_diff)
-        act2 = pymbar.timeseries.integratedAutocorrelationTime(this_psi_diff)
-        act = int((max(act1, act2) * 2) + 1)
+        tau1 = pymbar.timeseries.integratedAutocorrelationTime(this_phi_diff)
+        tau2 = pymbar.timeseries.integratedAutocorrelationTime(this_psi_diff)
+        g_inef = int((max(tau1, tau2) * 2) + 1)
 
     n_sample = this_phi.size
-    n_uncorr_sample = n_sample // act
-    rem = n_sample % act
+    n_uncorr_sample = n_sample // g_inef
+    rem = n_sample % g_inef
 
-    this_uncorr_phi = this_phi[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
-    this_uncorr_psi = this_psi[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
-    this_uncorr_nreg_dat = this_nreg_dat[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
-    this_uncorr_ntwid_dat = this_ntwid_dat[rem:].reshape(n_uncorr_sample, act).mean(axis=1)
+    this_uncorr_phi = this_phi[rem:].reshape(n_uncorr_sample, g_inef).mean(axis=1)
+    this_uncorr_psi = this_psi[rem:].reshape(n_uncorr_sample, g_inef).mean(axis=1)
+    this_uncorr_nreg_dat = this_nreg_dat[rem:].reshape(n_uncorr_sample, g_inef).mean(axis=1)
+    this_uncorr_ntwid_dat = this_ntwid_dat[rem:].reshape(n_uncorr_sample, g_inef).mean(axis=1)
 
     uncorr_phi_vals.append(this_uncorr_phi)
     uncorr_psi_vals.append(this_uncorr_psi)
@@ -205,7 +205,7 @@ plt.savefig('overlap_phi_{:03g}'.format(ds.phi*10))
 
 
 ### Perform WHAM 
-
+print("doing WHAM with all data")
 n_sample_diag = np.matrix( np.diag(n_samples / n_tot), dtype=np.float32)
 
 ones_m = np.matrix(np.ones(n_windows,), dtype=np.float32).T
@@ -216,14 +216,15 @@ xweights = np.zeros(n_windows)
 
 myargs = (bias_mat, n_sample_diag, ones_m, ones_n, n_tot)
 
-f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=myargs)[0]
-f_ks = -np.append(0, f_ks)
-np.savetxt('fks.dat', f_ks)
+ret = minimize(kappa, xweights[1:], args=myargs, method='L-BFGS-B', jac=grad_kappa)
+f_ks = np.append(0, -ret['x'])
+
+np.savetxt('f_ks.dat', f_ks)
 
 ### WHAM on uncorrelated data only ###
-
+print("Doing WHAM with uncorrelated data")
 uncorr_n_sample_diag = np.matrix( np.diag(uncorr_n_samples / uncorr_n_tot), dtype=np.float32)
-
+uncorr_n_sample_diag /= uncorr_n_sample_diag.sum()
 # (n_tot x 1) ones vector; n_tot = sum(n_k) total number of samples over all windows
 uncorr_ones_n = np.matrix(np.ones(uncorr_n_tot,), dtype=np.float32).T
 
@@ -231,10 +232,86 @@ xweights = np.zeros(n_windows)
 
 uncorr_myargs = (uncorr_bias_mat, uncorr_n_sample_diag, ones_m, uncorr_ones_n, uncorr_n_tot)
 
-uncorr_f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=uncorr_myargs)[0]
-uncorr_f_ks = -np.append(0, uncorr_f_ks)
+uncorr_ret = minimize(kappa, f_ks[1:], args=uncorr_myargs, method='L-BFGS-B', jac=grad_kappa)
+uncorr_f_ks = np.append(0, -uncorr_ret['x'])
+
+np.savetxt('uncorr_fks.dat', uncorr_f_ks)
+print("...Done")
+### Get the unbiased histogram ###
+logweights = gen_data_logweights(bias_mat, f_ks, n_samples)
+
+weights = np.exp(logweights)
+weights /= weights.sum()
+
+hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
+
+loghist = -np.log(hist)
+loghist -= loghist.min()
+
+
+extent = (-180,180,-180,180)
+vmin, vmax = 0, 16
+norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
 
 np.savetxt('fks_uncorr.dat', uncorr_f_ks)
+
+
+fig = plt.figure()
+ax = plt.gca()
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+
+ax.set_xlim(-180,100)
+ax.set_ylim(-180,180)
+
+ax.set_xlabel(r'$\Phi$')
+ax.set_ylabel(r'$\Psi$')
+
+ax.set_title(r'$\phi={}$ kJ/mol'.format(ds.phi))
+fig.tight_layout()
+plt.savefig('phi_all_{:03g}'.format(ds.phi*10))
+
+### Get the unbiased histogram ###
+logweights = gen_data_logweights(bias_mat, f_ks, uncorr_n_samples)
+
+weights = np.exp(logweights)
+weights /= weights.sum()
+
+hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
+
+loghist = -np.log(hist)
+loghist -= loghist.min()
+
+
+extent = (-180,180,-180,180)
+vmin, vmax = 0, 16
+norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+
+fig = plt.figure()
+ax = plt.gca()
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+
+ax.set_xlim(-180,100)
+ax.set_ylim(-180,180)
+
+ax.set_xlabel(r'$\Phi$')
+ax.set_ylabel(r'$\Psi$')
+
+ax.set_title(r'$\phi={}$ kJ/mol'.format(ds.phi))
+fig.tight_layout()
+plt.savefig('phi_uncorr_{:03g}'.format(ds.phi*10))
+
 ### Get the unbiased histogram ###
 logweights = gen_data_logweights(bias_mat, uncorr_f_ks, uncorr_n_samples)
 
@@ -269,8 +346,12 @@ ax.set_ylabel(r'$\Psi$')
 
 ax.set_title(r'$\phi={}$ kJ/mol'.format(ds.phi))
 fig.tight_layout()
-plt.savefig('phi_{:03g}'.format(ds.phi*10))
+plt.savefig('phi_uncorr2_{:03g}'.format(ds.phi*10))
 
+logweights = gen_data_logweights(bias_mat, f_ks, n_samples)
+weights = np.exp(logweights)
+weights /= weights.sum()
+# save it
 payload_arr = np.dstack((phi_vals,psi_vals, ntwid_dat, nreg_dat, weights)).squeeze()
 
 np.savez_compressed('data_arr', payload_arr)

@@ -1,58 +1,83 @@
-# Analyze results of dynamic_indus (i.e. per-atom, time resolved number of waters and other prot atoms)
-#   to locate hydrophobic patches on protein
 from __future__ import division, print_function
 
-import MDAnalysis
-import os, glob
+import westpa
+from fasthist import histnd, normhistnd
 import numpy as np
-import matplotlib 
+import matplotlib
+mpl = matplotlib
+from matplotlib import pyplot as plt
+from matplotlib.image import NonUniformImage, imread
+from scipy.optimize import minimize
+from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights
+import pymbar
+#import visvis as vv
+
+#from IPython import embed
+
+from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
+from mdtools import dr
 
-# Plot all ROC curves for each phi val
+from constants import k
 
-fnames = sorted(glob.glob('phi*/roc.dat'))
+import os
+import glob
 
-plot_phis = np.array([ 1, 3, 4, 4.5, 5, 5.5, 6, 8, 10, 30]).astype(float)
+from mdtools import dr
 
-all_phis = []
-all_min_dists = []
+beta = 1/(k*300)
 
-plt.plot(0,1,'ko')
-plt.plot([0,1],[0,1], 'k--')
-plt.axvline(0, linestyle='--', color='k', alpha=0.5)
-plt.plot([-0.05,1.05], [1,1], 'k--', alpha=0.5)
-plt.xlabel('FPR')
-plt.ylabel('TPR')
+mpl.rcParams.update({'axes.labelsize': 60})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
+mpl.rcParams.update({'axes.titlesize': 40})
 
-for fname in fnames:
-    dirname = os.path.dirname(fname)
-    phi_val = int(dirname.split('_')[-1]) / 10.0
-    all_phis.append(phi_val)
+def min_dist(center,x):
+    dx = np.abs(x-center)
+     
+    return np.amin([dx, 360-dx], axis=0)
 
-    roc_dat = np.loadtxt(fname)
+ds = dr.loadPhi('equil/equil_run/phiout.dat')
+binbounds = np.arange(-180,187,4)
 
-    dists = np.sqrt( (roc_dat[:,1])**2 + (roc_dat[:,2] - 1)**2 )
-    arg_min_dist = np.argmin(dists)
-    min_dist = dists[arg_min_dist]
-    all_min_dists.append(min_dist)
-    best_thresh = roc_dat[arg_min_dist, 0]
+bc = (binbounds[:-1] + binbounds[1:]) / 2.0
 
-    print("phi: {}".format(phi_val))
-    print("   best threshold: {}".format(best_thresh))
-    print("   dist: {}".format(min_dist))
+payload_arr = np.load('data_arr.npz')['arr_0']
 
-    if phi_val in plot_phis:
-        plt.plot(roc_dat[:,1], roc_dat[:,2], '-o', label=r'$\phi={}$'.format(phi_val))
+phi_vals = payload_arr[:,0]
+psi_vals = payload_arr[:,1]
+ntwid_dat = payload_arr[:,2]
+nreg_dat = payload_arr[:,3]
+weights = payload_arr[:,4]
 
-plt.ylim(-0.05, 1.05)
-plt.xlim(-0.05, 1.05)
-plt.legend()
-plt.tight_layout()
-plt.show()
+hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
 
-plt.plot(all_phis, all_min_dists, '-o')
-plt.xlabel(r'$\phi$ (kJ/mol)')
-plt.xlim(0,10)
-plt.ylabel('min_dist')
-plt.tight_layout()
+loghist = -np.log(hist)
+loghist -= loghist.min()
+
+
+extent = (-180,180,-180,180)
+vmin, vmax = 0, 16
+norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+
+
+fig = plt.figure(figsize=(9,7))
+#fig = plt.figure()
+ax = plt.gca()
+
+im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
+               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
+cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
+                  colors='k', linewidths=1.0)
+cb = plt.colorbar(im)
+
+ax.set_xlim(-180,100)
+ax.set_ylim(-180,180)
+
+ax.set_xlabel(r'$\Phi$')
+ax.set_ylabel(r'$\Psi$')
+
+ax.set_title(r'$\beta \phi={:0.2f}$'.format(beta*ds.phi))
+fig.tight_layout()
+#plt.savefig('phi_new_{:03g}'.format(ds.phi*10))

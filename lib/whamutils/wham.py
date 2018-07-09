@@ -1,7 +1,9 @@
 ## My set of WHAM/MBAR utilities
+from __future__ import division
 
 import numpy as np
 
+#from IPython import embed
 # Generate a probability distribution over a variable by integrating
 # This currently works for phi datasets **ONLY**
 def gen_pdist(all_dat, bias_mat, n_samples, f_k, binbounds):
@@ -123,6 +125,23 @@ def grad_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
     grad = -nsample_diag*W.transpose()*(ones_N/n_tot) + nsample_diag*ones_m
 
     return ( np.array(grad[1:]) ).reshape(len(grad)-1 )
+
+def hess_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
+    
+    f = np.append(0, xweights)
+
+    Q = np.matrix(bias_mat + f)
+    c = Q.min(axis=1)
+    Q -= c
+
+    denom = ( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1) 
+
+    W = np.exp(-Q)/denom
+
+    hess = -(1./n_tot)*(nsample_diag*W.transpose()*W*nsample_diag) \
+            + np.diag(np.array(nsample_diag*W.transpose()*(ones_N/n_tot)).squeeze())
+
+    return np.array(hess[1:,1:])
 
 def callbackF(xweights):
     global Nfeval
