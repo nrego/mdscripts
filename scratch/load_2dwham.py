@@ -5,6 +5,7 @@ from fasthist import histnd, normhistnd
 import numpy as np
 import matplotlib
 mpl = matplotlib
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
 from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
@@ -12,7 +13,7 @@ from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist, gen_data_logweight
 import pymbar
 #import visvis as vv
 
-from IPython import embed
+#from IPython import embed
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
@@ -217,6 +218,7 @@ myargs = (bias_mat, n_sample_diag, ones_m, ones_n, n_tot)
 
 f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=myargs)[0]
 f_ks = -np.append(0, f_ks)
+np.savetxt('fks.dat', f_ks)
 
 ### WHAM on uncorrelated data only ###
 
@@ -232,7 +234,7 @@ uncorr_myargs = (uncorr_bias_mat, uncorr_n_sample_diag, ones_m, uncorr_ones_n, u
 uncorr_f_ks = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=uncorr_myargs)[0]
 uncorr_f_ks = -np.append(0, uncorr_f_ks)
 
-
+np.savetxt('fks_uncorr.dat', uncorr_f_ks)
 ### Get the unbiased histogram ###
 logweights = gen_data_logweights(bias_mat, uncorr_f_ks, uncorr_n_samples)
 
