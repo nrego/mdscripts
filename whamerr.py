@@ -7,7 +7,8 @@ import argparse
 import logging
 from mdtools import dr, get_object
 import scipy.integrate
-from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
+#from scipy.optimize import fmin_l_bfgs_b as fmin_bfgs
+from scipy.optimize import minimize
 import pymbar
 import time
 
@@ -15,7 +16,7 @@ from fasthist import normhistnd
 
 from mdtools import ParallelTool
 
-from whamutils import gen_U_nm, kappa, grad_kappa, gen_pdist, gen_data_logweights
+from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights
 
 import matplotlib as mpl
 
@@ -29,7 +30,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-#from IPython import embed
+from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -475,7 +476,7 @@ Command-line options
         uncorr_bias_mat = np.zeros((uncorr_n_tot, self.n_windows), dtype=np.float32)
         start_idx = 0
         uncorr_start_idx = 0
-        
+        embed()
         uncorr_data = np.zeros((uncorr_n_tot, ), dtype=np.float32)
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
@@ -485,7 +486,9 @@ Command-line options
 
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
-            uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.all_data[start_idx+remainder:start_idx+this_n_sample:block_size]
+            # average by slices of block_size for this window's data - results in this_uncorr_n_sample number of data points for each window
+            data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size, self.n_windows)).mean(axis=1)
+            uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = data_slice
 
             uncorr_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size, :]
             uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = uncorr_data_slice
