@@ -31,3 +31,17 @@ def find_dewet_atoms(avg_water_ref, avg_water_targ, buried_mask, dewetting_thres
 
 
     return (normed_rho, (normed_rho < dewetting_thresh) )
+
+# Find the number of TP, FP, TN, and FN from a list of predicted (boolean array) w.r.t. list of actual values (boolean array)
+#
+#  Returns tuple: (TP, FP, TN, FN)
+def compare_pred_actual_acc(pred_vals, actual_vals):
+
+    tp = pred_vals & actual_vals
+    tn = ~pred_vals & ~actual_vals
+
+    fp = pred_vals & ~actual_vals
+    fn = ~pred_vals & actual_vals
+
+    return (tp.sum(), fp.sum(), tn.sum(), fn.sum())
+

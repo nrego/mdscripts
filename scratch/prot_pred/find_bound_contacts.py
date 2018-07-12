@@ -15,7 +15,7 @@ import argparse
 
 from util import find_dewet_atoms
 
-from IPython import embed
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--buried-mask', default='buried_mask.dat')
