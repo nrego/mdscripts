@@ -24,7 +24,7 @@ from IPython import embed
 
 # Returns: tuple of : normed_rho: normalized water density for each atom (after excluding buried atoms)
 #                     dewet_mask: mask identifiying dewetted atoms
-def find_contact_atoms(avg_water_ref, avg_water_targ, buried_mask, dewetting_thresh=0.5):
+def find_dewet_atoms(avg_water_ref, avg_water_targ, buried_mask, dewetting_thresh=0.5):
 
     normed_rho = avg_water_targ / avg_water_ref
     normed_rho[buried_mask] = 1.0
