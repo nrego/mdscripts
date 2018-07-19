@@ -52,8 +52,8 @@ def find_buried(infile, univ_infile, avg_excl=5):
 
 # Plots out the distribution of <n_i>_0, prompts user for cutoff threshold, excluded buried atoms.
 # Excludes buried atoms, writes out buried and surface masks, and also does shit with structure file to show buried atoms.
-infile = 'phi_sims/phi_000/rho_data_dump_rad_6.0.dat.npz'
-univ_infile = 'phi_sims/phi_000/dynamic_volume_water_avg.pdb'
+infile = 'equil_unbound/rho_data_dump_rad_6.0.dat.npz'
+univ_infile = 'equil_unbound/dynamic_volume_water_avg.pdb'
 binspace = 1
 # Buried if <= this 
 avg_excl = 5
