@@ -29,7 +29,7 @@ for fpath in fnames:
     print("n_tot: {}  n_surf: {}  n_buried: {}".format(univ.atoms.n_atoms, surf_mask.sum(), buried_mask.sum()))
 
     try:
-        nat_contacts = MDAnalysis.Universe('contacts.pdb').atoms[surf_mask].bfactors == 0
+        nat_contacts = MDAnalysis.Universe('contacts.pdb').atoms[surf_mask].tempfactors == 0
         print("total native contacts: {}".format(nat_contacts.sum()))
     except:
         nat_contacts = None
@@ -72,7 +72,7 @@ for fpath in fnames:
     #paths = sorted(glob.glob('phi*/rho_data_dump.dat.npz'))
 
     all_h_univ = MDAnalysis.Universe('{}/confout.gro'.format(dirname))
-    all_h_univ.atoms.bfactors = 0
+    all_h_univ.atoms.tempfactors = 0
     all_prot_atoms = all_h_univ.select_atoms('protein and not name H*')
     univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
 
@@ -95,24 +95,24 @@ for fpath in fnames:
     per_dewet_just_prot = rho_avg_water/rho_avg_water0
     rho_norm = (rho_avg_water/max_water) + (rho_avg_solute/max_solute)
 
-    univ.atoms.bfactors = per_dewet
-    univ.atoms[buried_mask].bfactors = 1
-    all_prot_atoms.bfactors = per_dewet
-    all_prot_atoms[buried_mask].bfactors = 1
+    univ.atoms.tempfactors = per_dewet
+    univ.atoms[buried_mask].tempfactors = 1
+    all_prot_atoms.tempfactors = per_dewet
+    all_prot_atoms[buried_mask].tempfactors = 1
     all_h_univ.atoms.write('{}/all_per_atom_norm.pdb'.format(dirname))
     univ.atoms.write('{}/per_atom_norm.pdb'.format(dirname))
 
-    univ.atoms.bfactors = per_dewet_just_prot
-    univ.atoms[buried_mask].bfactors = 1
-    all_prot_atoms.bfactors = per_dewet_just_prot
-    all_prot_atoms[buried_mask].bfactors = 1
+    univ.atoms.tempfactors = per_dewet_just_prot
+    univ.atoms[buried_mask].tempfactors = 1
+    all_prot_atoms.tempfactors = per_dewet_just_prot
+    all_prot_atoms[buried_mask].tempfactors = 1
     all_h_univ.atoms.write('{}/all_per_atom_norm.pdb'.format(dirname))
     univ.atoms.write('{}/per_atom_norm.pdb'.format(dirname))
 
-    univ.atoms.bfactors = rho_norm
-    univ.atoms[buried_mask].bfactors = 1
-    all_prot_atoms.bfactors = rho_norm
-    all_prot_atoms[buried_mask].bfactors = 1
+    univ.atoms.tempfactors = rho_norm
+    univ.atoms[buried_mask].tempfactors = 1
+    all_prot_atoms.tempfactors = rho_norm
+    all_prot_atoms[buried_mask].tempfactors = 1
     all_h_univ.atoms.write('{}/all_global_norm.pdb'.format(dirname))
     univ.atoms.write('{}/global_norm.pdb'.format(dirname))
 

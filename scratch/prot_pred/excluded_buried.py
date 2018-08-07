@@ -39,7 +39,7 @@ def find_buried(infile, univ_infile, avg_excl=5):
 
     print("{} out of {} atoms excluded ({} surface remain)".format(buried_mask.sum(), water_avg_0.size, surf_mask.sum()))
 
-    univ.atoms[buried_mask].bfactors = 50
+    univ.atoms[buried_mask].tempfactors = 50
 
     univ.atoms.write('buried_masked_equil.pdb')
     np.savetxt('buried_mask.dat', buried_mask, fmt='%1d')
@@ -52,8 +52,8 @@ def find_buried(infile, univ_infile, avg_excl=5):
 
 # Plots out the distribution of <n_i>_0, prompts user for cutoff threshold, excluded buried atoms.
 # Excludes buried atoms, writes out buried and surface masks, and also does shit with structure file to show buried atoms.
-infile = 'equil_unbound/rho_data_dump_rad_6.0.dat.npz'
-univ_infile = 'equil_unbound/dynamic_volume_water_avg.pdb'
+infile = 'unbound/uim/rho_data_dump_rad_6.0.dat.npz'
+univ_infile = 'unbound/uim/dynamic_volume_water_avg.pdb'
 binspace = 1
 # Buried if <= this 
 avg_excl = 5

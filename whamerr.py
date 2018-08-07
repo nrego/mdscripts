@@ -12,8 +12,6 @@ from scipy.optimize import minimize
 import pymbar
 import time
 
-from fasthist import normhistnd
-
 from mdtools import ParallelTool
 
 from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights
@@ -30,7 +28,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-from IPython import embed
+#from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -106,7 +104,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, uncorr_ones_n, bias_mat, n_samples, uncor
         # WHAM this bootstrap sample
 
         myargs = (boot_uncorr_bias_mat, uncorr_n_sample_diag, ones_m, uncorr_ones_n, uncorr_n_tot)
-        boot_f_k = -np.append(0, fmin_bfgs(kappa, xweights, fprime=grad_kappa, args=myargs)[0])
+        boot_f_k = -np.append(0, minimize(kappa, xweights, method='L-BFGS-B', jac=grad_kappa, args=myargs).x)
 
         f_k_ret[batch_num,:] = boot_f_k
         
@@ -476,7 +474,7 @@ Command-line options
         uncorr_bias_mat = np.zeros((uncorr_n_tot, self.n_windows), dtype=np.float32)
         start_idx = 0
         uncorr_start_idx = 0
-        embed()
+
         uncorr_data = np.zeros((uncorr_n_tot, ), dtype=np.float32)
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
@@ -487,11 +485,12 @@ Command-line options
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
             # average by slices of block_size for this window's data - results in this_uncorr_n_sample number of data points for each window
-            data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size, self.n_windows)).mean(axis=1)
+            data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size)).mean(axis=1)
             uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = data_slice
 
-            uncorr_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size, :]
-            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = uncorr_data_slice
+            bias_mat_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample, :].reshape((this_uncorr_n_sample, block_size, self.n_windows)).mean(axis=1)
+            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size]
+            #uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = bias_mat_data_slice
 
             uncorr_start_idx += this_uncorr_n_sample
             start_idx += this_n_sample
@@ -513,7 +512,7 @@ Command-line options
         log.info("Running MBAR on entire dataset")
         
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
-        f_k_actual = fmin_bfgs(kappa, xweights[1:], fprime=grad_kappa, args=myargs)[0]
+        f_k_actual = minimize(kappa, xweights[1:], method='L-BFGS-B', jac=grad_kappa, args=myargs).x
         f_k_actual = -np.append(0, f_k_actual)
         log.info("MBAR results on entire dataset: {}".format(f_k_actual))
 

@@ -64,11 +64,11 @@ for fpath in paths:
     dirname = os.path.dirname(fpath)
 
     all_h_univ = MDAnalysis.Universe('{}/confout.gro'.format(dirname))
-    all_h_univ.atoms.bfactors = 0
+    all_h_univ.atoms.tempfactors = 0
     all_prot_atoms = all_h_univ.select_atoms('protein and not name H*')
     univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
-    univ.atoms[~surf_mask].bfactors = max_water
-    all_prot_atoms[~surf_mask].bfactors = max_water
+    univ.atoms[~surf_mask].tempfactors = max_water
+    all_prot_atoms[~surf_mask].tempfactors = max_water
     univ.atoms.write('{}/surf_masked.pdb'.format(dirname))
 
     ds = np.load(fpath)
@@ -86,8 +86,8 @@ for fpath in paths:
 
     # percentage each atom is dewet (w.r.t. its phi=0.0 value)
     per_dewet = (rho_avg_water/rho_avg_water0)
-    univ.atoms[surf_mask].bfactors = per_dewet
-    all_prot_atoms[surf_mask].bfactors = per_dewet
+    univ.atoms[surf_mask].tempfactors = per_dewet
+    all_prot_atoms[surf_mask].tempfactors = per_dewet
     univ.atoms.write('{}/per_dewet.pdb'.format(dirname))
     all_h_univ.atoms.write('{}/all_per_dewet.pdb'.format(dirname))
 
@@ -116,8 +116,8 @@ for fpath in paths:
     plt.show()
 
     ## Put together list of atoms with correlated water numbers
-    univ.atoms.bfactors = 1
-    all_h_univ.atoms.bfactors = 1
+    univ.atoms.tempfactors = 1
+    all_h_univ.atoms.tempfactors = 1
     
     clusters = []
     dewet_atm_indices = surf_indices[dewet_mask]
@@ -128,8 +128,8 @@ for fpath in paths:
         corr_atms_i = surf_indices[corr_i > corr_thresh] 
         assert atm_i in corr_atms_i
         
-        univ.atoms[corr_atms_i].bfactors = 0
-        all_prot_atoms[corr_atms_i].bfactors = 0
+        univ.atoms[corr_atms_i].tempfactors = 0
+        all_prot_atoms[corr_atms_i].tempfactors = 0
 
         clusters.append(corr_atms_i)
 

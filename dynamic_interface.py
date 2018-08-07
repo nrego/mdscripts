@@ -280,20 +280,20 @@ Command-line options
         if self.outpdb:
             self.univ.trajectory[0]
             solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
-            solute_atoms.atoms.bfactors = self.avg_rho 
+            solute_atoms.atoms.tempfactors = self.avg_rho 
             solute_atoms.atoms.write('{}_norm.pdb'.format(self.outpdb))
-            solute_atoms.bfactors = self.rho_water.mean(axis=0)
+            solute_atoms.tempfactors = self.rho_water.mean(axis=0)
             solute_atoms.write('{}_water_avg.pdb'.format(self.outpdb))
-            solute_atoms.bfactors = self.rho_water.var(axis=0)
+            solute_atoms.tempfactors = self.rho_water.var(axis=0)
             solute_atoms.write('{}_water_var.pdb'.format(self.outpdb))
-            solute_atoms.bfactors = self.rho_water.var(axis=0) / self.rho_water.mean(axis=0)
+            solute_atoms.tempfactors = self.rho_water.var(axis=0) / self.rho_water.mean(axis=0)
             solute_atoms.write('{}_water_var_norm.pdb'.format(self.outpdb))
-            solute_atoms.bfactors = self.rho_solute.mean(axis=0)
+            solute_atoms.tempfactors = self.rho_solute.mean(axis=0)
             solute_atoms.write('{}_solute_avg.pdb'.format(self.outpdb))
             
 
-            if (solute_atoms.bfactors == 0).sum() > 0:
-                solute_atoms[solute_atoms.bfactors==0].write('zero_density.pdb')
+            if (solute_atoms.tempfactors == 0).sum() > 0:
+                solute_atoms[solute_atoms.tempfactors==0].write('zero_density.pdb')
 
             ## Dump all data for each atom with each frame
             np.savez_compressed('rho_data_dump_rad_{}.dat'.format(self.r_cutoff), rho_water=self.rho_water, rho_solute=self.rho_solute, 

@@ -1,7 +1,7 @@
 # After running dynamic_interface.py on a series of phi-ensemble simulations, 
 #  i) find the buried atoms in the phi=0 simulation (anything that has n_water < thresh)
-#  ii) Excluded buried atoms from every subsequent phi (by changing their bfactors to thresh + 1)
-#  iii) print out all atoms with bfactors less than threshold for each phi
+#  ii) Excluded buried atoms from every subsequent phi (by changing their tempfactors to thresh + 1)
+#  iii) print out all atoms with tempfactors less than threshold for each phi
 
 ## **Assume we're in the directory of phi ensemble simuations**
 
@@ -24,8 +24,8 @@ all_keys = np.array(all_contacts.keys())
 initial_file_paths = sorted(glob.glob('phi_*/dynamic_volume_norm.pdb'))
 
 univ = MDAnalysis.Universe(initial_file_paths[0])
-buried_mask = univ.atoms.bfactors < thresh
-initial_waters = univ.atoms.bfactors
+buried_mask = univ.atoms.tempfactors < thresh
+initial_waters = univ.atoms.tempfactors
 
 all_indices = np.arange(univ.atoms.n_atoms)
 for fpath in initial_file_paths:
@@ -33,18 +33,18 @@ for fpath in initial_file_paths:
     dirname = os.path.dirname(fpath)
     print("dir: {}".format(dirname))
     univ = MDAnalysis.Universe(fpath)
-    #univ.atoms[buried_mask].bfactors = thresh+1.0
+    #univ.atoms[buried_mask].tempfactors = thresh+1.0
     # change in waters
-    #univ.atoms.bfactors = initial_waters - univ.atoms.bfactors 
+    #univ.atoms.tempfactors = initial_waters - univ.atoms.tempfactors 
 
     #Write out new file where buried atoms are masked
     #univ.atoms.write("{}/waters.pdb".format(dirname))
 
     # Get all atoms that are dry, not including buried ones
-    indices = univ.atoms.bfactors < thresh
+    indices = univ.atoms.tempfactors < thresh
     atms = univ.atoms[indices]
     print(" {} atoms dewetted".format(atms.n_atoms))
-    sorted_idx = np.argsort(atms.bfactors)
+    sorted_idx = np.argsort(atms.tempfactors)
 
     # all the atoms, sorted by bfactor, with bfactor < thresh
     dry_atoms = atms[sorted_idx][:10]

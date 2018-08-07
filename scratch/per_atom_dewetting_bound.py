@@ -64,8 +64,8 @@ rho_water_buried0 = ds_buried0['rho_water'].T.mean(axis=1)
 #buried_mask = (rho_water_buried0 <= avg_water_thresh) #| (rho_avg_water0 < 2.)
 buried_mask = rho_avg_water0 <= avg_water_thresh
 surf_mask = ~buried_mask
-univ.atoms.bfactors = 0
-univ.atoms[buried_mask].bfactors = 1
+univ.atoms.tempfactors = 0
+univ.atoms[buried_mask].tempfactors = 1
 univ.atoms.write('buried.pdb')
 np.savetxt('surf_mask.dat', surf_mask)
 print("n_tot: {}  n_surf: {}  n_buried: {}".format(univ.atoms.n_atoms, surf_mask.sum(), buried_mask.sum()))
@@ -83,7 +83,7 @@ dirname = os.path.dirname(fpath)
 
 #all_h_univ = MDAnalysis.Universe('prod.tpr', 'em.gro')
 all_h_univ = MDAnalysis.Universe('confout.gro')
-all_h_univ.atoms.bfactors = 0
+all_h_univ.atoms.tempfactors = 0
 all_prot_atoms = all_h_univ.select_atoms(sel_spec)
 univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
 
@@ -107,58 +107,58 @@ per_dewet_just_water = (rho_avg_water/rho_avg_water0)
 rho_norm = (rho_avg_water/max_water) + (rho_avg_solute/max_solute)
 
 # Rho_norm
-univ.atoms.bfactors = rho_norm
-univ.atoms[buried_mask].bfactors = 1
-all_prot_atoms.bfactors = rho_norm
-all_prot_atoms[buried_mask].bfactors = 1
+univ.atoms.tempfactors = rho_norm
+univ.atoms[buried_mask].tempfactors = 1
+all_prot_atoms.tempfactors = rho_norm
+all_prot_atoms[buried_mask].tempfactors = 1
 
 univ.atoms.write('{}/global_norm.pdb'.format(dirname))
 all_h_univ.atoms.write('{}/all_global_norm.pdb'.format(dirname))
 
 #Per_dewet
-univ.atoms.bfactors = per_dewet
-univ.atoms[buried_mask].bfactors = 1
-all_prot_atoms.bfactors = per_dewet
-all_prot_atoms[buried_mask].bfactors = 1
+univ.atoms.tempfactors = per_dewet
+univ.atoms[buried_mask].tempfactors = 1
+all_prot_atoms.tempfactors = per_dewet
+all_prot_atoms[buried_mask].tempfactors = 1
 
 univ.atoms.write('{}/per_norm.pdb'.format(dirname))
 all_h_univ.atoms.write('{}/all_per_norm.pdb'.format(dirname))
 
 #Per_dewet_just_water
-univ.atoms.bfactors = per_dewet_just_water
-univ.atoms[buried_mask].bfactors = 1
-all_prot_atoms.bfactors = per_dewet_just_water
-all_prot_atoms[buried_mask].bfactors = 1
+univ.atoms.tempfactors = per_dewet_just_water
+univ.atoms[buried_mask].tempfactors = 1
+all_prot_atoms.tempfactors = per_dewet_just_water
+all_prot_atoms[buried_mask].tempfactors = 1
 
 univ.atoms.write('{}/per_norm_just_water.pdb'.format(dirname))
 all_h_univ.atoms.write('{}/all_per_norm_just_water.pdb'.format(dirname))
 
 #Per_dewet
 dewet_mask = (per_dewet < per_dewetting_thresh) & surf_mask
-univ.atoms.bfactors = 1
-univ.atoms[dewet_mask].bfactors = 0
-all_prot_atoms.bfactors = 1
-all_prot_atoms[dewet_mask].bfactors = 0
+univ.atoms.tempfactors = 1
+univ.atoms[dewet_mask].tempfactors = 0
+all_prot_atoms.tempfactors = 1
+all_prot_atoms[dewet_mask].tempfactors = 0
 univ.atoms.write('{}/per_atom_dewet.pdb'.format(dirname))
 all_h_univ.atoms.write('{}/all_per_atom_dewet.pdb'.format(dirname))
 print("n_dewet (per-atom): {} of {}".format(dewet_mask.sum(), prot_atoms.n_atoms))
 
 #Per_dewet_just_water
 dewet_mask = (per_dewet_just_water < per_dewetting_thresh) & surf_mask
-univ.atoms.bfactors = 1
-univ.atoms[dewet_mask].bfactors = 0
-all_prot_atoms.bfactors = 1
-all_prot_atoms[dewet_mask].bfactors = 0
+univ.atoms.tempfactors = 1
+univ.atoms[dewet_mask].tempfactors = 0
+all_prot_atoms.tempfactors = 1
+all_prot_atoms[dewet_mask].tempfactors = 0
 univ.atoms.write('{}/per_atom_dewet_just_water.pdb'.format(dirname))
 all_h_univ.atoms.write('{}/all_per_atom_dewet_just_water.pdb'.format(dirname))
 print("n_dewet (per-atom just water): {} of {}".format(dewet_mask.sum(), prot_atoms.n_atoms))
 
 #Rho_norm
 dewet_mask = (rho_norm < per_dewetting_thresh) & surf_mask
-univ.atoms.bfactors = 1
-univ.atoms[dewet_mask].bfactors = 0
-all_prot_atoms.bfactors = 1
-all_prot_atoms[dewet_mask].bfactors = 0
+univ.atoms.tempfactors = 1
+univ.atoms[dewet_mask].tempfactors = 0
+all_prot_atoms.tempfactors = 1
+all_prot_atoms[dewet_mask].tempfactors = 0
 univ.atoms.write('{}/norm_dewet.pdb'.format(dirname))
 all_h_univ.atoms.write('{}/all_norm_dewet.pdb'.format(dirname))
 print("dir: {}  n_dewet (global norm): {} of {}".format(dirname, dewet_mask.sum(), prot_atoms.n_atoms))
@@ -166,9 +166,9 @@ print("dir: {}  n_dewet (global norm): {} of {}".format(dirname, dewet_mask.sum(
 try:
     #Write out complex with buried atoms masked
     complex_univ = MDAnalysis.Universe('complex_nat_contacts.pdb')
-    complex_univ.atoms.bfactors = 0
+    complex_univ.atoms.tempfactors = 0
     targ = complex_univ.select_atoms('segid T')
-    targ.atoms[buried_mask].bfactors = 1
+    targ.atoms[buried_mask].tempfactors = 1
     complex_univ.atoms.write('complex_buried.pdb')
 except:
     pass
@@ -176,7 +176,7 @@ except:
 if nat_contacts is not None:
     thresholds = np.arange(0, 1.05, 0.05)
 
-    contact_mask = (nat_contacts.atoms[surf_mask].bfactors > contact_thresh)
+    contact_mask = (nat_contacts.atoms[surf_mask].tempfactors > contact_thresh)
     print("total native contacts: {}".format(contact_mask.sum()))
 
     roc = np.zeros((thresholds.size, 2))

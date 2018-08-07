@@ -284,8 +284,8 @@ class TemporalInterfaceSubcommand(Subcommand):
         log.info("outputing data for {} voxels".format(self.n_pts_included))
 
         # How often voxel is filled w.r.t. voxel under unbiased ensemble
-        bfactors = np.clip(self.rho_avg_norm, 0, 100)
-        #bfactors = np.clip(bfactors, 0, 100)
+        tempfactors = np.clip(self.rho_avg_norm, 0, 100)
+        #tempfactors = np.clip(tempfactors, 0, 100)
         
         top = mdtraj.Topology()
         c = top.add_chain()
@@ -297,12 +297,12 @@ class TemporalInterfaceSubcommand(Subcommand):
             a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
 
         with mdtraj.formats.PDBTrajectoryFile('{}_norm.pdb'.format(self.outpdb), 'w') as f:
-            f.write(gridpts, top, bfactors=bfactors)
+            f.write(gridpts, top, tempfactors=tempfactors)
 
         # Do it again with the absolute rho values (rho_avg instead of rho_avg_norm)
-        bfactors = self.rho_avg * 100
+        tempfactors = self.rho_avg * 100
         with mdtraj.formats.PDBTrajectoryFile('{}_avg.pdb'.format(self.outpdb), 'w') as f:
-            f.write(gridpts, top, bfactors=bfactors)
+            f.write(gridpts, top, tempfactors=tempfactors)
 
     def setup_grid(self):
         ''' Derived classes must figure out how to appropriately initialize voxel grid'''

@@ -20,7 +20,7 @@ args = parser.parse_args()
 
 univ = MDAnalysis.Universe(args.struct, args.traj)
 
-univ.atoms.bfactors = 0 # 1 if contact
+univ.atoms.tempfactors = 0 # 1 if contact
 
 first_frame = args.start
 if args.end is not None:
@@ -41,18 +41,18 @@ for idx, i_frame in enumerate(range(first_frame, last_frame)):
 
     if i_frame % 100 == 0:
         print("frame: {}".format(i_frame))
-    prot.bfactors = 0
+    prot.tempfactors = 0
     this_contacts = prot.select_atoms("({}) and around {} ({})".format(args.target, args.radius, args.partner))
-    this_contacts.bfactors = 1
+    this_contacts.tempfactors = 1
 
-    this_contact_mask = targ.bfactors == 1
+    this_contact_mask = targ.tempfactors == 1
 
-    contacts[:, idx] = targ.bfactors
+    contacts[:, idx] = targ.tempfactors
 
 avg_contacts = contacts.mean(axis=1)
 ts = univ.trajectory[first_frame]
-prot.atoms.bfactors = 0
-targ.atoms.bfactors = avg_contacts
+prot.atoms.tempfactors = 0
+targ.atoms.tempfactors = avg_contacts
 prot.atoms.segids = 'P'
 targ.atoms.segids = 'T'
 

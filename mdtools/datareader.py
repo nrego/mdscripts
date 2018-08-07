@@ -15,6 +15,8 @@ import collections
 
 log = logging.getLogger(__name__)
 
+from IPython import embed
+
 
 def normhistnd(hist, binbounds):
     '''Normalize the N-dimensional histogram ``hist`` with corresponding
@@ -161,10 +163,10 @@ class PhiDataSet(DataSet):
         return block_vals
 
     def plot(self, start=0, ylim=None, block=1, end=None):
-        pandas.rolling_mean(self.data[start:end:10], window=block).plot()
-
+        rm = self.data[start:end].rolling(window=block).sum()
+        rm.plot()
         mean = self.getMean(start=start, end=end)
-        line = pyplot.hlines(mean, start, self.shape[0])
+        line = pyplot.hlines(mean, start, rm.index[-1], zorder=3)
         line.set_label('mean: {:.2f}'.format(mean))
 
         if (ylim is not None):
@@ -399,7 +401,7 @@ class PMFDataSet(DataSet):
         return block_vals
 
     def plot(self, start=0, ylim=None, block=1, end=None):
-        pandas.rolling_mean(self.data[start:end:10], window=block).plot()
+        pandas.DataFrame.rolling(self.data[start:end:10], window=block).plot()
 
         mean = self.getMean(start=start, end=end)
         line = pyplot.hlines(mean, start, self.shape[0])

@@ -18,7 +18,7 @@ prot_atoms = univ.atoms
 assert base_prot_group.n_atoms == prot_atoms.n_atoms
 
 try:
-    nat_contacts = MDAnalysis.Universe('contacts.pdb').atoms.bfactors == 0
+    nat_contacts = MDAnalysis.Universe('contacts.pdb').atoms.tempfactors == 0
     print("total native contacts: {}".format(nat_contacts.sum()))
 except:
     nat_contacts = None
@@ -71,7 +71,7 @@ for i, fpath in enumerate(paths):
     dirname = os.path.dirname(fpath)
 
     all_h_univ = MDAnalysis.Universe('{}/confout.gro'.format(dirname))
-    all_h_univ.atoms.bfactors = 0
+    all_h_univ.atoms.tempfactors = 0
     all_prot_atoms = all_h_univ.select_atoms(sel_spec)
     univ = MDAnalysis.Universe('{}/dynamic_volume_water_avg.pdb'.format(dirname))
 
@@ -93,30 +93,30 @@ for i, fpath in enumerate(paths):
     per_dewet = wt*(rho_avg_water/rho_avg_water0) + (1-wt)*(rho_avg_solute/rho_avg_solute0)
     rho_norm = (rho_avg_water/max_water) + (rho_avg_solute/max_solute)
 
-    univ.atoms.bfactors = per_dewet
-    all_prot_atoms.bfactors = per_dewet
+    univ.atoms.tempfactors = per_dewet
+    all_prot_atoms.tempfactors = per_dewet
     all_h_univ.atoms.write('{}/all_per_atom_norm.pdb'.format(dirname))
     univ.atoms.write('{}/per_atom_norm.pdb'.format(dirname))
 
-    univ.atoms.bfactors = rho_norm
-    all_prot_atoms.bfactors = rho_norm
+    univ.atoms.tempfactors = rho_norm
+    all_prot_atoms.tempfactors = rho_norm
     all_h_univ.atoms.write('{}/all_global_norm.pdb'.format(dirname))
     univ.atoms.write('{}/global_norm.pdb'.format(dirname))
 
     dewet_mask = per_dewet < per_dewetting_thresh
-    univ.atoms.bfactors = 1
-    univ.atoms[dewet_mask].bfactors = 0
-    all_prot_atoms.bfactors = 1
-    all_prot_atoms[dewet_mask].bfactors = 0
+    univ.atoms.tempfactors = 1
+    univ.atoms[dewet_mask].tempfactors = 0
+    all_prot_atoms.tempfactors = 1
+    all_prot_atoms[dewet_mask].tempfactors = 0
     univ.atoms.write('{}/per_atom_dewet.pdb'.format(dirname))
     all_h_univ.atoms.write('{}/all_per_atom_dewet.pdb'.format(dirname))
     #print("dir: {}  n_dewet (per-atom): {} of {}".format(dirname, dewet_mask.sum(), prot_atoms.n_atoms))
 
     dewet_mask = rho_norm < per_dewetting_thresh
-    univ.atoms.bfactors = 1
-    univ.atoms[dewet_mask].bfactors = 0
-    all_prot_atoms.bfactors = 1
-    all_prot_atoms[dewet_mask].bfactors = 0
+    univ.atoms.tempfactors = 1
+    univ.atoms[dewet_mask].tempfactors = 0
+    all_prot_atoms.tempfactors = 1
+    all_prot_atoms[dewet_mask].tempfactors = 0
     univ.atoms.write('{}/norm_dewet.pdb'.format(dirname))
     all_h_univ.atoms.write('{}/all_norm_dewet.pdb'.format(dirname))
     print("dir: {}  n_dewet (global norm): {} of {}".format(dirname, dewet_mask.sum(), prot_atoms.n_atoms))

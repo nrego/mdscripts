@@ -64,8 +64,8 @@ if thresh is not None:
 
     print("thresh: {}  n_pred: {}  n_actual: {}  n_surf: {}  TPR: {}  FPR: {}  ACC: {}".format(thresh, n_pred, n_actual, n_tot, tpr, fpr, acc))
     print("  TP: {}  FP: {}  TN: {}  FN: {}".format(tp, fp, tn, fn))
-    target_univ.atoms.bfactors = 1
-    target_univ.atoms[this_pred_contacts].bfactors = 0
+    target_univ.atoms.tempfactors = 1
+    target_univ.atoms[this_pred_contacts].tempfactors = 0
     target_univ.atoms.write('{}pred_contacts.pdb'.format(outpref)) 
 
 # No threshold provided, cycle through and produce ROC curve
