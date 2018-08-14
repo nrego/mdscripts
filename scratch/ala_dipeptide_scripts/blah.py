@@ -1,7 +1,5 @@
 from __future__ import division, print_function
 
-import westpa
-from fasthist import histnd, normhistnd
 import numpy as np
 import matplotlib
 mpl = matplotlib
