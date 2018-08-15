@@ -80,7 +80,7 @@ ax.set_ylim(-180,180)
 ax.set_xlabel(r'$\Phi$')
 ax.set_ylabel(r'$\Psi$')
 
-ax.set_title(r'$\beta \phi={:0.2f}$'.format(beta*ds.phi))
+ax.set_title(r'$\beta \alpha={:0.2f}$'.format(beta*ds.phi))
 fig.tight_layout()
 plt.savefig('mu_conf_{:03g}'.format(this_mu*10))
 
