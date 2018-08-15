@@ -12,6 +12,7 @@ import logging
 import re
 import linecache
 import collections
+import os
 
 log = logging.getLogger(__name__)
 
@@ -329,18 +330,71 @@ class XvgDataSet(DataSet):
         if (ylim is not None):
             pyplot.ylim(ylim)
 
+
+
+# For rama.xvg datasets - need to get phi*, rama* as well
+# Needs to abstract getting the phi, psi angles, as well as kappa_phi, kappa_psi, and phi_star, psi_star
+class RAMADataSet(DataSet):
+
+    # root filename must contain 'equil' if no bias - otherwise will check topology file for bias
+    def __init__(self, root_filename, corr_len=1, ts=1):
+        super(RAMADataSet, self).__init__()
+
+        root_dirname = os.path.dirname(root_filename)
+        data = np.loadtxt("{}/rama.xvg".format(root_dirname), comments=['@','#'], usecols=(0,1))
+        self.data = pandas.DataFrame(data[::corr_len, :], index=np.arange(0, data.shape[0], ts),
+                                     columns=['phi', 'psi'])
+
+        phi_star, phi_kappa, psi_star, psi_kappa = self._extract_rama_from_top(root_dirname)
+
+        self.phi_star = phi_star
+        self.phi_kappa = phi_kappa
+        self.psi_star = psi_star
+        self.psi_kappa = psi_kappa
+
+        log.debug('Datareader {} reading input file {}'.format(self, "{}/rama.xvg".format(root_dirname)))
+        
+
+        self.title = root_dirname
+
+
+
+    def _extract_rama_from_top(self, root_dirname):
+
+        # Otherwise must extract parameters from topology file...
+        with open("{}/topol.top".format(root_dirname), "r") as f:
+            lines = f.readlines()
+            phi_line = lines[-34].strip().split()
+            psi_line = lines[-33].strip().split()
+
+            phi_kappa = float(phi_line[-1]) * np.pi**2 / (180.**2)
+            phi_star = float(phi_line[-2])
+
+            psi_kappa = float(psi_line[-1]) * np.pi**2 / (180.**2)
+            psi_star = float(psi_line[-2])
+
+        return phi_star, phi_kappa, psi_star, psi_kappa
+
+    # Get (minimum diff) of arbitrary data points from arbitrary phi_star or psi_star
+    @staticmethod
+    def min_dist(center,x):
+        dx = np.abs(x-center)
+         
+        return np.amin([dx, 360-dx], axis=0)
+
+
 class PMFDataSet(DataSet):
 
-    def __init__(self, root_filename,  kappa=1000, corr_len=1):
+    def __init__(self, root_dirname,  kappa=1000, corr_len=1):
         super(PMFDataSet, self).__init__()
 
-        data = np.loadtxt("{}/pullx.xvg".format(root_filename), comments=['@','#'])
+        data = np.loadtxt("{}/pullx.xvg".format(root_dirname), comments=['@','#'])
         data[:,-1] = np.abs(data[:,-1])
-        data_force = np.loadtxt("{}/pullf.xvg".format(root_filename), comments=['@','#'])
+        data_force = np.loadtxt("{}/pullf.xvg".format(root_dirname), comments=['@','#'])
 
         self.inter_pos = None
         try:
-            self.inter_pos = np.loadtxt("{}/slab_position.dat".format(root_filename))
+            self.inter_pos = np.loadtxt("{}/slab_position.dat".format(root_dirname))
             self.inter_pos /= 10.0 # in nm
         except:
             self.inter_pos = None
@@ -348,7 +402,7 @@ class PMFDataSet(DataSet):
         dz_0 = data[-1, -1]
         force_0 = data_force[-1, -1]
 
-        log.debug('Datareader {} reading input file {}'.format(self, "{}/pullx.xvg".format(root_filename)))
+        log.debug('Datareader {} reading input file {}'.format(self, "{}/pullx.xvg".format(root_dirname)))
         
         # Ugh really hackish
         # NVT sim with 2 pull groups (slab, then solute)
@@ -359,7 +413,7 @@ class PMFDataSet(DataSet):
         if data.shape[1] == 3:
             self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
                                          columns=['r0', 'solDZ'])
-        self.title = root_filename
+        self.title = root_dirname
         self.kappa = kappa
 
         self.rstar = np.round(dz_0 + (force_0/self.kappa), decimals=3)
@@ -462,6 +516,11 @@ class DataReader:
     @classmethod
     def loadPmf(cls, filename, kappa=1000.0, corr_len=1):
         ds = PMFDataSet(filename, kappa, corr_len)
+        return cls._addSet(ds)
+
+    @classmethod 
+    def loadRAMA(cls, filename, corr_len=1):
+        ds = RAMADataSet(filename, corr_len)
         return cls._addSet(ds)
 
     @classmethod

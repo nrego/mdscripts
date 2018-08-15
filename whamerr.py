@@ -28,7 +28,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-#from IPython import embed
+from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -107,10 +107,10 @@ def _bootstrap(lb, ub, ones_m, ones_n, uncorr_ones_n, bias_mat, n_samples, uncor
         boot_f_k = -np.append(0, minimize(kappa, xweights, method='L-BFGS-B', jac=grad_kappa, args=myargs).x)
 
         f_k_ret[batch_num,:] = boot_f_k
-        
+       
         if boot_fn is not None:
             boot_logweights = gen_data_logweights(boot_uncorr_bias_mat, boot_f_k, uncorr_n_samples)
-
+            #embed()
             boot_fn_ret[batch_num] = boot_fn(all_data, all_data_N, boot_indices, boot_logweights)
             del boot_logweights
 
@@ -199,9 +199,10 @@ Command-line options
         sgroup = parser.add_argument_group('(Binless) WHAM/MBAR error options')
         sgroup.add_argument('input', metavar='INPUT', type=str, nargs='+',
                             help='Input file names')
-        sgroup.add_argument('--fmt', type=str, choices=['phi', 'xvg'], default='phi',
+        sgroup.add_argument('--fmt', type=str, choices=['phi', 'xvg', 'rama'], default='phi',
                             help='Format of input data files:  \'phi\' for phiout.dat; \ '
-                            '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims)')
+                            '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims); \ '
+                            '\'rama\' for RAMA type files (alanine dipeptide)')
         sgroup.add_argument('-b', '--start', type=int, default=0,
                             help='first timepoint (in ps) - default is first available time point')  
         sgroup.add_argument('-e', '--end', type=int, default=None,
@@ -242,6 +243,8 @@ Command-line options
 
                 if self.fmt == 'phi': 
                     self.dr.loadPhi(infile) 
+                elif self.fmt == 'rama':
+                    self.dr.loadRAMA(infile)
                 elif self.fmt == 'xvg': 
                     ds = self.dr.loadXVG(infile)
                     self.for_lmbdas.append(ds.lmbda)
@@ -249,6 +252,7 @@ Command-line options
         except:
             raise IOError("Error: Unable to successfully load inputs")
         
+        # Ignored if not doing xvg...
         self.for_lmbdas = pd.Index(sorted(self.for_lmbdas))
         self.min_autocorr_time = args.min_autocorr_time
 
@@ -262,10 +266,10 @@ Command-line options
         if args.f_k:
             self.start_weights = -np.loadtxt(args.f_k)
             log.info("starting weights: {}".format(self.start_weights))
-
-        if args.autocorr_file:
+        
+        if args.autocorr_file is not None:
             self._parse_autocorr_list(args.autocorr_file)
-        if args.autocorr:
+        if args.autocorr is not None:
             self._parse_autocorr(args.autocorr)
         self.unpack_data(args.start, args.end, args.skip)
 
@@ -297,6 +301,9 @@ Command-line options
 
         elif self.fmt == 'xvg':
             self._unpack_xvg_data(start, end, skip)
+
+        elif self.fmt == 'rama':
+            self._unpack_rama_data(start, end)
 
     # Put all data points into N dim vector
     def _unpack_phi_data(self, start, end=None):
@@ -440,9 +447,65 @@ Command-line options
             log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
             np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
         dr.clearData()
+
+    # Put all data points into N dim vector
+    def _unpack_rama_data(self, start, end=None):
+
+        # all data, over all windows, in one array:
+        #   shape: (n_tot,)
+        self.all_data = np.array([], dtype=np.float32)
+        # Number of samples for each window
+        #   shape: (n_windows,)
+        self.n_samples = np.array([]).astype(int)
+        #embed()
+        if self.autocorr is None:
+            do_autocorr = False
+            log.info("Autocorrelation not yet implemented for RAMA...")
+            self.autocorr = np.ones(self.n_windows)
+        else:
+            do_autocorr = False
+
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+
+            if self.ts == None:
+                self.ts = ds.ts
+            # Sanity check - every input should have same timestep
+            else:
+                np.testing.assert_almost_equal(self.ts, ds.ts)
+
+            data = ds.data[start:end]
+            dataframe = np.array(data[:])
+
+            if do_autocorr:
+                autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
+                self.autocorr[i] = max(self.ts * autocorr_len, self.min_autocorr_time)
+
+            self.n_samples = np.append(self.n_samples, dataframe.shape[0])
+
+            self.all_data = np.append(self.all_data, dataframe)
+
+        assert self.n_tot == self.all_data.size/2
+
+        self.all_data = np.reshape(self.all_data, (self.n_tot, 2))
+        self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
         
+        # Ugh !
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+            this_phi_diffs = ds.min_dist(ds.phi_star, self.all_data[:,0])
+            this_psi_diffs = ds.min_dist(ds.psi_star, self.all_data[:,1])
+            this_phi_kappa = ds.phi_kappa
+            this_psi_kappa = ds.psi_kappa
+
+            self.bias_mat[:, i] = 0.5*self.beta*(this_phi_kappa*(this_phi_diffs)**2 + this_psi_kappa*(this_psi_diffs)**2) 
+        
+        #if do_autocorr:
+        log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
+        np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
+
+        dr.clearData()
+
     def go(self):
-        
+        #embed()
         # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
         #    i.e. the number of subsequent data points for each window over which data is uncorrelated
         autocorr_blocks = np.ceil(1+2*self.autocorr/self.ts).astype(int)
@@ -475,7 +538,10 @@ Command-line options
         start_idx = 0
         uncorr_start_idx = 0
 
-        uncorr_data = np.zeros((uncorr_n_tot, ), dtype=np.float32)
+        if self.all_data.ndim == 1:
+            uncorr_data = np.zeros((uncorr_n_tot, ), dtype=np.float32)
+        elif self.all_data.ndim == 2:
+            uncorr_data = np.zeros((uncorr_n_tot, 2), dtype=np.float32)
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
         for i, block_size in enumerate(autocorr_blocks):
@@ -485,19 +551,24 @@ Command-line options
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
             # average by slices of block_size for this window's data - results in this_uncorr_n_sample number of data points for each window
-            data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size)).mean(axis=1)
-            uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = data_slice
+            if self.all_data.ndim == 1:
+                data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size)).mean(axis=1)
+                uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = data_slice
+            elif self.all_data.ndim == 2:
+                data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size, 2)).mean(axis=1)
+                uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample, :] = data_slice
 
             bias_mat_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample, :].reshape((this_uncorr_n_sample, block_size, self.n_windows)).mean(axis=1)
-            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size]
-            #uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = bias_mat_data_slice
+            #uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size]
+            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = bias_mat_data_slice
 
             uncorr_start_idx += this_uncorr_n_sample
             start_idx += this_n_sample
 
-        bins = np.arange(0, np.ceil(uncorr_data.max())+1, 1)
-        hist, bb = np.histogram(uncorr_data, bins=bins)
-        np.savetxt('uncorr_hist.dat', np.dstack((bb[:-1], hist)).squeeze())
+        if self.all_data.ndim == 1:
+            bins = np.arange(0, np.ceil(uncorr_data.max())+1, 1)
+            hist, bb = np.histogram(uncorr_data, bins=bins)
+            np.savetxt('uncorr_hist.dat', np.dstack((bb[:-1], hist)).squeeze())
 
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
@@ -510,7 +581,7 @@ Command-line options
         myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
         #myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
-        
+        #embed()
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
         f_k_actual = minimize(kappa, xweights[1:], method='L-BFGS-B', jac=grad_kappa, args=myargs).x
         f_k_actual = -np.append(0, f_k_actual)

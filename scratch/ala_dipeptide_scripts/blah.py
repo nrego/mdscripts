@@ -6,8 +6,8 @@ mpl = matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.image import NonUniformImage, imread
 from scipy.optimize import minimize
-from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights
-import pymbar
+
+
 #import visvis as vv
 
 #from IPython import embed
@@ -26,20 +26,16 @@ from mdtools import dr
 
 beta = 1/(k*300)
 
+ds = dr.loadPhi('equil/equil_run/phiout.dat')
+this_mu = ds.phi
+
 mpl.rcParams.update({'axes.labelsize': 60})
 mpl.rcParams.update({'xtick.labelsize': 40})
 mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize': 40})
 
-def min_dist(center,x):
-    dx = np.abs(x-center)
-     
-    return np.amin([dx, 360-dx], axis=0)
-
-ds = dr.loadPhi('equil/equil_run/phiout.dat')
+# For Phi/Psi angles
 binbounds = np.arange(-180,187,4)
-
-bc = (binbounds[:-1] + binbounds[1:]) / 2.0
 
 payload_arr = np.load('data_arr.npz')['arr_0']
 
@@ -49,8 +45,16 @@ ntwid_dat = payload_arr[:,2]
 nreg_dat = payload_arr[:,3]
 weights = payload_arr[:,4]
 
-hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
+avg_n = np.dot(nreg_dat, weights)
+avg_n_sq = np.dot(nreg_dat**2, weights)
+var_n = avg_n_sq - avg_n**2
+avg_ntwid = np.dot(ntwid_dat, weights)
+avg_ntwid_sq = np.dot(ntwid_dat**2, weights)
+var_ntwid = avg_ntwid_sq - avg_ntwid**2
 
+
+#hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
+hist, bb, bb = np.histogram2d(phi_vals, psi_vals, binbounds, weights=weights)
 loghist = -np.log(hist)
 loghist -= loghist.min()
 
@@ -78,4 +82,9 @@ ax.set_ylabel(r'$\Psi$')
 
 ax.set_title(r'$\beta \phi={:0.2f}$'.format(beta*ds.phi))
 fig.tight_layout()
-#plt.savefig('phi_new_{:03g}'.format(ds.phi*10))
+plt.savefig('mu_conf_{:03g}'.format(this_mu*10))
+
+avg_arr = np.array([avg_n, avg_ntwid, var_n, var_ntwid])
+np.savetxt('averages.dat', avg_arr)
+
+

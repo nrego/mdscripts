@@ -69,3 +69,31 @@ def get_n_v_phi(all_data, all_data_N, boot_indices, boot_logweights):
     phi_dat_arr = np.dstack((phi_vals, avg_ns, var_ns)).squeeze()
 
     return (neglogpdist, bb, phi_dat_arr)
+
+def get_2d_rama(all_data, all_data_N, boot_indices, boot_logweights):
+
+    weights = np.exp(boot_logweights)
+    weights /= weights.sum()
+
+    binbounds = np.arange(-180,187,4)
+
+    phi_boot = all_data[boot_indices, 0]
+    psi_boot = all_data[boot_indices, 1]
+
+    hist, bb1, bb2 = np.histogram2d(phi_boot, psi_boot, binbounds, weights=weights)
+
+    neglogpdist = -np.log(hist)
+    neglogpdist -= neglogpdist.min()
+
+    return (neglogpdist, binbounds)
+    
+def get_weighted_data(all_data, all_data_N, boot_indices, boot_logweights):
+
+    weights = np.exp(boot_logweights)
+    weights /= weights.sum()
+
+    boot_data = all_data[boot_indices]
+
+    return (weights, boot_data)
+
+
