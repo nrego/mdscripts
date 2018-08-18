@@ -89,7 +89,10 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
         integ_ntwid_ret[1:,batch_num] = scipy.integrate.cumtrapz(ntwid_ret[:,batch_num], phivals)
         integ_n_ret[1:,batch_num] = scipy.integrate.cumtrapz(n_ret[:,batch_num], phivals)
 
-    return (ntwid_ret, ntwid_var_ret, integ_ntwid_ret, n_ret, n_var_ret, integ_n_ret, lb, ub)
+        fin_diff_ntwid[1:,batch_num] = -np.diff(ntwid_ret[:,batch_num]) / np.diff(phivals)
+        fin_diff_n[1:,batch_num] = -np.diff(n_ret[:,batch_num]) / np.diff(phivals)
+
+    return (ntwid_ret, ntwid_var_ret, integ_ntwid_ret, n_ret, n_var_ret, integ_n_ret, fin_diff_ntwid, fin_diff_n, lb, ub)
 
 
 class Phierr(ParallelTool):
@@ -242,6 +245,10 @@ Command-line options
         integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
 
+        # numerical slopes
+        ntwid_fin_diff_boot = np.zeros_like(ntwid_boot)
+        n_fin_diff_boot = np.zeros_like(ntwid_boot)
+
         autocorr_nsteps = (1+2*self.autocorr/self.ts).astype(int)
         log.info('autocorr nsteps: {}'.format(autocorr_nsteps))
 
@@ -271,14 +278,16 @@ Command-line options
 
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-            ntwid_slice, ntwid_var_slice, integ_ntwid_slice, n_slice, n_var_slice, integ_n_slice, lb, ub = future.get_result(discard=True)
+            ntwid_slice, ntwid_var_slice, integ_ntwid_slice, n_slice, n_var_slice, integ_n_slice, ntwid_fin_diff_slice, n_fin_diff_slice, lb, ub = future.get_result(discard=True)
             ntwid_boot[:, lb:ub] = ntwid_slice
             ntwid_var_boot[:, lb:ub] = ntwid_var_slice
             n_boot[:, lb:ub] = n_slice
             n_var_boot[:, lb:ub] = n_var_slice
             integ_ntwid_boot[:, lb:ub] = integ_ntwid_slice
             integ_n_boot[:, lb:ub] = integ_n_slice
-            del ntwid_slice, integ_ntwid_slice, n_slice, n_var_slice, integ_n_slice
+            ntwid_fin_diff_boot[:, lb:ub] = ntwid_fin_diff_slice
+            n_fin_diff_boot[:, lb:ub] = n_fin_diff_slice
+            del ntwid_slice, integ_ntwid_slice, n_slice, n_var_slice, integ_n_slice, ntwid_fin_diff_slice, n_fin_diff_slice
 
         ntwid_se = ntwid_boot.std(axis=1, ddof=1)
         ntwid_var_se = ntwid_var_boot.std(axis=1, ddof=1)
@@ -286,33 +295,41 @@ Command-line options
         n_var_se = n_var_boot.std(axis=1, ddof=1)
         integ_ntwid_se = integ_ntwid_boot.std(axis=1, ddof=1)
         integ_n_se = integ_n_boot.std(axis=1, ddof=1)
+        ntwid_fin_diff_se = ntwid_fin_diff_boot.std(axis=1, ddof=1)
+        n_fin_diff_se = n_fin_diff_boot.std(axis=1, ddof=1)
 
         log.info("Var shape: {}".format(ntwid_se.shape))
 
-        out_header = "phi   <ntwid>' <d ntwid^2>'  integ(<ntwid>')   <n>(reweighted) <d ntwid^2>(reweighted) integ(<n>(reweighted))"
-        out_actual = np.zeros((len(self.phidat), 7), dtype=np.float64)
-        out_actual[:, 0] = self.phivals
+        ntwid_out_header = "phi   <ntwid>' <d ntwid^2>' d<ntwid>'/dphi  integ(<ntwid>')"
+        ntwid_out_actual = np.zeros((len(self.phidat), 9), dtype=np.float64)
+        ntwid_out_actual[:, 0] = self.phivals
+
+        n_out_header = "phi   <n>(reweighted) <d n^2>(reweighted) d<n>(reweighted)/dphi  integ(<n>(reweighted))"
+        n_out_actual = np.zeros_like(ntwid_out_actual)
+        n_out_actual[:, 0] = self.phivals
 
         for i, ds in enumerate(self.phidat):
-            np.testing.assert_almost_equal(ds.phi*self.conv, out_actual[i, 0])
+            np.testing.assert_almost_equal(ds.phi*self.conv, ntwid_out_actual[i, 0])
             ntwid_all = np.array(ds.data[self.start:self.end]['$\~N$'])
             n_all = np.array(ds.data[self.start:self.end]['N'])
 
             # Average Ntwid under Ntwid*phi ensemble (sampled)
             ntwid_mean = ntwid_all.mean()
-            out_actual[i, 1] = ntwid_mean
-            out_actual[i, 2] = (ntwid_all**2).mean() - ntwid_mean**2
+            ntwid_out_actual[i, 1] = ntwid_mean
+            ntwid_out_actual[i, 2] = (ntwid_all**2).mean() - ntwid_mean**2
             
             n_reweight = np.exp(-self.phivals[i]*(n_all-ntwid_all))
             # Average N under N*phi ensemble (reweighted)
             n_mean = (n_all*n_reweight).mean() / n_reweight.mean()
             n_sq_mean = ((n_all**2)*n_reweight).mean() / n_reweight.mean()
-            out_actual[i, 4] = n_mean
-            out_actual[i, 5] = n_sq_mean - n_mean**2
+            n_out_actual[i, 1] = n_mean
+            n_out_actual[i, 2] = n_sq_mean - n_mean**2
 
 
-        out_actual[1:, 3] = scipy.integrate.cumtrapz(out_actual[:, 1], self.phivals)
-        out_actual[1:, 6] = scipy.integrate.cumtrapz(out_actual[:, 4], self.phivals)
+        ntwid_out_actual[1:, 3] = -np.diff(ntwid_out_actual[:, 1]) / np.diff(self.phivals)
+        n_out_actual[1:, 3] = -np.diff(n_out_actual[:, 1]) / np.diff(self.phivals)
+        ntwid_out_actual[1:, 4] = scipy.integrate.cumtrapz(ntwid_out_actual[:, 1], self.phivals)
+        n_out_actual[1:, 4] = scipy.integrate.cumtrapz(n_out_actual[:, 1], self.phivals)
 
         log.info("outputting data to {}, as well as bootstrapped standard errors".format(self.output_filename))
         np.savetxt('ntwid_err.dat', ntwid_se, fmt='%1.4e')
@@ -321,8 +338,11 @@ Command-line options
         np.savetxt('n_var_err.dat', n_var_se, fmt='%1.4e')
         np.savetxt('integ_ntwid_err.dat', integ_ntwid_se, fmt='%1.4e')
         np.savetxt('integ_n_err.dat', integ_n_se, fmt='%1.4e')
+        np.savetxt('ntwid_fin_diff_err.dat', ntwid_fin_diff_se, fmt='%1.4e')
+        np.savetxt('n_fin_diff_err.dat', n_fin_diff_se, fmt='%1.4e')
         np.savetxt('autocorr_len.dat', self.autocorr, fmt='%1.4f')
-        np.savetxt(self.output_filename, out_actual, fmt='%1.4f', header=out_header)
+        np.savetxt('ntwid_{}'.format(self.output_filename), ntwid_out_actual, fmt='%1.4f', header=ntwid_out_header)
+        np.savetxt('n_{}'.format(self.output_filename), n_out_actual, fmt='%1.4f', header=n_out_header)
 
         if self.plot:
             if self.conv == 1:
