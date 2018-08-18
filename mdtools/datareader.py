@@ -364,8 +364,10 @@ class RAMADataSet(DataSet):
         # Otherwise must extract parameters from topology file...
         with open("{}/topol.top".format(root_dirname), "r") as f:
             lines = f.readlines()
-            phi_line = lines[-34].strip().split()
-            psi_line = lines[-33].strip().split()
+            #phi_line = lines[-34].strip().split()
+            #psi_line = lines[-33].strip().split()
+            phi_line = lines[-13].strip().split()
+            psi_line = lines[-12].strip().split()
 
             phi_kappa = float(phi_line[-1]) * np.pi**2 / (180.**2)
             phi_star = float(phi_line[-2])

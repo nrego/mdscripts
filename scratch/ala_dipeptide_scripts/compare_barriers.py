@@ -28,6 +28,14 @@ from mdtools import dr
 
 beta = 1/(k*300)
 
+mpl.rcParams.update({'axes.labelsize': 60})
+mpl.rcParams.update({'xtick.labelsize': 50})
+mpl.rcParams.update({'ytick.labelsize': 50})
+mpl.rcParams.update({'axes.titlesize': 40})
+mpl.rcParams['font.family'] = 'serif'
+mpl.rcParams['font.serif'] = 'Computer Modern'
+mpl.rcParams['text.usetex'] = True
+
 
 fnames = sorted(glob.glob('mu_*/boot_fn_payload.dat.npy'))
 
@@ -38,6 +46,7 @@ bc = np.diff(binbounds)/2.0 + binbounds[:-1]
 alphas = []
 avgs = []
 all_data_avgs = []
+avg_n = []
 for fname in fnames:
 
     dirname = os.path.dirname(fname)
@@ -86,6 +95,7 @@ for fname in fnames:
     nreg_dat = payload_arr[:,3]
     weights = payload_arr[:,4]
 
+    avg_n.append(np.dot(nreg_dat, weights))
     mask = phi_vals < 0
     hist, bb = np.histogram(psi_vals[mask], bins=binbounds, weights=weights[mask])
 
@@ -93,15 +103,39 @@ for fname in fnames:
     loghist -= loghist.min()
     all_data_avgs.append(loghist)
 
-alphas = np.array(alphas) / 10.0
+alphas = np.array(alphas)
 
-
-
-
-indices = [0,4,7,8,12]
+indices = [0,3,7,12,14]
 barrier_slice = slice(42, 86, None)
 
-for idx in indices:
-    plt.errorbar(bc, avgs[idx], yerr=errs[idx], label=r'${}$'.format(alphas[idx]))
+fig = plt.figure(figsize=(8,6.5))
+ax = fig.gca()
 
-plt.legend()
+for idx in indices:
+    int_alpha = int(alphas[idx]*10)
+    #ax.errorbar(bc, avgs[idx], yerr=errs[idx], label=r'$\beta \alpha={}$'.format(alphas[idx]), linewidth=4)
+    plt.plot(bc, avgs[idx], label=r'$\beta \alpha={:.1f}$'.format(beta*alphas[idx]), linewidth=4)
+    plt.fill_between(bc, avgs[idx]-errs[idx], avgs[idx]+errs[idx], alpha=0.5)
+
+plt.legend(fontsize=20)
+ax.set_xlabel(r'$\Psi$')
+ax.set_xlim(-100,180)
+ax.set_ylim(-0.1, 10)
+ax.set_ylabel(r'$\beta F_{\alpha}(\Psi)$')
+
+plt.tight_layout()
+plt.show()
+
+
+fig = plt.figure(figsize=(8.5,7))
+ax = fig.gca()
+
+ax.plot(beta*alphas, avg_n, '-o', linewidth=10, markersize=20)
+ax.plot(beta*alphas[indices], avg_n[indices], 'o', markersize=20, color='r')
+ax.set_xlabel(r'$\beta \alpha$')
+ax.set_ylabel(r'$\langle N_V \rangle_\alpha$')
+ax.set_xticks(np.arange(0,10,2))
+
+plt.tight_layout()
+
+

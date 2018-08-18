@@ -20,9 +20,9 @@ name_lup = {'1brs': 'barnase',
             '1ycr': 'mdm2',
             '253l': 'lysozyme',
             '2b97': 'hydrophobin',
-            '3hhp': 'malate_dehydrogenase'}
+            '3hhp': 'malate dehydrogenase'}
 
-order = ['hydrophobin', 'capsid', 'lysozyme', 'mdm2', 'malate_dehydrogenase', 'barnase']
+order = ['hydrophobin', 'capsid', 'lysozyme', 'mdm2', 'malate dehydrogenase', 'barnase']
 
 from constants import k
 
@@ -42,9 +42,12 @@ for idir, fname in enumerate(fnames):
     ax = axes[idir]
     dirname = os.path.dirname(fname)
     dat = np.loadtxt(fname)
+
+    avg_err_dat = np.loadtxt('{}/ntwid_err.dat'.format(dirname))
     var_err_dat = np.loadtxt('{}/ntwid_var_err.dat'.format(dirname))
 
-    ax.errorbar(dat[:,0], dat[:,-1], yerr=var_err_dat, fmt='k-o', linewidth=6, elinewidth=3)
+    #ax.errorbar(dat[:,0], dat[:,-1], yerr=var_err_dat, fmt='k-o', linewidth=6, elinewidth=3)
+    ax.errorbar(dat[:,0], dat[:,1], yerr=avg_err_dat, fmt='k-o', linewidth=6, elinewidth=3, markersize=12)
     xmin, xmax = ax.get_xlim()
     ax.set_xlim(0, beta*10)
     ymin, ymax = ax.get_ylim()

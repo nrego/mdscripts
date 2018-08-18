@@ -14,6 +14,7 @@ from mdtools import ParallelTool
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
+
 mpl.rcParams.update({'axes.labelsize': 30})
 mpl.rcParams.update({'xtick.labelsize': 18})
 mpl.rcParams.update({'ytick.labelsize': 18})
@@ -28,14 +29,21 @@ log = logging.getLogger('mdtools.phierr')
 def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
 
     np.random.seed()
+
     # batch_size is the number of independent bootstrap samples for this job
     batch_size = ub - lb
+
     ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
-    ntwid_var_ret = np.zeros_like(ntwid_ret)
-    
+    ntwid_var_ret = np.zeros_like(ntwid_ret)   
     integ_ntwid_ret = np.zeros((len(phidat), batch_size), dtype=np.float32)
+
     n_ret = np.zeros_like(ntwid_ret)
+    n_var_ret = np.zeros_like(ntwid_ret)
     integ_n_ret = np.zeros_like(integ_ntwid_ret)
+
+    # Getting the slopes numerically might have less noise...
+    fin_diff_ntwid = np.zeros_like(ntwid_ret)
+    fin_diff_n = np.zeros_like(ntwid_ret)
 
     # For each bootstrap sample...
     for batch_num in xrange(batch_size):
@@ -68,16 +76,20 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
 
             assert ntwid_boot_sample.shape[0] == n_boot_sample.shape[0]
 
-            ntwid_ret[i,batch_num] = ntwid_boot_sample.mean()
-            ntwid_var_ret[i,batch_num] = ntwid_boot_sample.var(ddof=1)
+            ntwid_mean = ntwid_boot_sample.mean()
+            ntwid_ret[i,batch_num] = ntwid_mean
+            ntwid_var_ret[i,batch_num] = (ntwid_boot_sample**2).mean() - ntwid_mean**2
 
             n_reweight = np.exp(-phivals[i]*(n_boot_sample - ntwid_boot_sample))
-            n_ret[i,batch_num] = (n_boot_sample*n_reweight).mean() / (n_reweight).mean()
+            n_mean = (n_boot_sample*n_reweight).mean() / (n_reweight).mean()
+            n_sq_mean = ((n_boot_sample**2)*n_reweight).mean() / (n_reweight).mean()
+            n_ret[i,batch_num] = n_mean
+            n_var_ret[i,batch_num] = n_sq_mean - n_mean**2
 
         integ_ntwid_ret[1:,batch_num] = scipy.integrate.cumtrapz(ntwid_ret[:,batch_num], phivals)
         integ_n_ret[1:,batch_num] = scipy.integrate.cumtrapz(n_ret[:,batch_num], phivals)
 
-    return (ntwid_ret, ntwid_var_ret, integ_ntwid_ret, n_ret, integ_n_ret, lb, ub)
+    return (ntwid_ret, ntwid_var_ret, integ_ntwid_ret, n_ret, n_var_ret, integ_n_ret, lb, ub)
 
 
 class Phierr(ParallelTool):
@@ -226,6 +238,7 @@ Command-line options
         ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         ntwid_var_boot = np.zeros_like(ntwid_boot)
         n_boot = np.zeros_like(ntwid_boot)
+        n_var_boot = np.zeros_like(ntwid_boot)
         integ_ntwid_boot = np.zeros((len(self.phidat), self.bootstrap), dtype=np.float64)
         integ_n_boot = np.zeros_like(integ_ntwid_boot)
 
@@ -258,49 +271,54 @@ Command-line options
 
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-            ntwid_slice, ntwid_var_slice, integ_ntwid_slice, n_slice, integ_n_slice, lb, ub = future.get_result(discard=True)
+            ntwid_slice, ntwid_var_slice, integ_ntwid_slice, n_slice, n_var_slice, integ_n_slice, lb, ub = future.get_result(discard=True)
             ntwid_boot[:, lb:ub] = ntwid_slice
             ntwid_var_boot[:, lb:ub] = ntwid_var_slice
             n_boot[:, lb:ub] = n_slice
+            n_var_boot[:, lb:ub] = n_var_slice
             integ_ntwid_boot[:, lb:ub] = integ_ntwid_slice
             integ_n_boot[:, lb:ub] = integ_n_slice
-            del ntwid_slice, integ_ntwid_slice, n_slice, integ_n_slice
+            del ntwid_slice, integ_ntwid_slice, n_slice, n_var_slice, integ_n_slice
 
-        ntwid_se = np.sqrt(ntwid_boot.var(axis=1, ddof=1))
-        ntwid_var_se = np.sqrt(ntwid_var_boot.var(axis=1, ddof=1))
-        n_se = np.sqrt(n_boot.var(axis=1, ddof=1))
-        integ_ntwid_se = np.sqrt(integ_ntwid_boot.var(axis=1, ddof=1))
-        integ_n_se = np.sqrt(integ_n_boot.var(axis=1, ddof=1))
+        ntwid_se = ntwid_boot.std(axis=1, ddof=1)
+        ntwid_var_se = ntwid_var_boot.std(axis=1, ddof=1)
+        n_se = n_boot.std(axis=1, ddof=1)
+        n_var_se = n_var_boot.std(axis=1, ddof=1)
+        integ_ntwid_se = integ_ntwid_boot.std(axis=1, ddof=1)
+        integ_n_se = integ_n_boot.std(axis=1, ddof=1)
 
         log.info("Var shape: {}".format(ntwid_se.shape))
 
-        out_header = "phi   <ntwid>'  integ(<ntwid>')  <n>'  <n>(reweighted)  integ(<n>(reweighted)) -phi*(n-ntwid) <d ntwid^2>'"
-        out_actual = np.zeros((len(self.phidat), 8), dtype=np.float64)
+        out_header = "phi   <ntwid>' <d ntwid^2>'  integ(<ntwid>')   <n>(reweighted) <d ntwid^2>(reweighted) integ(<n>(reweighted))"
+        out_actual = np.zeros((len(self.phidat), 7), dtype=np.float64)
         out_actual[:, 0] = self.phivals
 
         for i, ds in enumerate(self.phidat):
             np.testing.assert_almost_equal(ds.phi*self.conv, out_actual[i, 0])
             ntwid_all = np.array(ds.data[self.start:self.end]['$\~N$'])
             n_all = np.array(ds.data[self.start:self.end]['N'])
-            out_actual[i, 1] = ntwid_all.mean()
-            # **Actual** average N under Ntwid*phi ensemble - i.e. *not* reweighted
-            out_actual[i, 3] = n_all.mean()
+
+            # Average Ntwid under Ntwid*phi ensemble (sampled)
+            ntwid_mean = ntwid_all.mean()
+            out_actual[i, 1] = ntwid_mean
+            out_actual[i, 2] = (ntwid_all**2).mean() - ntwid_mean**2
+            
             n_reweight = np.exp(-self.phivals[i]*(n_all-ntwid_all))
-            # Average N under N*phi ensemble
-            out_actual[i, 4] = (n_all*n_reweight).mean() / (n_reweight).mean()
-            # why am I outputting log?
-            out_actual[i, 6] = np.log(n_reweight.mean())
+            # Average N under N*phi ensemble (reweighted)
+            n_mean = (n_all*n_reweight).mean() / n_reweight.mean()
+            n_sq_mean = ((n_all**2)*n_reweight).mean() / n_reweight.mean()
+            out_actual[i, 4] = n_mean
+            out_actual[i, 5] = n_sq_mean - n_mean**2
 
-            # Variance of ntwid for this phi
-            out_actual[i, 7] = ntwid_all.var(ddof=1)
 
-        out_actual[1:, 2] = scipy.integrate.cumtrapz(out_actual[:, 1], self.phivals)
-        out_actual[1:, 5] = scipy.integrate.cumtrapz(out_actual[:, 3], self.phivals)
+        out_actual[1:, 3] = scipy.integrate.cumtrapz(out_actual[:, 1], self.phivals)
+        out_actual[1:, 6] = scipy.integrate.cumtrapz(out_actual[:, 4], self.phivals)
 
-        log.info("outputting data to ntwid_err.dat, integ_err.dat, autocorr_len.dat, and {}".format(self.output_filename))
+        log.info("outputting data to {}, as well as bootstrapped standard errors".format(self.output_filename))
         np.savetxt('ntwid_err.dat', ntwid_se, fmt='%1.4e')
         np.savetxt('ntwid_var_err.dat', ntwid_var_se, fmt='%1.4e')
         np.savetxt('n_err.dat', n_se, fmt='%1.4e')
+        np.savetxt('n_var_err.dat', n_var_se, fmt='%1.4e')
         np.savetxt('integ_ntwid_err.dat', integ_ntwid_se, fmt='%1.4e')
         np.savetxt('integ_n_err.dat', integ_n_se, fmt='%1.4e')
         np.savetxt('autocorr_len.dat', self.autocorr, fmt='%1.4f')
