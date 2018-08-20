@@ -7,7 +7,7 @@ Calculate the neglogpdist [F(N)] for this bootstrap sample
 '''
 def fn_neglogpdist(all_data, all_data_N, boot_indices, boot_logweights):
 
-    max_N = np.ceil(np.max(all_data.max(), all_data_N.max()))+1
+    max_N = np.ceil( max(all_data.max(), all_data_N.max()) ) + 1
     binbounds = np.arange(0, max_N, 1)
 
     boot_data = all_data[boot_indices]
@@ -37,7 +37,7 @@ def get_n_v_phi(all_data, all_data_N, boot_indices, boot_logweights):
     boot_data_N = all_data_N[boot_indices]
 
     #hist, bb = np.histogram(boot_data_N, bins=binbounds, weights=weights)
-    neglogpdist = get_neglogpdist(boot_data_N, binbounds, logweights)
+    neglogpdist = get_neglogpdist(boot_data_N, binbounds, boot_logweights)
 
     # Find <N>, <\delta N^2> v phi
     phi_vals = np.arange(0, 10.1, 0.1)
