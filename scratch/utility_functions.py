@@ -1,10 +1,11 @@
 import numpy as np
 from constants import k
+from whamutils import get_neglogpdist
 
 '''
 Calculate the neglogpdist [F(N)] for this bootstrap sample
 '''
-def get_neglogpdist(all_data, all_data_N, boot_indices, boot_logweights):
+def fn_neglogpdist(all_data, all_data_N, boot_indices, boot_logweights):
 
     weights = np.exp(boot_logweights)
     weights /= weights.sum()
@@ -89,11 +90,9 @@ def get_2d_rama(all_data, all_data_N, boot_indices, boot_logweights):
     
 def get_weighted_data(all_data, all_data_N, boot_indices, boot_logweights):
 
-    weights = np.exp(boot_logweights)
-    weights /= weights.sum()
-
     boot_data = all_data[boot_indices]
+    boot_data_N = all_data_N[boot_indices]
 
-    return (weights, boot_data)
+    return (boot_logweights, boot_data, boot_data_N)
 
 
