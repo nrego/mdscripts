@@ -31,7 +31,7 @@ def get_n_v_phi(all_data, all_data_N, boot_indices, boot_logweights):
 
     # Find -ln P(N)
     max_N = np.ceil(all_data_N.max()) + 1
-    binbounds = np.arange(0, max_N, 1)
+    binbounds = bb = np.arange(0, max_N, 1)
 
     boot_data = all_data[boot_indices]
     boot_data_N = all_data_N[boot_indices]
