@@ -1,7 +1,7 @@
 import numpy as np
 from constants import k
 from whamutils import get_neglogpdist
-
+from IPython import embed
 '''
 Calculate the neglogpdist [F(N)] for this bootstrap sample
 '''
@@ -37,7 +37,7 @@ def get_n_v_phi(all_data, all_data_N, boot_indices, boot_logweights):
     boot_data_N = all_data_N[boot_indices]
 
     #hist, bb = np.histogram(boot_data_N, bins=binbounds, weights=weights)
-    neglogpdist = get_neglogpdist(boot_data_N, binbounds, boot_logweights)
+    neglogpdist = get_neglogpdist(boot_data_N.astype(np.float64), binbounds, boot_logweights)
 
     # Find <N>, <\delta N^2> v phi
     phi_vals = np.arange(0, 10.1, 0.1)
