@@ -1,51 +1,32 @@
-from __future__ import division, print_function
-  
 
-import MDAnalysis
-from matplotlib import pyplot as plt
-import matplotlib as mpl
 import numpy as np
+from whamutils import get_neglogpdist
 
-import glob, os
 
-mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 30})
-mpl.rcParams.update({'ytick.labelsize': 30})
-mpl.rcParams.update({'axes.titlesize': 50})
-mpl.rcParams.update({'legend.fontsize':30})
+boot_dat = np.load('boot_fn_payload.dat.npy')
+n_boot = boot_dat.shape[0]
 
-name_lup = {'1brs': 'barnase',
-            '1ubq': 'ubiquitin',
-            '1qgt': 'capsid',
-            '1ycr': 'mdm2',
-            '253l': 'lysozyme',
-            '2b97': 'hydrophobin',
-            '3hhp': 'malate dehydrogenase'}
+logweights_0, dat_0, dat_N_0 = boot_dat[0]
+bb = np.arange(0,200,1.)
 
-order = ['hydrophobin', 'capsid', 'lysozyme', 'mdm2', 'malate dehydrogenase', 'barnase']
+boot_neglogpdist = np.zeros((n_boot, bb.size-1))
 
-from constants import k
+for i, payload in enumerate(boot_dat):
 
-beta = 1/(k*300)
+    logweights, all_dat, all_dat_N = payload
 
-order_idx = []
-fnames = np.array([], dtype=str)
-for key, val in name_lup.iteritems():
-    if val in order:
-        order_idx.append(order.index(val))
-        fnames = np.append(fnames, '{}/phi_sims/ntwid_out.dat'.format(key))
-fnames = fnames[np.argsort(order_idx)]
+    neglogpdist = get_neglogpdist(all_dat_N.astype(float), bb, logweights)
+    boot_neglogpdist[i] = neglogpdist
 
-peak_analysis_dat = np.zeros((len(fnames), 6))
 
-for i,f in enumerate(fnames):
-    dat = np.loadtxt(f)
+avg_neglogpdist = boot_neglogpdist.mean(axis=0)
 
-    avg_0 = dat[0,1]
-    var_0 = dat[0,2]
+for bphi in np.arange(1.0, 1.4, 0.1):
+    bias = avg_neglogpdist + bphi*bb[:-1]
+    bias -= bias.min()
 
-    peak_idx = np.argmax(dat[:,2])
-    peak_val = dat[peak_idx,2]
+    plt.plot(bb[:-1], bias, label='{}'.format(bphi))
 
-    peak_analysis_dat[i,...] = avg_0, var_0, peak_val, peak_val/avg_0, peak_val/var_0, peak_val/avg_0**2
+plt.legend()
+plt.show()
 

@@ -1,26 +1,24 @@
 import numpy as np
 from constants import k
-
+from whamutils import get_neglogpdist
+from IPython import embed
 '''
 Calculate the neglogpdist [F(N)] for this bootstrap sample
 '''
-def get_neglogpdist(all_data, all_data_N, boot_indices, boot_logweights):
+def fn_neglogpdist(all_data, all_data_N, boot_indices, boot_logweights):
 
-    weights = np.exp(boot_logweights)
-    weights /= weights.sum()
-
-    max_N = np.ceil(all_data.max())+1
+    max_N = np.ceil( max(all_data.max(), all_data_N.max()) ) + 1
     binbounds = np.arange(0, max_N, 1)
 
     boot_data = all_data[boot_indices]
+    boot_data_N = all_data_N[boot_indices]
 
-    hist, bb = np.histogram(boot_data, bins=binbounds, weights=weights)
+    neglogpdist = get_neglogpdist(boot_data, binbounds, boot_logweights)
 
-    neglogpdist = -np.log(hist)
-    neglogpdist -= neglogpdist.min()
+    neglogpdist_N = get_neglogpdist(boot_data_N, binbounds, boot_logweights)
 
 
-    return neglogpdist, bb
+    return neglogpdist, neglogpdist_N, binbounds
 
 
 '''
@@ -33,15 +31,13 @@ def get_n_v_phi(all_data, all_data_N, boot_indices, boot_logweights):
 
     # Find -ln P(N)
     max_N = np.ceil(all_data_N.max()) + 1
-    binbounds = np.arange(0, max_N, 1)
+    binbounds = bb = np.arange(0, max_N, 1)
 
     boot_data = all_data[boot_indices]
     boot_data_N = all_data_N[boot_indices]
 
-    hist, bb = np.histogram(boot_data_N, bins=binbounds, weights=weights)
-
-    neglogpdist = -np.log(hist)
-    neglogpdist -= neglogpdist.min()
+    #hist, bb = np.histogram(boot_data_N, bins=binbounds, weights=weights)
+    neglogpdist = get_neglogpdist(boot_data_N.astype(np.float64), binbounds, boot_logweights)
 
     # Find <N>, <\delta N^2> v phi
     phi_vals = np.arange(0, 10.1, 0.1)
@@ -89,11 +85,9 @@ def get_2d_rama(all_data, all_data_N, boot_indices, boot_logweights):
     
 def get_weighted_data(all_data, all_data_N, boot_indices, boot_logweights):
 
-    weights = np.exp(boot_logweights)
-    weights /= weights.sum()
-
     boot_data = all_data[boot_indices]
+    boot_data_N = all_data_N[boot_indices]
 
-    return (weights, boot_data)
+    return (boot_logweights, boot_data, boot_data_N)
 
 

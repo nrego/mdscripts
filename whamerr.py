@@ -14,7 +14,7 @@ import time
 
 from mdtools import ParallelTool
 
-from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights
+from whamutils import kappa, grad_kappa, hess_kappa, gen_data_logweights, get_neglogpdist
 
 import matplotlib as mpl
 
