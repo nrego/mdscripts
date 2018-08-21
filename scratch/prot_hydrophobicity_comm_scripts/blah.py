@@ -20,7 +20,7 @@ for i, payload in enumerate(boot_dat):
 
 avg_neglogpdist = boot_neglogpdist.mean(axis=0)
 
-for bphi in np.arange(0.4, 1.0, 0.05):
+for bphi in np.arange(1.0, 1.4, 0.1):
     bias = avg_neglogpdist + bphi*bb[:-1]
     bias -= bias.min()
 
