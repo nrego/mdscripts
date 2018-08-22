@@ -28,7 +28,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-from IPython import embed
+#from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -342,6 +342,7 @@ Command-line options
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
         
         # Ugh !
+        #embed()
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
         
@@ -505,7 +506,7 @@ Command-line options
         dr.clearData()
 
     def go(self):
-        #embed()
+        
         # 2*autocorr length (ps), divided by step size (also in ps) - the block_size(s)
         #    i.e. the number of subsequent data points for each window over which data is uncorrelated
         autocorr_blocks = np.ceil(1+2*self.autocorr/self.ts).astype(int)
@@ -538,10 +539,7 @@ Command-line options
         start_idx = 0
         uncorr_start_idx = 0
 
-        if self.all_data.ndim == 1:
-            uncorr_data = np.zeros((uncorr_n_tot, ), dtype=np.float32)
-        elif self.all_data.ndim == 2:
-            uncorr_data = np.zeros((uncorr_n_tot, 2), dtype=np.float32)
+
         # Now gather the effective reduced bias_mat by accounting for autocorrelation -
         #   for each window i, average those rows into continuous blocks of size autocorr_nstep
         for i, block_size in enumerate(autocorr_blocks):
@@ -550,25 +548,14 @@ Command-line options
 
             # Start offset so the number of uncorrelated data points lines up
             remainder = remainders[i]
-            # average by slices of block_size for this window's data - results in this_uncorr_n_sample number of data points for each window
-            if self.all_data.ndim == 1:
-                data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size)).mean(axis=1)
-                uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = data_slice
-            elif self.all_data.ndim == 2:
-                data_slice = self.all_data[start_idx+remainder:start_idx+this_n_sample].reshape((this_uncorr_n_sample, block_size, 2)).mean(axis=1)
-                uncorr_data[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample, :] = data_slice
 
+            # average by slices of block_size for this window's data - results in this_uncorr_n_sample number of data points for each window
             bias_mat_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample, :].reshape((this_uncorr_n_sample, block_size, self.n_windows)).mean(axis=1)
             #uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size]
             uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = bias_mat_data_slice
 
             uncorr_start_idx += this_uncorr_n_sample
             start_idx += this_n_sample
-
-        if self.all_data.ndim == 1:
-            bins = np.arange(0, np.ceil(uncorr_data.max())+1, 1)
-            hist, bb = np.histogram(uncorr_data, bins=bins)
-            np.savetxt('uncorr_hist.dat', np.dstack((bb[:-1], hist)).squeeze())
 
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
