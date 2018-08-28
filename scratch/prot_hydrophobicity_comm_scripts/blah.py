@@ -18,6 +18,15 @@ def window_smoothing(arr, windowsize=5):
 
     return ret_arr
 
+def logsumexp(data, logweights):
+    maxpt = logweights.max()
+    logweights -= maxpt
+
+    return np.dot(np.exp(logweights), data) + maxpt
+    
+def get_avgs(data, logweights, phi_vals):
+    pass
+
 boot_dat = np.load('boot_fn_payload.dat.npy')
 n_boot = boot_dat.shape[0]
 
@@ -30,6 +39,7 @@ boot_neglogpdist_N = np.zeros_like(boot_neglogpdist)
 boot_fprime = np.zeros((n_boot, bb.size-2))
 
 max_N = 0
+phi_vals = np.arange(0, 10.1, 0.1) * beta
 
 for i, payload in enumerate(boot_dat):
     #print("doing {}".format(i))
