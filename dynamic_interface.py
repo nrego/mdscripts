@@ -170,6 +170,7 @@ Command-line options
 
         try:
             self.univ = u = MDAnalysis.Universe(args.grofile, args.trajfile)
+            self.univ.add_TopologyAttr('tempfactor')
         except:
             print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
             sys.exit()
