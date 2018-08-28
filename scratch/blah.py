@@ -14,12 +14,14 @@ y_space = np.sqrt(3.0)/2.0 * z_space
 curr_y = -y_space
 curr_z = 0
 
-nz = 14
-ny = nz+2
+nz = 12
+ny = nz#+2
 zlen = nz * z_space
 ylen = ny * y_space
 npts = nz * ny
 natoms = 13 * npts
+
+ag = ag[:npts]
 
 gridpts = np.zeros((npts, 3), dtype=float)
 
@@ -40,7 +42,7 @@ for i in range(npts):
         curr_z += z_space
 
     # check if we're a nm away from edges
-    cent = row_num > 3 and row_num < ny-4 and i % nz > 2 and i % nz < nz - 3
+    cent = row_num > 2 and row_num < ny-3 and i % nz > 2 and i % nz < nz - 3
 
     gridpts[i] = 0, curr_y, curr_z
 

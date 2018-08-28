@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 import argparse
-from scipy.interpolate import interp1d
+from scipy import interpolate
+from scipy.signal import savgol_filter
 from IPython import embed
 
 mpl.rcParams.update({'axes.labelsize': 20})
@@ -13,43 +14,46 @@ mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize': 25})
 mpl.rcParams.update({'legend.fontsize':18})
 
-def window_smoothing(arr, windowsize=5):
-    ret_arr = np.zeros_like(arr)
-    ret_arr[:] = float('nan')
 
-    for i in range(ret_arr.size):
-        ret_arr[i] = arr[i-windowsize:i+windowsize].mean()
+def get_diffs(arr):
+    fprime = np.zeros_like(arr)
+    fprime[...] = np.nan
+    fcurve = np.zeros_like(arr)
+    fcurve[...] = np.nan
 
-    return ret_arr
+    fprime[1:] = np.diff(arr) 
+    fcurve[2:] = np.diff(fprime[1:])
+
+    return fprime, fcurve
 
 def run(args):
 
+    dat = np.loadtxt(args.input)
+    bb = bb = dat[:,0]
+    fvn = dat[:,1]
+    
+    smooth_fvn = savgol_filter(fvn, args.window, 3)
+    smooth_fprime = savgol_filter(fvn, args.window, 3, deriv=1)
+    smooth_fcurve = savgol_filter(fvn, args.window, 3, deriv=2)
+    fprime, fcurve = get_diffs(fvn)
 
+    outarr = np.dstack((bb, fvn, smooth_fvn, fprime, smooth_fprime, fcurve, smooth_fcurve)).squeeze()
+    outhead = 'N    F(N)    [smooth]F(N)    F\'(N)    [smooth] F\'(N)    F\'\'(N)    [smooth] F\'\'(N) '
+    # Output data
+    np.savetxt('{}gradf.dat'.format(args.outprefix), outarr, header=outhead)
+
+
+    # Plotting
     fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, sharex=True, figsize=(6,10))
 
-    dat = np.loadtxt(args.input)
-    n_vals = bb = dat[:,0]
-    neglogpdist = dat[:,1]
+    ax1.plot(bb, fvn, label='raw data')
+    ax1.plot(bb, smooth_fvn, '--', label='smoothed')
 
-    smoothed_f = window_smoothing(neglogpdist, windowsize=args.window)
-    #embed()
-    # Derivative of F(N) w.r.t. N
-    fprime = np.diff(smoothed_f)
-    # ... and smooth this derivative
-    smoothed_fprime = window_smoothing(fprime, windowsize=args.window)
+    ax2.plot(bb, fprime, label='finite difference')
+    ax2.plot(bb, smooth_fprime, '--', label='smoothed')
 
-    # Second derivative
-    fcurve = np.diff(smoothed_fprime)
-    # .... and smooth it
-    smoothed_fcurve = window_smoothing(fcurve, windowsize=args.window)
-
-    ax1.plot(n_vals, neglogpdist)
-
-    ax2.plot(n_vals[:-1], fprime)
-    ax2.plot(n_vals[:-1], smoothed_fprime)
-
-    ax3.plot(n_vals[:-2], fcurve)
-    ax3.plot(n_vals[:-2], smoothed_fcurve)
+    ax3.plot(bb, fcurve, label='finite difference')
+    ax3.plot(bb, smooth_fcurve, '--', label='smoothed')
 
     ax3.set_xlabel(r'$N$')
     ax1.set_ylabel(r'$\beta F_V(N)$')
@@ -57,35 +61,22 @@ def run(args):
     ax3.set_ylabel(r'$\frac{\partial^2 \beta F_V(N)}{\partial N^2}$')
 
     fig.tight_layout()
+    ax1.legend()
+    ax2.legend()
+    ax3.legend()
 
     fig.savefig('{}fgrad.pdf'.format(args.outprefix))
 
     if args.interactive:
         plt.show()
 
-    # Find the minimum curvarture
-    min_idx = np.nanargmin(smoothed_fcurve)
-    min_val = smoothed_fcurve[min_idx]
-    min_n = n_vals[min_idx]
-
-    print("min: Nstar={:0.4f},  curvarture_star={:0.4f}".format(min_n, min_val))
-
-    headerstr = 'N   F(N)   [smoothed] Fprime(N)   [smoothed] Fprimeprime(N)  [smoothing window: {}]'.format(args.window)
-
-    outarr = np.empty((n_vals.size, 4))
-    outarr[:,0] = n_vals
-    outarr[:,1] = neglogpdist
-    outarr[1:,2] = smoothed_fprime
-    outarr[2:,3] = smoothed_fcurve
-
-    np.savetxt('{}fgrad.dat'.format(args.outprefix), outarr, header=headerstr)
-    np.savetxt('{}min_val.dat'.format(args.outprefix), [min_n, min_val])
 
 
 if __name__=='__main__':
 
     description= '''\
                 Calculate and output (smoothed) finite differences of a free energy profile 
+                using Savitsky-Gavloy filtering algorithm
 
                 Input file should be formatted as shape (n_bins, 2)
                 where first column is the bin values (i.e. N) and the second is F(N)
@@ -99,10 +90,10 @@ if __name__=='__main__':
                 '''
     parser = argparse.ArgumentParser( description=description)
 
-    parser.add_argument('-f', '--input', metavar='INFILE', type=str, default='neglogpdist_N.dat',
+    parser.add_argument('-f', '--input', metavar='INFILE', type=str, default='neglogpdist.dat',
                         help='Input data file name')
-    parser.add_argument('-w', '--window', type=int, default=5, 
-                        help='Length of smoothing window (default: 5 in either direction)')
+    parser.add_argument('-w', '--window', type=int, default=31, 
+                        help='Length of smoothing window (default: 31: i.e. 15 in either direction)')
     parser.add_argument('--interactive', action='store_true', default=False,
                         help='If true, display plots interactively (default: False)')
     parser.add_argument('--outprefix', type=str, 

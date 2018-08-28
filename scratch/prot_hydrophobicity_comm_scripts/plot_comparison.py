@@ -24,7 +24,7 @@ def window_smoothing(arr, windowsize=10):
     return ret_arr
 
 
-fnames = sorted( glob.glob('rv*/neglogpdist.dat') )
+fnames = sorted( glob.glob('sh_*/neglogpdist.dat') )
 phi_vals = beta*np.arange(0, 10, 0.1)
 
 for f in reversed(fnames):
