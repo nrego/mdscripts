@@ -30,20 +30,20 @@ prot.tempfactors = 0
 prot_heavies[buried_mask].tempfactors = 1
 prot_heavies.write('buried.pdb')
 prot.tempfactors = 0
-#assert prot.n_atoms == rho_dat.size
+assert prot_heavies.n_atoms == rho_dat.size
 
 for atm in prot:
     try:
         hydrophil = charge_assign[atm.resname][atm.name]
     except:
-        hydrophil = float(raw_input('enter hydrophilicity for atom {} of {} (-1 for hydrophobic, 1 for hydrophilic):  '.format(atm.name, atm.resname)))
+        hydrophil = float(raw_input('enter hydrophilicity for atom {} of {} (-1 for hydrophilic, 0 for hydrophobic):  '.format(atm.name, atm.resname)))
         charge_assign[atm.resname][atm.name] = hydrophil
     atm.tempfactor = hydrophil
 
 prot.write('prot_by_charge.pdb')
 
-hydrophil_mask_all = (prot.atoms.tempfactors == 1)
-hydrophob_mask_all = (prot.atoms.tempfactors == -1)
+hydrophil_mask_all = (prot.atoms.tempfactors == -1)
+hydrophob_mask_all = (prot.atoms.tempfactors == 0)
 
 n_hydrophil_all = hydrophil_mask_all.sum()
 n_hydrophob_all = hydrophob_mask_all.sum()
@@ -54,8 +54,8 @@ print("  N hydrophobic: {}".format(n_hydrophob_all))
 print("  frac hydrophilic: {}".format(n_hydrophil_all / n_atoms))
 
 # Just heavy atoms
-hydrophil_mask = (prot_heavies.tempfactors == 1)
-hydrophob_mask = (prot_heavies.tempfactors == -1)
+hydrophil_mask = (prot_heavies.tempfactors == -1)
+hydrophob_mask = (prot_heavies.tempfactors == 0)
 
 n_hydrophil = hydrophil_mask.sum()
 n_hydrophob = hydrophob_mask.sum()

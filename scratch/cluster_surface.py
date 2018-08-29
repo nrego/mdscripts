@@ -30,6 +30,8 @@ connectivity = kneighbors_graph(surf_pos, n_neighbors=10, include_self=False)
 
 scores = []
 
+embed()
+'''
 kvals = range(2,100)
 for k in kvals:
 	clust = sklearn.cluster.AgglomerativeClustering(n_clusters=k, linkage='ward', connectivity=connectivity)
@@ -43,5 +45,6 @@ scores = np.array(scores)
 
 max_idx = np.argmax(scores)
 print('best performance: k={} clusters'.format(kvals[max_idx]))
+'''
 
 

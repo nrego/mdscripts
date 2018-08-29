@@ -31,17 +31,19 @@ for res in rg:
     print("Residue: {}".format(res.resname))
     chrge = 0
     charge_dict[res.resname] = {}
-    ag = res.atoms.select_atoms('not name H*')
-    for atm in ag:
-        #embed()
-        hydrophil = 1 if np.abs(atm.charge) > thresh else -1
+    #ag = res.atoms.select_atoms('not name H*')
+    for atm in res.atoms:
+        
+        # Hydrophilic: -1;  Hydrophobic: 0
+        hydrophil = -1 if np.abs(atm.charge) > thresh else 0
         
         atm.tempfactor = hydrophil
         charge_dict[res.resname][atm.name] = hydrophil
         print("  atm: {}  hv: {}  charge: {}".format(atm.name, hydrophil, atm.charge))
         chrge += atm.charge
+        
     print("charge: {}".format(chrge))
     res.atoms.write("{}.pdb".format(res.resname))
 
-#with open('charge_assign.pkl', 'w') as f:
-#    pickle.dump(charge_dict, f)
+with open('charge_assign.pkl', 'w') as f:
+    pickle.dump(charge_dict, f)
