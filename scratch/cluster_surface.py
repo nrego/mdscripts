@@ -10,30 +10,30 @@ from IPython import embed
 import sklearn.cluster
 from sklearn import metrics
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import NearestNeighbors, KDTree
+
+from clustclass import DualClusterer
 
 univ = MDAnalysis.Universe('prot_heavies_by_charge.pdb')
-mask = univ.atoms.tempfactors == 0 # Surface hydrophobic atoms
+phob_mask = univ.atoms.tempfactors == 0 # Surface hydrophobic atoms
+phil_mask = univ.atoms.tempfactors == -1 # Surface hydrophilic atoms
 
-surf = univ.atoms[mask]
-surf_pos = surf.positions.copy()
+phob_surf = univ.atoms[phob_mask]
+phob_pos = phob_surf.positions
 
-n_tot = surf.n_atoms
+phil_surf = univ.atoms[phil_mask]
+phil_pos = phil_surf.positions
 
-nn = NearestNeighbors(n_neighbors=6)
-nn.fit(surf_pos)
-dist, ind = nn.kneighbors()
+n_tot = phob_surf.n_atoms
 
-# The distance of each point to its 6th nearest neighbor
-#   (in decreasing order)
-dist = np.sort(dist[:,-1])[::-1]
 
-plt.plot(dist)
-plt.show()
+for eps in [4.5]:
+    for min_samples in np.arange(6,7,1):
+        clust = sklearn.cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(phob_pos)
 
-for eps in np.arange(4.0, 6.5, 0.5):
-    for min_samples in np.arange(5,20,1):
-        labels = sklearn.cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(surf_pos).labels_
+        labels = clust.labels_
+        core_indices = clust.core_sample_indices_
+        n_cores = core_indices.size
         
         n_noise = (labels == -1).sum()
         clust_labels = labels[labels!=-1]
@@ -44,9 +44,21 @@ for eps in np.arange(4.0, 6.5, 0.5):
         except ValueError:
             n_largest_patch = 0
 
-        print("eps: {} min_n: {}  n_patch: {} largest_patch: {:0.2f} noise: {:0.2f}".format(eps, min_samples, n_clust, n_largest_patch/n_tot, n_noise/n_tot))
+        print("eps: {} min_n: {}  n_core: {} n_patch: {} largest_patch: {:0.2f} noise: {:0.2f}".format(eps, min_samples, n_cores, n_clust, n_largest_patch/n_tot, n_noise/n_tot))
+
+eps = 4.5
+min_samples = 7
 
 
-labels = sklearn.cluster.DBSCAN(eps=4, min_samples=5).fit(surf_pos).labels_
-surf.tempfactors = labels
-surf.write('surf.pdb')
+clust = sklearn.cluster.DBSCAN(eps=eps, min_samples=min_samples).fit(phob_pos)
+labels = clust.labels_
+core_indices = clust.core_sample_indices_
+
+clust = DualClusterer(eps, min_samples, phob_pos, phil_pos)
+
+cores = phob_surf[core_indices]
+cores.names = 'COR'
+phob_surf.tempfactors = labels
+embed()
+phob_surf.write('cluster.pdb')
+
