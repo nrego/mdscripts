@@ -28,7 +28,6 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-from IPython import embed
 
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
@@ -614,7 +613,6 @@ Command-line options
             f_k_boot[lb:ub, :] = f_k_slice
             log.debug("this boot weights: {}".format(f_k_slice))
             boot_res[lb:ub] = boot_res_slice
-            embed()
             del f_k_slice
 
         # Get SE from bootstrapped samples
