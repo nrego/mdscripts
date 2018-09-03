@@ -23,14 +23,12 @@ boot_dat = np.load('boot_fn_payload.dat.npy')
 n_boot = boot_dat.shape[0]
 
 logweights_0, dat_0, dat_N_0 = boot_dat[0]
-bb = np.arange(0,2000,1.)
-
-boot_neglogpdist = np.zeros((n_boot, bb.size-1))
-boot_neglogpdist_N = np.zeros_like(boot_neglogpdist)
-boot_fprime = np.zeros((n_boot, bb.size-2))
 
 max_N = 0
 phi_vals = np.arange(0, 10.1, 0.1) * beta
+
+boot_avg = np.zeros((n_boot, len(phi_vals)))
+boot_var = np.zeros_like(boot_avg)
 
 for i, payload in enumerate(boot_dat):
     #print("doing {}".format(i))
@@ -38,32 +36,25 @@ for i, payload in enumerate(boot_dat):
 
     max_N = np.ceil(max(max_N, np.max((all_dat, all_dat_N)))) + 1
 
-    neglogpdist = get_neglogpdist(all_dat.astype(float), bb, logweights)
-    neglogpdist_N = get_neglogpdist(all_dat_N.astype(float), bb, logweights)
+    for idx, phi in enumerate(phi_vals):
+        bias = phi * all_dat
+        this_weights = logweights - bias
+        this_weights -= this_weights.max()
+        this_weights = np.exp(this_weights)
+        this_weights /= this_weights.sum()
 
-    boot_neglogpdist[i] = neglogpdist
-    boot_neglogpdist_N[i] = neglogpdist_N
+        this_avg_n = np.dot(this_weights, all_dat_N)
+        this_avg_nsq = np.dot(this_weights, all_dat_N**2)
+        this_var_n = this_avg_nsq - this_avg_n**2
 
-range_mask = bb < max_N
+        boot_avg[i,idx] = this_avg_n
+        boot_var[i,idx] = this_var_n
 
-bb = bb[range_mask]
-range_mask = range_mask[:-1]
+avg_mean = boot_avg.mean(axis=0)
+avg_err = boot_avg.std(axis=0, ddof=1)
 
-boot_neglogpdist = np.ma.masked_invalid(boot_neglogpdist[:, range_mask])
-avg_neglogpdist = boot_neglogpdist.mean(axis=0)
-err_neglogpdist = boot_neglogpdist.std(axis=0, ddof=1)
-mask = avg_neglogpdist.mask
-avg_neglogpdist.data[mask] = 'inf'
+var_mean = boot_var.mean(axis=0)
+var_err = boot_avg.std(axis=0, ddof=1)
 
-outarr = np.vstack((bb, avg_neglogpdist, err_neglogpdist)).T
-np.savetxt('neglogpdist.dat', outarr)
-
-boot_neglogpdist_N = np.ma.masked_invalid(boot_neglogpdist_N[:, range_mask])
-avg_neglogpdist_N = boot_neglogpdist_N.mean(axis=0)
-err_neglogpdist_N = boot_neglogpdist_N.std(axis=0, ddof=1)
-mask = avg_neglogpdist_N.mask
-avg_neglogpdist_N.data[mask] = 'inf'
-
-outarr_N = np.vstack((bb, avg_neglogpdist_N, err_neglogpdist_N)).T
-np.savetxt('neglogpdist_N.dat', outarr_N)
-
+plt.savetxt('n_v_phi.dat', np.vstack((phi_vals, avg_mean, avg_err)))
+plt.savetxt('var_n_v_phi.dat', np.vstack((phi_vals, var_mean, var_err)))
