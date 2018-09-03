@@ -74,8 +74,20 @@ masked_neglogpdist_N = np.ma.masked_invalid(boot_neglogpdist_N)
 avg_neglogpdist = masked_neglogpdist.mean(axis=0)
 err_neglogpdist = masked_neglogpdist.std(axis=0, ddof=1)
 
+mask = avg_neglogpdist.mask
+avg_neglogpdist = avg_neglogpdist.data
+avg_neglogpdist[mask] = np.float('inf')
+err_neglogpdist = err_neglogpdist.data
+err_neglogpdist[mask] = np.float('inf')
+
 avg_neglogpdist_N = masked_neglogpdist_N.mean(axis=0)
 err_neglogpdist_N = masked_neglogpdist_N.std(axis=0, ddof=1)
+
+mask_N = avg_neglogpdist_N.mask
+avg_neglogpdist_N = avg_neglogpdist_N.data
+avg_neglogpdist_N[mask] = np.float('inf')
+err_neglogpdist_N = err_neglogpdist_N.data
+err_neglogpdist_N[mask] = np.float('inf')
 
 np.savetxt('neglogpdist.dat', np.vstack((bb[:-1], avg_neglogpdist, err_neglogpdist)).T)
 np.savetxt('neglogpdist_N.dat', np.vstack((bb[:-1], avg_neglogpdist_N, err_neglogpdist_N)).T)
