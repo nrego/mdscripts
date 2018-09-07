@@ -25,16 +25,17 @@ class MDSystem():
     rho_ref: shape (n_prot_heavies, ): average number of waters per protein
         heavy atom
     """
-    def __init__(self, top, struct, rho_ref, **kwargs):
+    def __init__(self, top, struct, **kwargs):
 
         self.univ = MDAnalysis.Universe(top, struct)
         self.univ.add_TopologyAttr('tempfactor')
-        self.prot = self.univ.select_atoms('protein')
-        self.prot_h = self.univ.select_atoms('protein and not name H*')
-        self.prot.tempfactors = 0
+        for seg in self.univ.segments:
+            seg.segid = seg.segid.split('_')[-1]
 
-        self.rho_ref = rho_ref
-        assert rho_ref.size == self.prot_h.n_atoms
+        self.prot = self.univ.atoms
+        self.prot_h = self.univ.select_atoms('not name H*')
+        self.hydrogens = self.univ.select_atoms('name H*')
+        self.prot.tempfactors = 0
 
         for k,v in kwargs.iteritems():
             self.k = v
@@ -91,14 +92,16 @@ class MDSystem():
 
         return (phob & surf).sum()
 
-    def find_buried(self, nb):
-        buried_mask = self.rho_ref < nb
+    # force all hydrogens to inherit tempfactors from heavy atom
+    def _apply_to_h(self):
+        for atm in self.hydrogens:
+            atm.tempfactor = atm.bonded_atoms[0].tempfactor
+
+    def find_buried(self, rho_dat, nb):
+        buried_mask = rho_dat < nb
         self.prot_h[buried_mask].tempfactors = -2
 
-        for atm in self.prot:
-            # If hydrogen, check if the atom it's bound to is buried
-            if atm.name[0] == 'H':  
-                atm.tempfactor = atm.bonded_atoms[0].tempfactor
+        self._apply_to_h()
 
     def assign_hydropathy(self, charge_assign):
 

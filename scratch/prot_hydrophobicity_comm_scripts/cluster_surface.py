@@ -18,10 +18,15 @@ import sys
 
 logging.captureWarnings(True)
 
-name = 'prot_by_charge.pdb'
+name = 'prot_heavies_by_charge.pdb'
 univ = MDAnalysis.Universe(name)
 phob_mask = univ.atoms.tempfactors == 0 # Surface hydrophobic atoms
 phil_mask = univ.atoms.tempfactors == -1 # Surface hydrophilic atoms
+
+surf_mask = univ.atoms.tempfactors > -2 # all surface atoms
+
+all_surf = univ.atoms[surf_mask]
+all_pos = all_surf.positions
 
 phob_surf = univ.atoms[phob_mask]
 phob_pos = phob_surf.positions
@@ -49,10 +54,11 @@ if arg == '-c':
 
     id4 = u2.select_atoms('resid 37 and name CD')[0].index
 
-    for eps in np.arange(4.0, 6.5, 0.5):
-        for min_samples in np.arange(1,12,1):
+    for eps in np.arange(4.5, 5.0, 0.5):
+        for min_samples in np.arange(1,50,1):
 
             for diff in [-1, 0, 1, 2, 3, 4, 5, 6]:
+            #for diff in [1000]:
             
                 clust = DualClusterer(eps, min_samples, phob_pos, min_samples+diff, phil_pos).cluster()
                 labels = clust.labels
@@ -76,14 +82,37 @@ if arg == '-c':
                 #dbscan = sklearn.cluster.DBSCAN(eps, min_samples).fit(phob_pos)
                 #assert np.array_equal(dbscan.labels_, labels)
 
-
 eps = 4.5
-min_samples = 6
+min_samples = 5
 diff = 0
 
 clust = DualClusterer(eps, min_samples, phob_pos, min_samples+diff, phil_pos).cluster()
 core_indices = clust.core_sample_indices
 labels = clust.labels
+
+
+tree_phob = KDTree(phob_pos)
+res = tree_phob.query_radius(all_pos, r=eps)
+nn_phob = []
+for arr in res:
+    nn_phob.append(arr.size)
+nn_phob = np.array(nn_phob)
+
+tree_phil = KDTree(phil_pos)
+res = tree_phil.query_radius(all_pos, r=eps)
+nn_phil = []
+for arr in res:
+    nn_phil.append(arr.size)
+nn_phil = np.array(nn_phil)
+
+bb = np.arange(0, max(nn_phob.max(), nn_phil.max()))
+hist, bb = np.histogram(nn_phob, bins=bb)
+plt.plot(bb[:-1], hist, label='phob')
+hist, bb = np.histogram(nn_phil, bins=bb)
+plt.plot(bb[:-1], hist, label='phil')
+plt.legend()
+plt.show()
+
 
 cores = phob_surf[core_indices]
 for core in cores:
@@ -112,11 +141,11 @@ if name == 'prot_by_charge.pdb':
     clustout = 'cluster.pdb'
 else:
     clustout = 'cluster_h.pdb'
-phob_surf[phob_surf.tempfactors == largest_patch_label].tempfactors = -2
+#phob_surf[phob_surf.tempfactors == largest_patch_label].tempfactors = -2
 phob_surf.write(clustout)
 
-outstr = "eps: {} min_n: {} diff: {} n_surf: {} n_phob_surf: {} per hydrophobic: {:0.2f} n_core: {} n_patch: {} largest_patch: {:0.2f} patch: {:0.2f}".format(eps, min_samples, diff, 
+outstr = "eps: {} min_n: {} diff: {} n_surf: {} n_phob_surf: {} per hydrophobic: {:0.2f} n_core: {} n_patch: {} largest_patch: {:0.2f} ({}) patch: {:0.2f}".format(eps, min_samples, diff, 
                                                                                                                      n_tot, phob_surf.n_atoms, phob_surf.n_atoms / n_tot,
-                                                                                                                     n_cores, n_clust, n_largest_patch/n_tot, n_patch/n_tot)
+                                                                                                                     n_cores, n_clust, n_largest_patch/n_tot, n_largest_patch, n_patch/n_tot)
 print(outstr)
 

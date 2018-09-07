@@ -22,7 +22,7 @@ name_lup = {'1brs': 'barnase',
             '2b97': 'hydrophobin',
             '3hhp': 'malate dehydrogenase'}
 
-order = ['hydrophobin', 'capsid', 'lysozyme', 'mdm2', 'malate dehydrogenase', 'barnase']
+order = ['hydrophobin', 'capsid', 'mdm2', 'malate dehydrogenase', 'barnase', 'lysozyme']
 
 from constants import k
 

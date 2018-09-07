@@ -6,18 +6,36 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 
 from IPython import embed
-
 from mdtools import MDSystem
-
 import cPickle as pickle
+import argparse
 
-with open('charge_assign.pkl', 'r') as f:
+parser = argparse.ArgumentParser('color protein atoms by their hydrophilicity, '
+                                 'optionally excluding buried atoms or applying mask')
+parser.add_argument('-s', '--top', type=str, required=True,
+                    help='Topology input file (tpr or gro file; need tpr to color buried hydrogens)')
+parser.add_argument('-c', '--struct', type=str,
+                    help='Structure file (gro, pdb, etc) - output will have same positions')
+parser.add_argument('-p', '--charge', type=str, default='charge_assign.pkl',
+                    help='pickled double dictionary of [res][atom_type]: hydrophilicity; '
+                         'unknown atom types will prompt user')
+parser.add_argument('--rhodata', type=str,
+                    help='Optionally supply rho data file, for determining buried atoms')
+parser.add_argument('-nb', '--nburied', type=float, default=5,
+                    help='If rhodata supplied, atoms are considered buried if they have fewer than '
+                         'this many average water molecules')
+
+args = parser.parse_args()
+
+with open(args.charge, 'r') as f:
     charge_assign = pickle.load(f)
 
-rho_dat = np.load('rho_data_dump_rad_6.0.dat.npz')['rho_water'].mean(axis=0)
+sys = MDSystem(args.top, args.struct)
 
-sys = MDSystem('top.tpr', 'cent.gro', rho_dat)
-sys.find_buried(nb=5)
+if args.rhodata is not None:
+    rho_dat = np.load(args.rhodata)['rho_water'].mean(axis=0)
+    sys.find_buried(rho_dat, nb=args.nburied)
+
 sys.assign_hydropathy(charge_assign)
 
 sys.prot.write('prot_by_charge.pdb')
