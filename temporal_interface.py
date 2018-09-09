@@ -30,7 +30,7 @@ from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.temporal_interface')
 
-
+from IPython import embed
 ## Try to avoid round-off errors as much as we can...
 rho_dtype = np.float32
 
@@ -297,12 +297,12 @@ class TemporalInterfaceSubcommand(Subcommand):
             a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
 
         with mdtraj.formats.PDBTrajectoryFile('{}_norm.pdb'.format(self.outpdb), 'w') as f:
-            f.write(gridpts, top, tempfactors=tempfactors)
+            f.write(gridpts, top, bfactors=tempfactors)
 
         # Do it again with the absolute rho values (rho_avg instead of rho_avg_norm)
         tempfactors = self.rho_avg * 100
         with mdtraj.formats.PDBTrajectoryFile('{}_avg.pdb'.format(self.outpdb), 'w') as f:
-            f.write(gridpts, top, tempfactors=tempfactors)
+            f.write(gridpts, top, bfactors=tempfactors)
 
     def setup_grid(self):
         ''' Derived classes must figure out how to appropriately initialize voxel grid'''
@@ -409,7 +409,7 @@ command
         neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
         far_pt_idx = np.setdiff1d(np.arange(self.n_pts_total), neighbor_idx)
-
+        #embed()
         # Now find all gridpoints **closer** than min_water_dist A to solute
         #   so we can set the rho to 1.0 (so we don't produce an interface over the solute's excluded volume)
         neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=self.min_water_dist)
@@ -435,7 +435,7 @@ command
         log.info('Excluding voxels that are always empty...')
         log.info('n_voxels prior to excluding empties: {}'.format(self.n_pts_included))
 
-        zero_indices = np.where(self.rho_avg==0)[0]
+        zero_indices = np.where(self.rho_avg==-1)[0]
         good_indices = np.arange(self.n_pts_included, dtype=np.int)
         good_indices = np.setdiff1d(good_indices, zero_indices)
         # index of included pt => its index in the global scheme
