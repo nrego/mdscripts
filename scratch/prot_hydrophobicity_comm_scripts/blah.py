@@ -51,8 +51,8 @@ for i, payload in enumerate(boot_dat):
         this_weights = np.exp(this_weights)
         this_weights /= this_weights.sum()
 
-        this_avg_n = np.dot(this_weights, all_dat)
-        this_avg_nsq = np.dot(this_weights, all_dat**2)
+        this_avg_n = np.dot(this_weights, all_dat_N)
+        this_avg_nsq = np.dot(this_weights, all_dat_N**2)
         this_var_n = this_avg_nsq - this_avg_n**2
 
         boot_avg[i,idx] = this_avg_n
@@ -62,7 +62,7 @@ avg_mean = boot_avg.mean(axis=0)
 avg_err = boot_avg.std(axis=0, ddof=1)
 
 var_mean = boot_var.mean(axis=0)
-var_err = boot_avg.std(axis=0, ddof=1)
+var_err = boot_var.std(axis=0, ddof=1)
 
 np.savetxt('n_v_phi.dat', np.vstack((phi_vals, avg_mean, avg_err)).T)
 np.savetxt('var_n_v_phi.dat', np.vstack((phi_vals, var_mean, var_err)).T)

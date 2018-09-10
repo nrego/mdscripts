@@ -9,10 +9,10 @@ import numpy as np
 import glob, os
 
 mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 30})
-mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize': 50})
-mpl.rcParams.update({'legend.fontsize':20})
+mpl.rcParams.update({'legend.fontsize':30})
 
 name_lup = {'1brs': 'barnase',
             '1ubq': 'ubiquitin',
@@ -45,12 +45,12 @@ indices = np.arange(n_bars)
 width = 1
 
 for idx, label in enumerate(names):
-    ax.bar(indices[idx], vals[idx, 3], width=width, label=label)
+    ax.bar(indices[idx], vals[idx, 1]/vals[idx,0], width=width, label=label)
     
 ax.set_xticks([])
-#ax.set_yticks(np.arange(0.3, 0.65,0.05))
-#ax.set_ylim(0.3, 0.55)
-#ax.legend()
+#ax.set_yticks(np.arange(0.5, 0.70,0.05))
+#ax.set_ylim(0.5, 0.66)
+#ax.legend(loc=2)
 
 plt.tight_layout()
 plt.show()

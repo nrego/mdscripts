@@ -25,16 +25,16 @@ class MDSystem():
     rho_ref: shape (n_prot_heavies, ): average number of waters per protein
         heavy atom
     """
-    def __init__(self, top, struct, **kwargs):
+    def __init__(self, top, struct, sel_spec='protein', **kwargs):
 
         self.univ = MDAnalysis.Universe(top, struct)
         self.univ.add_TopologyAttr('tempfactor')
         for seg in self.univ.segments:
             seg.segid = seg.segid.split('_')[-1]
 
-        self.prot = self.univ.atoms
-        self.prot_h = self.univ.select_atoms('not name H*')
-        self.hydrogens = self.univ.select_atoms('name H*')
+        self.prot = self.univ.select_atoms('({})'.format(sel_spec))
+        self.prot_h = self.univ.select_atoms('({}) and not name H*'.format(sel_spec))
+        self.hydrogens = self.univ.select_atoms('({}) and name H*'.format(sel_spec))
         self.prot.tempfactors = 0
 
         for k,v in kwargs.iteritems():

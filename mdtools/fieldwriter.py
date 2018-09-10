@@ -188,7 +188,7 @@ class RhoField:
             mesh = self.meshpts[frame]
             curr_time = np.array([self.time[frame]])
         else:
-            raise NotImplementedError, "need to make mesh for rho_avg..."
+            mesh = self.meshpts[0]
 
         n_atoms = mesh.shape[0]
         mesh = mesh[np.newaxis, ...] 
