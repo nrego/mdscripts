@@ -6,7 +6,7 @@ kt = k*300
 beta = 1/kt
 
 def plt_errorbars(bb, loghist, errs):
-    plt.fill_between(bb[:-1], loghist-errs, loghist+errs, alpha=0.5)
+    plt.fill_between(bb, loghist-errs, loghist+errs, alpha=0.5)
 
 
 def logsumexp(data, logweights):
