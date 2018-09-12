@@ -46,27 +46,35 @@ oh_residues = oh_u.residues[-36:]
 # number of OH groups
 n_group = 9
 # Total number of patterns
-n_batch = 100
+n_batch = 1
 patterns = []
 
+i_pattern = 0
 
+head_cg = univ.residues[-36:].atoms.select_atoms('resname CH3 and name CT').center_of_geometry()
 while len(patterns) < n_batch:
+
     this_choice = sorted(np.random.choice(cent_ids, size=n_group, replace=False))
     if this_choice in patterns:
         continue
-    else:
-        patterns.append(this_choice)
 
-patterns = np.array(patterns)
-
-for i_pattern, res_ids in enumerate(patterns):
-    newuniv = generate_pattern(univ, oh_u, res_ids)
+    newuniv = generate_pattern(univ, oh_u, this_choice)
     head_groups = newuniv.residues[-36:].atoms.select_atoms('resname OH and type O')
 
     sq_dist = np.sum((head_groups.positions - head_groups.center_of_geometry())**2, axis=1)
     rms = np.sqrt(sq_dist.mean())
-    print('pos {:03d}: rms: {:.1f}'.format(i_pattern, rms))
+    centroid_dist = np.linalg.norm(head_groups.center_of_geometry() - head_cg)
+    if rms < 13:
+        continue
+
+    
+    patterns.append(this_choice)
+    print('pos {:03d}: rms: {:.1f} cog_dist: {:.1f}'.format(i_pattern, rms, centroid_dist))
+
     newuniv.atoms.write('pos{:03d}.gro'.format(i_pattern))
+    i_pattern += 1
+
+patterns = np.array(patterns)
 
 
 np.savetxt('patterns.dat', patterns)
