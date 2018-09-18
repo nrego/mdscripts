@@ -11,41 +11,7 @@ from matplotlib import pyplot as plt
 
 import numpy as np
 
-
-def find_buried(infile, univ_infile, avg_excl=5):
-    univ = MDAnalysis.Universe(univ_infile)
-
-    water_avg_0 = np.load(infile)['rho_water'].mean(axis=0)
-
-    print("n prot atoms: {}".format(water_avg_0.size))
-
-    bb = np.arange(0,50,binspace)
-    hist, bb = np.histogram(water_avg_0, bins=bb, normed=True)
-    cum_hist = np.diff(bb)[0]*np.cumsum(hist)
-
-    ax1 = plt.gca()
-    ax2 = ax1.twinx()
-
-    ax1.bar(bb[:-1], hist, align='edge', width=binspace)
-    ax2.plot(bb[1:], cum_hist, '-k')
-
-    #plt.show()
-
-
-    print("excluding all with atoms with <= {} average waters".format(avg_excl))
-
-    buried_mask = water_avg_0 <= avg_excl
-    surf_mask = ~buried_mask
-
-    print("{} out of {} atoms excluded ({} surface remain)".format(buried_mask.sum(), water_avg_0.size, surf_mask.sum()))
-
-    univ.atoms[buried_mask].tempfactors = 50
-
-    univ.atoms.write('buried_masked_equil.pdb')
-    np.savetxt('buried_mask.dat', buried_mask, fmt='%1d')
-    np.savetxt('surf_mask.dat', surf_mask, fmt='%1d')
-
-
+from mdtools import MDSystem
 
 
 ## Run from phi_sims directory
@@ -58,4 +24,4 @@ binspace = 1
 # Buried if <= this 
 avg_excl = 5
 
-find_buried(infile, univ_infile, avg_excl)
+
