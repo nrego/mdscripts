@@ -25,13 +25,15 @@ logweights_0, dat_0, dat_N_0 = boot_dat[0]
 
 bb = np.arange(0, 2001, 1).astype(float)
 max_N = 0
-phi_vals = np.arange(0, 10.1, 0.1) * beta
+phi_vals = np.arange(0, 4.1, 0.01) #* beta
 
 boot_avg = np.zeros((n_boot, len(phi_vals)))
 boot_var = np.zeros_like(boot_avg)
 
 boot_neglogpdist = np.zeros((n_boot, bb.size-1))
 boot_neglogpdist_N = np.zeros_like(boot_neglogpdist)
+
+boot_peak_sus = np.zeros(n_boot)
 
 for i, payload in enumerate(boot_dat):
     #print("doing {}".format(i))
@@ -51,12 +53,15 @@ for i, payload in enumerate(boot_dat):
         this_weights = np.exp(this_weights)
         this_weights /= this_weights.sum()
 
-        this_avg_n = np.dot(this_weights, all_dat_N)
-        this_avg_nsq = np.dot(this_weights, all_dat_N**2)
+        this_avg_n = np.dot(this_weights, all_dat)
+        this_avg_nsq = np.dot(this_weights, all_dat**2)
         this_var_n = this_avg_nsq - this_avg_n**2
 
         boot_avg[i,idx] = this_avg_n
         boot_var[i,idx] = this_var_n
+
+    max_idx = np.argmax(boot_var[i])
+    boot_peak_sus[i] = phi_vals[max_idx]
 
 avg_mean = boot_avg.mean(axis=0)
 avg_err = boot_avg.std(axis=0, ddof=1)
@@ -92,5 +97,6 @@ err_neglogpdist_N[mask] = np.float('inf')
 np.savetxt('neglogpdist.dat', np.vstack((bb[:-1], avg_neglogpdist, err_neglogpdist)).T)
 np.savetxt('neglogpdist_N.dat', np.vstack((bb[:-1], avg_neglogpdist_N, err_neglogpdist_N)).T)
 
-
-
+avg_peak_sus = boot_peak_sus.mean()
+err_peak_sus = boot_peak_sus.std(ddof=1)
+np.savetxt('peak_sus.dat', [avg_peak_sus, err_peak_sus])

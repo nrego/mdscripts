@@ -13,9 +13,10 @@ mpl.rcParams.update({'ytick.labelsize': 60})
 mpl.rcParams.update({'axes.titlesize': 50})
 mpl.rcParams.update({'legend.fontsize':30})
 
+homedir = os.environ['HOME']
 
 beta = 1/(k*300)
-fnames = sorted( glob.glob('*/n_v_phi.dat') )
+fnames = sorted( glob.glob('*/var_n_v_phi.dat') )
 
 radii = []
 peak_sus = []
@@ -26,8 +27,8 @@ def plt_errorbars(bb, vals, errs, **kwargs):
 #alpha = lambda dat: 1/dat[0,2]
 #c = lambda dat: 1 - (dat[0,1] / dat[0,2])
 
-alpha = lambda dat: 1/dat[0,1]
-#alpha = lambda dat: 1
+#alpha = lambda dat: 1/dat[0,1]
+alpha = lambda dat: 1
 c = lambda dat: 0
 
 avg_x = lambda dat: alpha(dat) * dat[:,1] + c(dat)
@@ -48,25 +49,24 @@ for i, fname in enumerate(reversed(fnames)):
     max_phi = dat[max_idx,0]
     peak_sus.append(max_phi)
 
-    if i in [0,1,2,3,4]:
-        #plt.errorbar(dat[:,0], var_x(dat), yerr=err_dat[:,1], label=r'$R_V={}$'.format(rad))
-        #ax.scatter(dat[max_idx, 0], dat[max_idx, 1], s=500, linewidths=4, facecolor='none', edgecolor='k', zorder=3)
-        ax.plot(dat[:,0], dat[:,1] / dat[0,1], linewidth=8, label=r'$R_v={:.1f}$  nm'.format(rad))
+    if i in [1,2,3]:
+        ax.scatter(dat[max_idx, 0], dat[max_idx, 1], s=500, linewidths=4, facecolor='none', edgecolor='k', zorder=3)
+        ax.errorbar(dat[:,0], dat[:,1], yerr=dat[:,0], linewidth=8, label=r'$R_v={:.1f}$  nm'.format(rad))
         
 
 radii = np.array(radii)
-peak_sus = beta*np.array(peak_sus)
+peak_sus = np.array(peak_sus)
 
 #plt.ylabel(r'$\langle X_V \rangle_{\phi}$')
-ax.set_ylabel(r'$\langle X_v \rangle_\phi$')
+ax.set_ylabel(r'$\chi_v$')
 ax.set_xlabel(r'$\beta \phi$')
 ax.legend(handlelength=1)
-ax.set_xlim(0,4)
-#ax.set_xticks([1.5,2.0])
+ax.set_xlim(0,2.5)
+ax.set_xticks([1.5,2.0])
 ymin, ymax = plt.ylim()
 ax.set_ylim(0, ymax)
 fig.tight_layout()
-plt.savefig('/Users/nickrego/Desktop/avg_by_r.pdf')
+plt.savefig('{}/Desktop/avg_by_r.pdf'.format(homedir))
 plt.show()
 
 fig, ax = plt.subplots(figsize=(9.5,8.5))
@@ -93,6 +93,6 @@ ax.set_ylabel(r'$\beta \phi^*$')
 ax.set_xlim(0.9,1.7)
 ax.set_ylim(0.45, 1.04)
 fig.tight_layout()
-plt.savefig('/Users/nickrego/Desktop/phistar_by_r.pdf')
+plt.savefig('{}/Desktop/phistar_by_r.pdf'.format(homedir))
 plt.show()
 #plt.legend()
