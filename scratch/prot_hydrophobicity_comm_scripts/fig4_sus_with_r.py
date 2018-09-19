@@ -11,11 +11,11 @@ mpl.rcParams.update({'axes.labelsize': 80})
 mpl.rcParams.update({'xtick.labelsize': 60})
 mpl.rcParams.update({'ytick.labelsize': 60})
 mpl.rcParams.update({'axes.titlesize': 50})
-mpl.rcParams.update({'legend.fontsize':40})
+mpl.rcParams.update({'legend.fontsize':30})
 
 
 beta = 1/(k*300)
-fnames = sorted( glob.glob('*/var_n_v_phi.dat') )
+fnames = sorted( glob.glob('*/n_v_phi.dat') )
 
 radii = []
 peak_sus = []
@@ -26,8 +26,8 @@ def plt_errorbars(bb, vals, errs, **kwargs):
 #alpha = lambda dat: 1/dat[0,2]
 #c = lambda dat: 1 - (dat[0,1] / dat[0,2])
 
-#alpha = lambda dat: 1/dat[0,1]
-alpha = lambda dat: 1
+alpha = lambda dat: 1/dat[0,1]
+#alpha = lambda dat: 1
 c = lambda dat: 0
 
 avg_x = lambda dat: alpha(dat) * dat[:,1] + c(dat)
@@ -35,6 +35,7 @@ var_x = lambda dat: alpha(dat)**2 * dat[:,2]
 
 fig, ax = plt.subplots(figsize=(11.1,8.8))
 #for i, fname in enumerate(reversed(fnames[1:-1])):
+
 for i, fname in enumerate(reversed(fnames)):
 
     rad = float(os.path.dirname(fname).split('_')[-1]) / 100
@@ -47,25 +48,25 @@ for i, fname in enumerate(reversed(fnames)):
     max_phi = dat[max_idx,0]
     peak_sus.append(max_phi)
 
-    if i in [1,2,3]:
+    if i in [0,1,2,3,4]:
         #plt.errorbar(dat[:,0], var_x(dat), yerr=err_dat[:,1], label=r'$R_V={}$'.format(rad))
-        ax.scatter(dat[max_idx, 0], dat[max_idx, 1], s=500, linewidths=4, facecolor='none', edgecolor='k', zorder=3)
-        ax.plot(dat[:,0], dat[:,1], linewidth=8, label=r'$R_v={:.1f}$  nm'.format(rad))
+        #ax.scatter(dat[max_idx, 0], dat[max_idx, 1], s=500, linewidths=4, facecolor='none', edgecolor='k', zorder=3)
+        ax.plot(dat[:,0], dat[:,1] / dat[0,1], linewidth=8, label=r'$R_v={:.1f}$  nm'.format(rad))
         
 
 radii = np.array(radii)
 peak_sus = beta*np.array(peak_sus)
 
 #plt.ylabel(r'$\langle X_V \rangle_{\phi}$')
-ax.set_ylabel(r'$\chi_v$')
+ax.set_ylabel(r'$\langle X_v \rangle_\phi$')
 ax.set_xlabel(r'$\beta \phi$')
-ax.legend(loc=1,handlelength=1)
-ax.set_xlim(1,2.5)
-ax.set_xticks([1.5,2.0])
+ax.legend(handlelength=1)
+ax.set_xlim(0,4)
+#ax.set_xticks([1.5,2.0])
 ymin, ymax = plt.ylim()
 ax.set_ylim(0, ymax)
 fig.tight_layout()
-plt.savefig('/Users/nickrego/Desktop/sus_by_r.pdf')
+plt.savefig('/Users/nickrego/Desktop/avg_by_r.pdf')
 plt.show()
 
 fig, ax = plt.subplots(figsize=(9.5,8.5))

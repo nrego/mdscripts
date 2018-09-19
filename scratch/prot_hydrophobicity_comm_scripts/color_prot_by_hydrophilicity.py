@@ -40,12 +40,21 @@ sys.assign_hydropathy(charge_assign)
 
 sys.prot.write('prot_by_charge.pdb')
 sys.prot_h.write('prot_heavies_by_charge.pdb')
+surf_mask = sys.surf_mask
+surf = sys.prot[surf_mask]
+n_surf_residues = surf.residues.n_residues
+charged_res = surf.select_atoms('resname HIS or resname ARG or resname LYS or resname ASP or resname GLU').residues
+n_charge_surf_res = charged_res.n_residues
 
 print("Total atoms: {}".format(sys.n_prot_tot))
 print("N surf: {}".format(sys.n_surf))
 print("  N hydrophilic: {}".format(sys.n_phil))
 print("  N hydrophobic: {}".format(sys.n_phob))
-print("  frac hydrophilic: {}".format(sys.n_phil/sys.n_surf))
+print("  frac hydrophilic: {:1.2f}".format(sys.n_phil/sys.n_surf))
+print("  frac hydrophobic: {:1.2f}".format(sys.n_phob/sys.n_surf))
+print("  n charged residues: {}".format(n_charge_surf_res))
+print("  n tot surf resiudes: {}".format(n_surf_residues))
+print("  frac charged residues: {:1.2f}".format(n_charge_surf_res/n_surf_residues))
 
 print("Heavy atoms: {}".format(sys.n_prot_h_tot))
 print("N surf: {}".format(sys.n_surf_h))

@@ -92,6 +92,11 @@ class MDSystem():
 
         return (phob & surf).sum()
 
+    @property
+    def surf_mask(self):
+        return self.prot.tempfactors != BURIED
+    
+
     # force all hydrogens to inherit tempfactors from heavy atom
     def _apply_to_h(self):
         for atm in self.hydrogens:
@@ -99,7 +104,7 @@ class MDSystem():
 
     def find_buried(self, rho_dat, nb):
         buried_mask = rho_dat < nb
-        self.prot_h[buried_mask].tempfactors = -2
+        self.prot_h[buried_mask].tempfactors = BURIED
 
         self._apply_to_h()
 
