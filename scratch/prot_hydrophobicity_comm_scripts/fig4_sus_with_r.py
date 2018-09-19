@@ -20,6 +20,8 @@ fnames = sorted( glob.glob('*/var_n_v_phi.dat') )
 
 radii = []
 peak_sus = []
+peak_sus_avg = []
+peak_sus_err = []
 
 def plt_errorbars(bb, vals, errs, **kwargs):
     plt.fill_between(bb, vals-errs, vals+errs, alpha=0.5, **kwargs)
@@ -48,7 +50,9 @@ for i, fname in enumerate(reversed(fnames)):
     max_idx = np.argmax(dat[:,2])
     max_phi = dat[max_idx,0]
     peak_sus.append(max_phi)
-
+    sus_dat = np.loadtxt('{}/peak_sus.dat'.format(dirname))
+    peak_sus_avg.append(sus_dat[0])
+    peak_sus_err.append(sus_dat[1])
     if i in [1,2,3]:
         ax.scatter(dat[max_idx, 0], dat[max_idx, 1], s=500, linewidths=4, facecolor='none', edgecolor='k', zorder=3)
         ax.errorbar(dat[:,0], dat[:,1], yerr=dat[:,0], linewidth=8, label=r'$R_v={:.1f}$  nm'.format(rad))

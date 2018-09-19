@@ -25,7 +25,7 @@ logweights_0, dat_0, dat_N_0 = boot_dat[0]
 
 bb = np.arange(0, 2001, 1).astype(float)
 max_N = 0
-phi_vals = np.arange(0, 4.1, 0.01) #* beta
+phi_vals = np.arange(0, 4.1, 0.001) #* beta
 
 boot_avg = np.zeros((n_boot, len(phi_vals)))
 boot_var = np.zeros_like(boot_avg)
