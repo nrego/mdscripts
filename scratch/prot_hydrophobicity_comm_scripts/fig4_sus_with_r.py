@@ -7,96 +7,97 @@ from constants import k
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
-mpl.rcParams.update({'axes.labelsize': 80})
-mpl.rcParams.update({'xtick.labelsize': 60})
-mpl.rcParams.update({'ytick.labelsize': 60})
+mpl.rcParams.update({'axes.labelsize': 100})
+mpl.rcParams.update({'xtick.labelsize': 80})
+mpl.rcParams.update({'ytick.labelsize': 80})
 mpl.rcParams.update({'axes.titlesize': 50})
-mpl.rcParams.update({'legend.fontsize':30})
+mpl.rcParams.update({'legend.fontsize':40})
 
 homedir = os.environ['HOME']
 
-beta = 1/(k*300)
-fnames = sorted( glob.glob('*/var_n_v_phi.dat') )
+# Some shennanigans to import when running from IPython terminal
+try:
+    from utils import plt_errorbars
+except:
+    import imp
+    utils = imp.load_source('utils', '{}/mdscripts/scratch/prot_hydrophobicity_comm_scripts/utils.py'.format(homedir))
+    plt_errorbars = utils.plt_errorbars
+
 
 radii = []
 peak_sus = []
 peak_sus_avg = []
 peak_sus_err = []
 
-def plt_errorbars(bb, vals, errs, **kwargs):
-    plt.fill_between(bb, vals-errs, vals+errs, alpha=0.5, **kwargs)
 
-#alpha = lambda dat: 1/dat[0,2]
-#c = lambda dat: 1 - (dat[0,1] / dat[0,2])
+# Plot 
+fig, ax = plt.subplots(figsize=(11, 9))
 
-#alpha = lambda dat: 1/dat[0,1]
-alpha = lambda dat: 1
-c = lambda dat: 0
+avg_fnames = list(reversed(sorted( glob.glob('*/n_v_phi.dat') )))
+var_fnames = list(reversed(sorted( glob.glob('*/var_n_v_phi.dat') )))
+for i, avg_fname in enumerate(avg_fnames):
 
-avg_x = lambda dat: alpha(dat) * dat[:,1] + c(dat)
-var_x = lambda dat: alpha(dat)**2 * dat[:,2]
+    if i in [0,1,2,3,4]:
+        var_fname = var_fnames[i]
+        rad = float(os.path.dirname(avg_fname).split('_')[-1]) / 100
+        radii.append(rad)
+        dirname = os.path.dirname(avg_fname)
 
-fig, ax = plt.subplots(figsize=(11.1,8.8))
-#for i, fname in enumerate(reversed(fnames[1:-1])):
+        avg_dat = np.loadtxt(avg_fname)
+        # <N_v>0
+        avg_0 = avg_dat[0,1]
+        var_dat = np.loadtxt(var_fname)
+        sus_dat = np.loadtxt('{}/peak_sus.dat'.format(dirname))
 
-for i, fname in enumerate(reversed(fnames)):
+        max_idx = np.argmax(var_dat[:,1])
+        max_phi = var_dat[max_idx,0]
+        peak_sus.append(max_phi)
+        
+        peak_sus_avg.append(sus_dat[0])
+        peak_sus_err.append(sus_dat[1])
 
-    rad = float(os.path.dirname(fname).split('_')[-1]) / 100
-    radii.append(rad)
-    dirname = os.path.dirname(fname)
-
-    dat = np.loadtxt(fname)
-
-    max_idx = np.argmax(dat[:,2])
-    max_phi = dat[max_idx,0]
-    peak_sus.append(max_phi)
-    sus_dat = np.loadtxt('{}/peak_sus.dat'.format(dirname))
-    peak_sus_avg.append(sus_dat[0])
-    peak_sus_err.append(sus_dat[1])
-    if i in [1,2,3]:
-        ax.scatter(dat[max_idx, 0], dat[max_idx, 1], s=500, linewidths=4, facecolor='none', edgecolor='k', zorder=3)
-        ax.errorbar(dat[:,0], dat[:,1], yerr=dat[:,0], linewidth=8, label=r'$R_v={:.1f}$  nm'.format(rad))
+        if i in [1,2,3]:
+            ax.scatter(var_dat[max_idx, 0], var_dat[max_idx, 1], s=500, linewidths=4, facecolor='none', edgecolor='k', zorder=3)
+            ax.plot(var_dat[:,0], var_dat[:,1], linewidth=4, label=r'$R_v={:.1f}$  nm'.format(rad))
+            plt_errorbars(var_dat[:,0], var_dat[:,1], var_dat[:,2])
         
 
 radii = np.array(radii)
 peak_sus = np.array(peak_sus)
+peak_sus_avg = np.array(peak_sus_avg)
+peak_sus_err = np.array(peak_sus_err)
 
-#plt.ylabel(r'$\langle X_V \rangle_{\phi}$')
+#plt.ylabel(r'$\langle X_v \rangle_{\phi}$')
 ax.set_ylabel(r'$\chi_v$')
 ax.set_xlabel(r'$\beta \phi$')
 ax.legend(handlelength=1)
-ax.set_xlim(0,2.5)
+ax.set_xlim(1.12,2.5)
 ax.set_xticks([1.5,2.0])
 ymin, ymax = plt.ylim()
 ax.set_ylim(0, ymax)
 fig.tight_layout()
-plt.savefig('{}/Desktop/avg_by_r.pdf'.format(homedir))
-plt.show()
+fig.savefig('{}/Desktop/avg_by_r.pdf'.format(homedir), transparent=True)
+fig.show()
 
-fig, ax = plt.subplots(figsize=(9.5,8.5))
-r_red = 1/radii
-expt_slope = 40
 
-slope, inter, r, p, std = scipy.stats.linregress((1/radii), peak_sus)
+## Plot beta phi* v 1/R_v ##
+fig, ax = plt.subplots(figsize=(10.30,9.8))
+radii_recip = 1/radii
 
 xvals = np.arange(0, 2, 0.01)
 
-# get best fit line with expected slope
-slope_fit = np.sum(r_red*peak_sus)/np.sum(r_red*r_red)
+# get best fit line thru origin
+slope_fit = np.sum(radii_recip*peak_sus)/np.sum(radii_recip*radii_recip)
 line_fit = slope_fit*xvals
 
-slope_expt = beta*40/10
-inter_expt = np.mean(peak_sus - slope_expt*r_red)
-line_expt = slope_expt*xvals + inter_expt
-
-ax.plot(xvals, line_fit, 'k:', label='fit', linewidth=16)
-#plt.plot(xvals, line_expt, 'k--', label='predicted', linewidth=4)
-ax.plot(r_red, peak_sus, 'o', color='#9d0903ff', markersize=30)
-ax.set_xlabel(r'$\frac{1}{R_V} \; \; (\rm{nm}^{-1})$', labelpad=20)
+ax.plot(xvals, line_fit, 'k--', label='fit', linewidth=4, zorder=0)
+ax.errorbar(radii_recip, peak_sus_avg, yerr=peak_sus_err, fmt='o', color='#9d0903ff', markersize=20, ecolor='k', 
+            elinewidth=1, capsize=10, capthick=1, barsabove=True)
+ax.set_xlabel(r'$\frac{1}{R_v} \; \; (\rm{nm}^{-1})$', labelpad=20)
 ax.set_ylabel(r'$\beta \phi^*$')
 ax.set_xlim(0.9,1.7)
-ax.set_ylim(0.45, 1.04)
+ax.set_ylim(1.12, 2.6)
 fig.tight_layout()
-plt.savefig('{}/Desktop/phistar_by_r.pdf'.format(homedir))
-plt.show()
-#plt.legend()
+fig.savefig('{}/Desktop/phistar_by_r.pdf'.format(homedir), transparent=True)
+fig.show()
+

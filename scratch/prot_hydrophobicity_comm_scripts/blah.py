@@ -5,41 +5,37 @@ from constants import k
 kt = k*300
 beta = 1/kt
 
-def plt_errorbars(bb, loghist, errs):
-    plt.fill_between(bb, loghist-errs, loghist+errs, alpha=0.5)
-
-
-def logsumexp(data, logweights):
-    maxpt = logweights.max()
-    logweights -= maxpt
-
-    return np.dot(np.exp(logweights), data) + maxpt
-    
-def get_avgs(data, logweights, phi_vals):
-    pass
-
+# shape: (n_boot_samples, 3)
+#    col0:  logweight of each bootstrap sample (log of UWHAM weight)
+#    col1:  Ntwid_v for each 
+#    col2:  N_v for each
 boot_dat = np.load('boot_fn_payload.dat.npy')
 n_boot = boot_dat.shape[0]
 
 logweights_0, dat_0, dat_N_0 = boot_dat[0]
 
+# binbounds for P_v(N)'s
 bb = np.arange(0, 2001, 1).astype(float)
 max_N = 0
+
+# beta*phi values of linear bias for re-weighting to get <N_v>phi v phi
 phi_vals = np.arange(0, 4.1, 0.001) #* beta
 
+# Bootstraps of <N_v>_phi  and <d N_v^2>_phi
 boot_avg = np.zeros((n_boot, len(phi_vals)))
 boot_var = np.zeros_like(boot_avg)
 
+# Bootstraps of -ln P_v(Ntwid) and -ln P_v(N)
 boot_neglogpdist = np.zeros((n_boot, bb.size-1))
 boot_neglogpdist_N = np.zeros_like(boot_neglogpdist)
 
+# beta phi* for each bootstrap
 boot_peak_sus = np.zeros(n_boot)
 
 for i, payload in enumerate(boot_dat):
-    #print("doing {}".format(i))
+
     logweights, all_dat, all_dat_N = payload
 
-    max_N = np.ceil(max(max_N, np.max((all_dat, all_dat_N)))) + 1
     neglogpdist = get_neglogpdist(all_dat, bb, logweights)
     neglogpdist_N = get_neglogpdist(all_dat_N.astype(float), bb, logweights)
 

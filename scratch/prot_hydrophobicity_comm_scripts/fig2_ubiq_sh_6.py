@@ -6,51 +6,59 @@ from matplotlib import pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
-mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 40})
-mpl.rcParams.update({'ytick.labelsize': 40})
-mpl.rcParams.update({'axes.titlesize': 50})
-mpl.rcParams.update({'legend.fontsize':30})
+import sys, os
 
-def plt_errorbars(bb, vals, errs, **kwargs):
-    plt.fill_between(bb, vals-errs, vals+errs, alpha=0.5, **kwargs)
+homedir = os.environ['HOME']
 
 from constants import k
 
-fig = plt.figure(figsize=(8.5,7))
+# Some shennanigans to import when running from IPython terminal
+try:
+    from utils import plt_errorbars
+except:
+    import imp
+    utils = imp.load_source('utils', '{}/mdscripts/scratch/prot_hydrophobicity_comm_scripts/utils.py'.format(homedir))
+    plt_errorbars = utils.plt_errorbars
+
+mpl.rcParams.update({'axes.labelsize': 100})
+mpl.rcParams.update({'xtick.labelsize': 80})
+mpl.rcParams.update({'ytick.labelsize': 80})
+mpl.rcParams.update({'axes.titlesize': 50})
+mpl.rcParams.update({'legend.fontsize':30})
+
+fig, ax = plt.subplots(figsize=(8.5,7))
 beta = 1#/(k*300)
 dat = np.loadtxt('n_v_phi.dat')
 err_dat = dat[:,2]
 
-plt.plot(beta*dat[:,0], dat[:,1], 'k-', linewidth=6)
+ax.plot(dat[:,0], dat[:,1], 'k-', linewidth=6)
+plt_errorbars(dat[:,0], dat[:,1], dat[:,2])
 
-plt.xlabel(r'$\beta \phi$')
-plt.ylabel(r'$\langle N_v \rangle_{\phi}$')
+ax.set_xlabel(r'$\beta \phi$')
+ax.set_ylabel(r'$\langle N_v \rangle_{\phi}$')
 
-plt.xlim(0, 4)
+ax.set_xlim(0, 4)
 
-
-plt.tight_layout()
-plt.savefig('/Users/nickrego/Desktop/ubiq_n_v_phi.pdf')
-plt.show()
-
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/ubiq_n_v_phi.pdf', transparent=True)
+fig.show()
 
 
-fig = plt.figure(figsize=(9,7))
+
+fig, ax = plt.subplots(figsize=(8.325,7))
 
 dat = np.loadtxt('var_n_v_phi.dat')
-#plt.errorbar(beta*dat[:,0], dat[:,1], yerr=dat[:,2], fmt='k-', linewidth=6, elinewidth=3)
-plt.plot(dat[:,0], dat[:,1], 'k-', linewidth=6)
+ax.plot(dat[:,0], dat[:,1], 'k-', linewidth=6)
 plt_errorbars(dat[:,0], dat[:,1], dat[:,2], color='k')
 
-plt.xlabel(r'$\beta \phi$')
-plt.ylabel(r'$\chi_v$')
+ax.set_xlabel(r'$\beta \phi$')
+ax.set_ylabel(r'$\chi_v$')
 
-plt.xlim(0, 4)
+ax.set_xlim(0, 4)
 
 
-plt.tight_layout()
-plt.savefig('/Users/nickrego/Desktop/ubiq_sus_v_phi.pdf')
-plt.show()
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/ubiq_sus_v_phi.pdf', transparent=True)
+fig.show()
 
 
