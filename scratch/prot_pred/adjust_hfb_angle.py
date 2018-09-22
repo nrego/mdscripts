@@ -41,4 +41,14 @@ K = np.array([[0, -axis_vec[2], axis_vec[1]],
 R = np.eye(3) + np.sin(angle)*K + (1-dot_c)*K.dot(K)
 
 univ.atoms.positions = univ.atoms.positions.dot(R.T)
-univ.atoms.write('aligned.pdb')
+max_pos = prot_ag.positions.max(axis=0)
+diff_vec =  np.array([30., 30., 30.]) - univ.atoms.center_of_geometry()
+univ.atoms.positions += diff_vec
+
+max_pos = prot_ag.positions.max(axis=0)[-1]
+shift_vec = np.array([0, 0, 60.0 - max_pos])
+univ.atoms.positions += shift_vec
+
+univ.atoms.write('aligned.gro')
+
+

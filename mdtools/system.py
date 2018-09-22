@@ -95,6 +95,11 @@ class MDSystem():
     @property
     def surf_mask(self):
         return self.prot.tempfactors != BURIED
+
+    @property
+    def surf_mask_h(self):
+        return self.prot_h.tempfactors != BURIED
+    
     
 
     # force all hydrogens to inherit tempfactors from heavy atom
