@@ -43,8 +43,8 @@ rho_dat = np.load(args.rhodata)['rho_water'].mean(axis=0)
 max_val = np.ceil(rho_dat.max()) + 1
 bb = np.arange(0, max_val, 1)
 hist, bb = np.histogram(rho_dat, bins=bb)
-plt.bar(bb[:-1], hist)
-plt.show()
+#plt.bar(bb[:-1], hist)
+#plt.show()
 
 sys.find_buried(rho_dat, args.nburied)
 
@@ -67,7 +67,7 @@ print("Writing umbr.conf...")
 
 header_string = "; Umbrella potential for a spherical shell cavity\n"\
 "; Name    Type          Group  Kappa   Nstar    mu    width  cutoff  outfile    nstout\n"\
-"hydshell union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
+"hydshell dyn_union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
 
 with open('umbr.conf', 'w') as fout:
     fout = open('umbr.conf', 'w')
