@@ -163,14 +163,14 @@ else:
         wl_entropies[bin_assign] += f
         wl_hist[bin_assign] += 1
 
-        if M_iter == 26:
-            this_arr = sampled_pts[bin_assign]
-            if len(this_arr) == 0 or np.unique(np.array(this_arr), axis=1).shape[0] < 100:
-                this_arr.append(pt_idx)
-                sampled_pts[bin_assign] = this_arr
+        
+        this_arr = sampled_pts[bin_assign]
+        if len(this_arr) == 0 or np.unique(np.array(this_arr), axis=0).shape[0] < 100:
+            this_arr.append(pt_idx)
+            sampled_pts[bin_assign] = this_arr
          
 
-        if is_flat(wl_hist[1:-1], 0.7) or n_iter > max_iter:
+        if is_flat(wl_hist[2:-2], 0.75) or n_iter > max_iter:
 
             #break
             print(" n_iter: {}".format(n_iter))
@@ -188,4 +188,5 @@ else:
     #embed()
 
 
-
+    for i in sampled_pts:
+        i = np.unique(i, axis=0)
