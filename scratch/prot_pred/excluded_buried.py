@@ -23,9 +23,6 @@ parser.add_argument('-s', '--top', type=str, required=True,
                     help='Topology input file (tpr or gro file; need tpr to color buried hydrogens)')
 parser.add_argument('-c', '--struct', type=str,
                     help='Structure file (gro, pdb, etc) - output will have same positions')
-parser.add_argument('-p', '--charge', type=str, default='charge_assign.pkl',
-                    help='pickled double dictionary of [res][atom_type]: hydrophilicity; '
-                         'unknown atom types will prompt user')
 parser.add_argument('--rhodata', type=str,
                     help='Optionally supply rho data file, for determining buried atoms')
 parser.add_argument('-nb', '--nburied', type=float, default=5,
