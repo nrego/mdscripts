@@ -170,7 +170,7 @@ else:
             sampled_pts[bin_assign] = this_arr
          
 
-        if is_flat(wl_hist[2:-2], 0.75) or n_iter > max_iter:
+        if is_flat(wl_hist[2:-2], 0.7) or n_iter > max_iter:
 
             #break
             print(" n_iter: {}".format(n_iter))
