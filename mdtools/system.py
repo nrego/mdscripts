@@ -109,7 +109,7 @@ class MDSystem():
 
     def find_buried(self, rho_dat, nb):
         buried_mask = rho_dat < nb
-        embed()
+
         self.prot_h[buried_mask].tempfactors = BURIED
 
         self._apply_to_h()
