@@ -32,9 +32,9 @@ name_lup = {'1brs': 'barnase',
             '1ycr': 'MDM2',
             '253l': 'lysozyme',
             '2b97': 'hydrophobin',
-            '3hhp': 'malate dehydrogenase'}
+            '3hhp': 'malate\ndehydrogenase'}
 
-order = ['hydrophobin', 'capsid', 'MDM2', 'malate dehydrogenase', 'ubiquitin', 'barnase', 'lysozyme']
+order = ['hydrophobin', 'capsid', 'MDM2', 'malate\ndehydrogenase', 'ubiquitin', 'barnase', 'lysozyme']
 
 colors = cm.rainbow(np.linspace(0,1,len(order)))
 
