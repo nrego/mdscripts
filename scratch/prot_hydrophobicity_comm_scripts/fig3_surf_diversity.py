@@ -10,8 +10,8 @@ import numpy as np
 import glob, os
 
 mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 60})
-mpl.rcParams.update({'ytick.labelsize': 60})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':40})
 
@@ -66,12 +66,12 @@ for idx, name in enumerate(names):
 
     ax1.bar(indices[idx], n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
     ax2.bar(indices[idx], n_phob_surf/n_surf, width=width, color=colors[idx])
-    ax1.set_yticks([0.2, 0.3, 0.4, 0.5, 0.6])
-    ax1.set_ylim(0.2, 0.66)
+    ax1.set_yticks([0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+    ax1.set_ylim(0.2, 0.75)
     ax1.set_xticks([])
     ax2.set_yticks([])
-    ax2.set_yticks([0.2, 0.3, 0.4, 0.5, 0.6])
-    ax2.set_ylim(0.2, 0.66)
+    ax2.set_yticks([0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+    ax2.set_ylim(0.2, 0.75)
     ax2.set_xticks([])
     
     ax3.bar(indices[idx], (pos_charge_res+neg_charge_res)/n_surf, width=width, label=label, color=colors[idx])
@@ -98,7 +98,7 @@ for idx, name in enumerate(names):
 
 
 
-plt.legend(handlelength=1, labelspacing=0.1)
+plt.legend(handlelength=0.5, labelspacing=0.1, framealpha=0.0)
 plt.tight_layout()
 plt.savefig('/Users/nickrego/Desktop/label.pdf', transparent=True)
 
