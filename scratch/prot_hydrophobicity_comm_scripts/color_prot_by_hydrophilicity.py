@@ -65,6 +65,15 @@ neg_surf_charge += np.abs(surf.residues[-1].atoms.charges.sum())
 abs_surf_charge = pos_surf_charge + neg_surf_charge
 
 hydrophobic_res = surf.select_atoms(hydrophobic_sel).residues
+hydrophilic_res_atoms = surf.select_atoms("not ({})".format(hydrophobic_sel))
+hydrophobic_res_atoms = surf.select_atoms(hydrophobic_sel)
+n_hydrophilic_res_atoms = hydrophilic_res_atoms.n_atoms
+n_hydrophilic_res_atoms_phob = (hydrophilic_res_atoms.tempfactors == 0).sum()
+
+n_hydrophobic_res_atoms = hydrophobic_res_atoms.n_atoms
+n_hydrophobic_res_atoms_phob = (hydrophobic_res_atoms.tempfactors == 0).sum()
+
+#embed()
 
 print("Total atoms: {}".format(sys.n_prot_tot))
 print("N surf atoms: {}".format(sys.n_surf))
@@ -88,8 +97,10 @@ print("  N hydrophilic: {}".format(sys.n_phil_h))
 print("  N hydrophobic: {}".format(sys.n_phob_h))
 print("  frac hydrophilic: {}".format(sys.n_phil_h/sys.n_surf_h))
 
-header = "N_tot N_surf N_surf_res N_hydrophilic_surf N_hydrophobic_surf N_hydrophobic_res pos_charge_surf, neg_surf_charge"
-out_arr = np.array([sys.n_prot_tot, sys.n_surf, n_surf_residues, sys.n_phil, sys.n_phob, hydrophobic_res.n_residues, pos_surf_charge, neg_surf_charge])
+header = "N_tot N_surf N_surf_res N_hydrophilic_surf N_hydrophobic_surf N_hydrophobic_res pos_charge_surf neg_surf_charge N_surf_h  n_phob_h, N_hydrophilic_res_atoms, N_hydrophilic_res_atoms_phob, N_hydrophobic_res_atoms, N_hydrophobic_res_atoms_phob"
+out_arr = np.array([sys.n_prot_tot, sys.n_surf, n_surf_residues, sys.n_phil, sys.n_phob, hydrophobic_res.n_residues, 
+                    pos_surf_charge, neg_surf_charge, sys.n_surf_h, sys.n_phob_h, n_hydrophilic_res_atoms, n_hydrophilic_res_atoms_phob,
+                    n_hydrophobic_res_atoms, n_hydrophobic_res_atoms_phob])
 
 
 np.savetxt('surf_dat.dat', out_arr, header=header, fmt='%1.2f')

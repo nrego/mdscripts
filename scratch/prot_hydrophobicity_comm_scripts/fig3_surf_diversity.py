@@ -17,7 +17,7 @@ mpl.rcParams.update({'legend.fontsize':40})
 
 fnames = glob.glob('*/surf_dat.dat')
 labels = []
-vals = np.zeros((len(fnames), 8), dtype=float)
+vals = np.zeros((len(fnames), 13), dtype=float)
 
 for i, fname in enumerate(fnames):
     dirname = os.path.dirname(fname)
