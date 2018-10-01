@@ -88,8 +88,8 @@ print("  N hydrophilic: {}".format(sys.n_phil_h))
 print("  N hydrophobic: {}".format(sys.n_phob_h))
 print("  frac hydrophilic: {}".format(sys.n_phil_h/sys.n_surf_h))
 
-header = "N_tot N_surf N_surf_res N_hydrophilic_surf N_hydrophobic_surf N_hydrophobic_res pos_charge_surf, neg_surf_charge"
-out_arr = np.array([sys.n_prot_tot, sys.n_surf, n_surf_residues, sys.n_phil, sys.n_phob, hydrophobic_res.n_residues, pos_surf_charge, neg_surf_charge])
+header = "N_tot N_surf N_surf_res N_hydrophilic_surf N_hydrophobic_surf N_hydrophobic_res pos_charge_surf, neg_surf_charge N_surf_h  n_phob_h"
+out_arr = np.array([sys.n_prot_tot, sys.n_surf, n_surf_residues, sys.n_phil, sys.n_phob, hydrophobic_res.n_residues, pos_surf_charge, neg_surf_charge, sys.n_surf_h, sys.n_phob_h])
 
 
 np.savetxt('surf_dat.dat', out_arr, header=header, fmt='%1.2f')

@@ -17,7 +17,7 @@ mpl.rcParams.update({'legend.fontsize':40})
 
 fnames = glob.glob('*/surf_dat.dat')
 labels = []
-vals = np.zeros((len(fnames), 8), dtype=float)
+vals = np.zeros((len(fnames), 10), dtype=float)
 
 for i, fname in enumerate(fnames):
     dirname = os.path.dirname(fname)
@@ -61,11 +61,11 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15,14), sharex=True)
 # upper left
 for idx, name in enumerate(names):
     label = labels[idx]
-    n_tot, n_surf, n_res_surf, n_phil_surf, n_phob_surf, n_phob_res, pos_charge_res, neg_charge_res  = vals[idx] 
+    n_tot, n_surf, n_res_surf, n_phil_surf, n_phob_surf, n_phob_res, pos_charge_res, neg_charge_res, n_surf_h, n_phob_h  = vals[idx] 
     this_dipole = dipole[label]
 
     ax1.bar(indices[idx], n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
-    ax2.bar(indices[idx], n_phob_surf/n_surf, width=width, color=colors[idx])
+    ax2.bar(indices[idx], n_phob_h/n_surf_h, width=width, color=colors[idx])
     ax1.set_yticks([0.2, 0.3, 0.4, 0.5, 0.6])
     ax1.set_ylim(0.2, 0.66)
     ax1.set_xticks([])
@@ -74,8 +74,8 @@ for idx, name in enumerate(names):
     ax2.set_ylim(0.2, 0.66)
     ax2.set_xticks([])
     
-    ax3.bar(indices[idx], (pos_charge_res+neg_charge_res)/n_surf, width=width, label=label, color=colors[idx])
-    ax4.bar(indices[idx], this_dipole/n_surf, width=width, label=label, color=colors[idx])
+    ax3.bar(indices[idx], (pos_charge_res+neg_charge_res)/n_surf_h, width=width, label=label, color=colors[idx])
+    ax4.bar(indices[idx], this_dipole/n_surf_h, width=width, label=label, color=colors[idx])
     ax3.set_xticks([])
     ax4.set_xticks([])
 
@@ -87,7 +87,7 @@ plt.clf()
 fig, ax = plt.subplots(figsize=(10,10))
 for idx, name in enumerate(names):
     label = labels[idx]
-    n_tot, n_surf, n_res_surf, n_phil_surf, n_phob_surf, n_phob_res, pos_charge_res, neg_charge_res  = vals[idx] 
+    n_tot, n_surf, n_res_surf, n_phil_surf, n_phob_surf, n_phob_res, pos_charge_res, neg_charge_res, n_surf_h, n_phob_h  = vals[idx] 
     this_dipole = dipole[label]
 
     ax.bar(indices[idx], n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
