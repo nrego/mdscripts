@@ -63,25 +63,39 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15,14), sharex=True)
 # upper left
 for idx, name in enumerate(names):
     label = labels[idx]
-    n_tot, n_surf, n_res_surf, n_phil_surf, n_phob_surf, n_phob_res, pos_charge_res, neg_charge_res, n_surf_h, n_phob_h  = vals[idx] 
+    this_vals = vals[idx] 
+    n_surf = this_vals[1]
+    n_res_surf = this_vals[2]
+    n_phob = this_vals[4]
+    n_phob_res = this_vals[5]
+    n_pos_charge = this_vals[6]
+    n_neg_charge = this_vals[7]
+
     this_dipole = dipole[label]
 
-    ax1.bar(indices[idx], n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
+    # Fraction charged surface residues
+    ax1.bar(idx, (n_pos_charge+n_neg_charge)/n_res_surf, width=width, label=name, color=colors[idx])
 
-    ax2.bar(indices[idx], n_phob_h/n_surf_h, width=width, color=colors[idx])
-    ax1.set_yticks([0.2, 0.3, 0.4, 0.5, 0.6])
-    ax1.set_ylim(0.2, 0.66)
+    ax2.axis('off')
 
-    ax1.set_xticks([])
-    ax2.set_yticks([])
-    ax2.set_yticks([0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
-    ax2.set_ylim(0.2, 0.75)
-    ax2.set_xticks([])
-    
-    ax3.bar(indices[idx], (pos_charge_res+neg_charge_res)/n_surf_h, width=width, label=label, color=colors[idx])
-    ax4.bar(indices[idx], this_dipole/n_surf_h, width=width, label=label, color=colors[idx])
-    ax3.set_xticks([])
-    ax4.set_xticks([])
+    # Fraction hydrophobic surface residues
+    ax3.bar(idx, n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
+
+    # Fraction hydrophobic surface atoms
+    ax4.bar(idx, n_phob/n_surf, width=width, label=name, color=colors[idx])
+
+yticks = np.arange(0, 1.1, 0.1)
+ax1.set_xticks([])
+ax1.set_yticks(yticks)
+ax1.set_ylim(0, 0.37)
+
+ax3.set_xticks([])
+ax3.set_yticks(yticks)
+ax3.set_ylim(0, 0.75)
+
+ax4.set_xticks([])
+ax4.set_yticks(yticks)
+ax4.set_ylim(0, 0.75)
 
 fig.tight_layout()
 fig.subplots_adjust(hspace=0.3)
@@ -91,18 +105,16 @@ plt.clf()
 fig, ax = plt.subplots(figsize=(10,10))
 for idx, name in enumerate(names):
     label = labels[idx]
-    n_tot, n_surf, n_res_surf, n_phil_surf, n_phob_surf, n_phob_res, pos_charge_res, neg_charge_res, n_surf_h, n_phob_h  = vals[idx] 
-    this_dipole = dipole[label]
 
-    ax.bar(indices[idx], n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
+    ax.bar(indices[idx], 0, width=width, label=name, color=colors[idx])
 
-    ax.set_ylim(10,12)
-    ax.set_xticks([])
-    ax.set_yticks([])
+ax.set_ylim(10,12)
+ax.set_xticks([])
+ax.set_yticks([])
 
 
 
-plt.legend(handlelength=0.5, labelspacing=0.1, framealpha=0.0)
+plt.legend(handlelength=0.5, labelspacing=0.3, framealpha=0.0)
 plt.tight_layout()
 plt.savefig('/Users/nickrego/Desktop/label.pdf', transparent=True)
 
