@@ -73,7 +73,6 @@ n_hydrophilic_res_atoms_phob = (hydrophilic_res_atoms.tempfactors == 0).sum()
 n_hydrophobic_res_atoms = hydrophobic_res_atoms.n_atoms
 n_hydrophobic_res_atoms_phob = (hydrophobic_res_atoms.tempfactors == 0).sum()
 
-#embed()
 
 print("Total atoms: {}".format(sys.n_prot_tot))
 print("N surf atoms: {}".format(sys.n_surf))

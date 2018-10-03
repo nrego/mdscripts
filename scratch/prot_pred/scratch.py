@@ -9,17 +9,33 @@ from IPython import embed
 
 from system import MDSystem
 
-fnames = sorted(glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz'))
+import argparse
 
-dat_0 = np.load('equil/rho_data_dump_rad_6.0.dat.npz')['rho_water'].mean(axis=0)
+parser = argparse.ArgumentParser('Collect atom dewetting info from phi-ensemble simulation, order atoms')
+parser.add_argument('--ref-top', required=True, type=str,
+                    help='Reference topology')
+parser.add_argument('--ref-struct', required=True, type=str,
+                    help='Reference structure')
+parser.add_argument('--ref-rho', required=True, type=str,
+                    help='Reference rho for determining buried atoms')
+parser.add_argument('-nb', default=5, type=float,
+                    help='Considered buried if fewer than this number of waters in reference struct (default 5)')
+parser.add_argument('--infiles', type=str, nargs='+',
+                    help='input files (e.g. phi_*)')
+args = parser.parse_args()
 
-#sys = MDSystem('equil/npt.tpr', 'equil/npt.gro')
-sys = MDSystem('equil/top.tpr', 'equil/cent.gro')
-sys.find_buried(dat_0, nb=5)
+
+#embed()
+
+fnames = np.sort(args.infiles)
+ref_rho = np.load(args.ref_rho)['rho_water'].mean(axis=0)
+sys = MDSystem(args.ref_top, args.ref_struct)
+sys.find_buried(ref_rho, nb=5)
 
 surf_mask = sys.surf_mask_h
 prot_h = sys.prot_h
 surf_atoms = prot_h[surf_mask]
+surf_atoms.tempfactors = -1
 
 global_indices = np.arange(sys.n_prot_tot)
 # Gives global index of protein heavy atom, given its local index
@@ -30,14 +46,18 @@ dewet_indices = np.array([])
 
 idx_order = np.array([])
 
+prev_phi = 0.0
 for fname in fnames:
     dirname = os.path.dirname(fname)
+    phi = float(dirname.split('_')[-1]) / 10.0
+    assert phi > prev_phi
+    prev_phi = phi
 
     dat = np.load(fname)['rho_water'].mean(axis=0)
-    if dat.size > dat_0.size:
+    if dat.size > ref_rho.size:
         dat = dat[prot_h.indices]
 
-    rho = dat/dat_0
+    rho = dat/ref_rho
     # Indices of heavy atoms that are dewet and surface atoms
     surf_dewet_mask = (rho < 0.5) & surf_mask
     surf_dewet_idx = local_indices[surf_dewet_mask]
@@ -55,7 +75,7 @@ idx_order = idx_order.astype(int)
 with MDAnalysis.Writer('order.pdb', multiframe=True, bonds=None, n_atoms=prot_h.n_atoms) as PDB:
 
     for i, idx in enumerate(idx_order):
-        prot_h[idx].tempfactor = 1
+        prot_h[idx].tempfactor = i/10.0
         prot_h[idx].name = 'D'
         PDB.write(prot_h.atoms)
         prot_h.write('pdb_{}.pdb'.format(i))
