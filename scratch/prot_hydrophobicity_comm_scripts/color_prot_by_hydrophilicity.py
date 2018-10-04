@@ -25,7 +25,7 @@ parser.add_argument('-nb', '--nburied', type=float, default=5,
                     help='If rhodata supplied, atoms are considered buried if they have fewer than '
                          'this many average water molecules')
 
-hydrophobic_sel = "resname ALA or resname VAL or resname LEU or resname ILE or resname PHE or resname TRP or resname PRO"
+HYDROPHOBIC_SEL = "resname ALA or resname VAL or resname LEU or resname ILE or resname PHE or resname TRP or resname PRO"
 args = parser.parse_args()
 
 with open(args.charge, 'r') as f:
@@ -64,9 +64,9 @@ neg_surf_charge += np.abs(surf.residues[-1].atoms.charges.sum())
 
 abs_surf_charge = pos_surf_charge + neg_surf_charge
 
-hydrophobic_res = surf.select_atoms(hydrophobic_sel).residues
-hydrophilic_res_atoms = surf.select_atoms("not ({})".format(hydrophobic_sel))
-hydrophobic_res_atoms = surf.select_atoms(hydrophobic_sel)
+hydrophobic_res = surf.select_atoms(HYDROPHOBIC_SEL).residues
+hydrophilic_res_atoms = surf.select_atoms("not ({})".format(HYDROPHOBIC_SEL))
+hydrophobic_res_atoms = surf.select_atoms(HYDROPHOBIC_SEL)
 n_hydrophilic_res_atoms = hydrophilic_res_atoms.n_atoms
 n_hydrophilic_res_atoms_phob = (hydrophilic_res_atoms.tempfactors == 0).sum()
 

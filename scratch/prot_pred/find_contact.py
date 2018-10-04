@@ -26,6 +26,7 @@ parser.add_argument('--thresh', default=0.5, type=float,
 parser.add_argument('--sel-spec', default='segid targ', type=str,
                     help='Selection spec for getting protein atoms')
 
+
 args = parser.parse_args()
 
 sys = MDSystem(args.topology, args.struct, sel_spec=args.sel_spec)
@@ -53,3 +54,4 @@ prot.tempfactors = rho_i
 prot[buried_mask].tempfactors = -2
 prot.write('contact_rho.pdb')
 sys.other.write('other.pdb', bonds=None)
+
