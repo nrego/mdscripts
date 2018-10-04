@@ -16,6 +16,8 @@ parser.add_argument('--ref-top', required=True, type=str,
                     help='Reference topology')
 parser.add_argument('--ref-struct', required=True, type=str,
                     help='Reference structure')
+parser.add_argument('--sel-spec', default='segid targ', type=str,
+                    help='Selection spec for reference protein (default: "segid targ")')
 parser.add_argument('--ref-rho', required=True, type=str,
                     help='Reference rho for determining buried atoms')
 parser.add_argument('-nb', default=5, type=float,
@@ -29,7 +31,7 @@ args = parser.parse_args()
 
 fnames = np.sort(args.infiles)
 ref_rho = np.load(args.ref_rho)['rho_water'].mean(axis=0)
-sys = MDSystem(args.ref_top, args.ref_struct)
+sys = MDSystem(args.ref_top, args.ref_struct, sel_spec=args.sel_spec)
 sys.find_buried(ref_rho, nb=5)
 
 surf_mask = sys.surf_mask_h
@@ -70,11 +72,14 @@ for fname in fnames:
     dewet_indices = np.unique(np.append(new_dewet_indices, dewet_indices))
 
 idx_order = idx_order.astype(int)
-
+print("{} total atoms dewetted".format(len(idx_order)))
+print("limiting to the first 500 atoms")
+max_i = min(len(idx_order), 500)
 #prot_h.write('order.pdb')
 with MDAnalysis.Writer('order.pdb', multiframe=True, bonds=None, n_atoms=prot_h.n_atoms) as PDB:
 
-    for i, idx in enumerate(idx_order):
+    for i in range(max_i):
+        idx = idx_order[i]
         prot_h[idx].tempfactor = i/10.0
         prot_h[idx].name = 'D'
         PDB.write(prot_h.atoms)

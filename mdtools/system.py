@@ -36,6 +36,7 @@ class MDSystem():
         self.prot_h = self.univ.select_atoms('({}) and not name H*'.format(sel_spec))
         self.hydrogens = self.univ.select_atoms('({}) and name H*'.format(sel_spec))
         self.prot.tempfactors = 0
+        self.other = self.univ.select_atoms('not ({})'.format(sel_spec))
 
         for k,v in kwargs.iteritems():
             self.k = v

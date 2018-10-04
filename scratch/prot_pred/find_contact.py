@@ -47,8 +47,9 @@ prot[contact_mask].tempfactors = 1
 
 np.savetxt('contact_mask.dat', contact_mask, fmt='%1d')
 
-prot.write('contact.pdb')
+prot.write('contact.pdb', bonds=None)
 
 prot.tempfactors = rho_i
 prot[buried_mask].tempfactors = -2
 prot.write('contact_rho.pdb')
+sys.other.write('other.pdb', bonds=None)
