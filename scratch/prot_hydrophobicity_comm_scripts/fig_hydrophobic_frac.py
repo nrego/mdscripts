@@ -17,9 +17,7 @@ mpl.rcParams.update({'legend.fontsize':40})
 
 fnames = glob.glob('*/surf_dat.dat')
 labels = []
-
 vals = np.zeros((len(fnames), 14), dtype=float)
-
 
 for i, fname in enumerate(fnames):
     dirname = os.path.dirname(fname)
@@ -58,63 +56,27 @@ width = 1
 gap = 4
 
 
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15,14), sharex=True)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,6))
 
 # upper left
 for idx, name in enumerate(names):
     label = labels[idx]
-    this_vals = vals[idx] 
-    n_surf = this_vals[1]
-    n_res_surf = this_vals[2]
-    n_phob = this_vals[4]
-    n_phob_res = this_vals[5]
-    n_pos_charge = this_vals[6]
-    n_neg_charge = this_vals[7]
-
+    n_tot, n_surf, n_res_surf, n_phil_surf, n_phob_surf, n_phob_res, pos_charge_res, neg_charge_res, n_surf_h, n_phob_h, n_hydrophilic_res_atoms, n_hydrophilic_res_atoms_phob, n_hydrophobic_res_atoms, n_hydrophobic_res_atoms_phob = vals[idx] 
     this_dipole = dipole[label]
 
-    # Fraction charged surface residues
-    ax1.bar(idx, (n_pos_charge+n_neg_charge)/n_res_surf, width=width, label=name, color=colors[idx])
+    ax1.bar(idx, n_hydrophobic_res_atoms_phob/n_hydrophobic_res_atoms, label=label, color=colors[idx], width=width)
+    ax2.bar(idx, n_hydrophilic_res_atoms_phob/n_hydrophilic_res_atoms, label=label, color=colors[idx], width=width)
 
-    ax2.axis('off')
-
-    # Fraction hydrophobic surface residues
-    ax3.bar(idx, n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
-
-    # Fraction hydrophobic surface atoms
-    ax4.bar(idx, n_phob/n_surf, width=width, label=name, color=colors[idx])
-
-yticks = np.arange(0, 1.1, 0.1)
 ax1.set_xticks([])
-ax1.set_yticks(yticks)
-ax1.set_ylim(0, 0.4)
+ax1.set_ylim(0.4, 0.9)
+ax1.set_title('hydrophobic res')
 
-ax3.set_xticks([])
-ax3.set_yticks(yticks)
-ax3.set_ylim(0, 0.75)
-
-ax4.set_xticks([])
-ax4.set_yticks(yticks)
-ax4.set_ylim(0, 0.75)
+ax2.set_xticks([])
+ax2.set_ylim(0.4, 0.9)
+ax2.set_title('hydrophilic res')
 
 fig.tight_layout()
 fig.subplots_adjust(hspace=0.3)
 fig.savefig('/Users/nickrego/Desktop/blah.pdf', transparent=True)
-#plt.show()
-plt.clf()
-fig, ax = plt.subplots(figsize=(10,10))
-for idx, name in enumerate(names):
-    label = labels[idx]
 
-    ax.bar(indices[idx], 0, width=width, label=name, color=colors[idx])
-
-ax.set_ylim(10,12)
-ax.set_xticks([])
-ax.set_yticks([])
-
-
-
-plt.legend(handlelength=0.5, labelspacing=0.3, framealpha=0.0)
-plt.tight_layout()
-plt.savefig('/Users/nickrego/Desktop/label.pdf', transparent=True)
 

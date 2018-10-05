@@ -18,6 +18,9 @@ mpl.rcParams.update({'legend.fontsize':40})
 fnames = glob.glob('*/surf_dat.dat')
 labels = []
 
+
+# Show general properties of studied systems
+
 vals = np.zeros((len(fnames), 14), dtype=float)
 
 
@@ -58,44 +61,59 @@ width = 1
 gap = 4
 
 
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15,14), sharex=True)
+fig, ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(3, 3, figsize=(20,20), sharex=True)
 
 # upper left
 for idx, name in enumerate(names):
     label = labels[idx]
     this_vals = vals[idx] 
-    n_surf = this_vals[1]
-    n_res_surf = this_vals[2]
-    n_phob = this_vals[4]
+    n_atm = this_vals[1]
+    n_res = this_vals[2]
+    n_phil_atm = this_vals[3]
+    n_phob_atm = this_vals[4]
+    assert n_atm - n_phob_atm == n_phil_atm
     n_phob_res = this_vals[5]
-    n_pos_charge = this_vals[6]
-    n_neg_charge = this_vals[7]
+    n_charge_res = this_vals[6] + this_vals[7]
+    net_charge = this_vals[6] - this_vals[7]
 
     this_dipole = dipole[label]
 
-    # Fraction charged surface residues
-    ax1.bar(idx, (n_pos_charge+n_neg_charge)/n_res_surf, width=width, label=name, color=colors[idx])
+    # non-polar or polar atoms
+    ax1.bar(idx, n_phob_atm, width=width, label=name, color=colors[idx])
+    ax2.bar(idx, n_phil_atm, width=width, label=name, color=colors[idx])
+    ax3.bar(idx, n_atm, width=width, label=name, color=colors[idx])
 
-    ax2.axis('off')
+    # hydrophobic or hydrophilic residues
+    ax4.bar(idx, n_phob_res, width=width, label=name, color=colors[idx])
+    ax5.bar(idx, n_res-(n_phob_res+n_charge_res), width=width, label=label, color=colors[idx])
+    ax6.bar(idx, n_res, width=width, label=label, color=colors[idx])
 
-    # Fraction hydrophobic surface residues
-    ax3.bar(idx, n_phob_res/n_res_surf, width=width, label=name, color=colors[idx])
+    # Charged residues, net charge, dipole moment
+    ax7.bar(idx, n_charge_res, width=width, label=label, color=colors[idx])
+    ax8.bar(idx, net_charge, width=width, label=label, color=colors[idx])
+    ax9.bar(idx, this_dipole, width=width, label=label, color=colors[idx])
 
-    # Fraction hydrophobic surface atoms
-    ax4.bar(idx, n_phob/n_surf, width=width, label=name, color=colors[idx])
-
-yticks = np.arange(0, 1.1, 0.1)
 ax1.set_xticks([])
-ax1.set_yticks(yticks)
-ax1.set_ylim(0, 0.4)
-
+ax2.set_xticks([])
 ax3.set_xticks([])
-ax3.set_yticks(yticks)
-ax3.set_ylim(0, 0.75)
-
 ax4.set_xticks([])
-ax4.set_yticks(yticks)
-ax4.set_ylim(0, 0.75)
+ax5.set_xticks([])
+ax6.set_xticks([])
+ax7.set_xticks([])
+ax8.set_xticks([])
+ax9.set_xticks([])
+
+ax1.set_ylim(0,3000)
+ax2.set_ylim(0,3000)
+ax3.set_ylim(0,3000)
+
+ax4.set_ylim(0,250)
+ax5.set_ylim(0,250)
+ax6.set_ylim(0,250)
+
+ax7.set_ylim(0,250)
+ax8.set_ylim(-10,10)
+ax9.set_ylim(0,420)
 
 fig.tight_layout()
 fig.subplots_adjust(hspace=0.3)

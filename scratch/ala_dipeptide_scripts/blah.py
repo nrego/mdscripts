@@ -87,4 +87,5 @@ plt.savefig('mu_conf_{:03g}'.format(this_mu*10))
 avg_arr = np.array([avg_n, avg_ntwid, var_n, var_ntwid])
 np.savetxt('averages.dat', avg_arr)
 
+np.savetxt('loghist.dat', loghist.T)
 

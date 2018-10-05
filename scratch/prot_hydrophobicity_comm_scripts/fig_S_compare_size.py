@@ -9,6 +9,7 @@ import numpy as np
 
 import glob, os, fnmatch
 
+import scipy.stats
 
 ## Fig S1: How surface hydrophobicity differs if you consider surface residues or atoms
 
