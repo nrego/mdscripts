@@ -58,15 +58,22 @@ width = 1
 gap = 4
 
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15,8), sharex=True)
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15,12), sharex=True)
 
 # upper left
 for idx, name in enumerate(names):
     label = labels[idx]
-    this_vals = vals[idx] 
+    this_vals = vals[idx]
+    # surface hydrophobic atoms 
     n_phob = this_vals[4]
+    # surface hydrophobic atoms from hydrophobic residues
     n_phob_from_phob = this_vals[-1]
+    # surface hydrophobic atoms from hydrophilic residues
     n_phob_from_phil = this_vals[-3]
+    # atoms from hydrophobic surface residues
+    n_atm_phob_res = this_vals[-2]
+    # atoms from hydrophilic surface residues
+    n_atm_phil_res = this_vals[-4]
 
     this_dipole = dipole[label]
 
@@ -74,13 +81,22 @@ for idx, name in enumerate(names):
     ax1.bar(idx, n_phob_from_phob/n_phob, width=width, label=name, color=colors[idx])
     ax2.bar(idx, n_phob_from_phil/n_phob, width=width, label=name, color=colors[idx])
 
-yticks = np.arange(0, 1.1, 0.1)
+    ax3.bar(idx, n_phob_from_phob/n_atm_phob_res, width=width, label=name, color=colors[idx])
+    ax4.bar(idx, n_phob_from_phil/n_atm_phil_res, width=width, label=name, color=colors[idx])
+
+yticks = np.arange(0, 1.1, 0.2)
 
 ax1.set_xticks([])
 ax1.set_yticks(yticks)
 
 ax2.set_xticks([])
 ax2.set_yticks(yticks)
+
+ax3.set_xticks([])
+ax3.set_yticks(yticks)
+
+ax4.set_xticks([])
+ax4.set_yticks(yticks)
 
 fig.tight_layout()
 fig.subplots_adjust(hspace=0.3)
