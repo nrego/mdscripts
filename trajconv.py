@@ -61,6 +61,11 @@ Command-line options
 
         self.center_only = None
 
+        # Shape: (n_frames, n_rms_specs+1)
+        self.rmsd_arr = None
+        # rms per-atom (for each frame) for rms on the rmsdspec (empty if none supplied)
+        self.rms_per_atom = None
+
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
@@ -131,6 +136,8 @@ Command-line options
 
         self.center_only = args.center_only
 
+
+
     def go(self):
 
         header_str = "fitspec: {}; rmsdspec: {}".format(self.sel_spec, self.rmsd_spec)
@@ -138,13 +145,16 @@ Command-line options
         #center_mol(self.ref_univ)
 
         ndim = 2 if self.rmsd_spec is None else 3
-        rmsd_arr = np.zeros((self.last_frame-self.start_frame, ndim))
+        self.rmsd_arr = np.zeros((self.n_frames, ndim))
 
         self.ref_univ.atoms.write('fit_ref.gro')
 
         if self.rmsd_spec is not None:
             ref_struct = self.ref_univ.select_atoms(self.rmsd_spec)
             other_struct = self.other_univ.select_atoms(self.rmsd_spec)
+            assert ref_struct.n_atoms == other_struct.n_atoms
+
+            self.rms_per_atom = np.zeros((self.n_frames, ref_struct.n_atoms))
 
         if self.do_traj:
             with MDAnalysis.Writer(self.outfile + ".xtc", self.other_univ.atoms.n_atoms) as W:
@@ -156,8 +166,8 @@ Command-line options
                     center_mol(self.other_univ, do_pbc=False)
                     if not self.center_only:
                         rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
-                        rmsd_arr[i_frame-self.start_frame, 0] = curr_ts.time
-                        rmsd_arr[i_frame-self.start_frame, 1] = rms          
+                        self.rmsd_arr[i_frame-self.start_frame, 0] = curr_ts.time
+                        self.rmsd_arr[i_frame-self.start_frame, 1] = rms          
 
                     if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
@@ -166,23 +176,27 @@ Command-line options
 
                     if self.rmsd_spec is not None and not self.center_only:
                         rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
-                        rmsd_arr[i_frame-self.start_frame, 2] = rms_other
+                        self.rmsd_arr[i_frame-self.start_frame, 2] = rms_other
 
-            if not self.center_only:
-                np.savetxt(self.rmsd_out, rmsd_arr, header=header_str)
+                        self.rms_per_atom[i_frame-self.start_frame, :] = np.sum((ref_struct.atoms.positions - other_struct.atoms.positions)**2, axis=1)
+
 
         else:
             center_mol(self.other_univ, do_pbc=False, check_broken=False)
             rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
             self.other_univ.atoms.write(self.outfile + ".gro")
 
-            rmsd_arr[0, 0] = 0.0
-            rmsd_arr[0,1] = rms
+            self.rmsd_arr[0, 0] = 0.0
+            self.rmsd_arr[0,1] = rms
             if self.rmsd_spec is not None:
                 rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
-                rmsd_arr[0,2] = rms_other
+                self.rmsd_arr[0,2] = rms_other
 
-            np.savetxt(self.rmsd_out, rmsd_arr, header=header_str)
+                self.rms_per_atom[0,:] = np.sum((ref_struct.atoms.positions - other_struct.atoms.positions)**2, axis=1)
+
+        # Save output
+        np.savetxt(self.rmsd_out, self.rmsd_arr, header=header_str)
+        np.savez_compressed('rms_per_atom.dat', header=self.rmsd_spec, rms_per_atom=self.rms_per_atom)
 
 
 if __name__=='__main__':
