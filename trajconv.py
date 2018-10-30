@@ -194,6 +194,12 @@ Command-line options
 
                 self.rms_per_atom[0,:] = np.sum((ref_struct.atoms.positions - other_struct.atoms.positions)**2, axis=1)
 
+        if self.rmsd_spec is not None:
+            avg_rms_per_atom = self.rms_per_atom.mean(axis=0)
+            self.other_univ.add_TopologyAttr('tempfactors')
+            other_struct.tempfactors = avg_rms_per_atom
+            other_struct.write('fit_per_atom_rmsd.pdb')
+
         # Save output
         np.savetxt(self.rmsd_out, self.rmsd_arr, header=header_str)
         np.savez_compressed('rms_per_atom.dat', header=self.rmsd_spec, rms_per_atom=self.rms_per_atom)
