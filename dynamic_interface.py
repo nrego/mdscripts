@@ -34,14 +34,14 @@ from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
-#from IPython import embed
+from IPython import embed
 
 '''
 Returns:
     solute_occ:  shape (n_solute_atoms,), list of ints of number of waters for each solute atom's spheres
     total_n: (int); total number of waters in the union of subvolumes
 '''
-def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff):    
+def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff, neighbor_pos):    
 
     solute_occ = np.zeros((solute_pos.shape[0]), dtype=int)
     solute_tree = cKDTree(solute_pos)
@@ -60,8 +60,12 @@ def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff):
     # Total number of waters in entire probe volume
     total_n = water_unique_neighbors.size
 
+    # Optionally find distance between each solute atom and its nearest neighbor in neighbor_pos
+    neighbor_tree = cKDTree(neighbor_pos)
+    min_dist = neighbor_tree.query(solute_pos)[0]
 
-    return (water_occ, solute_occ, total_n, frame_idx)
+
+    return (water_occ, solute_occ, total_n, min_dist, frame_idx)
 
 class DynamicInterface(ParallelTool):
     prog='dynamic interface'
@@ -69,6 +73,11 @@ class DynamicInterface(ParallelTool):
 Perform interface/localized density analysis on a dynamic probe volume 
 (i.e. a union of spherical shells, each with the same radius, centered
 on user-specified atoms)
+
+Analyses include:
+
+- find number of waters within specified distance from each target atom 
+- find the minimum neighbor distance between each target atom and another set of atoms (optional)
 
 -----------------------------------------------------------------------------
 Command-line options
@@ -94,6 +103,9 @@ Command-line options
         self.rho_water = None
         self.rho_solute = None
         self._avg_rho = None
+
+        # Shape: (n_frames, n_solute_atoms)
+        self.min_dist = None
 
         # Record of the total number of waters in the entire probe volume
         # Shape: (n_frames,)
@@ -142,13 +154,15 @@ Command-line options
         
     def add_args(self, parser):
         
-        sgroup = parser.add_argument_group('Instantaneous interface options')
+        sgroup = parser.add_argument_group('Dynamic water density options')
         sgroup.add_argument('-c', '--grofile', metavar='INPUT', type=str, required=True,
                             help='Input structure file')
         sgroup.add_argument('-f', '--trajfile', metavar='XTC', type=str, required=True,
                             help='Input XTC trajectory file')
         sgroup.add_argument('--mol-sel-spec', type=str, default=SEL_SPEC_HEAVIES,
                             help='MDAnalysis-style selection string for choosing solute atoms defining the spherical probe volume')
+        sgroup.add_argument('--neighbor-sel-spec', type=str, 
+                            help='MDAnalysis-style selection spec for neighbor group (such as binding partner)')
         sgroup.add_argument('-rcut', '--rcutoff', type=float, default=6.0,
                             help='Radius of individual spherical subvolumes, in A (default: 6.0)')
         sgroup.add_argument('-b', '--start', type=int, default=0,
@@ -193,6 +207,7 @@ Command-line options
         self.outpdb = args.outpdb.split('.')[0]
 
         self.mol_sel_spec = args.mol_sel_spec
+        self.neighbor_sel_spec = args.neighbor_sel_spec
 
     #@profile
     def calc_rho(self):
@@ -201,7 +216,7 @@ Command-line options
 
         self.rho_water = np.zeros((self.n_frames, self.n_solute_atoms), dtype=np.int)
         self.rho_solute = np.zeros((self.n_frames, self.n_solute_atoms), dtype=np.int)
-
+        self.min_dist = np.zeros((self.n_frames, self.n_solute_atoms), dtype=np.float32)
         self.n_waters = np.zeros((self.n_frames, ), dtype=np.int)
 
         # Cut that shit up to send to work manager
@@ -223,10 +238,15 @@ Command-line options
                 water_atoms = self.univ.select_atoms("name OW and around {} ({})".format(water_dist_cutoff, self.mol_sel_spec))
                 solute_pos = solute_atoms.positions
                 water_pos = water_atoms.positions
+                if self.neighbor_sel_spec is not None:
+                    neighbor_atoms = self.univ.select_atoms(self.neighbor_sel_spec)
+                    neighbor_pos = neighbor_atoms.positions
+                else:
+                    neighbor_pos = np.array([[np.inf, np.inf, np.inf]])
 
                 args = ()
                 kwargs = dict(frame_idx=frame_idx, solute_pos=solute_pos, water_pos=water_pos,
-                              r_cutoff=self.r_cutoff)
+                              r_cutoff=self.r_cutoff, neighbor_pos=neighbor_pos)
                 log.info("Sending job (frame {})".format(frame_idx))
                 yield (_calc_rho, args, kwargs)
 
@@ -234,12 +254,13 @@ Command-line options
         #for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
             #import pdb; pdb.set_trace()
-            water_occ_slice, solute_occ_slice, total_n, frame_idx = future.get_result(discard=True)
+            water_occ_slice, solute_occ_slice, total_n, min_dist, frame_idx = future.get_result(discard=True)
             self.rho_water[frame_idx-self.start_frame, :] = water_occ_slice
             self.rho_solute[frame_idx-self.start_frame, :] = solute_occ_slice
+            self.min_dist[frame_idx-self.start_frame, :] = min_dist
 
             self.n_waters[frame_idx-self.start_frame] = total_n
-            del water_occ_slice, solute_occ_slice
+            del water_occ_slice, solute_occ_slice, min_dist
 
 
     def _get_avg_rho(self):
@@ -299,6 +320,8 @@ Command-line options
             ## Dump all data for each atom with each frame
             np.savez_compressed('rho_data_dump_rad_{}.dat'.format(self.r_cutoff), rho_water=self.rho_water, rho_solute=self.rho_solute, 
                                 header='start_frame: {}   end_frame: {}   n_frames: {}    n_solute_atoms: {}'.format(self.start_frame, self.last_frame, self.n_frames, self.n_solute_atoms))
+            np.savez_compressed('min_dist_neighbor.dat', min_dist=self.min_dist,
+                                header='start_frame: {}   end_frame: {}   sol_spec: {}   neigh_spec: {}'.format(self.start_frame, self.last_frame, self.mol_sel_spec, self.neighbor_sel_spec))
 
         if self.outxtc:
             print("xtc output not yet supported")
