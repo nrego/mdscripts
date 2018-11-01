@@ -25,6 +25,10 @@ parser.add_argument('--thresh', default=0.5, type=float,
                     help='Dewetting threshold for normalized rho (default: 0.5)')
 parser.add_argument('--sel-spec', default='segid targ', type=str,
                     help='Selection spec for getting protein atoms')
+parser.add_argument('--min-dist', type=str,
+                    help='Optional: List of min dist of each of this selections atoms to the binding partner')
+parser.add_argument('--r-dist', type=float, default=4.0,
+                    help='If min-dist is supplied, then only atoms this close will be considered contacts')
 
 
 args = parser.parse_args()
@@ -41,17 +45,36 @@ surf_mask = sys.surf_mask_h
 buried_mask = ~surf_mask
 prot = sys.prot_h
 
-
 rho_i = targ_data / ref_data
-contact_mask = (rho_i < args.thresh) & surf_mask
-prot[contact_mask].tempfactors = 1
 
-np.savetxt('contact_mask.dat', contact_mask, fmt='%1d')
+# Are we predicting contacts or finding them from a bound simulation?
+if args.min_dist is None:
+    print('predicting contacts from phi-ens simulation...')
+    contact_mask = (rho_i < args.thresh) & surf_mask
+    prot[contact_mask].tempfactors = 1
 
-prot.write('contact.pdb', bonds=None)
+    np.savetxt('pred_contact_mask.dat', contact_mask, fmt='%1d')
 
-prot.tempfactors = rho_i
-prot[buried_mask].tempfactors = -2
-prot.write('contact_rho.pdb')
+    prot.write('pred_contact.pdb', bonds=None)
+
+    prot.tempfactors = rho_i
+    prot[buried_mask].tempfactors = -2
+    prot.write('pred_contact_rho.pdb', bonds=None)
+
+else:
+    print('Finding contacts from bound simulation...')
+    min_dist = np.load(args.min_dist)['min_dist'].mean(axis=0)
+
+    contact_mask = (min_dist < args.r_dist) & surf_mask
+    prot[contact_mask].tempfactors = 1
+
+    np.savetxt('actual_contact_mask.dat', contact_mask, fmt='%1d')
+    prot.write('actual_contact.pdb', bonds=None)
+
+    prot.tempfactors = rho_i
+    prot[~contact_mask].tempfactors = -2
+    prot.write('actual_contact_rho.pdb', bonds=None)
+
+
 sys.other.write('other.pdb', bonds=None)
 

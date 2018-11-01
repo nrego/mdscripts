@@ -57,6 +57,9 @@ Command-line options
         self.sel_spec = None
         self.rmsd_spec = None
 
+        self.sel_spec_other = None
+        self.rmsd_spec_other = None
+
         self.rmsd_out = None
 
         self.center_only = None
@@ -88,10 +91,14 @@ Command-line options
                             help='Last timepoint (in ps) - default is last available')
         sgroup.add_argument('--fitspec', type=str, default=SEL_SPEC_HEAVIES_NOWALL,
                             help='MDAnalysis selection string for fitting. Default selects all protein heavy atoms')
+        sgroup.add_argument('--fitspec-other', type=str,
+                            help='Fit spec for selecting the other structure to fit (default: same as fitspec)')
         sgroup.add_argument('--center-only', action='store_true', 
                             help='If true, only center molecule (no fitting)')
         sgroup.add_argument('--rmsdspec', type=str, 
                             help='MDAnalysis selection string for rmsd (after fitting on fitspec). Optional.')
+        sgroup.add_argument('--rmsdspec-other', type=str,
+                            help='Sel spec for other structure rmsd (default: same as rmsdspec)')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-o', '--outfile', type=str, default='fit.gro',
                         help='Output file to write fitted trajectory or structure. File type determined by input')
@@ -128,8 +135,10 @@ Command-line options
             self.last_frame = other_univ.trajectory.n_frames
 
         self.sel_spec = args.fitspec
-
         self.rmsd_spec = args.rmsdspec
+
+        self.sel_spec_other = args.fitspec_other or args.fitspec
+        self.rmsd_spec_other = args.rmsdspec_other or args.rmsdspec
 
         self.outfile = args.outfile.split('.')[0]
         self.rmsd_out = args.outrmsd
@@ -140,9 +149,9 @@ Command-line options
 
     def go(self):
 
-        header_str = "fitspec: {}; rmsdspec: {}".format(self.sel_spec, self.rmsd_spec)
+        header_str = "fitspec: {}; rmsdspec: {};  fitspec_other: {};  rmsd_spec_other: {}".format(self.sel_spec, self.rmsd_spec, self.sel_spec_other, self.rmsd_spec_other)
+
         n_frames = self.last_frame - self.start_frame
-        #center_mol(self.ref_univ)
 
         ndim = 2 if self.rmsd_spec is None else 3
         self.rmsd_arr = np.zeros((self.n_frames, ndim))
@@ -151,7 +160,7 @@ Command-line options
 
         if self.rmsd_spec is not None:
             ref_struct = self.ref_univ.select_atoms(self.rmsd_spec)
-            other_struct = self.other_univ.select_atoms(self.rmsd_spec)
+            other_struct = self.other_univ.select_atoms(self.rmsd_spec_other)
             assert ref_struct.n_atoms == other_struct.n_atoms
 
             self.rms_per_atom = np.zeros((self.n_frames, ref_struct.n_atoms))
@@ -165,40 +174,44 @@ Command-line options
 
                     center_mol(self.other_univ, do_pbc=False)
                     if not self.center_only:
-                        rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+                        rms = rotate_mol(self.ref_univ, self.other_univ, ref_spec=self.sel_spec, other_spec=self.sel_spec_other)
                         self.rmsd_arr[i_frame-self.start_frame, 0] = curr_ts.time
                         self.rmsd_arr[i_frame-self.start_frame, 1] = rms          
 
                     if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
-                    W.write(self.other_univ.atoms)
+                    W.write(self.other_univ.atoms, bonds=None)
 
 
                     if self.rmsd_spec is not None and not self.center_only:
                         rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
                         self.rmsd_arr[i_frame-self.start_frame, 2] = rms_other
 
-                        self.rms_per_atom[i_frame-self.start_frame, :] = np.sum((ref_struct.atoms.positions - other_struct.atoms.positions)**2, axis=1)
+                        self.rms_per_atom[i_frame-self.start_frame, :] = np.sqrt( np.sum((ref_struct.atoms.positions - other_struct.atoms.positions)**2, axis=1) )
 
 
         else:
             center_mol(self.other_univ, do_pbc=False, check_broken=False)
-            rms = rotate_mol(self.ref_univ, self.other_univ, mol_spec=self.sel_spec)
+            rms = rotate_mol(self.ref_univ, self.other_univ, ref_spec=self.sel_spec, other_spec=self.sel_spec_other)
             self.other_univ.atoms.write(self.outfile + ".gro")
 
-            self.rmsd_arr[0, 0] = 0.0
+            self.rmsd_arr[0,0] = 0.0
             self.rmsd_arr[0,1] = rms
             if self.rmsd_spec is not None:
                 rms_other = rmsd(ref_struct.atoms.positions, other_struct.atoms.positions)
                 self.rmsd_arr[0,2] = rms_other
 
-                self.rms_per_atom[0,:] = np.sum((ref_struct.atoms.positions - other_struct.atoms.positions)**2, axis=1)
+                self.rms_per_atom[0,:] = np.sqrt( np.sum((ref_struct.atoms.positions - other_struct.atoms.positions)**2, axis=1) )
 
         if self.rmsd_spec is not None:
             avg_rms_per_atom = self.rms_per_atom.mean(axis=0)
             self.other_univ.add_TopologyAttr('tempfactors')
             other_struct.tempfactors = avg_rms_per_atom
-            other_struct.write('fit_per_atom_rmsd.pdb')
+            other_struct.write('fit_per_atom_rmsd.pdb', bonds=None)
+
+            self.ref_univ.add_TopologyAttr('tempfactors')
+            ref_struct.tempfactors = avg_rms_per_atom
+            ref_struct.write('fit_ref_per_atom_rmsd.pdb', bonds=None)
 
         # Save output
         np.savetxt(self.rmsd_out, self.rmsd_arr, header=header_str)

@@ -78,11 +78,11 @@ for idx, name in enumerate(names):
     this_dipole = dipole[label]
 
     # Fraction hydrophobic atoms from hydrophobic residues
-    ax1.bar(idx, n_phob_from_phob/n_phob, width=width, label=name, color=colors[idx])
-    ax2.bar(idx, n_phob_from_phil/n_phob, width=width, label=name, color=colors[idx])
+    ax3.bar(idx, n_phob_from_phob/n_phob, width=width, label=name, color=colors[idx])
+    ax4.bar(idx, n_phob_from_phil/n_phob, width=width, label=name, color=colors[idx])
 
-    ax3.bar(idx, n_phob_from_phob/n_atm_phob_res, width=width, label=name, color=colors[idx])
-    ax4.bar(idx, n_phob_from_phil/n_atm_phil_res, width=width, label=name, color=colors[idx])
+    ax1.bar(idx, n_phob_from_phob/n_atm_phob_res, width=width, label=name, color=colors[idx])
+    ax2.bar(idx, n_phob_from_phil/n_atm_phil_res, width=width, label=name, color=colors[idx])
 
 yticks = np.arange(0, 1.1, 0.2)
 

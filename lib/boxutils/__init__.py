@@ -8,14 +8,14 @@ DTYPE = np.float32
 
 from scipy.spatial import cKDTree
 
-from selection_specs import sel_spec_nowall, sel_spec_not_nowall
+from constants import SEL_SPEC_NOWALL, SEL_SPEC_NOT_NOWALL
 
 # centers 'mol' (specified by mdanalysis selection string, 'mol_spec') in box
 #   Translates all atoms in 'univ' so COM of mol is in the center of box. Original
 #     orientations maintained
 #
 #  Modifies MDAnalysis Universe 'univ' in-place by working on atom groups
-def center_mol(univ, mol_spec=sel_spec_nowall, do_pbc=False, check_broken=True):
+def center_mol(univ, mol_spec=SEL_SPEC_NOWALL, do_pbc=False, check_broken=True):
 
     mol_group = univ.select_atoms(mol_spec)
     
@@ -57,9 +57,9 @@ def center_mol(univ, mol_spec=sel_spec_nowall, do_pbc=False, check_broken=True):
 #   atoms in system
 #
 #  Modifies MDAnalysis Universe 'univ' in-place
-def rotate_mol(ref_univ, other_univ, mol_spec=sel_spec_nowall):
+def rotate_mol(ref_univ, other_univ, ref_spec=SEL_SPEC_NOWALL, other_spec=SEL_SPEC_NOWALL):
 
-    rms1, rms2 = alignto(other_univ, ref_univ, select=mol_spec)
+    rms1, rms2 = alignto(other_univ, ref_univ, select={'reference': ref_spec, 'mobile': other_spec})
 
     return rms2
 
