@@ -14,13 +14,13 @@ import argparse
 
 univ = MDAnalysis.Universe('equil.tpr', 'cent.xtc')
 
-box = univ.dimensions[:3]
+box = np.array([60., 60., 120.])
 # slab width in the z dimension
 slab_width = 1.0
 n_slabs = box[-1] / slab_width
 slabs_z = np.arange(0, box[-1]+slab_width, slab_width)
 
-first_frame = 10000
+first_frame = 20000
 last_frame = univ.trajectory.n_frames
 
 prot = univ.select_atoms('segid seg_0_Protein_targ')
@@ -71,10 +71,18 @@ for idx, i_frame in enumerate(range(first_frame, last_frame)):
     z_int[idx] = counts/expt_water
 
 
+gibbs_int_pos = np.zeros(z_int.shape[0])
 # Find the gibs dividing surface (upper) for each frame
-
 for idx in range(z_int.shape[0]):
     this_density = z_int[idx]
-
     
+    mask = this_density < 0.5
+    density_mask = mask[:-1] != mask[1:]
+    int_idx = np.where(density_mask==True)[0]
+
+    if int_idx.size > 2:
+        print("idx: {}, int_idx: {}".format(idx, int_idx))
+
+    gibbs_int_pos[idx] = slabs_z[int_idx[-1]]
+
 
