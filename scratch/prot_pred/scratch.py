@@ -11,78 +11,70 @@ from system import MDSystem
 
 import argparse
 
-parser = argparse.ArgumentParser('Collect atom dewetting info from phi-ensemble simulation, order atoms')
-parser.add_argument('--ref-top', required=True, type=str,
-                    help='Reference topology')
-parser.add_argument('--ref-struct', required=True, type=str,
-                    help='Reference structure')
-parser.add_argument('--sel-spec', default='segid targ', type=str,
-                    help='Selection spec for reference protein (default: "segid targ")')
-parser.add_argument('--ref-rho', required=True, type=str,
-                    help='Reference rho for determining buried atoms')
-parser.add_argument('-nb', default=5, type=float,
-                    help='Considered buried if fewer than this number of waters in reference struct (default 5)')
-parser.add_argument('--infiles', type=str, nargs='+',
-                    help='input files (e.g. phi_*)')
-args = parser.parse_args()
+
+univ = MDAnalysis.Universe('equil.tpr', 'cent.xtc')
+
+box = univ.dimensions[:3]
+# slab width in the z dimension
+slab_width = 1.0
+n_slabs = box[-1] / slab_width
+slabs_z = np.arange(0, box[-1]+slab_width, slab_width)
+
+first_frame = 10000
+last_frame = univ.trajectory.n_frames
+
+prot = univ.select_atoms('segid seg_0_Protein_targ')
+prot_h = prot.select_atoms('not name H*')
+
+## Find bounding square in x-y plane around hfb 
+  #(so we don't consider waters in this region when calculating interface)
+lim_min = np.array([np.inf, np.inf])
+lim_max = np.array([-np.inf, -np.inf])
+
+for i_frame in range(first_frame, last_frame):
+    univ.trajectory[i_frame]
+
+    min_x, min_y, min_z = prot.positions.min(axis=0)
+    max_x, max_y, max_z = prot.positions.max(axis=0)
+
+    if min_x < lim_min[0]:
+        lim_min[0] = min_x
+    if min_y < lim_min[1]:
+        lim_min[1] = min_y
+
+    if max_x > lim_max[0]:
+        lim_max[0] = max_x
+    if max_y > lim_max[1]:
+        lim_max[1] = max_y
 
 
-#embed()
+lim_min = np.floor(lim_min)
+lim_max = np.ceil(lim_max)
 
-fnames = np.sort(args.infiles)
-ref_rho = np.load(args.ref_rho)['rho_water'].mean(axis=0)
-sys = MDSystem(args.ref_top, args.ref_struct, sel_spec=args.sel_spec)
-sys.find_buried(ref_rho, nb=5)
+waters = univ.select_atoms('name OW')
 
-surf_mask = sys.surf_mask_h
-prot_h = sys.prot_h
-surf_atoms = prot_h[surf_mask]
-surf_atoms.tempfactors = -1
+# z coord of the gibs dividing interface
+z_int = np.zeros((last_frame-first_frame, slabs_z.size-1))
 
-global_indices = np.arange(sys.n_prot_tot)
-# Gives global index of protein heavy atom, given its local index
-heavy_local_to_global = prot_h.indices
-local_indices = np.arange(sys.n_prot_h_tot)
-# array of local (prot heavy) atoms that have already dewetted
-dewet_indices = np.array([])
+small_y_ht = lim_max[1] - lim_min[1]
+slab_vol = ((box[0]*box[1]) - (lim_max - lim_min).prod()) * slab_width
+expt_water = slab_vol * 0.033
+for idx, i_frame in enumerate(range(first_frame, last_frame)):
+    univ.trajectory[i_frame]
 
-idx_order = np.array([])
+    water_pos = waters.positions
+    water_mask = ((water_pos[:,0] < lim_min[0]) | (water_pos[:,0] > lim_max[0])) | ((water_pos[:,1] < lim_min[1]) | (water_pos[:,1] > lim_max[1]))
 
-prev_phi = 0.0
-for fname in fnames:
-    dirname = os.path.dirname(fname)
-    phi = float(dirname.split('_')[-1]) / 10.0
-    assert phi > prev_phi
-    prev_phi = phi
+    water_pos = water_pos[water_mask]
+    counts, bb = np.histogram(water_pos[:,2], bins=slabs_z)
 
-    dat = np.load(fname)['rho_water'].mean(axis=0)
-    if dat.size > ref_rho.size:
-        dat = dat[prot_h.indices]
+    z_int[idx] = counts/expt_water
 
-    rho = dat/ref_rho
-    # Indices of heavy atoms that are dewet and surface atoms
-    surf_dewet_mask = (rho < 0.5) & surf_mask
-    surf_dewet_idx = local_indices[surf_dewet_mask]
+
+# Find the gibs dividing surface (upper) for each frame
+
+for idx in range(z_int.shape[0]):
+    this_density = z_int[idx]
+
     
-    new_dewet_indices = np.setdiff1d(surf_dewet_idx, dewet_indices)
-    # Sort by rho
-    order_sort = np.argsort(rho[new_dewet_indices])
-    idx_order = np.append(idx_order, new_dewet_indices[order_sort])
-
-    dewet_indices = np.unique(np.append(new_dewet_indices, dewet_indices))
-
-idx_order = idx_order.astype(int)
-print("{} total atoms dewetted".format(len(idx_order)))
-print("limiting to the first 500 atoms")
-max_i = min(len(idx_order), 500)
-#prot_h.write('order.pdb')
-with MDAnalysis.Writer('order.pdb', multiframe=True, bonds=None, n_atoms=prot_h.n_atoms) as PDB:
-
-    for i in range(max_i):
-        idx = idx_order[i]
-        prot_h[idx].tempfactor = i/10.0
-        prot_h[idx].name = 'D'
-        PDB.write(prot_h.atoms)
-        prot_h.write('pdb_{}.pdb'.format(i))
-
 
