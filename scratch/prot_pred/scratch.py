@@ -27,6 +27,7 @@ slabs_z = np.arange(0, box[-1]+slab_width, slab_width)
 
 first_frame = 20000
 last_frame = univ.trajectory.n_frames
+n_frames = last_frame - first_frame
 
 prot = univ.select_atoms('segid seg_0_Protein_targ')
 prot_h = prot.select_atoms('not name H*')
@@ -91,8 +92,16 @@ for idx in range(z_int.shape[0]):
     gibbs_int_pos[idx] = slabs_z[int_idx[-1]]
 
 
+int_pos = gibbs_int_pos.mean()
+min_dist = np.zeros((n_frames, prot_h.n_atoms))
+for idx, i_frame in enumerate(range(first_frame, last_frame)):
+    univ.trajectory[idx]
 
-
+    this_z_pos = prot_h.positions[:,2]
+    dist = int_pos - this_z_pos
+    dist[dist<0] = 0
+    min_dist[idx] = dist
+'''
 # do instantaneous interface 
 grid_min_z = 50
 grid_res = 1.0
@@ -130,3 +139,4 @@ rho_vals /= 0.033
 rho_shape = rho_vals.reshape((1, pts_x.size, pts_y.size, pts_z.size))
 
 field = RhoField(rho_shape, gridpts)
+'''
