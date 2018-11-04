@@ -9,6 +9,11 @@ from IPython import embed
 
 from system import MDSystem
 
+from rhoutils import rho, cartesian
+from fieldwriter import RhoField
+
+from scipy.spatial import cKDTree
+
 import argparse
 
 
@@ -86,3 +91,42 @@ for idx in range(z_int.shape[0]):
     gibbs_int_pos[idx] = slabs_z[int_idx[-1]]
 
 
+
+
+# do instantaneous interface 
+grid_min_z = 50
+grid_res = 1.0
+
+pts_x = np.arange(0, box[0], grid_res)
+pts_y = np.arange(0, box[1], grid_res)
+pts_z = np.arange(grid_min_z, box[2], grid_res)
+
+gridpts = cartesian([pts_x, pts_y, pts_z]).astype(np.float32)
+npts = gridpts.shape[0]
+tree_grid = cKDTree(gridpts)
+rho_vals = np.zeros(npts)
+
+r_cut = 7.0
+r_cut_sq = r_cut**2
+sigma = 2.4
+sigma_sq = sigma**2
+
+water_pos = waters.positions
+water_mask = water_pos[:,2] > grid_min_z
+
+tree_water = cKDTree(water_pos[water_mask])
+res = tree_water.query_ball_tree(tree_grid, r_cut, p=np.inf)
+# For each water ...
+for i, pos in enumerate(water_pos[water_mask]):
+    neighbor_idx = np.array(res[i])
+
+    dist_vector = gridpts[neighbor_idx] - pos
+
+    this_rho = rho(dist_vector, sigma, sigma_sq, r_cut, r_cut_sq)
+
+    rho_vals[neighbor_idx] += this_rho
+
+rho_vals /= 0.033
+rho_shape = rho_vals.reshape((1, pts_x.size, pts_y.size, pts_z.size))
+
+field = RhoField(rho_shape, gridpts)

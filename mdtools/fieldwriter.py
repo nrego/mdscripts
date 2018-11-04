@@ -218,13 +218,13 @@ class RhoField:
 
                 f.write(mesh/10, time=curr_time, box=self.box/10)
 
-    def do_DX(self, fileout):
+    def do_DX(self, fileout, origin=(0,0,0)):
         cntr = 0
 
         rho_shape = self.rho_avg.reshape(self.n_pts)
         with open(fileout, 'w') as f:
             f.write("object 1 class gridpositions counts {} {} {}\n".format(self.n_grids[0], self.n_grids[1], self.n_grids[2]))
-            f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,0))
+            f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(*origin))
             f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(self.d_grid[0], 0, 0))
             f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, self.d_grid[1], 0))
             f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, 0, self.d_grid[2]))
