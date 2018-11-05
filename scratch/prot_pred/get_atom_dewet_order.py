@@ -33,7 +33,7 @@ fnames = np.sort(args.infiles)
 ref_rho = np.load(args.ref_rho)['rho_water'].mean(axis=0)
 sys = MDSystem(args.ref_top, args.ref_struct, sel_spec=args.sel_spec)
 sys.find_buried(ref_rho, nb=5)
-
+#embed()
 surf_mask = sys.surf_mask_h
 prot_h = sys.prot_h
 surf_atoms = prot_h[surf_mask]
@@ -71,6 +71,9 @@ for fname in fnames:
 
     dewet_indices = np.unique(np.append(new_dewet_indices, dewet_indices))
 
+    if surf_dewet_mask.sum() > 0:
+        embed()
+        
 idx_order = idx_order.astype(int)
 print("{} total atoms dewetted".format(len(idx_order)))
 print("limiting to the first 500 atoms")

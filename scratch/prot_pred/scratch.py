@@ -25,7 +25,7 @@ slab_width = 1.0
 n_slabs = box[-1] / slab_width
 slabs_z = np.arange(0, box[-1]+slab_width, slab_width)
 
-first_frame = 20000
+first_frame = 27000
 last_frame = univ.trajectory.n_frames
 n_frames = last_frame - first_frame
 

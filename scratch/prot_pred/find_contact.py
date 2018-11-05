@@ -67,9 +67,11 @@ else:
     min_dist = np.load(args.min_dist)['min_dist'].mean(axis=0)
 
     contact_mask = (min_dist < args.r_dist) & surf_mask
+    contact_mask_dewet = contact_mask & (rho_i < args.thresh)
     prot[contact_mask].tempfactors = 1
 
     np.savetxt('actual_contact_mask.dat', contact_mask, fmt='%1d')
+    np.savetxt('actual_contact_mask_phob.dat', contact_mask_dewet, fmt='%1d')
     prot.write('actual_contact.pdb', bonds=None)
 
     prot.tempfactors = rho_i
