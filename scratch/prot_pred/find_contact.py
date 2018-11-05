@@ -43,6 +43,7 @@ sys.find_buried(ref_data, nb=args.nb)
 # Surface heavy atoms
 surf_mask = sys.surf_mask_h
 buried_mask = ~surf_mask
+np.savetxt('buried_mask.dat', buried_mask, fmt='%1d')
 prot = sys.prot_h
 
 rho_i = targ_data / ref_data

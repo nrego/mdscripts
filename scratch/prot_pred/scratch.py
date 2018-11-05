@@ -101,6 +101,8 @@ for idx, i_frame in enumerate(range(first_frame, last_frame)):
     dist = int_pos - this_z_pos
     dist[dist<0] = 0
     min_dist[idx] = dist
+
+np.savez_compressed('min_dist_neighbor.dat', min_dist=min_dist, header='first frame:  {} last frame:  {}'.format(first_frame,last_frame))
 '''
 # do instantaneous interface 
 grid_min_z = 50
