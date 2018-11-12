@@ -29,8 +29,12 @@ parser.add_argument('--min-dist', type=str,
                     help='Optional: List of min dist of each of this selections atoms to the binding partner')
 parser.add_argument('--actual-contact', type=str,
                     help='Optional: supply a mask of the actual contacts, for comparison')
+parser.add_argument('--actual-contact-phob', type=str,
+                    help='Optional: supply a mask of the actual contacts that are hydrophobic, for comparison')
 parser.add_argument('--r-dist', type=float, default=4.0,
                     help='If min-dist is supplied, then only atoms this close will be considered contacts')
+parser.add_argument('--hydropathy', type=str, 
+                    help='If provided, also assign hydropathy values for each atom')
 
 
 args = parser.parse_args()
@@ -77,26 +81,78 @@ if args.min_dist is None:
 
         prot.tempfactors = -2
         prot[surf_mask][tp].tempfactors = 1
-        prot[surf_mask][fp].tempfactors = -1
+        prot[surf_mask][fp].tempfactors = 0
+        prot[surf_mask][fn].tempfactors = -1
         prot.write('pred_contact_tp_fp.pdb', bonds=None)
 
         np.savetxt('accuracy.dat', np.array([tp.sum(), fp.sum(), tn.sum(), fn.sum()]), fmt='%.1f')
+
+    if args.actual_contact_phob is not None:
+        print('...and comparing to actual contacts (hydrophobic)')
+
+        actual_contact_mask = np.loadtxt(args.actual_contact_phob).astype(bool)[surf_mask]
+        pred_contact_mask = (rho_i < args.thresh)[surf_mask]
+
+        tp = pred_contact_mask & actual_contact_mask
+        fp = pred_contact_mask & ~actual_contact_mask
+        tn = ~pred_contact_mask & ~actual_contact_mask
+        fn = ~pred_contact_mask & actual_contact_mask
+
+        prot.tempfactors = -2
+        prot[surf_mask][tp].tempfactors = 1
+        prot[surf_mask][fp].tempfactors = 0
+        prot[surf_mask][fn].tempfactors = -1
+        prot.write('pred_contact_tp_fp_phob.pdb', bonds=None)
+
+        np.savetxt('accuracy_phob.dat', np.array([tp.sum(), fp.sum(), tn.sum(), fn.sum()]), fmt='%.1f')
 
 else:
     print('Finding contacts from bound simulation...')
     min_dist = np.load(args.min_dist)['min_dist'].mean(axis=0)
 
+    assert args.hydropathy is not None
+
+    with open(args.hydropathy, 'r') as fin:
+        charge_assign = pickle.load(fin)
+    sys.assign_hydropathy(charge_assign)
+
+    # All surface hydrophobic atoms (according to kapcha/rossky)
+    hydropathy_mask = prot.tempfactors == 0
+    hydrophilicity_mask = prot.tempfactors == -1
+    prot.write('hydropathy.pdb', bonds=None)
+
+
+    # All surface atoms that are within cutoff of partner
     contact_mask = (min_dist < args.r_dist) & surf_mask
     contact_mask_dewet = contact_mask & (rho_i < args.thresh)
-    prot[contact_mask].tempfactors = 1
+    contact_mask_phob = contact_mask & hydropathy_mask
+    contact_mask_phil = contact_mask & hydrophilicity_mask
+    
 
     np.savetxt('actual_contact_mask.dat', contact_mask, fmt='%1d')
-    np.savetxt('actual_contact_mask_phob.dat', contact_mask_dewet, fmt='%1d')
+    np.savetxt('actual_contact_mask_dewet.dat', contact_mask_dewet, fmt='%1d')
+    np.savetxt('actual_contact_mask_phob.dat', contact_mask_phob, fmt='%1d')
+    
+
+    # Color by actual contacts
+    prot.tempfactors = -2
+    prot[contact_mask].tempfactors = 0
     prot.write('actual_contact.pdb', bonds=None)
 
+    # Color by actual contacts, according to rho values
     prot.tempfactors = rho_i
     prot[~contact_mask].tempfactors = -2
     prot.write('actual_contact_rho.pdb', bonds=None)
+
+    # Color actual contacts as hydrophobic or hydrophilic (kapcha/rossky)
+    prot.tempfactors = -2
+    prot[contact_mask_phil].tempfactors = -1
+    prot[contact_mask_phob].tempfactors = 0
+    prot.write('actual_contact_phob.pdb', bonds=None)
+
+    print("Total contacts (within {} of partner): {}".format(args.r_dist, contact_mask.sum()))
+    print("  contacts that are dewetted: {}".format(contact_mask_dewet.sum()))
+    print("  contacts that are phobic: {}".format(contact_mask_phob.sum()))
 
 
 sys.other.write('other.pdb', bonds=None)

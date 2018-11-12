@@ -24,6 +24,8 @@ parser.add_argument('--rhodata', type=str,
 parser.add_argument('-nb', '--nburied', type=float, default=5,
                     help='If rhodata supplied, atoms are considered buried if they have fewer than '
                          'this many average water molecules')
+parser.add_argument('--sel-spec', default='protein', type=str,
+                    help='sel spec for getting protein atoms from topology')
 
 HYDROPHOBIC_SEL = "resname ALA or resname VAL or resname LEU or resname ILE or resname PHE or resname TRP or resname PRO"
 args = parser.parse_args()
@@ -31,7 +33,7 @@ args = parser.parse_args()
 with open(args.charge, 'r') as f:
     charge_assign = pickle.load(f)
 
-sys = MDSystem(args.top, args.struct)
+sys = MDSystem(args.top, args.struct, sel_spec=args.sel_spec)
 
 if args.rhodata is not None:
     rho_dat = np.load(args.rhodata)['rho_water'].mean(axis=0)
@@ -41,8 +43,8 @@ sys.assign_hydropathy(charge_assign)
 with open(args.charge, 'w') as f:
     pickle.dump(charge_assign, f)
 
-sys.prot.write('prot_by_charge.pdb')
-sys.prot_h.write('prot_heavies_by_charge.pdb')
+sys.prot.write('prot_by_charge.pdb', bonds=None)
+sys.prot_h.write('prot_heavies_by_charge.pdb', bonds=None)
 surf_mask = sys.surf_mask
 surf = sys.prot[surf_mask]
 surf_res = surf.residues
