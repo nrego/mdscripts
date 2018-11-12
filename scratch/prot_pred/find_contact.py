@@ -27,6 +27,8 @@ parser.add_argument('--sel-spec', default='segid targ', type=str,
                     help='Selection spec for getting protein atoms')
 parser.add_argument('--min-dist', type=str,
                     help='Optional: List of min dist of each of this selections atoms to the binding partner')
+parser.add_argument('--actual-contact', type=str,
+                    help='Optional: supply a mask of the actual contacts, for comparison')
 parser.add_argument('--r-dist', type=float, default=4.0,
                     help='If min-dist is supplied, then only atoms this close will be considered contacts')
 
@@ -62,6 +64,24 @@ if args.min_dist is None:
     prot[buried_mask].tempfactors = -2
     prot.write('pred_contact_rho.pdb', bonds=None)
 
+    if args.actual_contact is not None:
+        print('...and comparing to actual contacts')
+
+        actual_contact_mask = np.loadtxt(args.actual_contact).astype(bool)[surf_mask]
+        pred_contact_mask = (rho_i < args.thresh)[surf_mask]
+
+        tp = pred_contact_mask & actual_contact_mask
+        fp = pred_contact_mask & ~actual_contact_mask
+        tn = ~pred_contact_mask & ~actual_contact_mask
+        fn = ~pred_contact_mask & actual_contact_mask
+
+        prot.tempfactors = -2
+        prot[surf_mask][tp].tempfactors = 1
+        prot[surf_mask][fp].tempfactors = -1
+        prot.write('pred_contact_tp_fp.pdb', bonds=None)
+
+        np.savetxt('accuracy.dat', np.array([tp.sum(), fp.sum(), tn.sum(), fn.sum()]), fmt='%.1f')
+
 else:
     print('Finding contacts from bound simulation...')
     min_dist = np.load(args.min_dist)['min_dist'].mean(axis=0)
@@ -80,4 +100,3 @@ else:
 
 
 sys.other.write('other.pdb', bonds=None)
-
