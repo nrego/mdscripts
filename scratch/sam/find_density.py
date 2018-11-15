@@ -78,9 +78,10 @@ positions = np.array(positions)
 N = positions.shape[0]
 
 
-
 # Set up bins for density of states histogram
-k = 8
+k = 4
+
+print('k: {}'.format(k))
 min_val = np.floor(10*(0.4 + (k-3)*0.05))/10.0
 max_val = 1.6
 rms_bins = np.arange(min_val, max_val, 0.05)
@@ -112,8 +113,8 @@ if do_brute:
         bin_assign = np.digitize(rms, rms_bins) - 1
         states[bin_assign] += 1
 
-    print('Max rms: {}'.format(max_rms))
-    print('Min rms: {}'.format(min_rms))
+    print('  Max rms: {}'.format(max_rms))
+    print('  Min rms: {}'.format(min_rms))
 
     states /= np.diff(rms_bins)
     states /= np.dot(np.diff(rms_bins), states)
