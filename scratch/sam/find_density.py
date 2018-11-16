@@ -82,11 +82,14 @@ N = positions.shape[0]
 k = 4
 
 print('k: {}'.format(k))
-min_val = np.floor(10*(0.4 + (k-3)*0.05))/10.0
-max_val = 1.6
-rms_bins = np.arange(min_val, max_val, 0.05)
-rms_bins = np.append(0, rms_bins)
-rms_bins = np.append(rms_bins, positions.max())
+#min_val = np.floor(10*(0.4 + (k-3)*0.05))/10.0
+max_val = 1.75
+rms_bins = np.arange(0, max_val+0.1, 0.1)
+
+# Only check center bins for convergence test (flat histogram)
+center_bin_lo = np.argwhere(rms_bins >= 0.4)[0,0]
+center_bin_hi = np.argwhere(rms_bins > 1.5)[0,0]
+center_bin_slice = slice(center_bin_lo, center_bin_hi)
 
 # Density of states, from brute-force
 states = np.zeros(rms_bins.size-1)
@@ -171,7 +174,7 @@ else:
             sampled_pts[bin_assign] = this_arr
          
 
-        if is_flat(wl_hist[2:-2], 0.7) or n_iter > max_iter:
+        if is_flat(wl_hist[center_bin_slice], 0.7) or n_iter > max_iter:
 
             #break
             print(" n_iter: {}".format(n_iter))
