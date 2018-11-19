@@ -12,8 +12,8 @@ mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
 
 actual_contacts = np.loadtxt('../bound/actual_contact_mask.dat').astype(bool)
-actual_contacts = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool)
-actual_contacts = np.loadtxt('../bound/actual_contact_mask_dewet.dat').astype(bool)
+#actual_contacts = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool)
+#actual_contacts = np.loadtxt('../bound/actual_contact_mask_dewet.dat').astype(bool)
 print('contacts: {}'.format(actual_contacts.sum()))
 buried_mask = np.loadtxt('../bound/buried_mask.dat').astype(bool)
 surf_mask = ~buried_mask

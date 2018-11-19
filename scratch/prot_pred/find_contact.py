@@ -54,6 +54,17 @@ prot = sys.prot_h
 
 rho_i = targ_data / ref_data
 
+# Check that all target buried atoms are still buried
+buried_to_exposed = (targ_data > args.nb) & buried_mask
+if buried_to_exposed.sum() > 0:
+    print ("WARNING: {} atoms have become solvent exposed".format(buried_to_exposed.sum()))
+
+
+np.savetxt('exposed_mask.dat', buried_to_exposed, fmt='%1d')
+prot[buried_to_exposed].tempfactors = -1
+prot.write('exposed.pdb', bonds=None)
+prot[buried_to_exposed].tempfactors = -2
+
 # Are we predicting contacts or finding them from a bound simulation?
 if args.min_dist is None:
     print('predicting contacts from phi-ens simulation...')
