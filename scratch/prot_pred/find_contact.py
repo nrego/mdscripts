@@ -54,16 +54,17 @@ prot = sys.prot_h
 
 rho_i = targ_data / ref_data
 
-# Check that all target buried atoms are still buried
-buried_to_exposed = (targ_data > args.nb) & buried_mask
+# Check if any buried atoms have become solvent-exposed in the other structure
+buried_to_exposed = buried_mask & (targ_data > args.nb)
 if buried_to_exposed.sum() > 0:
-    print ("WARNING: {} atoms have become solvent exposed".format(buried_to_exposed.sum()))
+    print("WARNING: {} buried atoms in ref structure have become exposed in target structure".format(buried_to_exposed.sum()))
 
+    prot[buried_to_exposed].tempfactors = -1
+    prot.write('buried_to_exposed.pdb', bonds=None)
+    prot[buried_mask].tempfactors = -2
 
-np.savetxt('exposed_mask.dat', buried_to_exposed, fmt='%1d')
-prot[buried_to_exposed].tempfactors = -1
-prot.write('exposed.pdb', bonds=None)
-prot[buried_to_exposed].tempfactors = -2
+    np.savetxt('exposed_mask.dat', buried_to_exposed, fmt='%1d')
+
 
 # Are we predicting contacts or finding them from a bound simulation?
 if args.min_dist is None:

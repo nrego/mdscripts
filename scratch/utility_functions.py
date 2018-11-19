@@ -13,9 +13,9 @@ def fn_neglogpdist(all_data, all_data_N, boot_indices, boot_logweights):
     boot_data = all_data[boot_indices]
     boot_data_N = all_data_N[boot_indices]
 
-    neglogpdist = get_neglogpdist(boot_data, binbounds, boot_logweights)
+    neglogpdist = get_neglogpdist(boot_data, binbounds, boot_logweights).astype(np.float32)
 
-    neglogpdist_N = get_neglogpdist(boot_data_N, binbounds, boot_logweights)
+    neglogpdist_N = get_neglogpdist(boot_data_N, binbounds, boot_logweights).astype(np.float32)
 
 
     return neglogpdist, neglogpdist_N, binbounds

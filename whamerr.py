@@ -28,7 +28,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 
 log = logging.getLogger('mdtools.whamerr')
 
-
+from IPython import embed
 
 ## Perform bootstrapped MBAR/Binless WHAM analysis for phiout.dat or *.xvg datasets (e.g. from FE calcs in GROMACS)
 #    Note for .xvg datasets (alchemical free energy calcs in gromacs), each file must contain *every* other window
@@ -106,7 +106,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, uncorr_ones_n, bias_mat, n_samples, uncor
         boot_f_k = -np.append(0, minimize(kappa, xweights, method='L-BFGS-B', jac=grad_kappa, args=myargs).x)
 
         f_k_ret[batch_num,:] = boot_f_k
-       
+        
         if boot_fn is not None:
             boot_logweights = gen_data_logweights(boot_uncorr_bias_mat, boot_f_k, uncorr_n_samples)
             #embed()
@@ -574,6 +574,8 @@ Command-line options
         log.info("MBAR results on entire dataset: {}".format(f_k_actual))
 
         np.savetxt('f_k_all.dat', f_k_actual, fmt='%3.6f')
+        all_logweights = gen_data_logweights(self.bias_mat, f_k_actual, uncorr_n_samples)
+        
         
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1

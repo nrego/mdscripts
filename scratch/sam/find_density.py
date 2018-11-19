@@ -10,6 +10,10 @@ import matplotlib as mpl
 
 from IPython import embed
 
+import cPickle as pickle
+
+import os
+
 mpl.rcParams.update({'axes.labelsize': 60})
 mpl.rcParams.update({'xtick.labelsize': 40})
 mpl.rcParams.update({'ytick.labelsize': 40})
@@ -17,15 +21,21 @@ mpl.rcParams.update({'axes.titlesize': 50})
 mpl.rcParams.update({'legend.fontsize':20})
 
 # Do exhaustive brute-force search thru states
-do_brute = False
+do_brute = True
 N = 36
 pos_idx = np.arange(N)
+
+
+k = 35
+# Set up bins for density of states histogram
+
+
 # Pos is a collection of points, shape (n_pts, ndim)
-def get_rms(pos):
+def get_rms(pos, prec=2):
     centroid = pos.mean(axis=0)
     diff = pos-centroid
     sq_diff = np.linalg.norm(diff, axis=1)**2
-    return np.sqrt(sq_diff.mean())
+    return np.round( np.sqrt(sq_diff.mean()), prec)
 
 def is_flat(hist, s=0.8):
     avg = hist.mean()
@@ -45,8 +55,8 @@ def trial_move(pt_idx, k):
 
     return pt_idx_new
 
-def trial_move2(pt_idx, k):
-    change_pts = np.random.random_integers(0,1,k).astype(bool)
+def trial_move2(pt_idx):
+    change_pts = np.random.random_integers(0,1,pt_idx.size).astype(bool)
     same_indices = pt_idx[~change_pts]
     avail_indices = np.setdiff1d(pos_idx, same_indices)
     new_pt_idx = pt_idx.copy()
@@ -66,7 +76,7 @@ for i in range(6):
     if i % 2 == 0:
         this_pos_row = pos_row
     else:
-        this_pos_row = pos_row - z_space/2.0
+        this_pos_row = pos_row + z_space/2.0
 
     for j in range(6):
         z_pos = this_pos_row[j]
@@ -78,27 +88,32 @@ positions = np.array(positions)
 N = positions.shape[0]
 
 
+print('k: {}'.format(k))
+#min_val = np.floor(10*(0.4 + (k-3)*0.05))/10.0
+max_val = 1.75
+rms_bins = np.arange(0, max_val+0.1, 0.05)
 
-# Set up bins for density of states histogram
-k = 8
-min_val = np.floor(10*(0.4 + (k-3)*0.05))/10.0
-max_val = 1.6
-rms_bins = np.arange(min_val, max_val, 0.05)
-rms_bins = np.append(0, rms_bins)
-rms_bins = np.append(rms_bins, positions.max())
+# Only check center bins for convergence test (flat histogram)
+center_bin_lo = 0
+center_bin_hi = rms_bins.size-1
+center_bin_slice = slice(center_bin_lo, center_bin_hi)
 
 # Density of states, from brute-force
 states = np.zeros(rms_bins.size-1)
 
 entropies = np.zeros_like(states)
-sampled_pts = [[] for i in range(rms_bins.size-1)]
+
+# Indices of sampled pts...
+sampled_pt_idx = np.empty(rms_bins.size-1, dtype=object)
+
 max_rms = np.float('-inf')
 min_rms = np.float('inf')
 if do_brute:
     combos = np.array(list(combinations(pos_idx, k)))
+    shuffle = np.random.choice(combos.shape[0], combos.shape[0], replace=False)
 
-    for this_pos_idx in combos:
-        this_pos = positions[list(this_pos_idx)]
+    for pt_idx in combos[shuffle]:
+        this_pos = positions[pt_idx]
 
         rms = get_rms(this_pos)
         if rms > max_rms:
@@ -112,8 +127,16 @@ if do_brute:
         bin_assign = np.digitize(rms, rms_bins) - 1
         states[bin_assign] += 1
 
-    print('Max rms: {}'.format(max_rms))
-    print('Min rms: {}'.format(min_rms))
+        this_arr = sampled_pt_idx[bin_assign]
+        if this_arr is None:
+            sampled_pt_idx[bin_assign] = np.array([pt_idx])
+
+        elif this_arr.shape[0] < 10:
+            this_arr = np.vstack((this_arr, pt_idx))
+            sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
+
+    print('  Max rms: {}'.format(max_rms))
+    print('  Min rms: {}'.format(min_rms))
 
     states /= np.diff(rms_bins)
     states /= np.dot(np.diff(rms_bins), states)
@@ -122,13 +145,13 @@ if do_brute:
 
 else:
     
-    max_iter = 1000000
+    max_iter = 60000
     n_iter = 0
-    eps = 10**(-8)
+    eps = 10**(-4)
     wl_entropies = np.zeros_like(states)
     wl_hist = np.zeros_like(states)
 
-    pt_idx = np.random.choice(pos_idx, size=k, replace=False)
+    pt_idx = np.sort( np.random.choice(pos_idx, size=k, replace=False) )
     pt = positions[pt_idx]
 
     rms = get_rms(pt)
@@ -143,12 +166,13 @@ else:
     while f > eps:
         n_iter += 1
 
-        pt_idx_new = trial_move2(pt_idx, k)
+
+        pt_idx_new = np.sort( trial_move2(pt_idx) )
         pt_new = positions[pt_idx_new]
 
         rms_new = get_rms(pt_new)
-        if np.unique(pt_idx_new).size < k:
-            break
+
+        assert np.unique(pt_idx_new).size == k
 
         bin_assign_new = np.digitize(rms_new, rms_bins) - 1
 
@@ -162,15 +186,27 @@ else:
         # Update histogram and density of states
         wl_entropies[bin_assign] += f
         wl_hist[bin_assign] += 1
-
+        states[bin_assign] += 1
         
-        this_arr = sampled_pts[bin_assign]
-        if len(this_arr) == 0 or np.unique(np.array(this_arr), axis=0).shape[0] < 100:
-            this_arr.append(pt_idx)
-            sampled_pts[bin_assign] = this_arr
-         
+        this_arr = sampled_pt_idx[bin_assign]
+        if this_arr is None:
+            sampled_pt_idx[bin_assign] = np.array([pt_idx])
 
-        if is_flat(wl_hist[2:-2], 0.7) or n_iter > max_iter:
+        elif this_arr.shape[0] < 10:
+            this_arr = np.vstack((this_arr, pt_idx))
+            sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
+
+        # update the center_bin_slice by moving up lower bin boundary, if necessary
+        if n_iter > 0.5*max_iter:
+            
+            occupied_idx = np.argwhere(wl_hist > 0)
+            center_bin_lo = occupied_idx.min()
+            center_bin_hi = occupied_idx.max()+1
+            if center_bin_hi -center_bin_lo == 1:
+                break
+            center_bin_slice = slice(center_bin_lo, center_bin_hi)
+
+        if is_flat(wl_hist[center_bin_slice], 0.7) or n_iter > max_iter:
 
             #break
             print(" n_iter: {}".format(n_iter))
@@ -185,8 +221,15 @@ else:
     wl_states = np.exp(wl_entropies)
     wl_states /= np.diff(rms_bins)
     wl_states /= np.dot(np.diff(rms_bins), wl_states)
-    #embed()
+
+occupied_idx = states > 0
+
+## Print out indices for each point at each rms
+dirname = 'k_{:02d}'.format(k)
+os.makedirs(dirname)
+
+fout = open('{}/pt_idx_data.pkl'.format(dirname), 'w')
+output_payload = (rms_bins, occupied_idx, positions, sampled_pt_idx)
+pickle.dump(output_payload, fout)
 
 
-    for i in sampled_pts:
-        i = np.unique(i, axis=0)
