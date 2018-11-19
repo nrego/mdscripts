@@ -19,62 +19,49 @@ import argparse
 
 beta = 1 /(k*300)
 
+
+
+ideal_pt = np.array([0, 1])
+
+fnames = sorted(glob.glob('thresh*/phi_*/accuracy.dat'))
+
+thresholds = [fname.split('/')[0].split('_')[-1] for fname in fnames]
+thresholds = np.unique(thresholds).astype(float) / 10.0
+#thresholds = np.append(thresholds, 1.1)
+
+phi_vals = [fname.split('/')[1].split('_')[-1] for fname in fnames]
+phi_vals = np.unique(phi_vals).astype(float) / 10.0
+
+roc_2d = np.zeros((phi_vals.size, thresholds.size, 2))
+dist = np.zeros((phi_vals.size, thresholds.size))
+roc_2d[...] = np.nan
+dist[...] = np.nan
+
+for fname in fnames:
+    tp, fp, tn, fn = np.loadtxt(fname)
+    this_phi = float(fname.split('/')[1].split('_')[-1]) / 10.
+    this_thresh = float(fname.split('/')[0].split('_')[-1]) / 10.
+
+    phi_idx = np.argwhere(phi_vals == this_phi)[0,0]
+    thresh_idx = np.argwhere(thresholds == this_thresh)[0,0]
+
+    tpr = tp / (tp + fn)
+    fpr = fp / (tn + fp)
+
+    roc_2d[phi_idx, thresh_idx] =  fpr, tpr
+    this_dist = np.sqrt((tpr - 1)**2 + fpr**2)
+    dist[phi_idx, thresh_idx] = this_dist
+
 fig, ax1 = plt.subplots()
 ax1.xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
 ax1.yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
 
-ideal_pt = np.array([0, 1])
-
-fnames = sorted(glob.glob('phi_*roc.dat'))
-
-roc_dat = np.loadtxt(fnames[0])
-thresholds = roc_dat[:,0]
-
-roc_2d = np.zeros((len(fnames), thresholds.size))
-#plt.plot([0], [1], '*', markersize=10)
-
-phi_vals = []
-
-for i, fname in enumerate(fnames):
-    phi_val = float(fname.split('_')[1]) / 10.
-    phi_vals.append(phi_val)
-
-    roc_dat = np.loadtxt(fname)
-
-    dists = np.abs(ideal_pt - roc_dat[:,1:])
-
-    l1norm = np.linalg.norm(dists, ord=1, axis=1)
-    l2norm = np.linalg.norm(dists, ord=2, axis=1)
-
-    min_idx = 9
-
-    roc_2d[i,:] = l2norm
-
-del phi_val
-phi_vals = np.array(phi_vals)
-
-norm = Normalize(vmin=0.0, vmax=1, clip=False)
-im = ax1.imshow(roc_2d.T, interpolation='none', origin='lower', norm=norm, aspect='auto', cmap=cm.hot)
+norm = Normalize(vmin=0.30, vmax=1, clip=False)
+#im = ax1.imshow(dist.T, interpolation='none', origin='lower', norm=norm, aspect='auto', cmap=cm.hot)
+im = ax1.pcolormesh(np.append(phi_vals, 11.0), np.append(thresholds, 1.1), dist.T, norm=norm, cmap=cm.hot)
 cb = plt.colorbar(im)
-ax1.set_xticks(np.arange(phi_vals.size)[::2])
-ax1.set_xticklabels(np.round(phi_vals[::2]*beta, 1))
-ax1.set_yticks(np.arange(thresholds.size)[::2])
-ax1.set_yticklabels(thresholds[::2])
-np.savetxt('roc_dist_with_phi.dat', roc_2d[:,10])
-ax1.set_ylabel(r'$s$')
-ax1.set_xlabel(r'$\beta \phi$')
+
 plt.show()
 
-#fig, ax1 = plt.subplots()
-#ax1.plot(beta*phi_vals, roc_2d[:,10], '-ok', linewidth=8, markersize=18)
-ax1.set_xlabel(r'$\beta \phi$')
-ax1.set_ylabel(r'$d$')
-#plt.show()
-
-#fig, ax1 = plt.subplots()
-#ax1.plot(thresholds, roc_2d[6,:], '-ok', linewidth=8, markersize=18)
-ax1.set_xlabel(r'$s$')
-ax1.set_ylabel(r'$d$')
-#plt.show()
 
 

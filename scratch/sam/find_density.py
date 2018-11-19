@@ -25,8 +25,9 @@ do_brute = True
 N = 36
 pos_idx = np.arange(N)
 
+
+k = 35
 # Set up bins for density of states histogram
-k = 2
 
 
 # Pos is a collection of points, shape (n_pts, ndim)
@@ -75,7 +76,7 @@ for i in range(6):
     if i % 2 == 0:
         this_pos_row = pos_row
     else:
-        this_pos_row = pos_row - z_space/2.0
+        this_pos_row = pos_row + z_space/2.0
 
     for j in range(6):
         z_pos = this_pos_row[j]
@@ -85,6 +86,7 @@ for i in range(6):
 
 positions = np.array(positions)
 N = positions.shape[0]
+
 
 print('k: {}'.format(k))
 #min_val = np.floor(10*(0.4 + (k-3)*0.05))/10.0
@@ -108,8 +110,9 @@ max_rms = np.float('-inf')
 min_rms = np.float('inf')
 if do_brute:
     combos = np.array(list(combinations(pos_idx, k)))
+    shuffle = np.random.choice(combos.shape[0], combos.shape[0], replace=False)
 
-    for pt_idx in combos:
+    for pt_idx in combos[shuffle]:
         this_pos = positions[pt_idx]
 
         rms = get_rms(this_pos)
@@ -228,3 +231,5 @@ os.makedirs(dirname)
 fout = open('{}/pt_idx_data.pkl'.format(dirname), 'w')
 output_payload = (rms_bins, occupied_idx, positions, sampled_pt_idx)
 pickle.dump(output_payload, fout)
+
+
