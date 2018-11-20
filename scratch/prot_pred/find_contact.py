@@ -121,7 +121,7 @@ if args.min_dist is None:
 else:
     print('Finding contacts from bound simulation...')
     min_dist = np.load(args.min_dist)['min_dist'].mean(axis=0)
-    embed()
+
     assert args.hydropathy is not None
 
     with open(args.hydropathy, 'r') as fin:
