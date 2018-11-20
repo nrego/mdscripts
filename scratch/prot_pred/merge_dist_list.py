@@ -13,22 +13,32 @@ import argparse
 
 # align smaller atom group to larger
 def align(larger, smaller):
-    left_offset = 0
-    right_offset = 0
-    while ((larger.resnames[left_offset] != smaller.resnames[0]) or (larger.resnames[left_offset+1] != smaller.resnames[1])):
-        left_offset += 1
 
-    while ((larger.resnames[::-1][right_offset] != smaller.resnames[::-1][0]) or (larger.resnames[::-1][right_offset+1] != smaller.resnames[::-1][1])):
-        right_offset += 1
+    ## Align by assuming something was cut off at beginning or end of larger
+    if larger.n_atoms != smaller.n_atoms:
+        assert larger.n_atoms > smaller.n_atoms
+        left_offset = 0
+        right_offset = 0
+        while ((larger.resnames[left_offset] != smaller.resnames[0]) or (larger.resnames[left_offset+1] != smaller.resnames[1])):
+            left_offset += 1
 
-    large_mask = np.zeros(larger.n_atoms, dtype=bool)
-    large_mask[left_offset:-right_offset] = True
+        while ((larger.resnames[::-1][right_offset] != smaller.resnames[::-1][0]) or (larger.resnames[::-1][right_offset+1] != smaller.resnames[::-1][1])):
+            right_offset += 1
+
+        large_mask = np.zeros(larger.n_atoms, dtype=bool)
+        large_mask[left_offset:-right_offset] = True
+
+    # Same number of atoms - use all
+    else:
+        large_mask = np.ones(larger.n_atoms, dtype=bool)
 
     # Any point mutants?
     pt_mut_mask = larger[large_mask].residues.resnames != smaller.residues.resnames
-    larger[large_mask].residues[pt_mut_mask].atoms.tempfactors = -1
+    
+    if pt_mut_mask.sum() > 0:
 
-    smaller.residues[pt_mut_mask].atoms.tempfactors = -1
+        larger[large_mask].residues[pt_mut_mask].atoms.tempfactors = -1
+        smaller.residues[pt_mut_mask].atoms.tempfactors = -1
 
     large_mask[larger.tempfactors==-1] = False
     small_mask = smaller.tempfactors != -1
@@ -40,26 +50,26 @@ def align(larger, smaller):
 
     assert np.array_equal(larger[large_mask].atoms.names, smaller[small_mask].atoms.names)
 
+    return large_mask, small_mask
 
 
 def merge_dist(targ, part, dist_targ, dist_part):
-    assert dist_targ.size == targ.n_atoms
-    assert dist_part.size == part.n_atoms
+    assert dist_targ.shape[0] == targ.n_atoms
+    assert dist_part.shape[0] == part.n_atoms
+
+    if targ.n_atoms >= part.n_atoms:
+        targ_mask, part_mask = align(targ, part)
+    else:
+        part_mask, targ_mask = align(part, targ)
+
     embed()
 
-    # Case one - the easy case
-    if targ.n_atoms == part.n_atoms:
-        assert np.array_equal(targ.atoms.names, part.atoms.names)
+    ## part_mask and targ_mask make sure atoms are aligned - now
+    ##   get union of min distances by taking the min
 
-        return np.min((dist_targ, dist_part), axis=0)
+    merged_dist = np.min((dist_targ[targ_mask], dist_part[part_mask]), axis=0)
 
-    # Different number of atoms - try to merge by assuming one has extra residues
-    elif targ.n_atoms < part.n_atoms:
-        # Residue offset from left
-        left_offset = 1
-
-    return None
-
+    return merged_dist
 
 parser = argparse.ArgumentParser('Find buried atoms, surface atoms (and mask), and dewetted atoms')
 parser.add_argument('-s', '--topology', type=str, required=True,
@@ -96,8 +106,8 @@ print("this part sel spec: {}".format(args.part_spec))
 print("  part min dist header: {}".format(dist_ds_part['header']))
 
 
-dist_targ = dist_ds_targ['min_dist'].mean(axis=0)
-dist_part = dist_ds_part['min_dist'].mean(axis=0)
+dist_targ = dist_ds_targ['min_dist']#.mean(axis=0)
+dist_part = dist_ds_part['min_dist']#.mean(axis=0)
 
 merged_dist = merge_dist(targ, part, dist_targ, dist_part)
 
