@@ -35,30 +35,40 @@ for fname in fnames:
     ntwid_dat = payload_arr[:,2]
     nreg_dat = payload_arr[:,3]
     weights = payload_arr[:,4]
+    weights /= weights.sum()
 
     hist, bb, bb = np.histogram2d(phi_vals, psi_vals, bb, weights=weights)
     loghist = -np.log(hist)
     loghist -= loghist.min()
 
-    hist_phi, bb = np.histogram(phi_vals, bb, weights=weights)
-    loghist_phi = -np.log(hist_phi)
-    loghist_phi -= loghist_phi.min()
+    phi_assign = np.digitize(phi_vals, bins=bb) - 1
+    psi_assign = np.digitize(psi_vals, bins=bb) - 1
+    new_loghist = np.zeros_like(loghist)
+    hyd_weight = np.zeros_like(loghist)
 
-    plt.plot(bb[:-1], loghist_phi)
-    plt.savefig('g_phi_{:03g}'.format(this_mu*10))
+    for x in range(bb.size-1):
+        phi_mask = phi_assign == x
+        for y in range(bb.size-1):
+            psi_mask = psi_assign == y
+
+            mask = phi_mask & psi_mask
+
+            if mask.sum() == 0:
+                hyd_weight[x,y] = np.nan
+                new_loghist[x,y] = np.nan
+
+            else:
+                new_loghist[x,y] = weights[mask].sum()
+                this_wts = -np.log(weights[mask])
+                this_wts -= this_wts.min()
+                this_wts = np.exp(-this_wts)
+                this_wts /= this_wts.sum()
+
+                hyd_weight[x,y] = np.dot(nreg_dat[mask], this_wts)
+
 
     avg_dat = np.loadtxt('{}/averages.dat'.format(fname))
     averages.append(avg_dat)
-
-    min_phi = -4
-    max_phi = 10
-    phi_barrier_mask = (phi_vals > min_phi) & (phi_vals < max_phi) 
-    phi_barrier_logweights = -np.log(weights[phi_barrier_mask])
-    #phi_barrier_logweights -= phi_barrier_logweights.min()
-
-    barrier = -np.log(np.exp(-phi_barrier_logweights).sum())
-    barrier_with_alpha = np.append(barrier_with_alpha, barrier)
-    mu_vals = np.append(mu_vals, beta*this_mu)
 
     extent = (-180,180,-180,180)
     vmin, vmax = 0, 16
@@ -88,25 +98,7 @@ for fname in fnames:
 
     plt.close('all')
 
-fig, ax = plt.subplots(figsize=(5.5,5))
-ax.plot(mu_vals, barrier_with_alpha, '-ok', markersize=12, linewidth=6)
-ax.set_xlabel(r'$\beta \alpha$')
-ax.set_ylabel(r'$\beta F_{\rm{max}}$')
-ax.set_xticks([0,2,4,6,8])
-fig.tight_layout()
-fig.savefig('barrier.pdf', transparent=True)
-plt.close('all')
 
-averages = np.array(averages)
-fig, ax = plt.subplots(figsize=(6, 5))
-ax.plot(mu_vals, averages[:,0], '-ok', markersize=12, linewidth=6)
-shown_indices = [0,7,-1]
-ax.plot(mu_vals[shown_indices], averages[shown_indices, 0], 'or', markersize=12)
-ax.set_xlabel(r'$\beta \alpha$')
-ax.set_ylabel(r'$\langle N_v \rangle_\alpha$')
-ax.set_xticks([0,2,4,6,8])
-fig.tight_layout()
-fig.savefig('N_v_phi.pdf', transparent=True)
 
 
 
