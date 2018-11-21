@@ -12,6 +12,7 @@ from matplotlib import pyplot
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from IPython import embed
 
 ## Construct P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 
@@ -67,7 +68,10 @@ err_dg = masked_dg.std(axis=0, ddof=1)
 avg_dg_N = masked_dg_N.mean(axis=0)
 err_dg_N = masked_dg_N.std(axis=0, ddof=1)
 
-plot_errorbar(bb, avg_dg_N, err_dg_N)
+dat = np.vstack((bb[:-1], avg_dg_N, err_dg_N)).T
+np.savetxt('PvN.dat', dat, header='bins   beta F_v(N)  err(beta F_v(N))   ')
+#plot_errorbar(bb, avg_dg_N, err_dg_N)
 
-plt.show()
+#plt.show()
+
 

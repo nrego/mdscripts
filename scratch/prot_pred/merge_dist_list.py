@@ -14,11 +14,13 @@ import argparse
 # align smaller atom group to larger
 def align(larger, smaller):
 
+    left_offset = 0
+    right_offset = 0
+
     ## Align by assuming something was cut off at beginning or end of larger
     if larger.n_atoms != smaller.n_atoms:
         assert larger.n_atoms > smaller.n_atoms
-        left_offset = 0
-        right_offset = 0
+
         while ((larger.resnames[left_offset] != smaller.resnames[0]) or (larger.resnames[left_offset+1] != smaller.resnames[1])):
             left_offset += 1
 
@@ -53,23 +55,6 @@ def align(larger, smaller):
     return large_mask, small_mask
 
 
-def merge_dist(targ, part, dist_targ, dist_part):
-    assert dist_targ.shape[0] == targ.n_atoms
-    assert dist_part.shape[0] == part.n_atoms
-
-    if targ.n_atoms >= part.n_atoms:
-        targ_mask, part_mask = align(targ, part)
-    else:
-        part_mask, targ_mask = align(part, targ)
-
-    embed()
-
-    ## part_mask and targ_mask make sure atoms are aligned - now
-    ##   get union of min distances by taking the min
-
-    merged_dist = np.min((dist_targ[targ_mask], dist_part[part_mask]), axis=0)
-
-    return merged_dist
 
 parser = argparse.ArgumentParser('Find buried atoms, surface atoms (and mask), and dewetted atoms')
 parser.add_argument('-s', '--topology', type=str, required=True,
@@ -106,8 +91,21 @@ print("this part sel spec: {}".format(args.part_spec))
 print("  part min dist header: {}".format(dist_ds_part['header']))
 
 
-dist_targ = dist_ds_targ['min_dist']#.mean(axis=0)
-dist_part = dist_ds_part['min_dist']#.mean(axis=0)
+dist_targ = dist_ds_targ['min_dist'].mean(axis=0)
+dist_part = dist_ds_part['min_dist'].mean(axis=0)
 
-merged_dist = merge_dist(targ, part, dist_targ, dist_part)
+assert dist_targ.shape[0] == targ.n_atoms
+assert dist_part.shape[0] == part.n_atoms
+
+if targ.n_atoms >= part.n_atoms:
+    targ_mask, part_mask = align(targ, part)
+else:
+    part_mask, targ_mask = align(part, targ)
+
+## part_mask and targ_mask make sure atoms are aligned - now
+##   get union of min distances by taking the min
+
+merged_dist = np.min((dist_targ[targ_mask], dist_part[part_mask]), axis=0)[None,:]
+np.savez_compressed('min_dist_neighbor_merged.dat', min_dist=merged_dist,
+                    header='merging min dist files')
 

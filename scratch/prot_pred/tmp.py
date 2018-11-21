@@ -5,18 +5,24 @@ import matplotlib as mpl
 
 from mdtools import dr
 
+from constants import k
+
 mpl.rcParams.update({'axes.labelsize': 50})
 mpl.rcParams.update({'xtick.labelsize': 40})
 mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
 
-actual_contacts = np.loadtxt('../bound/actual_contact_mask.dat').astype(bool)
+from IPython import embed
+
+hydropathy = np.loadtxt('../bound/hydropathy_mask.dat').astype(bool)
+actual_contacts = np.loadtxt('../bound/actual_contact_mask.dat').astype(bool) #& hydropathy
+#phob_contact = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool)
 #actual_contacts = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool)
-#actual_contacts = np.loadtxt('../bound/actual_contact_mask_dewet.dat').astype(bool)
+actual_contacts = np.loadtxt('../bound/actual_contact_mask_dewet.dat').astype(bool) #& hydropathy
 print('contacts: {}'.format(actual_contacts.sum()))
 buried_mask = np.loadtxt('../bound/buried_mask.dat').astype(bool)
-surf_mask = ~buried_mask
+surf_mask = ~buried_mask #& hydropathy
 fnames = sorted(glob.glob('phi_*'))
 
 phi_vals = []
@@ -50,9 +56,13 @@ for dirname in fnames:
 min_idx = np.argmin(dist)
 max_idx = np.argmax(sus)
 
+phi_vals = np.array(phi_vals)
+beta = 1/(300 * k)
 np.savetxt('corr_phi.dat', np.array([phi_vals[min_idx], phi_vals[max_idx]]))
-#np.savetxt()
-plt.plot(fpr, tpr, '-o')
+
+np.savetxt('dewet_dist_with_phi.dat', np.vstack((phi_vals, sus, dist)).T)
+np.savetxt('dewet_roc.dat', np.vstack((phi_vals, fpr, tpr)).T)
+plt.plot(fpr, tpr, 'o')
 plt.show()
 
 plt.plot(phi_vals, dist, '-o')
