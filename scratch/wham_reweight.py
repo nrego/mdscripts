@@ -62,16 +62,16 @@ for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
 masked_dg = np.ma.masked_invalid(neglog_pdist)
 masked_dg_N = np.ma.masked_invalid(neglog_pdist_N)
 
+always_null = masked_dg.mask.sum(axis=0) == masked_dg.shape[0]
+always_null_N = masked_dg_N.mask.sum(axis=0) == masked_dg.shape[0]
+
 avg_dg = masked_dg.mean(axis=0)
+avg_dg[always_null] = np.inf
 err_dg = masked_dg.std(axis=0, ddof=1)
 
 avg_dg_N = masked_dg_N.mean(axis=0)
+avg_dg_N[always_null_N] = np.inf
 err_dg_N = masked_dg_N.std(axis=0, ddof=1)
 
 dat = np.vstack((bb[:-1], avg_dg_N, err_dg_N)).T
 np.savetxt('PvN.dat', dat, header='bins   beta F_v(N)  err(beta F_v(N))   ')
-#plot_errorbar(bb, avg_dg_N, err_dg_N)
-
-#plt.show()
-
-

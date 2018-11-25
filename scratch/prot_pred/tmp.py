@@ -7,6 +7,10 @@ from mdtools import dr
 
 from constants import k
 
+import MDAnalysis
+
+import argparse
+
 mpl.rcParams.update({'axes.labelsize': 50})
 mpl.rcParams.update({'xtick.labelsize': 40})
 mpl.rcParams.update({'ytick.labelsize': 40})
@@ -15,14 +19,27 @@ mpl.rcParams.update({'legend.fontsize':10})
 
 from IPython import embed
 
+parser = argparse.ArgumentParser()
+parser.add_argument('mode', choices=['nofilter', 'phob', 'dewet'], default='nofilter')
+args = parser.parse_args()
+
 hydropathy = np.loadtxt('../bound/hydropathy_mask.dat').astype(bool)
-actual_contacts = np.loadtxt('../bound/actual_contact_mask.dat').astype(bool) #& hydropathy
-#phob_contact = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool)
-#actual_contacts = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool)
-actual_contacts = np.loadtxt('../bound/actual_contact_mask_dewet.dat').astype(bool) #& hydropathy
-print('contacts: {}'.format(actual_contacts.sum()))
 buried_mask = np.loadtxt('../bound/buried_mask.dat').astype(bool)
-surf_mask = ~buried_mask #& hydropathy
+surf_mask = ~buried_mask 
+
+if args.mode == 'nofilter':
+    actual_contacts = np.loadtxt('../bound/actual_contact_mask.dat').astype(bool)
+    post = ''
+elif args.mode == 'phob':
+    actual_contacts = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool) #& hydropathy
+    post = '_phob'
+    surf_mask = surf_mask & hydropathy
+elif args.mode == 'dewet':
+    actual_contacts = np.loadtxt('../bound/actual_contact_mask_dewet.dat').astype(bool) #& hydropathy
+    post = '_dewet'
+
+print('contacts: {}'.format(actual_contacts.sum()))
+
 fnames = sorted(glob.glob('phi_*'))
 
 phi_vals = []
@@ -38,11 +55,27 @@ for dirname in fnames:
     phi_val = float(dirname.split('_')[-1])/10
     phi_vals.append(phi_val)
 
+    struct = MDAnalysis.Universe('{}/pred_contact.pdb'.format(dirname))
+    struct.atoms.tempfactors = -2
+    surf_atoms = struct.atoms[surf_mask]
+
     pred_contact_mask = np.loadtxt('{}/pred_contact_mask.dat'.format(dirname)).astype(bool)
-    tp = np.sum(pred_contact_mask[surf_mask] & actual_contacts[surf_mask])
-    fp = np.sum(pred_contact_mask[surf_mask] & ~actual_contacts[surf_mask])
-    tn = np.sum(~pred_contact_mask[surf_mask] & ~actual_contacts[surf_mask])
-    fn = np.sum(~pred_contact_mask[surf_mask] & actual_contacts[surf_mask])
+
+    tp_mask = pred_contact_mask[surf_mask] & actual_contacts[surf_mask]
+    fp_mask = pred_contact_mask[surf_mask] & ~actual_contacts[surf_mask]
+    tn_mask = ~pred_contact_mask[surf_mask] & ~actual_contacts[surf_mask]
+    fn_mask = ~pred_contact_mask[surf_mask] & actual_contacts[surf_mask]
+
+    surf_atoms[tp_mask].tempfactors = 1
+    surf_atoms[fp_mask].tempfactors = 0
+    surf_atoms[fn_mask].tempfactors = -1
+
+    struct.atoms.write('{}/pred_contact_tp_fp{}.pdb'.format(dirname, post))
+
+    tp = tp_mask.sum()
+    fp = fp_mask.sum()
+    tn = tn_mask.sum()
+    fn = fn_mask.sum()
 
     this_tpr = float(tp)/(tp+fn)
     this_fpr = float(fp)/(fp+tn)
@@ -60,8 +93,8 @@ phi_vals = np.array(phi_vals)
 beta = 1/(300 * k)
 np.savetxt('corr_phi.dat', np.array([phi_vals[min_idx], phi_vals[max_idx]]))
 
-np.savetxt('dewet_dist_with_phi.dat', np.vstack((phi_vals, sus, dist)).T)
-np.savetxt('dewet_roc.dat', np.vstack((phi_vals, fpr, tpr)).T)
+np.savetxt('dewet_dist_with_phi{}.dat'.format(post), np.vstack((phi_vals, sus, dist)).T)
+np.savetxt('dewet_roc.dat{}'.format(post), np.vstack((phi_vals, fpr, tpr)).T)
 plt.plot(fpr, tpr, 'o')
 plt.show()
 

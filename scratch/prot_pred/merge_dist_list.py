@@ -102,10 +102,14 @@ if targ.n_atoms >= part.n_atoms:
 else:
     part_mask, targ_mask = align(part, targ)
 
+
 ## part_mask and targ_mask make sure atoms are aligned - now
 ##   get union of min distances by taking the min
 
-merged_dist = np.min((dist_targ[targ_mask], dist_part[part_mask]), axis=0)[None,:]
+merged_dist = dist_targ.copy()
+merged_dist[targ_mask] = np.min((dist_targ[targ_mask], dist_part[part_mask]), axis=0)
+
+merged_dist = merged_dist[None,:]
 np.savez_compressed('min_dist_neighbor_merged.dat', min_dist=merged_dist,
                     header='merging min dist files')
 
