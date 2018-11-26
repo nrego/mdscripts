@@ -94,7 +94,7 @@ beta = 1/(300 * k)
 np.savetxt('corr_phi.dat', np.array([phi_vals[min_idx], phi_vals[max_idx]]))
 
 np.savetxt('dewet_dist_with_phi{}.dat'.format(post), np.vstack((phi_vals, sus, dist)).T)
-np.savetxt('dewet_roc.dat{}'.format(post), np.vstack((phi_vals, fpr, tpr)).T)
+np.savetxt('dewet_roc{}.dat'.format(post), np.vstack((phi_vals, fpr, tpr)).T)
 plt.plot(fpr, tpr, 'o')
 plt.show()
 
