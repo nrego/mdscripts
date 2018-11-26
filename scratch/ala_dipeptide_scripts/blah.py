@@ -8,10 +8,6 @@ from matplotlib.image import NonUniformImage, imread
 from scipy.optimize import minimize
 
 
-#import visvis as vv
-
-#from IPython import embed
-
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
@@ -26,66 +22,38 @@ from mdtools import dr
 
 beta = 1/(k*300)
 
-ds = dr.loadPhi('equil/equil_run/phiout.dat')
-this_mu = ds.phi
 
-mpl.rcParams.update({'axes.labelsize': 60})
-mpl.rcParams.update({'xtick.labelsize': 40})
-mpl.rcParams.update({'ytick.labelsize': 40})
-mpl.rcParams.update({'axes.titlesize': 40})
-
-# For Phi/Psi angles
-binbounds = np.arange(-180,187,4)
-
-payload_arr = np.load('data_arr.npz')['arr_0']
-
-phi_vals = payload_arr[:,0]
-psi_vals = payload_arr[:,1]
-ntwid_dat = payload_arr[:,2]
-nreg_dat = payload_arr[:,3]
-weights = payload_arr[:,4]
-
-avg_n = np.dot(nreg_dat, weights)
-avg_n_sq = np.dot(nreg_dat**2, weights)
-var_n = avg_n_sq - avg_n**2
-avg_ntwid = np.dot(ntwid_dat, weights)
-avg_ntwid_sq = np.dot(ntwid_dat**2, weights)
-var_ntwid = avg_ntwid_sq - avg_ntwid**2
+mpl.rcParams.update({'axes.labelsize': 30})
+mpl.rcParams.update({'xtick.labelsize': 30})
+mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'axes.titlesize': 30})
 
 
-#hist = histnd(np.array([phi_vals, psi_vals]).T, [binbounds, binbounds], weights=weights)
-hist, bb, bb = np.histogram2d(phi_vals, psi_vals, binbounds, weights=weights)
-loghist = -np.log(hist)
-loghist -= loghist.min()
+fnames = glob.glob('mu_*')
+
+alphas = np.array([])
+avg_n = np.array([])
+avg_ntwid = np.array([])
+
+for fname in fnames:
+    this_alpha = float(fname.split('_')[-1]) / 10.0
+
+    alphas = np.append(alphas, this_alpha)
+
+    dat = np.loadtxt('{}/averages.dat'.format(fname))
+    avg_n = np.append(avg_n, dat[0])
+    avg_ntwid = np.append(avg_ntwid, dat[1])
 
 
-extent = (-180,180,-180,180)
-vmin, vmax = 0, 16
-norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-
-
-fig = plt.figure(figsize=(9,7))
-#fig = plt.figure()
-ax = plt.gca()
-
-im = ax.imshow(loghist.T, extent=extent, interpolation='nearest', origin='lower', alpha=0.75,
-               cmap=cm.nipy_spectral, norm=norm, aspect='auto')
-cont = ax.contour(loghist.T, extent=extent, origin='lower', levels=np.arange(vmin,vmax,1),
-                  colors='k', linewidths=1.0)
-cb = plt.colorbar(im)
-
-ax.set_xlim(-180,100)
-ax.set_ylim(-180,180)
-
-ax.set_xlabel(r'$\Phi$')
-ax.set_ylabel(r'$\Psi$')
-
-ax.set_title(r'$\beta \alpha={:0.2f}$'.format(beta*ds.phi))
+fig, ax = plt.subplots(figsize=(5,4))
+ax.plot(alphas*beta, avg_ntwid, '-ok', linewidth=6, markersize=12)
+indices = [0, 7, 14]
+ax.plot(alphas[indices]*beta, avg_ntwid[indices], 'or', markersize=12)
+ax.set_xticks([0,2,4,6,8])
+ax.set_xlabel(r'$\beta \alpha$')
+ax.set_ylabel(r'$\langle \tilde{N}_v \rangle_\alpha$')
 fig.tight_layout()
-plt.savefig('mu_conf_{:03g}'.format(this_mu*10))
 
-avg_arr = np.array([avg_n, avg_ntwid, var_n, var_ntwid])
-np.savetxt('averages.dat', avg_arr)
+fig.savefig('/Users/nickrego/Desktop/fig.pdf', transparent=True)
 
-np.savetxt('loghist.dat', loghist.T)
 
