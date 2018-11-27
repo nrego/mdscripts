@@ -48,6 +48,10 @@ fpr = []
 dist = []
 sus = []
 
+f1s = []
+
+all_info = []
+
 for dirname in fnames:
     ds = dr.loadPhi('../prod/phi_sims/{}/phiout.dat'.format(dirname))
     var = ds.data[500:]['$\~N$'].var()
@@ -77,8 +81,24 @@ for dirname in fnames:
     tn = tn_mask.sum()
     fn = fn_mask.sum()
 
+    all_info.append([tp,fp,tn,fn])
+
+    #if phi_val == 5.6:
+    #    embed()
+
+    try:
+        this_prec = float(tp)/(tp+fp)
+    except:
+        this_prec = 0
+
     this_tpr = float(tp)/(tp+fn)
     this_fpr = float(fp)/(fp+tn)
+
+    try:
+        this_f1 = 2/((1/this_prec) + (1/this_tpr))
+    except ZeroDivisionError:
+        this_f1 = 0
+    f1s.append(this_f1)
 
     tpr = np.append(tpr, this_tpr)
     fpr = np.append(fpr, this_fpr)
@@ -91,8 +111,10 @@ max_idx = np.argmax(sus)
 
 phi_vals = np.array(phi_vals)
 beta = 1/(300 * k)
-np.savetxt('corr_phi.dat', np.array([phi_vals[min_idx], phi_vals[max_idx]]))
+all_info = np.array(all_info)
 
+np.savetxt('corr_phi.dat', np.array([phi_vals[min_idx], phi_vals[max_idx]]))
+np.savetxt('performance.dat', np.hstack((phi_vals[:,None],all_info)), header='phi  tp   fp   tn   fn')
 np.savetxt('dewet_dist_with_phi{}.dat'.format(post), np.vstack((phi_vals, sus, dist)).T)
 np.savetxt('dewet_roc{}.dat'.format(post), np.vstack((phi_vals, fpr, tpr)).T)
 plt.plot(fpr, tpr, 'o')
@@ -100,3 +122,9 @@ plt.show()
 
 plt.plot(phi_vals, dist, '-o')
 plt.show()
+
+plt.plot(phi_vals, f1s, '-o')
+plt.show()
+
+
+

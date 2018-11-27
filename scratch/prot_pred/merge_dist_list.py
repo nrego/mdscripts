@@ -23,20 +23,22 @@ def align(larger, smaller):
     if larger.n_residues != smaller.n_residues:
         assert larger.n_residues > smaller.n_residues
 
+        larger.tempfactors = -1
+
         while ((larger.residues.resnames[left_offset] != smaller.residues.resnames[0]) or (larger.residues.resnames[left_offset+2] != smaller.residues.resnames[2])):
             left_offset += 1
 
         while ((larger.residues.resnames[::-1][right_offset] != smaller.residues.resnames[::-1][0]) or (larger.residues.resnames[::-1][right_offset+2] != smaller.residues.resnames[::-1][2])):
             right_offset += 1
 
-        larger.residues[left_offset:-right_offset].atoms.tempfactors = -1
+        larger.residues[left_offset:-right_offset].atoms.tempfactors = 0
         large_mask = larger.tempfactors == 0
         larger.tempfactors = 0
 
     # Same number of atoms - use all
     else:
         large_mask = np.ones(larger.n_atoms, dtype=bool)
-
+    #embed()
     assert larger[large_mask].n_residues == smaller.n_residues
 
 
@@ -48,13 +50,13 @@ def align(larger, smaller):
         larger[large_mask].residues[pt_mut_mask].atoms.tempfactors = -1
         smaller.residues[pt_mut_mask].atoms.tempfactors = -1
 
+    # Finally, exclude last residue
+    if right_offset > 0:
+        smaller.residues[-1].atoms.tempfactors = -1
+        larger[large_mask].residues[-1].atoms.tempfactors = -1
+
     large_mask[larger.tempfactors==-1] = False
     small_mask = smaller.tempfactors != -1
-
-    # Finally, adjust for extra O- atom for smaller 
-    #if right_offset > 0:
-    #    small_mask[-2:] = False
-    #    large_mask[-right_offset-1] = False
 
     assert np.array_equal(larger[large_mask].atoms.names, smaller[small_mask].atoms.names)
 
