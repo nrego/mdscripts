@@ -90,6 +90,8 @@ prec = tp/(tp+fp)
 tpr = tp/(cond_pos)
 fpr = fp/(cond_neg)
 
+mcc = ((tp*tn)-(fp*fn)) / np.sqrt((tp+fp)*(fp+tn)*(fp+fn)*(tn+fn))
+
 # f1's limiting value as entire surface is predicted
 f1_lim = 2/(1+ (1/prev))
 f1 = (2*tp)/(2*tp+fp+fn)
@@ -101,7 +103,7 @@ print("")
 print("n_surf: {}  P: {}  N: {}  prevalence (P/n_surf): {:.2f}".format(n_surf, cond_pos, cond_neg, prev))
 print("TP: {}  FP: {}  TN: {}  FN: {}".format(tp, fp, tn, fn))
 print("TPR (recall): {:0.2f}  FPR: {:0.2f}  1-FPR (specificity): {:0.2f}   1-TPR (miss rate): {:0.2f}".format(tpr, fpr, 1-fpr, 1-tpr))
-print("Precision: {:0.2f}  F1: {:.2f}  (lim: {:.2f})  d_h: {:.2f}".format(prec, f1, f1_lim, d_h))
+print("Precision: {:0.2f}  F1: {:.2f}  (lim: {:.2f})  d_h: {:.2f}   MCC: {:.2f}".format(prec, f1, f1_lim, d_h, mcc))
 
 
 print("...Analyzing composition of prediction groups...")
@@ -117,7 +119,7 @@ fn_phob = (fn_mask & hydropathy).sum()/fn
 print("Fraction hydrophobic:")
 print("   TP: {:0.2f}  FN:  {:0.2f}  FP:  {:0.2f}  TN: {:0.2f}".format(tp_phob, fn_phob, fp_phob, tn_phob))
 
-
+embed()
 ## Find the spread of the tp, fp, fn
 #  Expectation: FN's around edge and non-continuous, so will have larger rms than TP's (which should be tighter cluster)
 p_atoms = targ[contact_mask]
