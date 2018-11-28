@@ -27,42 +27,34 @@ phis = np.array([])
 heterodimers = ['1brs_bn', '1brs_bs','1bxl', '1tue', '1ycr_mdm2', '1z92_il2', '1z92_il2r', 'ubiq_merge']
 
 outdat = np.zeros((len(fnames), 8), dtype=object)
-header = 'pdb   beta*phi_best   tp    fp    tn    fn   f1   is_heterodimer'
 
-
+rc('text', usetex=False)
+names = []
+phi_f1 = []
+phi_fh = []
 for i,fname in enumerate(fnames):
     
 
     dat = np.loadtxt(fname)
 
-    tp = dat[:,1]
-    fp = dat[:,2]
-    tn = dat[:,3]
-    fn = dat[:,4]
-
-    tpr = tp/(tp+fn)
-    fpr = fp/(tn+fp)
-
-    prec = tp/(tp+fp)
+    phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc = np.split(dat, 11, 1)
 
 
-    f1 = 2/((1/tpr) + (1/prec))
-    best_perf = np.nanargmax(f1)
+    best_f1 = np.argmax(f_1)
+    best_fh = np.argmax(f_h)
 
-    name = os.path.dirname(os.path.dirname(fname))
-    sys_names.append(name)
-    perf = np.append(perf, f1[best_perf])
-    tprs = np.append(tprs, tpr[best_perf])
-    precs = np.append(precs, prec[best_perf])
-    phis = np.append(phis, beta*dat[best_perf,0])
+    name = fname.split('/')[0]
+    names.append(name)
+    phi_f1.append(phi[best_f1])
+    phi_fh.append(phi[best_fh])
 
-    this_phi = beta * dat[best_perf, 0]
-    outdat[i,0] = name
-    outdat[i,1] = this_phi
-    outdat[i,2:6] = tp[best_perf],fp[best_perf],tn[best_perf],fn[best_perf]
+indices = np.arange(len(names))
 
-    is_heter0 = name in heterodimers
-    outdat[i,6] = f1[best_perf]
-    outdat[i,7] = is_heter0
+fig, ax = plt.subplots()
 
-np.savetxt('all_results.dat', outdat, fmt='%s  %1.2f %1.2f %1.2f %1.2f %1.2f %1.2f %1d', header=header)
+ax.bar(indices, phi_f1, label=r'$f_1$', width=0.3)
+ax.bar(indices+0.3, phi_fh, label=r'$f_h$', width=0.3)
+ax.legend()
+ax.set_xticks(indices+0.3)
+ax.set_xticklabels(names, rotation='vertical')
+plt.show()

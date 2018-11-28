@@ -5,65 +5,88 @@ import os, glob
 homedir = os.environ['HOME']
 
 mpl.rcParams.update({'axes.labelsize': 20})
-mpl.rcParams.update({'xtick.labelsize': 15})
+mpl.rcParams.update({'xtick.labelsize': 20})
 mpl.rcParams.update({'ytick.labelsize': 15})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
 
-sys_names = ['2b97', '2tsc', '1bi4', '1ycr_mdm2', '1bmd']
+sys_names = ['2b97', '1msb', '2tsc', '1ycr_mdm2', 'ubiq_merge', '1bi4', '1bmd', '1brs_bn']
 
 name_lut = {
-    '2b97': 'hfb II',
-    '2tsc': 'thy synth',
-    '1bi4': 'HIV Integ',
+    '2b97': 'Hydrophobin II',
+    '2tsc': 'Thymidylate\nsynthase',
+    '1bi4': 'HIV\nInteg',
     '1ycr_mdm2': 'MDM2',
-    '1bmd': 'malate dehyd'
+    '1bmd': 'Malate\ndehydrogenase',
+    '1msb': 'Mannose-\nbinding\nprotein',
+    'ubiq_merge': 'Ubiquitin',
+    '1brs_bn': 'Barnase'
 }
 from constants import k
 
 beta = 1/(k * 300)
-fig, ax = plt.subplots(figsize=(8,5))
+
+
+best_phi = []
+best_f1 = []
+best_fh = []
+best_tpr = []
+best_fpr = []
+
 for i, dirname in enumerate(sys_names):
     path = '{}/pred/performance.dat'.format(dirname)
 
     dat = np.loadtxt(path)
 
-    tp = dat[:,1]
-    fp = dat[:,2]
-    tn = dat[:,3]
-    fn = dat[:,4]
+    phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc = np.split(dat, 11, 1)
 
-    tpr = tp/(tp+fn)
-    fpr = fp/(tn+fp)
-
-    prec = tp/(tp+fp)
-
-    f1 = 2/((1/tpr) + (1/prec))
-    best_perf = np.argmax(f1)
-
-
+    best_perf = np.argmax(f_h)
     print('{}'.format(name_lut[dirname]))
-    print('  phi: {}'.format(dat[best_perf,0]))
+    print('  phi: {}'.format(phi[best_perf]))
 
-    
+    best_phi.append(beta*phi[best_perf])
+    best_f1.append(f_1[best_perf])
+    best_fh.append(f_h[best_perf])
+    best_tpr.append(tpr[best_perf])
+    best_fpr.append(fpr[best_perf])
 
-    #ax.plot(tpr[best_perf], prec[best_perf], 'o', label=name_lut[dirname])
-    ax.bar(i, beta*dat[best_perf,0], width=0.8, color='k')
+indices = np.arange(len(sys_names))
 
+labels = [name_lut[name] for name in sys_names]
+### bar chart of best phis ###
+fig, ax = plt.subplots(figsize=(15,6))
+ax.bar(indices, best_phi, width=0.8, color='k')
+ax.set_xticks(indices)
+ax.set_xticklabels(labels)
 ax.set_ylabel(r'$\beta \phi$')
-ax.set_xticks(np.arange(len(sys_names)))
-ax.set_xticklabels([name_lut[sys] for sys in sys_names])
+fig.tight_layout()
+fig.savefig('{}/Desktop/perf_phi.pdf'.format(homedir), transparent=True)
 
-fig.savefig('{}/Desktop/perf_phi.png'.format(homedir), transparent=True)
-#ax.legend()
-#ax.set_xlim(0,1)
-#ax.set_ylim(0,1)
+plt.close('all')
 
-#ax.set_xticks([0,0.5,1])
-#ax.set_yticks([0,0.5,1])
+### best fh's ###
+fig, ax = plt.subplots(figsize=(15,6))
+ax.bar(indices, best_fh, width=0.8, color='k')
+ax.set_xticks(indices)
+ax.set_xticklabels(labels)
+ax.set_ylabel(r'$f_h$')
+fig.tight_layout()
+fig.savefig('{}/Desktop/perf_fh.pdf'.format(homedir), transparent=True)
 
-#ax.set_xlabel('recall')
-#ax.set_ylabel('precision')
-#fig.savefig('{}/Desktop/perf_2.pdf'.format(homedir), transparent=True)
+plt.close('all')
+### best f1's ###
+fig, ax = plt.subplots(figsize=(15,6))
+ax.bar(indices, best_fh, width=0.8, color='k')
+ax.set_xticks(indices)
+ax.set_xticklabels(labels)
+ax.set_ylabel(r'$f_1$')
+fig.tight_layout()
+fig.savefig('{}/Desktop/perf_f1.pdf'.format(homedir), transparent=True)
+
+plt.close('all')
 
 
+### roc points ###
+fig, ax = plt.subplots(figsize=(6,5))
+ax.plot(best_fpr, best_tpr, 'o')
+ax.legend(labels)

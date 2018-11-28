@@ -1,3 +1,5 @@
+from __future__ import division, print_function
+
 import glob, os, sys
 import numpy as np
 from matplotlib import pyplot as plt
@@ -11,120 +13,86 @@ import MDAnalysis
 
 import argparse
 
-mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 40})
-mpl.rcParams.update({'ytick.labelsize': 40})
-mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':10})
+harmonic_avg = lambda a,b: 2/((1/a)+(1/b))
+
 
 from IPython import embed
 
-parser = argparse.ArgumentParser()
-parser.add_argument('mode', choices=['nofilter', 'phob', 'dewet'], default='nofilter')
+parser = argparse.ArgumentParser('Evaluate performance with phi')
+parser.add_argument('--actual-contact', type=str, default='../bound/actual_contact_mask.dat', 
+                    help='mask for actual contacts (default: %(default)s)')
+parser.add_argument('--pred-contact', type=str, default='phi_*/pred_contact_mask.dat', 
+                    help='glob string for mask for predicted contacts, for each phi (default: %(default)s)')
+parser.add_argument('--buried-mask', type=str, default='../bound/buried_mask.dat',
+                    help='mask for buried atoms (default: %(default)s')
+parser.add_argument('--plot', action='store_true', default=False,
+                    help='plot ROC, scores w/ phi')
 args = parser.parse_args()
 
-hydropathy = np.loadtxt('../bound/hydropathy_mask.dat').astype(bool)
-buried_mask = np.loadtxt('../bound/buried_mask.dat').astype(bool)
-surf_mask = ~buried_mask 
 
-if args.mode == 'nofilter':
-    actual_contacts = np.loadtxt('../bound/actual_contact_mask.dat').astype(bool)
-    post = ''
-elif args.mode == 'phob':
-    actual_contacts = np.loadtxt('../bound/actual_contact_mask_phob.dat').astype(bool) #& hydropathy
-    post = '_phob'
-    surf_mask = surf_mask & hydropathy
-elif args.mode == 'dewet':
-    actual_contacts = np.loadtxt('../bound/actual_contact_mask_dewet.dat').astype(bool) #& hydropathy
-    post = '_dewet'
+buried_mask = np.loadtxt(args.buried_mask, dtype=bool)
+surf_mask = ~buried_mask
+contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
+pred_contacts = glob.glob(args.pred_contact)
 
-print('contacts: {}'.format(actual_contacts.sum()))
+assert contact_mask[surf_mask].sum() == contact_mask.sum()
+contact_mask = contact_mask[surf_mask] # Only considering surface atoms
 
-fnames = sorted(glob.glob('phi_*'))
-
-phi_vals = []
-tpr = []
-fpr = []
-dist = []
-sus = []
-
-f1s = []
-
-all_info = []
-
-for dirname in fnames:
-    ds = dr.loadPhi('../prod/phi_sims/{}/phiout.dat'.format(dirname))
-    var = ds.data[500:]['$\~N$'].var()
-    sus.append(var)
-    phi_val = float(dirname.split('_')[-1])/10
-    phi_vals.append(phi_val)
-
-    struct = MDAnalysis.Universe('{}/pred_contact.pdb'.format(dirname))
-    struct.atoms.tempfactors = -2
-    surf_atoms = struct.atoms[surf_mask]
-
-    pred_contact_mask = np.loadtxt('{}/pred_contact_mask.dat'.format(dirname)).astype(bool)
-
-    tp_mask = pred_contact_mask[surf_mask] & actual_contacts[surf_mask]
-    fp_mask = pred_contact_mask[surf_mask] & ~actual_contacts[surf_mask]
-    tn_mask = ~pred_contact_mask[surf_mask] & ~actual_contacts[surf_mask]
-    fn_mask = ~pred_contact_mask[surf_mask] & actual_contacts[surf_mask]
-
-    surf_atoms[tp_mask].tempfactors = 1
-    surf_atoms[fp_mask].tempfactors = 0
-    surf_atoms[fn_mask].tempfactors = -1
-
-    struct.atoms.write('{}/pred_contact_tp_fp{}.pdb'.format(dirname, post))
-
-    tp = tp_mask.sum()
-    fp = fp_mask.sum()
-    tn = tn_mask.sum()
-    fn = fn_mask.sum()
-
-    all_info.append([tp,fp,tn,fn])
-
-    #if phi_val == 5.6:
-    #    embed()
-
-    try:
-        this_prec = float(tp)/(tp+fp)
-    except:
-        this_prec = 0
-
-    this_tpr = float(tp)/(tp+fn)
-    this_fpr = float(fp)/(fp+tn)
-
-    try:
-        this_f1 = 2/((1/this_prec) + (1/this_tpr))
-    except ZeroDivisionError:
-        this_f1 = 0
-    f1s.append(this_f1)
-
-    tpr = np.append(tpr, this_tpr)
-    fpr = np.append(fpr, this_fpr)
-
-    this_dist = np.sqrt((this_tpr-1)**2 + this_fpr**2)
-    dist = np.append(dist, this_dist)
-
-min_idx = np.argmin(dist)
-max_idx = np.argmax(sus)
-
-phi_vals = np.array(phi_vals)
-beta = 1/(300 * k)
-all_info = np.array(all_info)
-
-np.savetxt('corr_phi.dat', np.array([phi_vals[min_idx], phi_vals[max_idx]]))
-np.savetxt('performance.dat', np.hstack((phi_vals[:,None],all_info)), header='phi  tp   fp   tn   fn')
-np.savetxt('dewet_dist_with_phi{}.dat'.format(post), np.vstack((phi_vals, sus, dist)).T)
-np.savetxt('dewet_roc{}.dat'.format(post), np.vstack((phi_vals, fpr, tpr)).T)
-plt.plot(fpr, tpr, 'o')
-plt.show()
-
-plt.plot(phi_vals, dist, '-o')
-plt.show()
-
-plt.plot(phi_vals, f1s, '-o')
-plt.show()
+print('Number of surface atoms: {}'.format(surf_mask.sum()))
+print('Number contacts: {}'.format(contact_mask.sum()))
 
 
+header = 'phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
+dat = np.zeros((len(pred_contacts), 11))
 
+for i,fname in enumerate(pred_contacts):
+    
+    phi = float(os.path.dirname(fname).split('_')[-1]) / 10.0
+
+    pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
+
+    tp = (pred_contact_mask & contact_mask).sum()
+    fp = (pred_contact_mask & ~contact_mask).sum()
+    tn = (~pred_contact_mask & ~contact_mask).sum()
+    fn = (~pred_contact_mask & contact_mask).sum()
+
+    tpr = tp / (tp + fn)
+    fpr = fp / (fp + tn)
+
+    tnr = 1 - fpr
+    assert np.isclose(tnr,  tn/(fp+tn))
+
+    # precision, or positive predictive value
+    ppv = tp/(tp+fp)
+
+    # harmonic average of tpr and (1-fpr), or the tnr (aka specificity)
+    f_h = harmonic_avg(tpr,tnr)
+    # harmonic average of tpr and prec
+    f_1 = harmonic_avg(tpr,ppv)
+    # matthews correlation coef
+    mcc = ((tp*tn) - (fp*fn)) / np.sqrt((tp+fp)*(tp+fn)*(fp+tn)*(tn+fn))
+
+    if tp+fp != 0:
+        assert np.isclose(f_1, (2*tp)/(2*tp+fp+fn))
+    else:
+        f_1 = 0
+
+    dat[i] = phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
+
+
+# check that the data in sorted order by phi...
+sort_idx = np.argsort(dat[:,0])
+
+dat = dat[sort_idx]
+
+np.savetxt('performance.dat', dat, header=header, fmt='%1.2e')
+
+if args.plot:
+    plt.plot(dat[:,6], dat[:,5], 'o')
+    plt.show()
+    plt.plot(dat[:,0], dat[:,-3], '-o', label=r'$f_h$')
+    plt.plot(dat[:,0], dat[:,-2], '-o', label=r'$f_1$')
+    plt.plot(dat[:,0], dat[:,-1], '-o', label='mcc')
+
+    plt.legend()
+    plt.show()
