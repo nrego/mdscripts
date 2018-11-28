@@ -45,11 +45,20 @@ merged_min_dist = min_dist_2z59.copy()
 main_mask, other_mask = align(prot_2z59, prot_1wr1)
 
 merged_min_dist[main_mask] = np.min((merged_min_dist[main_mask], min_dist_1wr1[other_mask]), axis=0)
-
+del main_mask, other_mask
 # w/ 2k6d
 other_mask, main_mask = align(prot_2k6d, prot_2z59)
 
 merged_min_dist[main_mask] = np.min((merged_min_dist[main_mask], min_dist_2k6d[other_mask]), axis=0)
-
+del main_mask, other_mask
 # w/ 2qho
 main_mask, other_mask = align(prot_2z59, prot_2qho)
+
+merged_min_dist[main_mask] = np.min((merged_min_dist[main_mask], min_dist_2qho[other_mask]), axis=0)
+
+merged_min_dist = merged_min_dist[None,:]
+np.savez_compressed('min_dist_neighbor_merged.dat', min_dist=merged_min_dist,
+                    header='merging min dist files')
+
+
+

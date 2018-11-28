@@ -1,24 +1,6 @@
-import matplotlib as mpl
+## Gather all tp,fp,tn,fn for all systems
+#  calculate f1, etc
 
-import os, glob
-
-fnames = glob.glob('*/bound/hydropathy_mask.dat')
-
-for fname in fnames:
-
-    subdir = os.path.dirname(fname)
-
-    contact_mask = np.loadtxt('{}/actual_contact_mask.dat'.format(subdir)).astype(bool)
-    buried_mask = np.loadtxt('{}/buried_mask.dat'.format(subdir)).astype(bool)
-    hydropathy_mask = np.loadtxt('{}/hydropathy_mask.dat'.format(subdir)).astype(bool)
-
-    hydrophobic_contacts = hydropathy_mask & contact_mask
-
-    print('sys: {}'.format(subdir))
-    print('  n_contacts: {}'.format(contact_mask.sum()))
-    print('  hydrophobic frac: {:0.2f}'.format(float(hydrophobic_contacts.sum())/contact_mask.sum()))
-
-#######################
 import matplotlib as mpl
 from matplotlib import rc 
 import os, glob
@@ -42,7 +24,13 @@ tprs = np.array([])
 precs = np.array([])
 phis = np.array([])
 
-for fname in fnames:
+heterodimers = ['1brs_bn', '1brs_bs','1bxl', '1tue', '1ycr_mdm2', '1z92_il2', '1z92_il2r', 'ubiq_merge']
+
+outdat = np.zeros((len(fnames), 8), dtype=object)
+header = 'pdb   beta*phi_best   tp    fp    tn    fn   f1   is_heterodimer'
+
+
+for i,fname in enumerate(fnames):
     
 
     dat = np.loadtxt(fname)
@@ -61,14 +49,20 @@ for fname in fnames:
     f1 = 2/((1/tpr) + (1/prec))
     best_perf = np.nanargmax(f1)
 
-    sys_names.append(os.path.dirname(fname))
+    name = os.path.dirname(os.path.dirname(fname))
+    sys_names.append(name)
     perf = np.append(perf, f1[best_perf])
     tprs = np.append(tprs, tpr[best_perf])
     precs = np.append(precs, prec[best_perf])
     phis = np.append(phis, beta*dat[best_perf,0])
 
+    this_phi = beta * dat[best_perf, 0]
+    outdat[i,0] = name
+    outdat[i,1] = this_phi
+    outdat[i,2:6] = tp[best_perf],fp[best_perf],tn[best_perf],fn[best_perf]
 
-fig, ax = plt.subplots(figsize=(8,5))
+    is_heter0 = name in heterodimers
+    outdat[i,6] = f1[best_perf]
+    outdat[i,7] = is_heter0
 
-#ax.bar(np.arange(len(fnames)), perf, color='k', width=0.8)
-ax.bar(np.arange(len(fnames)), phis, color='k', width=0.8)
+np.savetxt('all_results.dat', outdat, fmt='%s  %1.2f %1.2f %1.2f %1.2f %1.2f %1.2f %1d', header=header)

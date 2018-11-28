@@ -19,6 +19,7 @@ def align(larger, smaller):
 
     larger.tempfactors = 0
     smaller.tempfactors = 0
+    
     ## Align by assuming something was cut off at beginning or end of larger
     if larger.n_residues != smaller.n_residues:
         assert larger.n_residues > smaller.n_residues

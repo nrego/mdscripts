@@ -19,49 +19,65 @@ import argparse
 
 beta = 1 /(k*300)
 
+fnames = glob.glob('s_*/phi_*/pred_contact_mask.dat')
 
+buried_mask = np.loadtxt('../bound/buried_mask.dat', dtype=bool)
+surf_mask = ~buried_mask
 
-ideal_pt = np.array([0, 1])
+contacts = np.loadtxt('../bound/actual_contact_mask.dat', dtype=bool)
 
-fnames = sorted(glob.glob('thresh*/phi_*/accuracy.dat'))
+phi_vals = np.unique([float(fname.split('/')[1].split('_')[-1])/10.0  for fname in fnames])
+s_vals = np.unique([float(fname.split('/')[0].split('_')[-1])/100.0 for fname in fnames])
 
-thresholds = [fname.split('/')[0].split('_')[-1] for fname in fnames]
-thresholds = np.unique(thresholds).astype(float) / 10.0
-#thresholds = np.append(thresholds, 1.1)
-
-phi_vals = [fname.split('/')[1].split('_')[-1] for fname in fnames]
-phi_vals = np.unique(phi_vals).astype(float) / 10.0
-
-roc_2d = np.zeros((phi_vals.size, thresholds.size, 2))
-dist = np.zeros((phi_vals.size, thresholds.size))
-roc_2d[...] = np.nan
-dist[...] = np.nan
+f1_vals = np.zeros((len(phi_vals), len(s_vals)), dtype=float)
+d_h_vals = np.zeros((len(phi_vals), len(s_vals)), dtype=float)
+d_vals = np.zeros((len(phi_vals), len(s_vals)), dtype=float)
 
 for fname in fnames:
-    tp, fp, tn, fn = np.loadtxt(fname)
-    this_phi = float(fname.split('/')[1].split('_')[-1]) / 10.
-    this_thresh = float(fname.split('/')[0].split('_')[-1]) / 10.
+    pred = np.loadtxt(fname, dtype=bool)
 
-    phi_idx = np.argwhere(phi_vals == this_phi)[0,0]
-    thresh_idx = np.argwhere(thresholds == this_thresh)[0,0]
+    tp = (contacts[surf_mask] & pred[surf_mask]).sum()
+    fp = (~contacts[surf_mask] & pred[surf_mask]).sum()
+    tn = (~contacts[surf_mask] & ~pred[surf_mask]).sum()
+    fn = (contacts[surf_mask] & ~pred[surf_mask]).sum()
 
-    tpr = tp / (tp + fn)
-    fpr = fp / (tn + fp)
+    tpr = tp/(tp+fn)
+    fpr = fp/(tn+fp)
 
-    roc_2d[phi_idx, thresh_idx] =  fpr, tpr
-    this_dist = np.sqrt((tpr - 1)**2 + fpr**2)
-    dist[phi_idx, thresh_idx] = this_dist
+    prec = tp/(tp+fp)
 
-fig, ax1 = plt.subplots()
-ax1.xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
-ax1.yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    f1 = 2*tp/(2*tp + fp + fn)
 
-norm = Normalize(vmin=0.30, vmax=1, clip=False)
-#im = ax1.imshow(dist.T, interpolation='none', origin='lower', norm=norm, aspect='auto', cmap=cm.hot)
-im = ax1.pcolormesh(np.append(phi_vals, 11.0), np.append(thresholds, 1.1), dist.T, norm=norm, cmap=cm.hot)
-cb = plt.colorbar(im)
+    d_h = 2 /((1/tpr) + (1/(1-fpr)) )
+    d = np.sqrt((1-tpr)**2 + (fpr)**2)
 
+    this_phi = float(fname.split('/')[1].split('_')[-1])/10.0
+    this_s = float(fname.split('/')[0].split('_')[-1])/100.0
+
+    phi_bin_idx = np.where(phi_vals==this_phi)[0][0]
+    s_bin_idx = np.where(s_vals==this_s)[0][0]
+
+    f1_vals[phi_bin_idx,s_bin_idx] = f1
+    d_h_vals[phi_bin_idx,s_bin_idx] = d_h
+    d_vals[phi_bin_idx,s_bin_idx] = d
+
+phi_bins = np.append(phi_vals, phi_vals[-1]+1)
+s_bins = np.append(s_vals, s_vals[-1]+0.1)
+
+fig, ax = plt.subplots(figsize=(15,10))
+
+vals_to_plot = f1_vals
+#norm = Normalize(vals_to_plot.min(), vals_to_plot.max())
+norm = Normalize(0.4, 0.54)
+im = ax.pcolormesh(beta*phi_bins, s_bins, vals_to_plot.T, norm=norm)
+fig.colorbar(im)
+ax.set_yticks(np.arange(0,1.1,0.1))
+ax.set_xticks(np.arange(0,4.1,1))
+ax.set_xlabel(r'$\beta \phi$')
+ax.set_ylabel(r'$s$')
+fig.tight_layout()
 plt.show()
+
 
 
 
