@@ -12,8 +12,8 @@ import argparse
 
 
 
-def rms(pts):
-    centroid = pts.mean(axis=0)
+def rms(pts, centroid):
+    
     diff = pts-centroid
     diff_sq = diff**2
     
@@ -26,9 +26,11 @@ def bootstrap(atm_grp, n_sub, n_boot=100):
 
     boot = np.zeros(n_boot)
 
+    cog = atm_grp.center_of_geometry()
+
     for i in range(n_boot):
         boot_idx = np.random.choice(atm_grp.n_atoms, n_sub, replace=False)
-        boot_rms = rms(atm_grp.positions[boot_idx])
+        boot_rms = rms(atm_grp.positions[boot_idx], cog)
 
         boot[i] = boot_rms
 
@@ -119,7 +121,7 @@ fn_phob = (fn_mask & hydropathy).sum()/fn
 print("Fraction hydrophobic:")
 print("   TP: {:0.2f}  FN:  {:0.2f}  FP:  {:0.2f}  TN: {:0.2f}".format(tp_phob, fn_phob, fp_phob, tn_phob))
 
-embed()
+
 ## Find the spread of the tp, fp, fn
 #  Expectation: FN's around edge and non-continuous, so will have larger rms than TP's (which should be tighter cluster)
 p_atoms = targ[contact_mask]
@@ -127,10 +129,11 @@ tp_atoms = targ[tp_mask]
 fp_atoms = targ[fp_mask]
 fn_atoms = targ[fn_mask]
 
-p_spread = rms(p_atoms.positions)
-tp_spread = rms(tp_atoms.positions)
-fn_spread = rms(fn_atoms.positions)
-fp_spread = rms(fp_atoms.positions)
+cog = p_atoms.center_of_geometry()
+p_spread = rms(p_atoms.positions, cog)
+tp_spread = rms(tp_atoms.positions, cog)
+fn_spread = rms(fn_atoms.positions, cog)
+#fp_spread = rms(fp_atoms.positions)
 
 
 # What's expected rms for a subpatch of P with n_TP atoms?
@@ -141,7 +144,7 @@ z_tp = (tp_spread - tp_expected_avg) / tp_expected_se
 z_fn = (fn_spread - fn_expected_avg) / fn_expected_se
 
 print("Spread of predictions (RMS of atoms, in A):")
-print("   actual patch: {:1.2f}   TP: {:1.2f}   FN: {:1.2f}   FP: {:1.2f}".format(p_spread, tp_spread, fn_spread, fp_spread))
+print("   actual patch: {:1.2f}   TP: {:1.2f}   FN: {:1.2f}".format(p_spread, tp_spread, fn_spread))
 print("   TP_boot_avg: {:1.2f}  ({:1.2f});   actual TP zscore (sd's): {:1.2f}".format(tp_expected_avg, tp_expected_se, z_tp))
 print("   FN_boot_avg: {:1.2f}  ({:1.2f});   actual FN zscore (sd's): {:1.2f}".format(fn_expected_avg, fn_expected_se, z_fn))
 

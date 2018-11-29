@@ -6,14 +6,14 @@ homedir = os.environ['HOME']
 
 mpl.rcParams.update({'axes.labelsize': 20})
 mpl.rcParams.update({'xtick.labelsize': 20})
-mpl.rcParams.update({'ytick.labelsize': 15})
+mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
 
-sys_names = ['2b97', '1msb', '2tsc', '1ycr_mdm2', 'ubiq_merge', '1bi4', '1bmd', '1brs_bn']
+sys_names = ['2b97', '1msb', '2tsc', '1ycr_mdm2', 'ubiq_merge']
 
 name_lut = {
-    '2b97': 'Hydrophobin II',
+    '2b97': 'Hydrophobin',
     '2tsc': 'Thymidylate\nsynthase',
     '1bi4': 'HIV\nInteg',
     '1ycr_mdm2': 'MDM2',
@@ -26,57 +26,83 @@ from constants import k
 
 beta = 1/(k * 300)
 
-
+# phi corresponding to maximum d_h
 best_phi = []
+# peak sus
+phi_star = []
 best_f1 = []
-best_fh = []
+best_dh = []
 best_tpr = []
 best_fpr = []
+best_indices = []
+
+fig, ax = plt.subplots(figsize=(5.2,5))
 
 for i, dirname in enumerate(sys_names):
     path = '{}/pred/performance.dat'.format(dirname)
 
+    # need variance for phi*
+    ntwid_dat = np.loadtxt('{}/prod/phi_sims/ntwid_out.dat'.format(dirname))
+    this_phi_star = ntwid_dat[np.argmax(ntwid_dat[:,2]), 0]
+    phi_star.append(this_phi_star)
+
     dat = np.loadtxt(path)
 
-    phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc = np.split(dat, 11, 1)
+    phi, tp, fp, tn, fn, tpr, fpr, ppv, d_h, f_1, mcc = np.split(dat, 11, 1)
 
-    best_perf = np.argmax(f_h)
+    best_perf = np.argmax(d_h)
+    best_indices.append(best_perf)
     print('{}'.format(name_lut[dirname]))
     print('  phi: {}'.format(phi[best_perf]))
 
     best_phi.append(beta*phi[best_perf])
     best_f1.append(f_1[best_perf])
-    best_fh.append(f_h[best_perf])
+    best_dh.append(d_h[best_perf])
     best_tpr.append(tpr[best_perf])
     best_fpr.append(fpr[best_perf])
+
+    ax.plot(fpr[best_perf], tpr[best_perf], 'o', label=name_lut[sys_names[i]])
+
+## Plot ROC points ###
+ax.legend()
+ax.set_xlabel('FPR')
+ax.set_ylabel('TPR')
+ax.set_xlim(0,1)
+ax.set_ylim(0,1)
+fig.tight_layout()
+fig.savefig('{}/Desktop/roc_points.pdf'.format(homedir), transparent=True)
+plt.close('all')
+
 
 indices = np.arange(len(sys_names))
 
 labels = [name_lut[name] for name in sys_names]
-### bar chart of best phis ###
-fig, ax = plt.subplots(figsize=(15,6))
-ax.bar(indices, best_phi, width=0.8, color='k')
+
+### phi_opt (best d_h) ###
+fig, ax = plt.subplots(figsize=(10,6))
+ax.bar(indices, np.squeeze(best_phi), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
-ax.set_ylabel(r'$\beta \phi$')
+ax.set_ylabel(r'$\beta \phi_\mathrm{opt}$')
 fig.tight_layout()
 fig.savefig('{}/Desktop/perf_phi.pdf'.format(homedir), transparent=True)
 
 plt.close('all')
 
-### best fh's ###
-fig, ax = plt.subplots(figsize=(15,6))
-ax.bar(indices, best_fh, width=0.8, color='k')
+### best dh's ###
+fig, ax = plt.subplots(figsize=(10,6))
+ax.bar(indices, np.squeeze(best_dh), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
-ax.set_ylabel(r'$f_h$')
+ax.set_ylabel(r'$d_h$')
+ax.set_ylim(0,1)
 fig.tight_layout()
-fig.savefig('{}/Desktop/perf_fh.pdf'.format(homedir), transparent=True)
+fig.savefig('{}/Desktop/perf_dh.pdf'.format(homedir), transparent=True)
 
 plt.close('all')
 ### best f1's ###
-fig, ax = plt.subplots(figsize=(15,6))
-ax.bar(indices, best_fh, width=0.8, color='k')
+fig, ax = plt.subplots(figsize=(10,6))
+ax.bar(indices, np.squeeze(best_dh), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
 ax.set_ylabel(r'$f_1$')
@@ -85,8 +111,26 @@ fig.savefig('{}/Desktop/perf_f1.pdf'.format(homedir), transparent=True)
 
 plt.close('all')
 
+### phistar ###
+fig, ax = plt.subplots(figsize=(10,6))
+ax.bar(indices, phi_star, width=0.8, color='k')
+ax.set_xticks(indices)
+ax.set_xticklabels(labels)
+ax.set_ylabel(r'$\beta \phi^*$')
+fig.tight_layout()
+fig.savefig('{}/Desktop/phi_star.pdf'.format(homedir), transparent=True)
 
-### roc points ###
-fig, ax = plt.subplots(figsize=(6,5))
-ax.plot(best_fpr, best_tpr, 'o')
-ax.legend(labels)
+plt.close('all')
+
+### phi_opt/phi_star ###
+fig, ax = plt.subplots(figsize=(10,6))
+ax.bar(indices, np.squeeze(best_phi)/np.array(phi_star), width=0.8, color='k')
+ax.set_xticks(indices)
+ax.set_xticklabels(labels)
+ax.set_ylabel(r'$\frac{\phi_\mathrm{opt}}{\phi^*}$')
+fig.tight_layout()
+fig.savefig('{}/Desktop/phi_ratio.pdf'.format(homedir), transparent=True)
+
+plt.close('all')
+
+
