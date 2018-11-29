@@ -625,6 +625,9 @@ Command-line options
         print('se: {}'.format(f_k_se))
         np.savetxt('err_f_k.dat', f_k_se, fmt='%3.6f')
         np.savetxt('boot_f_k.dat', f_k_boot)
+        np.savetxt('f_k_all.dat', f_k_actual)
+        np.savez_compressed('all_data.dat', logweights=all_logweights, data=self.all_data, data_N=self.all_data_N)
+
 
         if self.boot_fn is not None:
             np.save('boot_fn_payload.dat', boot_res)
