@@ -11,7 +11,7 @@ import logging
 import MDAnalysis
 #from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
-#from IPython import embed
+from IPython import embed
 
 from scipy.spatial import cKDTree
 import itertools
@@ -105,7 +105,8 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
     # Can probably move this out of here and perform at end
     rho_slice = rho_prot_slice/rho_prot_bulk \
         + rho_water_slice/rho_water_bulk
-    rho_slice[far_pt_idx] = 1.0
+
+    #rho_slice[far_pt_idx] = 1.0
 
     return (rho_slice, frame_idx)
 
@@ -332,7 +333,7 @@ Command-line options
         # should modify in future to accomodate non cubic box
         #   In angstroms
         box = self.univ.dimensions[:3]
-
+        
         # Set up marching cube stuff - grids in Angstroms
         #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
         self.ngrids = ngrids = np.ceil(box/ grid_dl).astype(int)+1
