@@ -27,15 +27,15 @@ from fieldwriter import RhoField
 log = logging.getLogger('mdtools.interface')
 
 ## Try to avoid round-off errors as much as we can...
-rho_dtype = np.float32
+RHO_DTYPE = np.float32
 ZMIN = 130
 
 def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, rho_prot_bulk, rho_water_bulk, tree, water_cutoff):    
     cutoff_sq = cutoff**2
     sigma_sq = sigma**2
-    rho_prot_slice = np.zeros((npts,), dtype=rho_dtype)
-    rho_water_slice = np.zeros((npts,), dtype=rho_dtype)
-    rho_slice = np.zeros((npts,), dtype=rho_dtype)
+    rho_prot_slice = np.zeros((npts,), dtype=RHO_DTYPE)
+    rho_water_slice = np.zeros((npts,), dtype=RHO_DTYPE)
+    rho_slice = np.zeros((npts,), dtype=RHO_DTYPE)
 
     ### HACK to show interface without slowing everything to a crawl ###
     #all_grid_indices = np.arange(npts)
@@ -58,7 +58,7 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
         neighborpts = gridpts[neighboridx]
         
         dist_vectors = neighborpts[:, ...] - pos
-        dist_vectors = dist_vectors.astype(rho_dtype)
+        dist_vectors = dist_vectors.astype(RHO_DTYPE)
         # Distance array between atom and neighbor grid points
         #distarr = scipy.spatial.distance.cdist(pos.reshape(1,3), neighborpts,
         #                                       'sqeuclidean').reshape(neighboridx.shape)
@@ -93,7 +93,7 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
         neighborpts = gridpts[neighboridx]
 
         dist_vectors = neighborpts[:, ...] - pos
-        dist_vectors = dist_vectors.astype(rho_dtype)
+        dist_vectors = dist_vectors.astype(RHO_DTYPE)
 
         rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
         rho_water_slice[neighboridx] += rhovals
@@ -106,7 +106,7 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
     rho_slice = rho_prot_slice/rho_prot_bulk \
         + rho_water_slice/rho_water_bulk
 
-    #rho_slice[far_pt_idx] = 1.0
+    rho_slice[far_pt_idx] = 1.0
 
     return (rho_slice, frame_idx)
 
@@ -255,12 +255,13 @@ Command-line options
     #@profile
     def calc_rho(self):
 
-        water_dist_cutoff = int(np.sqrt(3*self.cutoff**2))
-        water_dist_cutoff += 1
+        #water_dist_cutoff = int(np.sqrt(3*self.cutoff**2))
+        #water_dist_cutoff += 1
+        water_dist_cutoff = 14
 
-        rho_water = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
-        rho_prot = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
-        self.rho = np.zeros((self.n_frames, self.npts), dtype=rho_dtype)
+        rho_water = np.zeros((self.n_frames, self.npts), dtype=RHO_DTYPE)
+        rho_prot = np.zeros((self.n_frames, self.npts), dtype=RHO_DTYPE)
+        self.rho = np.zeros((self.n_frames, self.npts), dtype=RHO_DTYPE)
 
         # Cut that shit up to send to work manager
         try:
