@@ -10,7 +10,7 @@ mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
 
-sys_names = ['2b97', '1msb', '2tsc', '1ycr_mdm2', 'ubiq_merge']
+sys_names = ['1msb', '2tsc', '1ycr_mdm2', 'ubiq_merge']
 
 name_lut = {
     '2b97': 'Hydrophobin',
