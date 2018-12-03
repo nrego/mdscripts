@@ -26,7 +26,7 @@ beta_phi_vals, avg_N, err_avg_N, chi, err_chi = [arr.squeeze() for arr in np.spl
 peak_sus_dat = np.loadtxt('peak_sus.dat')
 
 # in case we don't have data at phi=0
-start_pt = 1 * beta
+start_pt = 0
 
 start_idx = np.argmax(beta_phi_vals > start_pt)
 skip=1

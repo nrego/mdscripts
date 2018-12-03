@@ -27,7 +27,7 @@ parser.add_argument('--infiles', type=str, nargs='+',
 args = parser.parse_args()
 
 
-#embed()
+embed()
 
 fnames = np.sort(args.infiles)
 ref_rho = np.load(args.ref_rho)['rho_water'].mean(axis=0)
@@ -48,7 +48,7 @@ dewet_indices = np.array([])
 
 idx_order = np.array([])
 
-prev_phi = 0.0
+prev_phi = -1
 for fname in fnames:
     dirname = os.path.dirname(fname)
     phi = float(dirname.split('_')[-1]) / 10.0
@@ -64,15 +64,11 @@ for fname in fnames:
     surf_dewet_mask = (rho < 0.5) & surf_mask
     surf_dewet_idx = local_indices[surf_dewet_mask]
     
-    new_dewet_indices = np.setdiff1d(surf_dewet_idx, dewet_indices)
+    new_dewet_indices = np.setdiff1d(surf_dewet_idx, idx_order)
     # Sort by rho
     order_sort = np.argsort(rho[new_dewet_indices])
     idx_order = np.append(idx_order, new_dewet_indices[order_sort])
 
-    dewet_indices = np.unique(np.append(new_dewet_indices, dewet_indices))
-
-    if surf_dewet_mask.sum() > 0:
-        embed()
         
 idx_order = idx_order.astype(int)
 print("{} total atoms dewetted".format(len(idx_order)))
