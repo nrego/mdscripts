@@ -35,7 +35,7 @@ myslice = slice(start_idx, None, skip)
 
 
 ## N v phi
-fig, ax = plt.subplots(figsize=(6,5))
+fig, ax = plt.subplots(figsize=(5.5,5))
 
 ax.errorbar(beta_phi_vals[myslice], avg_N[myslice], yerr=err_avg_N[myslice], fmt='k-o', linewidth=3)
 ax.set_xlim(0, 4)

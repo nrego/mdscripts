@@ -4,11 +4,11 @@ import os, glob
 
 homedir = os.environ['HOME']
 
-mpl.rcParams.update({'axes.labelsize': 20})
-mpl.rcParams.update({'xtick.labelsize': 20})
+mpl.rcParams.update({'axes.labelsize': 40})
+mpl.rcParams.update({'xtick.labelsize': 15})
 mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':10})
+mpl.rcParams.update({'legend.fontsize':15})
 
 sys_names = ['1msb', '2tsc', '1ycr_mdm2', 'ubiq_merge']
 
@@ -42,10 +42,12 @@ for i, dirname in enumerate(sys_names):
     path = '{}/pred/performance.dat'.format(dirname)
 
     # need variance for phi*
-    ntwid_dat = np.loadtxt('{}/prod/phi_sims/ntwid_out.dat'.format(dirname))
-    this_phi_star = ntwid_dat[np.argmax(ntwid_dat[:,2]), 0]
+    # This is in beta*phi...
+    ntwid_dat = np.loadtxt('{}/prod/phi_sims/Nvphi.dat'.format(dirname))
+    this_phi_star = ntwid_dat[np.argmax(ntwid_dat[:,3]), 0]
     phi_star.append(this_phi_star)
 
+    # irritatingly, this is kJ/mol
     dat = np.loadtxt(path)
 
     phi, tp, fp, tn, fn, tpr, fpr, ppv, d_h, f_1, mcc = np.split(dat, 11, 1)
@@ -69,6 +71,8 @@ ax.set_xlabel('FPR')
 ax.set_ylabel('TPR')
 ax.set_xlim(0,1)
 ax.set_ylim(0,1)
+ax.set_xticks([0,0.5,1])
+ax.set_yticks([0,0.5,1])
 fig.tight_layout()
 fig.savefig('{}/Desktop/roc_points.pdf'.format(homedir), transparent=True)
 plt.close('all')
@@ -79,7 +83,7 @@ indices = np.arange(len(sys_names))
 labels = [name_lut[name] for name in sys_names]
 
 ### phi_opt (best d_h) ###
-fig, ax = plt.subplots(figsize=(10,6))
+fig, ax = plt.subplots(figsize=(7,4))
 ax.bar(indices, np.squeeze(best_phi), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
@@ -90,7 +94,7 @@ fig.savefig('{}/Desktop/perf_phi.pdf'.format(homedir), transparent=True)
 plt.close('all')
 
 ### best dh's ###
-fig, ax = plt.subplots(figsize=(10,6))
+fig, ax = plt.subplots(figsize=(7,4))
 ax.bar(indices, np.squeeze(best_dh), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
@@ -102,7 +106,7 @@ fig.savefig('{}/Desktop/perf_dh.pdf'.format(homedir), transparent=True)
 plt.close('all')
 ### best f1's ###
 fig, ax = plt.subplots(figsize=(10,6))
-ax.bar(indices, np.squeeze(best_dh), width=0.8, color='k')
+ax.bar(indices, np.squeeze(best_f1), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
 ax.set_ylabel(r'$f_1$')
@@ -123,7 +127,7 @@ fig.savefig('{}/Desktop/phi_star.pdf'.format(homedir), transparent=True)
 plt.close('all')
 
 ### phi_opt/phi_star ###
-fig, ax = plt.subplots(figsize=(10,6))
+fig, ax = plt.subplots(figsize=(7,4))
 ax.bar(indices, np.squeeze(best_phi)/np.array(phi_star), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
