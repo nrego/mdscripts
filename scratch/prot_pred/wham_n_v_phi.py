@@ -122,7 +122,7 @@ avg_dg_N = masked_dg_N.mean(axis=0)
 avg_dg_N[always_null_N] = np.inf
 err_dg_N = masked_dg_N.std(axis=0, ddof=1)
 
-dat = np.vstack((bins[:-1], all_neglogpdist, err_dg)).T
+dat = np.vstack((bins[:-1], all_neglogpdist_N, err_dg_N)).T
 np.savetxt('PvN.dat', dat, header='bins   beta F_v(N)  err(beta F_v(N))   ')
 
 tot_N = avg_N_phi.mean(axis=0)
