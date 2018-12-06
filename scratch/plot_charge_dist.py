@@ -35,7 +35,7 @@ for res in rg:
     for atm in res.atoms:
         
         # Hydrophilic: -1;  Hydrophobic: 0
-        hydrophil = -1 if np.abs(atm.charge) > thresh else 0
+        hydrophil = -1 if np.abs(atm.charge) > thresh else 1
         
         atm.tempfactor = hydrophil
         charge_dict[res.resname][atm.name] = hydrophil

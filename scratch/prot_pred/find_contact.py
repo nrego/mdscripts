@@ -61,7 +61,8 @@ if buried_to_exposed.sum() > 0:
 
     prot[buried_to_exposed].tempfactors = -1
     prot.write('buried_to_exposed.pdb', bonds=None)
-    prot[buried_mask].tempfactors = -2
+    #prot[buried_mask].tempfactors = -2
+    sys.find_buried(ref_data, nb=args.nb)
 
     np.savetxt('exposed_mask.dat', buried_to_exposed, fmt='%1d')
 
@@ -129,8 +130,9 @@ else:
     sys.assign_hydropathy(charge_assign)
 
     # All surface hydrophobic atoms (according to kapcha/rossky)
-    hydropathy_mask = prot.tempfactors == 0
-    hydrophilicity_mask = prot.tempfactors == -1
+    hydropathy_mask = sys.phobic_mask_h
+    
+    hydrophilicity_mask = sys.philic_mask_h
     prot.write('hydropathy.pdb', bonds=None)
     np.savetxt('hydropathy_mask.dat', hydropathy_mask, fmt='%1d')
 

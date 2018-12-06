@@ -29,7 +29,7 @@ peak_sus_dat = np.loadtxt('peak_sus.dat')
 # in case we don't have data at phi=0
 start_pt = 0
 
-start_idx = np.argmax(beta_phi_vals > start_pt)
+start_idx = np.argmax(beta_phi_vals >= start_pt)
 skip=1
 
 myslice = slice(start_idx, None, skip)

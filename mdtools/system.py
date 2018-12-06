@@ -14,7 +14,8 @@ logging.captureWarnings(True)
 
 BURIED = -2
 HYDROPHILIC = -1
-HYDROPHOBIC = 0
+HYDROPHOBIC = 1
+NULL = 0
 
 class MDSystem():
     """
@@ -35,7 +36,7 @@ class MDSystem():
         self.prot = self.univ.select_atoms('({})'.format(sel_spec))
         self.prot_h = self.univ.select_atoms('({}) and not name H*'.format(sel_spec))
         self.hydrogens = self.univ.select_atoms('({}) and name H*'.format(sel_spec))
-        self.prot.tempfactors = 0
+        self.prot.tempfactors = NULL
         self.other = self.univ.select_atoms('not ({})'.format(sel_spec))
 
         for k,v in kwargs.iteritems():
@@ -73,6 +74,22 @@ class MDSystem():
         return (phil & surf).sum()
 
     @property
+    def phobic_mask(self):
+        return self.prot.tempfactors == HYDROPHOBIC
+
+    @property
+    def phobic_mask_h(self):
+        return self.prot_h.tempfactors == HYDROPHOBIC
+
+    @property
+    def philic_mask(self):
+        return self.prot.tempfactors == HYDROPHILIC
+
+    @property
+    def philic_mask_h(self):
+        return self.prot_h.tempfactors == HYDROPHILIC
+
+    @property
     def n_phob(self):
         phob = self.prot.tempfactors == HYDROPHOBIC
         surf = self.prot.tempfactors != BURIED
@@ -108,7 +125,9 @@ class MDSystem():
         for atm in self.hydrogens:
             atm.tempfactor = atm.bonded_atoms[0].tempfactor
 
-    def find_buried(self, rho_dat, nb):
+    def find_buried(self, rho_dat, nb=5):
+        
+        self.prot[~self.surf_mask].tempfactors = NULL
         buried_mask = rho_dat < nb
 
         self.prot_h[buried_mask].tempfactors = BURIED
