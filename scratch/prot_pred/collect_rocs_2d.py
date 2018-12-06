@@ -16,6 +16,11 @@ from constants import k
 import numpy as np
 
 import argparse
+mpl.rcParams.update({'axes.labelsize': 40})
+mpl.rcParams.update({'xtick.labelsize': 30})
+mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'axes.titlesize':40})
+mpl.rcParams.update({'legend.fontsize':10})
 
 beta = 1 /(k*300)
 
@@ -64,11 +69,11 @@ for fname in fnames:
 phi_bins = np.append(phi_vals, phi_vals[-1]+1)
 s_bins = np.append(s_vals, s_vals[-1]+0.1)
 
-fig, ax = plt.subplots(figsize=(15,10))
+fig, ax = plt.subplots(figsize=(9,7))
 
-vals_to_plot = f1_vals
+vals_to_plot = d_h_vals
 #norm = Normalize(vals_to_plot.min(), vals_to_plot.max())
-norm = Normalize(0.4, 0.54)
+norm = Normalize(0.0,0.8)
 im = ax.pcolormesh(beta*phi_bins, s_bins, vals_to_plot.T, norm=norm)
 fig.colorbar(im)
 ax.set_yticks(np.arange(0,1.1,0.1))

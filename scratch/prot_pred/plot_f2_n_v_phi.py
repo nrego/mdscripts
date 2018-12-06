@@ -2,8 +2,9 @@ from __future__ import division, print_function
 
 import matplotlib as mpl
 from matplotlib import rc 
+from matplotlib import pyplot as plt
 import os, glob
-
+import numpy as np
 from constants import k
 
 def plt_errorbars(bb, vals, errs, **kwargs):
@@ -51,7 +52,7 @@ plt.close('all')
 
 
 ## chi v phi
-fig, ax = plt.subplots(figsize=(6,5))
+fig, ax = plt.subplots(figsize=(5.45,5))
 
 ax.errorbar(beta_phi_vals[myslice], chi[myslice], yerr=err_chi[myslice], fmt='k-o', linewidth=3)
 

@@ -10,7 +10,16 @@ from mdtools import MDSystem
 import cPickle as pickle
 import argparse
 
+import os
 
+homedir = os.environ['HOME']
+
+
+mpl.rcParams.update({'axes.labelsize': 30})
+mpl.rcParams.update({'xtick.labelsize': 30})
+mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'axes.titlesize':40})
+mpl.rcParams.update({'legend.fontsize':30})
 
 def rms(pts, centroid):
     
@@ -41,7 +50,7 @@ def bootstrap(atm_grp, n_sub, n_boot=100):
 
 parser = argparse.ArgumentParser('analyze atomic composition of TPs, FPs, etc')
 parser.add_argument('-s', '--top', type=str, required=True,
-                    help='Topology (TPR) file (unbound form!)')
+                    help='Topology (TPR) file')
 parser.add_argument('-c', '--struct', type=str, required=True,
                     help='Structure (GRO) file')
 parser.add_argument('--sel-spec', type=str, default='segid seg_0_Protein_targ and not name H*',
@@ -110,6 +119,24 @@ print("Precision: {:0.2f}  F1: {:.2f}  (lim: {:.2f})  d_h: {:.2f}   MCC: {:.2f}"
 
 print("...Analyzing composition of prediction groups...")
 
+print("Fraction hydrophobic:")
+
+# fraction of total prediction patch that is hydrophobic
+pred_phob = (pred_mask & hydropathy).sum()/pred_mask.sum()
+pred_phil = (pred_mask & ~hydropathy).sum()/pred_mask.sum()
+not_pred_phob = (~pred_mask & hydropathy).sum() / (~pred_mask).sum()
+not_pred_phil = (~pred_mask & ~hydropathy).sum() / (~pred_mask).sum()
+print("    Predicted contacts: {:0.2f}   Predicted not contacts: {:0.2f}".format(pred_phob, not_pred_phob))
+
+fig, ax = plt.subplots()
+wedgeprops = {'edgecolor':'k', 'linewidth':2}
+patches, texts, pcts = ax.pie([pred_phob, pred_phil], labels=('hydrophobic', 'hydrophilic'), labeldistance=1.15, colors=('#EEEEEE', '#0561AA'), autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
+[pct.set_fontsize(20) for pct in pcts]
+ax.axis('equal')
+patches[0].set_hatch('/')
+
+#fig.tight_layout()
+fig.savefig('{}/Desktop/pct_pred_phobic.pdf'.format(homedir), transparent=True)
 
 # Find fraction of groups that are phobic
 #   Expectation: TP will be more hydrophobic than FNs (indicating that we are capturing the **hydrophobic** parts of patch)
@@ -118,7 +145,7 @@ fp_phob = (fp_mask & hydropathy).sum()/fp
 tn_phob = (tn_mask & hydropathy).sum()/tn
 fn_phob = (fn_mask & hydropathy).sum()/fn
 
-print("Fraction hydrophobic:")
+
 print("   TP: {:0.2f}  FN:  {:0.2f}  FP:  {:0.2f}  TN: {:0.2f}".format(tp_phob, fn_phob, fp_phob, tn_phob))
 
 
