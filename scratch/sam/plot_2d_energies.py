@@ -7,6 +7,10 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib import cm
 ## From pattern_sample directory, extract free energies for each k, d value
+mpl.rcParams.update({'axes.labelsize': 20})
+mpl.rcParams.update({'xtick.labelsize': 10})
+mpl.rcParams.update({'ytick.labelsize': 10})
+mpl.rcParams.update({'axes.titlesize': 30})
 
 max_val = 1.75
 rms_bins = np.arange(0, max_val+0.1, 0.05)
@@ -48,7 +52,11 @@ norm = mpl.colors.Normalize(vmin=min_energy, vmax=max_energy)
 extent = (rms_bins[0], rms_bins[-1], k_bins[0], k_bins[-1])
 im = ax.imshow(energies.T, extent=extent, origin='lower', aspect='auto', norm=norm, cmap=cm.nipy_spectral)
 cb = plt.colorbar(im)
+ax.set_xlabel(r'$d$ (RMS)')
+ax.set_ylabel(r'$k$')
 
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/rms_k_2d.pdf')
 
 fig, ax = plt.subplots(figsize=(6,5))
 
@@ -59,3 +67,6 @@ norm = mpl.colors.Normalize(vmin=min_err, vmax=max_err)
 extent = (rms_bins[0], rms_bins[-1], k_bins[0], k_bins[-1])
 im = ax.imshow(errors.T, extent=extent, origin='lower', aspect='auto', norm=norm, cmap=cm.nipy_spectral)
 cb = plt.colorbar(im)
+
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/err.pdf')

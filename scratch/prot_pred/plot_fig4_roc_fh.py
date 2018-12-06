@@ -7,7 +7,7 @@ import numpy as np
 import os, glob
 
 homedir = os.environ['HOME']
-
+from IPython import embed
 mpl.rcParams.update({'axes.labelsize': 40})
 mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
@@ -26,11 +26,11 @@ beta_phi_vals, avg_N, err_avg_N, chi, err_chi = [arr.squeeze() for arr in np.spl
 chi_max_idx = np.argmax(chi)
 chi_max = np.max(chi)
 chi_thresh_mask = chi < (0.5*chi_max)
-chi_minus_idx = np.max(np.where(chi_thresh_mask[:chi_max_idx])) + 1
-chi_plus_idx = np.min(np.where(chi_thresh_mask[chi_max_idx:])) + chi_max_idx - 1
+chi_minus_idx = np.max(np.where(chi_thresh_mask[:chi_max_idx])) 
+chi_plus_idx = np.min(np.where(chi_thresh_mask[chi_max_idx:])) + chi_max_idx 
 beta_phi_minus = beta_phi_vals[chi_minus_idx]
 beta_phi_plus = beta_phi_vals[chi_plus_idx]
-
+#embed()
 phi, tp, fp, tn, fn, tpr, fpr, prec, f_h, f_1, mcc = [arr.squeeze() for arr in np.split(np.loadtxt('performance.dat'), 11, 1)]
 
 best_idx = np.argmax(f_h)
