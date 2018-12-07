@@ -96,3 +96,8 @@ for rms_bin, pts in zip(rms_bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx
 
         newuniv = generate_pattern(univ_oh, univ_ch3, this_pt+patch_start_idx)
         newuniv.atoms.write('{}/{}/struct.gro'.format(dirname, subdir))
+
+        np.savetxt('{}/{}/this_pt.dat'.format(dirname, subdir), this_pt, fmt='%d')
+
+
+

@@ -7,15 +7,17 @@ from mdtools import MDSystem, dr
 import os, glob
 
 top = 'top.tpr'
-struct = 'equil_bulk_cent.gro'
+#struct = 'equil_bulk_cent.gro'
+struct = 'equil/cent.gro'
 
 surf_mask = np.loadtxt('surf_mask.dat', dtype=bool)
 dewet_indices = np.loadtxt('dewet_indices.dat', dtype=int)
 
 clust_size = 10
-first_clust_indices = dewet_indices[:clust_size]
+first_clust_indices = dewet_indices[-clust_size:]
 
-fnames = glob.glob('../hfb_traj/phi_*/traj_cent.xtc')
+#fnames = glob.glob('../hfb_traj/phi_*/traj_cent.xtc')
+fnames = glob.glob('phi_*/traj.xtc')
 
 last_phi = -1
 phi_vals = []
@@ -41,7 +43,8 @@ n_tot = np.zeros_like(n_clust)
 
 for i, fname in enumerate(fnames):
 
-    this_phi = float(fname.split('/')[2].split('_')[-1]) / 10.0
+    #this_phi = float(fname.split('/')[2].split('_')[-1]) / 10.0
+    this_phi = float(fname.split('/')[0].split('_')[-1]) / 10.0
     print("Phi: {}".format(this_phi))
     assert this_phi > last_phi
     last_phi = this_phi
@@ -66,5 +69,20 @@ for i, fname in enumerate(fnames):
         this_frame_clust_waters = u.select_atoms('name OW and around 6 ({})'.format(sel_str))
 
         n_clust[i, i_frame-n_start] = this_frame_clust_waters.n_atoms
+
+avg_clust = n_clust.mean(axis=1)
+avg_n_tot = n_tot.mean(axis=1)
+
+avg_clust_sq = (n_clust**2).mean(axis=1)
+avg_n_tot_sq = (n_tot**2).mean(axis=1)
+
+avg_cross = (n_clust*n_tot).mean(axis=1)
+
+var_n = avg_n_tot_sq - avg_n_tot**2
+cov = avg_cross - (avg_clust * avg_n_tot)
+
+
+
+
 
 

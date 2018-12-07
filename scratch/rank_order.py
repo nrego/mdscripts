@@ -8,20 +8,22 @@ import os, glob
 
 
 ## Hardcoded params ##
-fnames = glob.glob('phi_*/rho_data_dump.dat.npz')
+#fnames = glob.glob('phi_*/rho_data_dump.dat.npz')
+fnames = glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz')
 
 f0 = fnames[0]
 assert f0.split('/')[0] == 'phi_000'
 dat_0 = np.load(f0)['rho_water'].mean(axis=0)
 
 top = 'top.tpr'
-struct = 'equil_bulk_cent.gro'
+#struct = 'equil_bulk_cent.gro'
+struct = 'equil/cent.gro'
 
 buried_thresh = 5
 
 ## End hardcoded params ##
 
-sys = MDSystem(top, struct, sel_spec='segid targ')
+sys = MDSystem(top, struct, sel_spec='segid A')
 
 sys.find_buried(dat_0, nb=buried_thresh)
 
@@ -80,7 +82,7 @@ for fname in fnames:
 ## Now color the (heavy, surface) atoms by the order in which they dewetted
 for i, idx in enumerate(dewet_indices):
 
-    prot[idx].tempfactor = i
+    prot[idx].tempfactor = i / 10.0
 
 prot.write('ordered.pdb', bonds=None)
 
