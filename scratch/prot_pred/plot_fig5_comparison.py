@@ -4,13 +4,13 @@ import os, glob
 
 homedir = os.environ['HOME']
 
-mpl.rcParams.update({'axes.labelsize': 40})
+mpl.rcParams.update({'axes.labelsize': 30})
 mpl.rcParams.update({'xtick.labelsize': 15})
 mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':15})
 
-sys_names = ['1msb', '2tsc', '1ycr_mdm2', 'ubiq_merge']
+sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge']
 
 name_lut = {
     '2b97': 'Hydrophobin',
@@ -20,7 +20,8 @@ name_lut = {
     '1bmd': 'Malate\ndehydrogenase',
     '1msb': 'Mannose-\nbinding\nprotein',
     'ubiq_merge': 'Ubiquitin',
-    '1brs_bn': 'Barnase'
+    '1brs_bn': 'Barnase',
+    '1pp2': 'Phospholipase\nA2'
 }
 from constants import k
 
@@ -83,7 +84,7 @@ indices = np.arange(len(sys_names))
 labels = [name_lut[name] for name in sys_names]
 
 ### phi_opt (best d_h) ###
-fig, ax = plt.subplots(figsize=(7,4))
+fig, ax = plt.subplots(figsize=(8,4))
 ax.bar(indices, np.squeeze(best_phi), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
@@ -94,7 +95,7 @@ fig.savefig('{}/Desktop/perf_phi.pdf'.format(homedir), transparent=True)
 plt.close('all')
 
 ### best dh's ###
-fig, ax = plt.subplots(figsize=(7,4))
+fig, ax = plt.subplots(figsize=(8,4))
 ax.bar(indices, np.squeeze(best_dh), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
@@ -127,7 +128,7 @@ fig.savefig('{}/Desktop/phi_star.pdf'.format(homedir), transparent=True)
 plt.close('all')
 
 ### phi_opt/phi_star ###
-fig, ax = plt.subplots(figsize=(7,4))
+fig, ax = plt.subplots(figsize=(8,4))
 ax.bar(indices, np.squeeze(best_phi)/np.array(phi_star), width=0.8, color='k')
 ax.set_xticks(indices)
 ax.set_xticklabels(labels)
