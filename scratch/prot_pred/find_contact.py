@@ -31,7 +31,7 @@ parser.add_argument('--actual-contact', type=str,
                     help='Optional: supply a mask of the actual contacts, for comparison')
 parser.add_argument('--actual-contact-phob', type=str,
                     help='Optional: supply a mask of the actual contacts that are hydrophobic, for comparison')
-parser.add_argument('--r-dist', type=float, default=4.0,
+parser.add_argument('--r-dist', type=float, default=4.5,
                     help='If min-dist is supplied, then only atoms this close will be considered contacts')
 parser.add_argument('--hydropathy', type=str, 
                     help='If provided, also assign hydropathy values for each atom')
@@ -150,7 +150,7 @@ else:
 
     # Color by actual contacts
     prot.tempfactors = -2
-    prot[contact_mask].tempfactors = 0
+    prot[contact_mask].tempfactors = 1
     prot.write('actual_contact.pdb', bonds=None)
 
     # Color by actual contacts, according to rho values

@@ -81,8 +81,35 @@ ax.set_xticks(np.arange(0,4.1,1))
 ax.set_xlabel(r'$\beta \phi$')
 ax.set_ylabel(r'$s$')
 fig.tight_layout()
-plt.show()
+fig.savefig('/Users/nickrego/Desktop/2droc.pdf', transparent=True)
+
+plt.close('all')
+
+## Plot d_h v. beta phi at s=0.5
+idx=5
+assert s_bins[idx] == 0.5
+dat = d_h_vals[:,idx]
+
+fig, ax = plt.subplots(figsize=(6,5))
+ax.plot(beta*phi_bins[:-1], dat, 'k-', linewidth=3)
+ax.set_xlabel(r'$\beta \phi$')
+ax.set_ylabel(r'$d_h$')
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/d_v_phi.pdf', transparent=True)
 
 
+plt.close('all')
+
+## Plot d_h v. beta phi at s=0.5
+idx = np.argmax(dat)
+assert phi_bins[idx] == 5.6
+dat = d_h_vals[idx, :]
+
+fig, ax = plt.subplots(figsize=(6,5))
+ax.plot(s_bins[:-1], dat, 'k-', linewidth=3)
+ax.set_xlabel(r'$s$')
+ax.set_ylabel(r'$d_h$')
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/d_v_s.pdf', transparent=True)
 
 

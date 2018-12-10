@@ -10,7 +10,7 @@ mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':15})
 
-sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge']
+sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1bi4', '1brs_bn']
 
 name_lut = {
     '2b97': 'Hydrophobin',
@@ -36,6 +36,10 @@ best_dh = []
 best_tpr = []
 best_fpr = []
 best_indices = []
+best_tp = []
+best_fp = []
+best_tn = []
+best_fn = []
 
 fig, ax = plt.subplots(figsize=(5.2,5))
 
@@ -51,7 +55,7 @@ for i, dirname in enumerate(sys_names):
     # irritatingly, this is kJ/mol
     dat = np.loadtxt(path)
 
-    phi, tp, fp, tn, fn, tpr, fpr, ppv, d_h, f_1, mcc = np.split(dat, 11, 1)
+    phi, tp, fp, tn, fn, tpr, fpr, ppv, d_h, f_1, mcc = [arr.squeeze() for arr in np.split(dat, 11, 1)]
 
     best_perf = np.argmax(d_h)
     best_indices.append(best_perf)
@@ -63,6 +67,11 @@ for i, dirname in enumerate(sys_names):
     best_dh.append(d_h[best_perf])
     best_tpr.append(tpr[best_perf])
     best_fpr.append(fpr[best_perf])
+
+    best_tp.append(tp[best_perf])
+    best_fp.append(fp[best_perf])
+    best_tn.append(tn[best_perf])
+    best_fn.append(fn[best_perf])
 
     ax.plot(fpr[best_perf], tpr[best_perf], 'o', label=name_lut[sys_names[i]])
 

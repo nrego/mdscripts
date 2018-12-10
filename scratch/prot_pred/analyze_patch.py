@@ -15,11 +15,11 @@ import os
 homedir = os.environ['HOME']
 
 
-mpl.rcParams.update({'axes.labelsize': 30})
-mpl.rcParams.update({'xtick.labelsize': 30})
-mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'axes.labelsize': 20})
+mpl.rcParams.update({'xtick.labelsize': 20})
+mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':30})
+mpl.rcParams.update({'legend.fontsize':20})
 
 def rms(pts, centroid):
     
@@ -121,21 +121,33 @@ print("...Analyzing composition of prediction groups...")
 
 print("Fraction hydrophobic:")
 
+surf_phob = hydropathy.sum() / n_surf
+surf_phil = (n_surf - hydropathy.sum()) / n_surf
+
+print("fraction of surface atoms that are hydrophobic: {:2.2f}".format(surf_phob))
+
 # fraction of total prediction patch that is hydrophobic
-pred_phob = (pred_mask & hydropathy).sum()/pred_mask.sum()
-pred_phil = (pred_mask & ~hydropathy).sum()/pred_mask.sum()
-not_pred_phob = (~pred_mask & hydropathy).sum() / (~pred_mask).sum()
-not_pred_phil = (~pred_mask & ~hydropathy).sum() / (~pred_mask).sum()
+pred_phob = (pred_mask & hydropathy).sum()/n_surf
+pred_phil = (pred_mask & ~hydropathy).sum()/n_surf
+not_pred_phob = (~pred_mask & hydropathy).sum() / n_surf
+not_pred_phil = (~pred_mask & ~hydropathy).sum() / n_surf
 print("    Predicted contacts: {:0.2f}   Predicted not contacts: {:0.2f}".format(pred_phob, not_pred_phob))
 
-fig, ax = plt.subplots()
-wedgeprops = {'edgecolor':'k', 'linewidth':2}
-patches, texts, pcts = ax.pie([pred_phob, pred_phil], labels=('hydrophobic', 'hydrophilic'), labeldistance=1.15, colors=('#EEEEEE', '#0561AA'), autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
+#fig.tight_layout()
+fig, ax = plt.subplots(figsize=(5,5))
+wedgeprops = {'edgecolor':'k', 'linewidth':4}
+explode = (0.1, 0.1, 0, 0)
+#explode = (0,0,0,0)
+patches, texts, pcts = ax.pie([pred_phob, pred_phil, not_pred_phil, not_pred_phob], explode=explode, labeldistance=1.15, colors=('#FF7F00', '#FF7F00', '#7F7F7F', '#7F7F7F'), autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
 [pct.set_fontsize(20) for pct in pcts]
 ax.axis('equal')
+patches[1].set_edgecolor('#0560AD')
+patches[2].set_edgecolor('#0560AD')
 patches[0].set_hatch('/')
+patches[0].set_edgecolor('#D7D7D7')
+patches[3].set_hatch('/')
+patches[3].set_edgecolor('#D7D7D7')
 
-#fig.tight_layout()
 fig.savefig('{}/Desktop/pct_pred_phobic.pdf'.format(homedir), transparent=True)
 
 # Find fraction of groups that are phobic
