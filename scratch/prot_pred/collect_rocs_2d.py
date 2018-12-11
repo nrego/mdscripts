@@ -10,7 +10,7 @@ from matplotlib import cm
 from matplotlib.colors import Normalize
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
-
+import matplotlib as mpl
 from constants import k
 
 import numpy as np
