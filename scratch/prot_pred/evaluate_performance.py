@@ -12,87 +12,95 @@ from constants import k
 import MDAnalysis
 
 import argparse
-
-harmonic_avg = lambda a,b: 2/((1/a)+(1/b))
-
-
 from IPython import embed
 
-parser = argparse.ArgumentParser('Evaluate performance with phi')
-parser.add_argument('--actual-contact', type=str, default='../bound/actual_contact_mask.dat', 
-                    help='mask for actual contacts (default: %(default)s)')
-parser.add_argument('--pred-contact', type=str, default='phi_*/pred_contact_mask.dat', 
-                    help='glob string for mask for predicted contacts, for each phi (default: %(default)s)')
-parser.add_argument('--buried-mask', type=str, default='../bound/buried_mask.dat',
-                    help='mask for buried atoms (default: %(default)s')
-parser.add_argument('--plot', action='store_true', default=False,
-                    help='plot ROC, scores w/ phi')
-args = parser.parse_args()
+def harmonic_avg(*args):
+    recip_avg = (1/np.array(args)).mean()
+
+    return 1/recip_avg
 
 
-buried_mask = np.loadtxt(args.buried_mask, dtype=bool)
-surf_mask = ~buried_mask
-contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
-pred_contacts = glob.glob(args.pred_contact)
+if __name__ == '__main__':
 
-assert contact_mask[surf_mask].sum() == contact_mask.sum()
-contact_mask = contact_mask[surf_mask] # Only considering surface atoms
-
-print('Number of surface atoms: {}'.format(surf_mask.sum()))
-print('Number contacts: {}'.format(contact_mask.sum()))
-
-
-header = 'phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
-dat = np.zeros((len(pred_contacts), 11))
-
-for i,fname in enumerate(pred_contacts):
-    
-    phi = float(os.path.dirname(fname).split('_')[-1]) / 10.0
-
-    pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
-
-    tp = (pred_contact_mask & contact_mask).sum()
-    fp = (pred_contact_mask & ~contact_mask).sum()
-    tn = (~pred_contact_mask & ~contact_mask).sum()
-    fn = (~pred_contact_mask & contact_mask).sum()
-
-    tpr = tp / (tp + fn)
-    fpr = fp / (fp + tn)
-
-    tnr = 1 - fpr
-    assert np.isclose(tnr,  tn/(fp+tn))
-
-    # precision, or positive predictive value
-    ppv = tp/(tp+fp)
-
-    # harmonic average of tpr and (1-fpr), or the tnr (aka specificity)
-    f_h = harmonic_avg(tpr,tnr)
-    # harmonic average of tpr and prec
-    f_1 = harmonic_avg(tpr,ppv)
-    # matthews correlation coef
-    mcc = ((tp*tn) - (fp*fn)) / np.sqrt((tp+fp)*(tp+fn)*(fp+tn)*(tn+fn))
-
-    if tp+fp != 0:
-        assert np.isclose(f_1, (2*tp)/(2*tp+fp+fn))
-    else:
-        f_1 = 0
-
-    dat[i] = phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
+    parser = argparse.ArgumentParser('Evaluate performance with phi')
+    parser.add_argument('--actual-contact', type=str, default='../bound/actual_contact_mask.dat', 
+                        help='mask for actual contacts (default: %(default)s)')
+    parser.add_argument('--pred-contact', type=str, default='phi_*/pred_contact_mask.dat', 
+                        help='glob string for mask for predicted contacts, for each phi (default: %(default)s)')
+    parser.add_argument('--buried-mask', type=str, default='../bound/buried_mask.dat',
+                        help='mask for buried atoms (default: %(default)s')
+    parser.add_argument('--plot', action='store_true', default=False,
+                        help='plot ROC, scores w/ phi')
+    args = parser.parse_args()
 
 
-# check that the data in sorted order by phi...
-sort_idx = np.argsort(dat[:,0])
+    buried_mask = np.loadtxt(args.buried_mask, dtype=bool)
+    surf_mask = ~buried_mask
+    contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
+    pred_contacts = glob.glob(args.pred_contact)
 
-dat = dat[sort_idx]
+    assert contact_mask[surf_mask].sum() == contact_mask.sum()
+    contact_mask = contact_mask[surf_mask] # Only considering surface atoms
 
-np.savetxt('performance.dat', dat, header=header, fmt='%1.2e')
+    print('Number of surface atoms: {}'.format(surf_mask.sum()))
+    print('Number contacts: {}'.format(contact_mask.sum()))
 
-if args.plot:
-    plt.plot(dat[:,6], dat[:,5], 'o')
-    plt.show()
-    plt.plot(dat[:,0], dat[:,-3], '-o', label=r'$f_h$')
-    plt.plot(dat[:,0], dat[:,-2], '-o', label=r'$f_1$')
-    plt.plot(dat[:,0], dat[:,-1], '-o', label='mcc')
 
-    plt.legend()
-    plt.show()
+    header = 'phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
+    dat = np.zeros((len(pred_contacts), 11))
+
+    for i,fname in enumerate(pred_contacts):
+        
+        phi = float(os.path.dirname(fname).split('_')[-1]) / 10.0
+
+        pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
+
+        tp = (pred_contact_mask & contact_mask).sum()
+        fp = (pred_contact_mask & ~contact_mask).sum()
+        tn = (~pred_contact_mask & ~contact_mask).sum()
+        fn = (~pred_contact_mask & contact_mask).sum()
+
+        tpr = tp / (tp + fn)
+        fpr = fp / (fp + tn)
+
+        tnr = 1 - fpr
+        assert np.isclose(tnr,  tn/(fp+tn))
+
+        # precision, or positive predictive value
+        ppv = tp/(tp+fp)
+        if tp+fp == 0:
+            ppv = 0.0
+
+        # harmonic average of tpr and (1-fpr), or the tnr (aka specificity)
+        f_h = harmonic_avg(tpr,tnr)
+        
+
+        # harmonic average of tpr and prec
+        f_1 = harmonic_avg(tpr,ppv)
+        # matthews correlation coef
+        mcc = ((tp*tn) - (fp*fn)) / np.sqrt((tp+fp)*(tp+fn)*(fp+tn)*(tn+fn))
+
+        if tp+fp != 0:
+            assert np.isclose(f_1, (2*tp)/(2*tp+fp+fn))
+        else:
+            f_1 = 0
+
+        dat[i] = phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
+
+
+    # check that the data in sorted order by phi...
+    sort_idx = np.argsort(dat[:,0])
+
+    dat = dat[sort_idx]
+
+    np.savetxt('performance.dat', dat, header=header, fmt='%1.2e')
+
+    if args.plot:
+        plt.plot(dat[:,6], dat[:,5], 'o')
+        plt.show()
+        plt.plot(dat[:,0], dat[:,-3], '-o', label=r'$f_h$')
+        plt.plot(dat[:,0], dat[:,-2], '-o', label=r'$f_1$')
+        plt.plot(dat[:,0], dat[:,-1], '-o', label='mcc')
+
+        plt.legend()
+        plt.show()

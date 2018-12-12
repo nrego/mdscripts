@@ -10,7 +10,7 @@ mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':15})
 
-sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1bi4', '1brs_bn']
+sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1brs_bn']
 
 name_lut = {
     '2b97': 'Hydrophobin',
@@ -40,12 +40,13 @@ best_tp = []
 best_fp = []
 best_tn = []
 best_fn = []
+names = []
 
 fig, ax = plt.subplots(figsize=(5.2,5))
 
 for i, dirname in enumerate(sys_names):
     path = '{}/pred/performance.dat'.format(dirname)
-
+    names.append(name_lut[dirname])
     # need variance for phi*
     # This is in beta*phi...
     ntwid_dat = np.loadtxt('{}/prod/phi_sims/Nvphi.dat'.format(dirname))
@@ -74,6 +75,15 @@ for i, dirname in enumerate(sys_names):
     best_fn.append(fn[best_perf])
 
     ax.plot(fpr[best_perf], tpr[best_perf], 'o', label=name_lut[sys_names[i]])
+
+## Put all data together in a nice array ##
+best_dat = np.dstack((names, phi_star, best_phi, best_tp, best_fp, best_tn, best_fn, best_tpr, best_fpr, best_dh)).squeeze().astype(object)
+for i_col in range(1, best_dat.shape[1]):
+    best_dat[:,i_col] = best_dat[:,i_col].astype(float)
+
+header = 'name  beta*phi_star  beta*phi_opt  tp_opt  fp_opt  tn_opt  fn_opt  tpr_opt  fpr_opt  d_h_opt'
+fmt_str = '%s  %0.4f  %0.4f  %1d  %1d  %1d  %1d  %0.4f  %0.4f  %0.4f'
+np.savetxt('{}/Desktop/protein_prediction_summary.dat'.format(homedir), best_dat, header=header, fmt=fmt_str)
 
 ## Plot ROC points ###
 ax.legend()

@@ -9,15 +9,15 @@ from constants import k
 
 homedir = os.environ['HOME']
 
-mpl.rcParams.update({'axes.labelsize': 40})
-mpl.rcParams.update({'xtick.labelsize': 30})
-mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'axes.labelsize': 30})
+mpl.rcParams.update({'xtick.labelsize': 20})
+mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':10})
+mpl.rcParams.update({'legend.fontsize':15})
 
 beta = 1 / (300*k)
 ## Plot rmsd vs phi ##
-sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1bi4', '1brs_bn']
+sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1brs_bn']
 
 name_lut = {
     '2b97': 'Hydrophobin',
@@ -31,7 +31,7 @@ name_lut = {
     '1pp2': 'phospholipase a'
 }
 
-fig, ax = plt.subplots(figsize=(10,8))
+fig, ax = plt.subplots(figsize=(10,10))
 
 
 for sys_name in sys_names:
@@ -49,14 +49,16 @@ for sys_name in sys_names:
         rmsd_backbone_vals = np.append(rmsd_backbone_vals, rmsd_backbone)
         rmsd_heavy_vals = np.append(rmsd_heavy_vals, rmsd_heavy)
 
-    ax.plot(beta*phi_vals, rmsd_heavy_vals/10.0, label=name_lut[sys_name])
+    ax.plot(beta*phi_vals, rmsd_heavy_vals/10.0, 'o', markersize=10, label=name_lut[sys_name])
 
 ax.set_xlabel(r'$\beta \phi$')
 ax.set_ylabel(r'RMSD (nm)')
+ymin, ymax = ax.get_ylim()
+ax.set_ylim(0, 0.5)
 ax.legend()
 
 fig.tight_layout()
-fig.savefig('{}/Desktop/rmsd_v_phi.pdf'.format(homedir))
+fig.savefig('{}/Desktop/rmsd_v_phi.pdf'.format(homedir), transparent=True)
 
 
 
