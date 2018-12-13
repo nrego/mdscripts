@@ -12,6 +12,7 @@ from IPython import embed
 
 ## Put together our selection string...
 def build_sel_str(global_indices):
+    clust_size = global_indices.size
     sel_str = 'bynum {:d}'.format(global_indices[0]+1)
     for i in range(1,clust_size):
         sel_str += ' or bynum {:d}'.format(global_indices[i]+1)

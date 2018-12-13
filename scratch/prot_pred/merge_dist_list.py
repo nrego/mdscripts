@@ -26,13 +26,17 @@ def align(larger, smaller):
 
         larger.tempfactors = -1
 
-        while ((larger.residues.resnames[left_offset] != smaller.residues.resnames[0]) or (larger.residues.resnames[left_offset+2] != smaller.residues.resnames[2])):
+        while not (larger.residues[left_offset:left_offset+4].resnames == smaller.residues[:4].resnames).all():
             left_offset += 1
 
-        while ((larger.residues.resnames[::-1][right_offset] != smaller.residues.resnames[::-1][0]) or (larger.residues.resnames[::-1][right_offset+2] != smaller.residues.resnames[::-1][2])):
+        while not (larger.residues[::-1][right_offset:right_offset+4].resnames == smaller.residues[::-1][:4].resnames).all():
             right_offset += 1
-
-        larger.residues[left_offset:-right_offset].atoms.tempfactors = 0
+        
+        if right_offset == 0:
+            larger.residues[left_offset:].atoms.tempfactors = 0
+        else:
+            larger.residues[left_offset:-right_offset].atoms.tempfactors = 0
+        
         large_mask = larger.tempfactors == 0
         larger.tempfactors = 0
 
