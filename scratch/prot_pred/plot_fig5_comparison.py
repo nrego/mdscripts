@@ -42,6 +42,7 @@ best_tn = []
 best_fn = []
 names = []
 
+star_phi = []
 star_f1 = []
 star_dh = []
 star_tpr = []
@@ -87,6 +88,7 @@ for i, dirname in enumerate(sys_names):
     ## Find points corresponding to phi_star
     star_idx = np.digitize(this_phi_star, beta*phi) - 1
     star_indices.append(star_idx)
+    star_phi.append(beta*phi[star_idx])
     star_f1.append(f_1[star_idx])
     star_dh.append(d_h[star_idx])
     star_tpr.append(tpr[star_idx])
@@ -105,7 +107,7 @@ for i_col in range(1, best_dat.shape[1]):
     best_dat[:,i_col] = best_dat[:,i_col].astype(float)
 
 ## Put all data together in a nice array ##
-star_dat = np.dstack((names, phi_star, star_tp, star_fp, star_tn, star_fn, star_tpr, star_fpr, star_dh)).squeeze().astype(object)
+star_dat = np.dstack((names, star_phi, star_tp, star_fp, star_tn, star_fn, star_tpr, star_fpr, star_dh)).squeeze().astype(object)
 for i_col in range(1, star_dat.shape[1]):
     star_dat[:,i_col] = star_dat[:,i_col].astype(float)
 

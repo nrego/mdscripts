@@ -18,8 +18,10 @@ labels = np.loadtxt('{}/Desktop/protein_prediction_summary_phi_opt.dat'.format(h
 row_labels = np.array([' '.join(label.split('_')) for label in labels])
 dat_star = np.loadtxt('{}/Desktop/protein_prediction_summary_phi_star.dat'.format(homedir), usecols=range(1,9))
 
-col_labels = (r'$\beta \phi$', 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
+col_labels_opt = (r'$\beta \phi_\mathrm{opt}$', 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
+col_labels_star = (r'$\beta \phi^*$', 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
 
+row_labels = np.array(['Thymidylate Synthase', 'Mannose-Binding Protein', 'Phospholipase A2', 'MDM2', 'Ubiquitin', 'Barnase'])
 
 def plot_data_table(dat, row_labels, col_labels):
     ax = plt.gca()
@@ -43,10 +45,12 @@ def plot_data_table(dat, row_labels, col_labels):
              colLabels=col_labels,
              loc='center')
 
-fig, ax = plt.subplots()
-plot_data_table(dat_opt, row_labels, col_labels)
-fig.savefig('{}/Desktop/table_opt.pdf'.format(homedir), transparent=True)
+fig, ax = plt.subplots(figsize=(6,5))
+plot_data_table(dat_opt, row_labels, col_labels_opt)
+
+fig.savefig('{}/Desktop/table_opt.pdf'.format(homedir), transparent=True, bbox_inches='tight')
 
 fig, ax = plt.subplots()
-plot_data_table(dat_star, row_labels, col_labels)
-fig.savefig('{}/Desktop/table_star.pdf'.format(homedir), transparent=True)
+plot_data_table(dat_star, row_labels, col_labels_star)
+
+fig.savefig('{}/Desktop/table_star.pdf'.format(homedir), transparent=True, bbox_inches='tight')
