@@ -26,6 +26,14 @@ beta = 1 /(300*k)
 beta_phi_vals, avg_N, err_avg_N, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('Nvphi.dat'), 5, 1)]
 peak_sus_dat = np.loadtxt('peak_sus.dat')
 
+chi_max_idx = np.argmax(chi)
+chi_max = np.max(chi)
+chi_thresh_mask = chi < (0.5*chi_max)
+chi_minus_idx = np.max(np.where(chi_thresh_mask[:chi_max_idx])) 
+chi_plus_idx = np.min(np.where(chi_thresh_mask[chi_max_idx:])) + chi_max_idx 
+beta_phi_minus = beta_phi_vals[chi_minus_idx]
+beta_phi_plus = beta_phi_vals[chi_plus_idx]
+
 # in case we don't have data at phi=0
 start_pt = 0
 
@@ -68,5 +76,26 @@ fig.savefig('{}/chi_v_phi.pdf'.format(savedir), transparent=True)
 plt.close('all')
 
 
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(6,10))
+
+ax1.errorbar(beta_phi_vals[myslice], avg_N[myslice], yerr=err_avg_N[myslice], fmt='k-o', linewidth=3)
+ax2.errorbar(beta_phi_vals[myslice], chi[myslice], fmt='k-', yerr=err_chi[myslice], linewidth=3)
+ax2.plot(np.delete(beta_phi_vals[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), np.delete(chi[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), 'ko')
+ax2.plot(beta_phi_vals[chi_max_idx], chi_max, 'bD', markersize=16, zorder=3)
+ax2.plot(beta_phi_minus, chi[chi_minus_idx], 'b<', markersize=16, zorder=3)
+ax2.plot(beta_phi_plus, chi[chi_plus_idx], 'b>', markersize=16, zorder=3)
+ax1.set_xticks([])
+ax1.set_xlim(0,4)
+ax2.set_xticks([0,2,4])
+ax2.set_xlim(0,4)
+ax2.set_xlabel(r'$\beta \phi$')
+
+ax1.set_ylabel(r'$\langle N_v \rangle_\phi$')
+ax2.set_ylabel(r'$\chi_v$')
+
+fig.tight_layout()
+fig.subplots_adjust(hspace=0.0)
+fig.savefig('{}/both.pdf'.format(savedir), transparent=True)
 
 
+print("phi_star: {}".format(beta_phi_vals[chi_max_idx]))

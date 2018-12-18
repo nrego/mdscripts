@@ -4,9 +4,9 @@ import os, glob
 
 homedir = os.environ['HOME']
 
-mpl.rcParams.update({'axes.labelsize': 30})
-mpl.rcParams.update({'xtick.labelsize': 15})
-mpl.rcParams.update({'ytick.labelsize': 20})
+mpl.rcParams.update({'axes.labelsize': 50})
+mpl.rcParams.update({'xtick.labelsize': 30})
+mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':15})
 
@@ -14,14 +14,14 @@ sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1brs_bn']
 
 name_lut = {
     '2b97': 'Hydrophobin',
-    '2tsc': 'Thymidylate\nsynthase',
+    '2tsc': 'TS',
     '1bi4': 'HIV\nInteg',
     '1ycr_mdm2': 'MDM2',
     '1bmd': 'Malate\ndehydrogenase',
-    '1msb': 'Mannose-\nbinding\nprotein',
-    'ubiq_merge': 'Ubiquitin',
+    '1msb': 'MBP',
+    'ubiq_merge': 'UBQ',
     '1brs_bn': 'Barnase',
-    '1pp2': 'Phospholipase\nA2'
+    '1pp2': 'PLA2'
 }
 from constants import k
 
@@ -41,6 +41,16 @@ best_fp = []
 best_tn = []
 best_fn = []
 names = []
+
+star_f1 = []
+star_dh = []
+star_tpr = []
+star_fpr = []
+star_indices = []
+star_tp = []
+star_fp = []
+star_tn = []
+star_fn = []
 
 fig, ax = plt.subplots(figsize=(5.2,5))
 
@@ -74,16 +84,39 @@ for i, dirname in enumerate(sys_names):
     best_tn.append(tn[best_perf])
     best_fn.append(fn[best_perf])
 
+    ## Find points corresponding to phi_star
+    star_idx = np.digitize(this_phi_star, beta*phi) - 1
+    star_indices.append(star_idx)
+    star_f1.append(f_1[star_idx])
+    star_dh.append(d_h[star_idx])
+    star_tpr.append(tpr[star_idx])
+    star_fpr.append(fpr[star_idx])
+
+    star_tp.append(tp[star_idx])
+    star_fp.append(fp[star_idx])
+    star_tn.append(tn[star_idx])
+    star_fn.append(fn[star_idx])
+
     ax.plot(fpr[best_perf], tpr[best_perf], 'o', label=name_lut[sys_names[i]])
 
 ## Put all data together in a nice array ##
-best_dat = np.dstack((names, phi_star, best_phi, best_tp, best_fp, best_tn, best_fn, best_tpr, best_fpr, best_dh)).squeeze().astype(object)
+best_dat = np.dstack((names,  best_phi, best_tp, best_fp, best_tn, best_fn, best_tpr, best_fpr, best_dh)).squeeze().astype(object)
 for i_col in range(1, best_dat.shape[1]):
     best_dat[:,i_col] = best_dat[:,i_col].astype(float)
 
-header = 'name  beta*phi_star  beta*phi_opt  tp_opt  fp_opt  tn_opt  fn_opt  tpr_opt  fpr_opt  d_h_opt'
-fmt_str = '%s  %0.4f  %0.4f  %1d  %1d  %1d  %1d  %0.4f  %0.4f  %0.4f'
-np.savetxt('{}/Desktop/protein_prediction_summary.dat'.format(homedir), best_dat, header=header, fmt=fmt_str)
+## Put all data together in a nice array ##
+star_dat = np.dstack((names, phi_star, star_tp, star_fp, star_tn, star_fn, star_tpr, star_fpr, star_dh)).squeeze().astype(object)
+for i_col in range(1, star_dat.shape[1]):
+    star_dat[:,i_col] = star_dat[:,i_col].astype(float)
+
+header = 'name  beta*phi_opt  tp_opt  fp_opt  tn_opt  fn_opt  tpr_opt  fpr_opt  d_h_opt'
+fmt_str = '%s  %0.4f  %1d  %1d  %1d  %1d  %0.4f  %0.4f  %0.4f'
+np.savetxt('{}/Desktop/protein_prediction_summary_phi_opt.dat'.format(homedir), best_dat, header=header, fmt=fmt_str)
+
+header = 'name  beta*phi_star  tp_star  fp_star  tn_star  fn_star  tpr_star  fpr_star  d_h_star'
+fmt_str = '%s  %0.4f  %1d  %1d  %1d  %1d  %0.4f  %0.4f  %0.4f'
+np.savetxt('{}/Desktop/protein_prediction_summary_phi_star.dat'.format(homedir), star_dat, header=header, fmt=fmt_str)
+
 
 ## Plot ROC points ###
 ax.legend()
@@ -157,4 +190,13 @@ fig.savefig('{}/Desktop/phi_ratio.pdf'.format(homedir), transparent=True)
 
 plt.close('all')
 
+fig, ax = plt.subplots(figsize=(6,5.5))
+ax.bar(indices, np.squeeze(best_dh), width=0.4, color='k', label=r'$d_\mathrm{h}$')
+ax.bar(indices+0.4, np.squeeze(best_phi)/np.array(phi_star), width=0.4, color='b', label=r'$\frac{\phi_\mathrm{opt}}{\phi^*}$')
 
+ax.set_xticks(indices+0.2)
+ax.set_xticklabels([])
+#ax.set_xticklabels(labels)
+ax.set_ylim(0,1.02)
+fig.tight_layout()
+fig.savefig('{}/Desktop/double_bar.pdf'.format(homedir), transparent=True)
