@@ -12,6 +12,9 @@ import argparse
 
 import os
 
+from matplotlib.collections import PatchCollection
+import matplotlib.patches as mpatches
+
 homedir = os.environ['HOME']
 
 
@@ -135,20 +138,49 @@ print("    Predicted contacts: {:0.2f}   Predicted not contacts: {:0.2f}".format
 
 #fig.tight_layout()
 fig, ax = plt.subplots(figsize=(5,5))
-wedgeprops = {'edgecolor':'k', 'linewidth':4}
-explode = (0.1, 0.1, 0, 0)
+wedgeprops = {'edgecolor':'k', 'linewidth':6}
+explode = (0.1, 0, 0, 0.1)
 #explode = (0,0,0,0)
 patches, texts, pcts = ax.pie([pred_phob, pred_phil, not_pred_phil, not_pred_phob], explode=explode, labeldistance=1.15, colors=('#FF7F00', '#FF7F00', '#7F7F7F', '#7F7F7F'), autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
 [pct.set_fontsize(20) for pct in pcts]
 ax.axis('equal')
 patches[1].set_edgecolor('#0560AD')
 patches[2].set_edgecolor('#0560AD')
-patches[0].set_hatch('/')
+#patches[0].set_hatch('/')
 patches[0].set_edgecolor('#D7D7D7')
-patches[3].set_hatch('/')
+#patches[3].set_hatch('/')
 patches[3].set_edgecolor('#D7D7D7')
 
 fig.savefig('{}/Desktop/pct_pred_phobic.pdf'.format(homedir), transparent=True)
+
+fig, ax = plt.subplots(figsize=(5,5))
+ax.axis('equal')
+ax.axis('off')
+groups = [[0,3], [1,2]]
+radfraction = 0.5
+wedges = []
+
+for i in groups:
+    ang = np.deg2rad((patches[i[-1]].theta2 + patches[i[0]].theta2)/2.0)
+    for j in i:
+        patch = patches[j]
+        center = (radfraction*patch.r*np.cos(ang), radfraction*patch.r*np.sin(ang))
+        wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
+
+
+colors=('#FF7F00', '#7F7F7F', '#FF7F00', '#7F7F7F')
+ecolors=('#D7D7D7', '#D7D7D7', '#0560AD', '#0560AD')
+collection = PatchCollection(wedges)
+collection.set_facecolors(colors)
+collection.set_linewidths(6)
+collection.set_edgecolors(ecolors)
+
+#collection.set_array(np.array(colors))
+ax.add_collection(collection)
+ax.autoscale(True)
+#ax.text(*pcts[0].get_position(), s=pcts[0].get_text())
+
+fig.savefig('{}/Desktop/pct_pred_phobic2.pdf'.format(homedir), transparent=True)
 
 # Find fraction of groups that are phobic
 #   Expectation: TP will be more hydrophobic than FNs (indicating that we are capturing the **hydrophobic** parts of patch)
