@@ -59,7 +59,7 @@ ax.plot(np.delete(fpr, [minus_idx, plus_idx, best_idx, star_idx]), np.delete(tpr
 ax.plot(fpr[star_idx], tpr[star_idx], 'bD', markersize=20, label=r'$\phi^*$')
 ax.plot(fpr[minus_idx], tpr[minus_idx], 'b<', markersize=20, label=r'$\phi_{-}$')
 ax.plot(fpr[plus_idx], tpr[plus_idx], 'b>', markersize=20, label=r'$\phi_{+}$')
-ax.plot(fpr[best_idx], tpr[best_idx], 'rX', markersize=32, label=r'$\phi_\mathrm{opt}$')
+ax.plot(fpr[best_idx], tpr[best_idx], 'rX', markersize=30, label=r'$\phi_\mathrm{opt}$')
 #ax.plot(fpr[indices], tpr[indices], 'bo', markersize=12)
 ax.set_xlim(0,1)
 ax.set_ylim(0,1)
@@ -104,13 +104,5 @@ ax.set_xlim(0,4)
 fig.tight_layout()
 fig.savefig('{}/Desktop/dh.pdf'.format(homedir), transparent=True)
 
-
-ax.plot(beta*phi, f_h, 'k-', linewidth=4)
-ax.set_xlabel(r'$\beta \phi$')
-ax.set_ylabel(r'$d_\mathrm{h}$')
-ax.tick_params(axis='y')
-
-fig.tight_layout()
-fig.savefig('{}/Desktop/dh_v_phi.pdf'.format(homedir), transparent=True)
 print("phi opt (kJ/mol): {}".format(phi[best_idx]))
 
