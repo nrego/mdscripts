@@ -69,6 +69,15 @@ ax2.tick_params(axis='y', labelcolor='b')
 fig.tight_layout()
 fig.savefig('{}/Desktop/sus_dh_comp.pdf'.format(homedir), transparent=True)
 
+#### Plot just d_h
+fig, ax = plt.subplots(figsize=(5.45,5))
 
+ax.plot(beta*phi, f_h, 'k-', linewidth=4)
+ax.set_xlabel(r'$\beta \phi$')
+ax.set_ylabel(r'$d_\mathrm{h}$')
+ax.tick_params(axis='y')
+
+fig.tight_layout()
+fig.savefig('{}/Desktop/dh_v_phi.pdf'.format(homedir), transparent=True)
 print("phi opt (kJ/mol): {}".format(phi[best_idx]))
 

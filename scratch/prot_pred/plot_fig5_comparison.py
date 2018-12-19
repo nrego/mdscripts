@@ -8,9 +8,9 @@ mpl.rcParams.update({'axes.labelsize': 30})
 mpl.rcParams.update({'xtick.labelsize': 15})
 mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':15})
+mpl.rcParams.update({'legend.fontsize':20})
 
-sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1brs_bn']
+sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge']
 
 name_lut = {
     '2b97': 'Hydrophobin',
@@ -158,3 +158,16 @@ fig.savefig('{}/Desktop/phi_ratio.pdf'.format(homedir), transparent=True)
 plt.close('all')
 
 
+## Double plot with d_h and \phi_opt/phi_star
+
+fig, ax = plt.subplots(figsize=(8.3,4))
+ax.bar(indices, np.squeeze(best_dh), width=0.4, color='k', label=r'$d_\mathrm{h}$')
+ax.bar(indices+0.4, np.squeeze(best_phi)/np.array(phi_star), width=0.4, color='b', label=r'$\frac{\phi_\mathrm{opt}}{\phi^*}$')
+ax.set_ylim(0,1.01)
+ax.set_xticks(indices+0.2)
+ax.set_xticklabels(labels)
+ax.legend()
+fig.tight_layout()
+fig.savefig('{}/Desktop/double.pdf'.format(homedir), transparent=True)
+
+plt.close('all')
