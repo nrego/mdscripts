@@ -31,15 +31,13 @@ if __name__ == '__main__':
                         help='glob string for mask for predicted contacts, for each phi (default: %(default)s)')
     parser.add_argument('--buried-mask', type=str, default='../bound/buried_mask.dat',
                         help='mask for buried atoms (default: %(default)s')
-    parser.add_argument('--plot', action='store_true', default=False,
-                        help='plot ROC, scores w/ phi')
     args = parser.parse_args()
 
 
     buried_mask = np.loadtxt(args.buried_mask, dtype=bool)
     surf_mask = ~buried_mask
     contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
-    pred_contacts = glob.glob(args.pred_contact)
+    pred_contacts = np.sort(glob.glob(args.pred_contact))
 
     assert contact_mask[surf_mask].sum() == contact_mask.sum()
     contact_mask = contact_mask[surf_mask] # Only considering surface atoms
@@ -51,60 +49,37 @@ if __name__ == '__main__':
     header = 'phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
     dat = np.zeros((len(pred_contacts), 11))
 
+    indices = np.arange(surf_mask.sum())
+
+    fig, ax = plt.subplots(figsize=(100,10))
     for i,fname in enumerate(pred_contacts):
         
         phi = float(os.path.dirname(fname).split('_')[-1]) / 10.0
+
+        this_phi = np.ones_like(indices).astype(float)
+        this_phi[:] = beta*phi
         if phi == 0:
             pred_contact_mask = np.zeros_like(contact_mask)
         else:
             pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
+
+        tp_mask = pred_contact_mask & contact_mask
+        fp_mask = pred_contact_mask & ~contact_mask
+        tn_mask = ~pred_contact_mask & ~contact_mask
+        fn_mask = ~pred_contact_mask & contact_mask
 
         tp = (pred_contact_mask & contact_mask).sum()
         fp = (pred_contact_mask & ~contact_mask).sum()
         tn = (~pred_contact_mask & ~contact_mask).sum()
         fn = (~pred_contact_mask & contact_mask).sum()
 
-        tpr = tp / (tp + fn)
-        fpr = fp / (fp + tn)
+        ax.plot(indices[tp_mask], this_phi[tp_mask], 's', color='#FF007F', markersize=2)
+        ax.plot(indices[fp_mask], this_phi[fp_mask], 's', color='#FF7F00', markersize=2)
+        ax.plot(indices[tn_mask], this_phi[tn_mask], 's', color='#3F3F3F', markersize=2)
+        ax.plot(indices[fn_mask], this_phi[fn_mask], 's', color='#7F00FF', markersize=2)
 
-        tnr = 1 - fpr
-        assert np.isclose(tnr,  tn/(fp+tn))
-
-        # precision, or positive predictive value
-        ppv = tp/(tp+fp)
-        if tp+fp == 0:
-            ppv = 0.0
-
-        # harmonic average of tpr and (1-fpr), or the tnr (aka specificity)
-        f_h = harmonic_avg(tpr,tnr)
-        
-
-        # harmonic average of tpr and prec
-        f_1 = harmonic_avg(tpr,ppv)
-        # matthews correlation coef
-        mcc = ((tp*tn) - (fp*fn)) / np.sqrt((tp+fp)*(tp+fn)*(fp+tn)*(tn+fn))
-
-        if tp+fp != 0:
-            assert np.isclose(f_1, (2*tp)/(2*tp+fp+fn))
-        else:
-            f_1 = 0
-
-        dat[i] = phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
-
-
-    # check that the data in sorted order by phi...
-    sort_idx = np.argsort(dat[:,0])
-
-    dat = dat[sort_idx]
-
-    np.savetxt('performance.dat', dat, header=header, fmt='%1.2e')
-
-    if args.plot:
-        plt.plot(dat[:,6], dat[:,5], 'o')
-        plt.show()
-        plt.plot(dat[:,0], dat[:,-3], '-o', label=r'$f_h$')
-        plt.plot(dat[:,0], dat[:,-2], '-o', label=r'$f_1$')
-        plt.plot(dat[:,0], dat[:,-1], '-o', label='mcc')
-
-        plt.legend()
-        plt.show()
+    #plt.savefig('/home/nick/Desktop/dot_plot.svg')
+    ax.set_xlim(-10,1400)
+    #ax.set_ylim(0,4)
+    fig.tight_layout()
+    fig.savefig('/home/nick/Desktop/dot_plot.pdf')

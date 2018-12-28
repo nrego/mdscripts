@@ -7,6 +7,8 @@ import os, glob
 import numpy as np
 from constants import k
 
+from IPython import embed
+
 def plt_errorbars(bb, vals, errs, **kwargs):
     ax = plt.gca()
     ax.fill_between(bb, vals-errs, vals+errs, alpha=0.5, facecolor='k', **kwargs)
