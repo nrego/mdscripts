@@ -169,4 +169,4 @@ else:
     print("  contacts that are phobic: {}".format(contact_mask_phob.sum()))
 
 
-sys.other.write('other.pdb', bonds=None)
+    sys.other.write('other.pdb', bonds=None)

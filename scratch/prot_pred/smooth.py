@@ -9,6 +9,8 @@ from mdtools import dr
 
 from constants import k
 
+import scipy
+
 import MDAnalysis
 
 import argparse
@@ -37,21 +39,45 @@ n_phi_fnames = np.array(sorted(glob.glob(args.rho_files)))
 
 phis = np.array([float(fname.split('/')[3].split('_')[1]) for fname in n_phi_fnames]) / 10.0
 beta_phis = beta * phis
+n_phis = beta_phis.size
 
 assert beta_phis[0] == 0
 n_phi_fnames[0] = args.rho_ref # Make sure our beta*phi=0 goes back to rho_data_dump from equil directory (i.e. the reference)
 
 all_indices = np.arange(len(beta_phis))
+beta_phi_max = beta_phis.max()
 for i, beta_phi in enumerate(beta_phis):
 
     # Find other phi values that are within the smoothing window
     diffs = np.abs(beta_phi - beta_phis)
     smooth_window_indices = diffs <= smooth_width
 
+    # Sanity - smoothing better include current value of phi!
+    assert smooth_window_indices[i]
+
+    windows_right = smooth_window_indices[i+1:].sum()
+    windows_left = smooth_window_indices[::-1][n_phis-i:].sum()
+    print("i: {} windows_left: {} windows_right: {}".format(i, windows_left, windows_right))
     smooth_fnames = n_phi_fnames[smooth_window_indices]
+    smooth_beta_phis = beta_phis[smooth_window_indices]
+    #embed()
+    if windows_left:
+        smooth_beta_phis = np.append(beta_phi-smooth_width, smooth_beta_phis)
+    if windows_right:
+        smooth_beta_phis = np.append(smooth_beta_phis, beta_phi+smooth_width)
+
+    if windows_left + windows_right == 0:
+        weights = np.array([1.])
+    else:
+        weights_right = np.diff(smooth_beta_phis[windows_left:])
+        weights_left = np.diff(smooth_beta_phis[:windows_left])
+        weights = np.append(weights_left, weights_right)
+        weights /= weights.sum()
+        weights *= smooth_window_indices.sum()
 
     # Technically this will be the smoothed n_i_\phi's
     smooth_rho = np.empty((smooth_fnames.size, n_0_data.size))
+    
     smooth_h = np.empty_like(smooth_rho)
 
     for j, smooth_fname in enumerate(smooth_fnames):
@@ -68,8 +94,14 @@ for i, beta_phi in enumerate(beta_phis):
     except OSError:
         pass
 
-    np.savez_compressed('{}/rho_data_dump_smooth.dat'.format(dirname), rho_water=smooth_rho, phi_vals=smooth_fnames, 
+    try:
+        smooth_rho = smooth_rho * weights[:, None]
+    except:
+        embed()
+
+    smooth_h = smooth_h * weights[:, None]
+    np.savez_compressed('{}/rho_data_dump_smooth.dat'.format(dirname), rho_water=smooth_rho, phi_vals=smooth_fnames, weights=weights,
                         header='n_i from smoothed data sets')
-    np.savez_compressed('{}/h_data_dump_smooth.dat'.format(dirname), rho_water=smooth_h, phi_vals=smooth_fnames, 
+    np.savez_compressed('{}/h_data_dump_smooth.dat'.format(dirname), rho_water=smooth_h, phi_vals=smooth_fnames, weights=weights,
                         header='h_i*n_0 from smoothed data sets')
 

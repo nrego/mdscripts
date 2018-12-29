@@ -19,7 +19,6 @@ from IPython import embed
 #    and place them in one large array to give it as function of phi
 beta = 1/(300*k)
 
-i_index = 198
 buried_mask = np.loadtxt('../bound/buried_mask.dat', dtype=bool)
 surf_mask = ~buried_mask
 
@@ -40,13 +39,17 @@ beta_phi_vals = beta*phi_vals
 assert (np.diff(phi_vals) > 0).all()
 
 rho_i_with_phi = np.zeros((beta_phi_vals.size, surf_mask.sum()))
-thresh_i_with_phi = np.zeros_like(rho_i_with_phi)
+h_i_with_phi = np.zeros_like(rho_i_with_phi)
 
 for idx, fname in enumerate(fnames):
-    subdir = os.dirname(fname)
+    subdir = os.path.dirname(fname)
     n_phi = np.load(fname)['rho_water'].mean(axis=0)[surf_mask]
     rho_phi = n_phi / ref
     rho_i_with_phi[idx, :] = rho_phi
 
-np.savez_compressed('rho_i_with_phi.dat', rho_i=rho_i_with_phi, beta_phi=beta_phi_vals)
+    thresh_fname = '{}/h_data_dump_smooth.dat.npz'.format(subdir)
+    h_phi = np.load(thresh_fname)['rho_water'].mean(axis=0)[surf_mask] / ref
+    h_i_with_phi[idx, :] = h_phi
 
+np.savez_compressed('rho_i_with_phi.dat', rho_i=rho_i_with_phi, beta_phi=beta_phi_vals)
+np.savez_compressed('h_i_with_phi.dat', h_i=h_i_with_phi, beta_phi=beta_phi_vals)

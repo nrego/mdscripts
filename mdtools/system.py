@@ -41,6 +41,7 @@ class MDSystem():
 
         for k,v in kwargs.iteritems():
             self.k = v
+        
 
     @property
     def n_prot_tot(self):

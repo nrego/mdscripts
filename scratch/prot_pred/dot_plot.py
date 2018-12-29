@@ -16,6 +16,7 @@ from IPython import embed
 
 beta = 1/(300*k)
 
+homedir = os.environ['HOME']
 def harmonic_avg(*args):
     recip_avg = (1/np.array(args)).mean()
 
@@ -82,4 +83,4 @@ if __name__ == '__main__':
     ax.set_xlim(-10,1400)
     #ax.set_ylim(0,4)
     fig.tight_layout()
-    fig.savefig('/home/nick/Desktop/dot_plot.pdf')
+    fig.savefig('{}/Desktop/dot_plot.pdf'.format(homedir))
