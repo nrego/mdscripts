@@ -1,36 +1,101 @@
+from __future__ import division, print_function
+
 import numpy as np
 
+import argparse
+import logging
 
-boot_dat = np.load('boot_fn_payload.dat.npy')
-n_boot = boot_dat.shape[0]
 
-neglogpdist0, bb0, dat_arr0 = boot_dat[0]
-n_phi_vals = dat_arr0.shape[0]
+import os, glob
 
-phi_vals = dat_arr0[:,0]
+from matplotlib import pyplot
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from constants import k
+from IPython import embed
 
-boot_neglogpdist = np.zeros((n_boot, neglogpdist0.size))
-boot_avg_n = np.zeros((n_boot, n_phi_vals))
-boot_var_n = np.zeros((n_boot, n_phi_vals))
+## Construct -ln P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
+## also get <N> v phi, and suscept
 
-for i, payload in enumerate(boot_dat):
+def plot_errorbar(bb, dat, err):
+    plt.plot(bb[:-1], dat)
+    plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
 
-    neglogpdist, bb, dat_arr = payload
+# Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
+def extract_and_reweight_data(logweights, ntwid, data, bins, phi_vals):
+    logweights -= logweights.max()
+    weights = np.exp(logweights) 
 
-    np.testing.assert_array_equal(dat_arr[:,0], phi_vals)
+    pdist, bb = np.histogram(ntwid, bins=bins, weights=weights)
+    pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
 
-    boot_neglogpdist[i] = neglogpdist
-    boot_avg_n[i] = dat_arr[:,1]
-    boot_var_n[i] = dat_arr[:,2]
+    neglogpdist = -np.log(pdist)
+    neglogpdist -= neglogpdist.min()
 
-avg_n = boot_avg_n.mean(axis=0)
-err_avg_n = boot_avg_n.std(axis=0, ddof=1)
+    neglogpdist_N = -np.log(pdist_N)
+    neglogpdist_N -= neglogpdist_N.min()
 
-var_n = boot_var_n.mean(axis=0)
-err_var_n = boot_var_n.std(axis=0, ddof=1)
+    avg_N = np.zeros_like(phi_vals)
+    chi = np.zeros_like(phi_vals)
 
-out_dat_arr = np.vstack((phi_vals, avg_n, var_n)).T
-err_out_dat_arr = np.vstack((err_avg_n, err_var_n)).T
+    # Now get average N and chi for each phi
+    for idx_phi, phi_val in enumerate(phi_vals):
+        bias = phi_val * ntwid
 
-np.savetxt('n_v_phi.dat', out_dat_arr)
-np.savetxt('err_n_v_phi.dat', err_out_dat_arr)
+        bias_logweights = logweights - bias
+        bias_logweights -= bias_logweights.max()
+        bias_weights = np.exp(bias_logweights)
+        bias_weights /= bias_weights.sum()
+
+        this_avg_N = np.dot(data, bias_weights)
+        this_avg_N_sq = np.dot(data**2, bias_weights)
+        this_chi = this_avg_N_sq - this_avg_N**2
+
+        avg_N[idx_phi] = this_avg_N
+        chi[idx_phi] = this_chi
+
+    
+    return (neglogpdist, neglogpdist_N, avg_N, chi)
+
+temp = 300
+
+beta = 1./(k*temp)
+dtype = np.float64
+
+mpl.rcParams.update({'axes.labelsize': 50})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
+mpl.rcParams.update({'axes.titlesize': 50})
+
+phi_vals = np.linspace(0,4,21)
+def get_output(dirname, bins):
+    dat = np.load('{}/boot_fn_payload.dat.npy'.format(dirname))
+
+
+    n_iter = len(dat)
+
+
+    all_data_ds = np.load('{}/all_data.dat.npz'.format(dirname))
+    all_logweights = all_data_ds['logweights']
+    all_data = all_data_ds['data']
+    all_data_N = all_data_ds['data_N']
+
+    max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
+
+    ## In kT!
+    
+    avg_N_phi = np.zeros((n_iter,phi_vals.size))
+    chi_phi = np.zeros((n_iter,phi_vals.size))
+
+    #bins = np.arange(0, max_val+1, 1)
+    neglog_pdist = np.zeros((n_iter, bins.size-1))
+    neglog_pdist_N = np.zeros((n_iter, bins.size-1))
+
+
+    ## Get PvN, <Nv>, chi_v from all data
+    return extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, phi_vals)
+
+bins = np.arange(0, 160, 1)
+wt_neglogpdist, all_neglogpdist_N, wt_avg_N, wt_chi = get_output('wham_org', bins)
+mut_neglogpdist, all_neglogpdist_N, mut_avg_N, mut_chi = get_output('wham_mut', bins)
+

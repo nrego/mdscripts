@@ -22,12 +22,12 @@ def plot_errorbar(bb, dat, err):
     plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
 
 # Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
-def extract_and_reweight_data(logweights, data, data_N, bins, phi_vals):
+def extract_and_reweight_data(logweights, ntwid, data, bins, phi_vals):
     logweights -= logweights.max()
     weights = np.exp(logweights) 
 
-    pdist, bb = np.histogram(data, bins=bins, weights=weights)
-    pdist_N, bb = np.histogram(data_N, bins=bins, weights=weights)
+    pdist, bb = np.histogram(ntwid, bins=bins, weights=weights)
+    pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
 
     neglogpdist = -np.log(pdist)
     neglogpdist -= neglogpdist.min()
@@ -40,7 +40,7 @@ def extract_and_reweight_data(logweights, data, data_N, bins, phi_vals):
 
     # Now get average N and chi for each phi
     for idx_phi, phi_val in enumerate(phi_vals):
-        bias = phi_val * data
+        bias = phi_val * ntwid
 
         bias_logweights = logweights - bias
         bias_logweights -= bias_logweights.max()
@@ -139,3 +139,41 @@ np.savetxt('Nvphi.dat', dat, header='beta*phi   <N_v>  err(<N_v>)  chi_v   err(c
 
 np.savetxt('peak_sus.dat', np.array([avg_peak_sus, err_peak_sus]), header='beta*phi^*  err(beta phi*)')
 
+
+
+### Now input all <n_i>_\phi's for a given i ###
+buried_mask = np.loadtxt('buried_mask.dat', dtype=bool)
+surf_mask = ~buried_mask
+idx = 604
+
+n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz'))
+n_i_dat_fnames[0] = 'equil/rho_data_dump_rad_6.0.dat.npz'
+
+# Ntwid vals, only taken every 1 ps from each window
+all_data_reduced = np.array([])
+all_logweights_reduced = np.array([])
+all_data_n_i = np.array([])
+n_files = len(n_i_dat_fnames)
+
+phiout_0 = np.loadtxt('equil/phiout.dat')
+
+start_idx = 0
+for i in range(n_files):
+    if i == 0:
+        this_slice =slice(start_idx, start_idx+2501, None)
+        start_idx += 2501
+    else:
+        this_slice =slice(start_idx, start_idx+25001, 10)
+        start_idx += 25001
+    new_data_subslice = all_data[this_slice]
+    new_weight_subslice = all_logweights[this_slice]
+
+    all_data_reduced = np.append(all_data_reduced, new_data_subslice)
+    all_logweights_reduced = np.append(all_logweights_reduced, new_weight_subslice)
+    fname = n_i_dat_fnames[i]
+    n_i = np.load(fname)['rho_water'][:,surf_mask][:, idx]
+    if n_i.size != 2501:
+        print("phi: {}".format(fname))
+    all_data_n_i = np.append(all_data_n_i, n_i)
+
+neglogpdist, neglogpdist_ni, avg_ni, chi_ni = extract_and_reweight_data(all_logweights_reduced, all_data_reduced, all_data_n_i, bins, phi_vals)

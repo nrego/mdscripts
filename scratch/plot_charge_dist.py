@@ -21,6 +21,11 @@ bb = np.arange(0,1+width,width)
 hist, bb = np.histogram(charges, bins=bb)
 
 plt.bar(bb[:-1], hist, width=width, align='edge')
+ymax = 116
+xcoords = [0.15, 0.20, 0.25, 0.30, 0.35]
+for xc in xcoords:
+    plt.axvline(x=xc, ymax=ymax, linestyle='--', color='k')
+plt.ylim(0,ymax)
 plt.show()
 
 thresh = float(raw_input("choose charge threshold: "))

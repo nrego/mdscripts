@@ -320,18 +320,19 @@ Command-line options
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
 
             if self.ts == None:
-                self.ts = ds.ts
+                self.ts = []
+                
             # Sanity check - every input should have same timestep
-            else:
-                np.testing.assert_almost_equal(self.ts, ds.ts)
-
+            #else:
+            #    np.testing.assert_almost_equal(self.ts, ds.ts)
+            self.ts.append(ds.ts)
             data = ds.data[start:end]
             dataframe = np.array(data['$\~N$'])
             dataframe_N = np.array(data['N']).astype(np.int32)
 
             if do_autocorr:
                 autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
-                self.autocorr[i] = max(self.ts * autocorr_len, self.min_autocorr_time)
+                self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
@@ -348,7 +349,7 @@ Command-line options
         #if do_autocorr:
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
         np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
-
+        self.ts = np.array(self.ts)
         dr.clearData()
 
     # Put all data points into N dim vector
@@ -478,7 +479,7 @@ Command-line options
 
             if do_autocorr:
                 autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
-                self.autocorr[i] = max(self.ts * autocorr_len, self.min_autocorr_time)
+                self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
