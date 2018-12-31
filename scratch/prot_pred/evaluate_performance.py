@@ -89,7 +89,7 @@ if __name__ == '__main__':
         else:
             f_1 = 0
 
-        dat[i] = phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
+        dat[i] = phi/10.0, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
 
 
     # check that the data in sorted order by phi...

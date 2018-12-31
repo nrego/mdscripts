@@ -206,3 +206,6 @@ for i_atm in range(n_heavies):
     avg_nis[i_atm, :] = avg_ni
     chi_nis[i_atm, :] = chi_ni
 
+np.savez_compressed('ni_weighted.dat', avg=avg_nis, var=chi_nis)
+
+embed()

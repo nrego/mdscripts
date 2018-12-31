@@ -99,3 +99,4 @@ bins = np.arange(0, 160, 1)
 wt_neglogpdist, all_neglogpdist_N, wt_avg_N, wt_chi = get_output('wham_org', bins)
 mut_neglogpdist, all_neglogpdist_N, mut_avg_N, mut_chi = get_output('wham_mut', bins)
 
+embed()
