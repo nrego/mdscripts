@@ -83,6 +83,7 @@ max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 
 ## In kT!
 phi_vals = np.linspace(0,4,21)
+
 avg_N_phi = np.zeros((n_iter,phi_vals.size))
 chi_phi = np.zeros((n_iter,phi_vals.size))
 
@@ -108,6 +109,7 @@ for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
 
     this_peak_sus = phi_vals[np.argmax(boot_chi)]
     peak_sus[i] = this_peak_sus
+
 
 masked_dg = np.ma.masked_invalid(neglog_pdist)
 masked_dg_N = np.ma.masked_invalid(neglog_pdist_N)
@@ -146,12 +148,11 @@ print('...Done.')
 ### Now input all <n_i>_\phi's for a given i ###
 print('')
 print('Extracting all n_i\'s...')
-
 phi_vals = np.linspace(0,4,101)
 buried_mask = np.loadtxt('buried_mask.dat', dtype=bool)
 surf_mask = ~buried_mask
 n_heavies = surf_mask.size
-idx = 604
+
 
 n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz'))
 #n_i_dat_fnames[0] = 'equil/rho_data_dump_rad_6.0.dat.npz'
@@ -206,6 +207,6 @@ for i_atm in range(n_heavies):
     avg_nis[i_atm, :] = avg_ni
     chi_nis[i_atm, :] = chi_ni
 
-np.savez_compressed('ni_weighted.dat', avg=avg_nis, var=chi_nis)
+np.savez_compressed('ni_weighted.dat', avg=avg_nis, var=chi_nis, beta_phi=phi_vals)
 
-embed()
+

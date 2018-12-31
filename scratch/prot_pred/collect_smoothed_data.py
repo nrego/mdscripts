@@ -26,30 +26,30 @@ actual_contacts = np.loadtxt('../bound/actual_contact_mask.dat', dtype=bool)
 assert (actual_contacts[buried_mask] == 0).all()
 actual_contacts = actual_contacts[surf_mask]
 
-fnames = sorted( glob.glob('phi_*/rho_data_dump_smooth.dat.npz') )
-ref = np.load('../equil/rho_data_dump_rad_6.0.dat.npz')['rho_water'].mean(axis=0)
+fnames = sorted( glob.glob('../prod/phi_sims/phi_*/rho_data_dump_rad_6.0.dat.npz') )
+ref = np.load('../reweight_data/beta_phi_000/ni_reweighted.dat.npz')['rho_water'].mean(axis=0)
 assert (ref[buried_mask] < 5).all()
 assert (ref[surf_mask] >= 5).all()
 
 ref = ref[surf_mask]
 
-phi_vals = np.array([ float(fname.split('/')[0].split('_')[-1]) for fname in fnames ]) / 10.0
+phi_vals = np.array([ float(fname.split('/')[3].split('_')[-1]) for fname in fnames ]) / 10.0
 beta_phi_vals = beta*phi_vals
 # Sanity - in sorted order
 assert (np.diff(phi_vals) > 0).all()
 
-rho_i_with_phi = np.zeros((beta_phi_vals.size, surf_mask.sum()))
+rho_i_with_phi = np.zeros((surf_mask.sum(), beta_phi_vals.size))
 h_i_with_phi = np.zeros_like(rho_i_with_phi)
 
 for idx, fname in enumerate(fnames):
     subdir = os.path.dirname(fname)
     n_phi = np.load(fname)['rho_water'].mean(axis=0)[surf_mask]
     rho_phi = n_phi / ref
-    rho_i_with_phi[idx, :] = rho_phi
+    rho_i_with_phi[:, idx] = rho_phi
 
-    thresh_fname = '{}/h_data_dump_smooth.dat.npz'.format(subdir)
-    h_phi = np.load(thresh_fname)['rho_water'].mean(axis=0)[surf_mask] / ref
-    h_i_with_phi[idx, :] = h_phi
+    #thresh_fname = '{}/h_data_dump_smooth.dat.npz'.format(subdir)
+    #h_phi = np.load(thresh_fname)['rho_water'].mean(axis=0)[surf_mask] / ref
+    #h_i_with_phi[idx, :] = h_phi
 
-np.savez_compressed('rho_i_with_phi.dat', rho_i=rho_i_with_phi, beta_phi=beta_phi_vals)
-np.savez_compressed('h_i_with_phi.dat', h_i=h_i_with_phi, beta_phi=beta_phi_vals)
+np.savez_compressed('rho_i_with_phi.dat', avg=rho_i_with_phi, beta_phi=beta_phi_vals)
+#np.savez_compressed('h_i_with_phi.dat', h_i=h_i_with_phi, beta_phi=beta_phi_vals)

@@ -28,10 +28,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Evaluate performance with phi')
     parser.add_argument('--actual-contact', type=str, default='../bound/actual_contact_mask.dat', 
                         help='mask for actual contacts (default: %(default)s)')
-    parser.add_argument('--pred-contact', type=str, default='phi_*/pred_contact_mask.dat', 
+    parser.add_argument('--pred-contact', type=str, default='beta_phi_*/pred_contact_mask.dat', 
                         help='glob string for mask for predicted contacts, for each phi (default: %(default)s)')
     parser.add_argument('--buried-mask', type=str, default='../bound/buried_mask.dat',
                         help='mask for buried atoms (default: %(default)s')
+    parser.add_argument('--no-beta', action='store_true', default=False,
+                        help='If provided, assume input files are in kJ/mol, not kT')
     args = parser.parse_args()
 
 
@@ -47,7 +49,7 @@ if __name__ == '__main__':
     print('Number contacts: {}'.format(contact_mask.sum()))
 
 
-    header = 'phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
+    header = 'beta*phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
     dat = np.zeros((len(pred_contacts), 11))
 
     indices = np.arange(surf_mask.sum())
@@ -58,11 +60,12 @@ if __name__ == '__main__':
         phi = float(os.path.dirname(fname).split('_')[-1]) / 10.0
 
         this_phi = np.ones_like(indices).astype(float)
-        this_phi[:] = beta*phi
-        if phi == 0:
-            pred_contact_mask = np.zeros_like(contact_mask)
+        if args.no_beta:
+            this_phi[:] = beta*phi
         else:
-            pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
+            this_phi[:] = phi /10.0
+
+        pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
 
         tp_mask = pred_contact_mask & contact_mask
         fp_mask = pred_contact_mask & ~contact_mask
@@ -81,6 +84,8 @@ if __name__ == '__main__':
 
     #plt.savefig('/home/nick/Desktop/dot_plot.svg')
     ax.set_xlim(-10,1400)
+    ax.set_xticks(np.arange(0,1410,5))
     #ax.set_ylim(0,4)
+
     fig.tight_layout()
     fig.savefig('{}/Desktop/dot_plot.pdf'.format(homedir))

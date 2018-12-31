@@ -65,6 +65,8 @@ plt.close('all')
 fig, ax = plt.subplots(figsize=(5.45,5))
 
 ax.errorbar(beta_phi_vals[myslice], chi[myslice], yerr=err_chi[myslice], fmt='k-', linewidth=3)
+#ax.plot(beta_phi_vals, chi, 'k-', linewidth=3)
+#ax.fill_between(beta_phi_vals, chi+err_chi, chi-err_chi, alpha=0.5)
 ax.plot(np.delete(beta_phi_vals[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), np.delete(chi[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), 'ko')
 ax.plot(beta_phi_vals[chi_max_idx], chi_max, 'bD', markersize=16, zorder=3)
 ax.plot(beta_phi_minus, chi[chi_minus_idx], 'b<', markersize=16, zorder=3)

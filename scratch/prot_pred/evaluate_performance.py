@@ -27,12 +27,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Evaluate performance with phi')
     parser.add_argument('--actual-contact', type=str, default='../bound/actual_contact_mask.dat', 
                         help='mask for actual contacts (default: %(default)s)')
-    parser.add_argument('--pred-contact', type=str, default='phi_*/pred_contact_mask.dat', 
+    parser.add_argument('--pred-contact', type=str, default='beta_phi_*/pred_contact_mask.dat', 
                         help='glob string for mask for predicted contacts, for each phi (default: %(default)s)')
     parser.add_argument('--buried-mask', type=str, default='../bound/buried_mask.dat',
                         help='mask for buried atoms (default: %(default)s')
     parser.add_argument('--plot', action='store_true', default=False,
                         help='plot ROC, scores w/ phi')
+    parser.add_argument('--no-beta', action='store_true', default=False,
+                        help='If provided, assume input files are in kJ/mol, not kT')
     args = parser.parse_args()
 
 
@@ -48,16 +50,16 @@ if __name__ == '__main__':
     print('Number contacts: {}'.format(contact_mask.sum()))
 
 
-    header = 'phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
+    header = 'beta*phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
     dat = np.zeros((len(pred_contacts), 11))
 
     for i,fname in enumerate(pred_contacts):
-        
-        phi = float(os.path.dirname(fname).split('_')[-1]) / 10.0
-        if phi == 0:
-            pred_contact_mask = np.zeros_like(contact_mask)
+        if args.no_beta:
+            beta_phi = beta*float(os.path.dirname(fname).split('_')[-1]) / 10.0
         else:
-            pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
+            beta_phi = float(os.path.dirname(fname).split('_')[-1])/ 100.0
+
+        pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
 
         tp = (pred_contact_mask & contact_mask).sum()
         fp = (pred_contact_mask & ~contact_mask).sum()
@@ -89,7 +91,7 @@ if __name__ == '__main__':
         else:
             f_1 = 0
 
-        dat[i] = phi/10.0, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
+        dat[i] = beta_phi, tp, fp, tn, fn, tpr, fpr, ppv, f_h, f_1, mcc
 
 
     # check that the data in sorted order by phi...
