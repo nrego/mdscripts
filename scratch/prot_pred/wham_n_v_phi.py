@@ -57,6 +57,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, phi_vals):
     
     return (neglogpdist, neglogpdist_N, avg_N, chi)
 
+print('Constructing Nv v phi, chi v phi...')
 temp = 300
 
 beta = 1./(k*temp)
@@ -140,40 +141,68 @@ np.savetxt('Nvphi.dat', dat, header='beta*phi   <N_v>  err(<N_v>)  chi_v   err(c
 np.savetxt('peak_sus.dat', np.array([avg_peak_sus, err_peak_sus]), header='beta*phi^*  err(beta phi*)')
 
 
+print('...Done.')
 
 ### Now input all <n_i>_\phi's for a given i ###
+print('')
+print('Extracting all n_i\'s...')
+
+phi_vals = np.linspace(0,4,101)
 buried_mask = np.loadtxt('buried_mask.dat', dtype=bool)
 surf_mask = ~buried_mask
+n_heavies = surf_mask.size
 idx = 604
 
 n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz'))
-n_i_dat_fnames[0] = 'equil/rho_data_dump_rad_6.0.dat.npz'
+#n_i_dat_fnames[0] = 'equil/rho_data_dump_rad_6.0.dat.npz'
 
 # Ntwid vals, only taken every 1 ps from each window
 all_data_reduced = np.array([])
 all_logweights_reduced = np.array([])
-all_data_n_i = np.array([])
+# Will have shape (n_heavies, n_tot)
+all_data_n_i = None
 n_files = len(n_i_dat_fnames)
 
-phiout_0 = np.loadtxt('equil/phiout.dat')
+phiout_0 = np.loadtxt('phi_000/phiout.dat')
 
 start_idx = 0
+
+## Gather n_i data from each umbrella window (phi value)
 for i in range(n_files):
-    if i == 0:
-        this_slice =slice(start_idx, start_idx+2501, None)
-        start_idx += 2501
-    else:
-        this_slice =slice(start_idx, start_idx+25001, 10)
-        start_idx += 25001
+    ## Need to grab every 10th data point (N_v, and weight)
+    this_slice =slice(start_idx, start_idx+25001, 10)
+    start_idx += 25001
     new_data_subslice = all_data[this_slice]
     new_weight_subslice = all_logweights[this_slice]
 
     all_data_reduced = np.append(all_data_reduced, new_data_subslice)
     all_logweights_reduced = np.append(all_logweights_reduced, new_weight_subslice)
+    
     fname = n_i_dat_fnames[i]
-    n_i = np.load(fname)['rho_water'][:,surf_mask][:, idx]
-    if n_i.size != 2501:
-        print("phi: {}".format(fname))
-    all_data_n_i = np.append(all_data_n_i, n_i)
 
-neglogpdist, neglogpdist_ni, avg_ni, chi_ni = extract_and_reweight_data(all_logweights_reduced, all_data_reduced, all_data_n_i, bins, phi_vals)
+    ## Shape: (n_heavies, n_frames) ##
+    n_i = np.load(fname)['rho_water'].T
+
+
+    if all_data_n_i is None:
+        all_data_n_i = n_i.copy()
+    else:
+        all_data_n_i = np.append(all_data_n_i, n_i, axis=1)
+
+print('...Done.')
+print('')
+
+print('WHAMing each n_i...')
+
+# Shape: (n_atoms, phi_vals.shape)
+avg_nis = np.zeros((n_heavies, phi_vals.size))
+chi_nis = np.zeros((n_heavies, phi_vals.size))
+for i_atm in range(n_heavies):
+
+    if i_atm % 100 == 0:
+        print('  i: {}'.format(i_atm))
+    neglogpdist, neglogpdist_ni, avg_ni, chi_ni = extract_and_reweight_data(all_logweights_reduced, all_data_reduced, all_data_n_i[i_atm], bins, phi_vals)
+
+    avg_nis[i_atm, :] = avg_ni
+    chi_nis[i_atm, :] = chi_ni
+

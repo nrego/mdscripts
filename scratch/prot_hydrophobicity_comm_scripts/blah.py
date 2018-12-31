@@ -1,98 +1,68 @@
+from __future__ import division, print_function
+  
+
+import MDAnalysis
+from matplotlib import pyplot as plt
+import matplotlib as mpl
+from matplotlib import cm
 import numpy as np
-from whamutils import get_neglogpdist
-from constants import k
 
-kt = k*300
-beta = 1/kt
+import glob, os
 
-# shape: (n_boot_samples, 3)
-#    col0:  logweight of each bootstrap sample (log of UWHAM weight)
-#    col1:  Ntwid_v for each 
-#    col2:  N_v for each
-boot_dat = np.load('boot_fn_payload.dat.npy')
-n_boot = boot_dat.shape[0]
+mpl.rcParams.update({'axes.labelsize': 50})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
+mpl.rcParams.update({'axes.titlesize':40})
+mpl.rcParams.update({'legend.fontsize':40})
 
-logweights_0, dat_0, dat_N_0 = boot_dat[0]
+fnames = glob.glob('*/surf_dat.dat')
 
-# binbounds for P_v(N)'s
-bb = np.arange(0, 2001, 1).astype(float)
-max_N = 0
+order = ['2b97', '1qgt', '1ycr', '3hhp', '1ubq', '1brs', '253l']
 
-# beta*phi values of linear bias for re-weighting to get <N_v>phi v phi
-phi_vals = np.arange(0, 4.1, 0.001) #* beta
+colors = cm.rainbow(np.linspace(0,1,len(order)))
 
-# Bootstraps of <N_v>_phi  and <d N_v^2>_phi
-boot_avg = np.zeros((n_boot, len(phi_vals)))
-boot_var = np.zeros_like(boot_avg)
+n_bars = len(order)
+indices = np.arange(n_bars)
+width = 1
 
-# Bootstraps of -ln P_v(Ntwid) and -ln P_v(N)
-boot_neglogpdist = np.zeros((n_boot, bb.size-1))
-boot_neglogpdist_N = np.zeros_like(boot_neglogpdist)
-
-# beta phi* for each bootstrap
-boot_peak_sus = np.zeros(n_boot)
-
-for i, payload in enumerate(boot_dat):
-
-    logweights, all_dat, all_dat_N = payload
-
-    neglogpdist = get_neglogpdist(all_dat, bb, logweights)
-    neglogpdist_N = get_neglogpdist(all_dat_N.astype(float), bb, logweights)
-
-    boot_neglogpdist[i] = neglogpdist
-    boot_neglogpdist_N[i] = neglogpdist_N
-
-    for idx, phi in enumerate(phi_vals):
-        bias = phi * all_dat
-        this_weights = logweights - bias
-        this_weights -= this_weights.max()
-        this_weights = np.exp(this_weights)
-        this_weights /= this_weights.sum()
-
-        this_avg_n = np.dot(this_weights, all_dat)
-        this_avg_nsq = np.dot(this_weights, all_dat**2)
-        this_var_n = this_avg_nsq - this_avg_n**2
-
-        boot_avg[i,idx] = this_avg_n
-        boot_var[i,idx] = this_var_n
-
-    max_idx = np.argmax(boot_var[i])
-    boot_peak_sus[i] = phi_vals[max_idx]
-
-avg_mean = boot_avg.mean(axis=0)
-avg_err = boot_avg.std(axis=0, ddof=1)
-
-var_mean = boot_var.mean(axis=0)
-var_err = boot_var.std(axis=0, ddof=1)
-
-np.savetxt('n_v_phi.dat', np.vstack((phi_vals, avg_mean, avg_err)).T)
-np.savetxt('var_n_v_phi.dat', np.vstack((phi_vals, var_mean, var_err)).T)
+gap = 4
 
 
-masked_neglogpdist = np.ma.masked_invalid(boot_neglogpdist)
-masked_neglogpdist_N = np.ma.masked_invalid(boot_neglogpdist_N)
+fig, ax = plt.subplots(figsize=(7.5,6.5), sharex=True)
 
-avg_neglogpdist = masked_neglogpdist.mean(axis=0)
-err_neglogpdist = masked_neglogpdist.std(axis=0, ddof=1)
+isothermal_comp = 3.467e17
+rho = 33
+kT = (1.3806485e-23)*(300)
+wat_val = isothermal_comp*rho*kT
+#ax.plot(0, wat_val, '_', markersize=20)
+# upper left
+for idx, name in enumerate(order):
+    surf_dat = np.loadtxt('{}/surf_dat.dat'.format(name))
+    n_dat = np.loadtxt('{}.dat'.format(name))
 
-mask = avg_neglogpdist.mask
-avg_neglogpdist = avg_neglogpdist.data
-avg_neglogpdist[mask] = np.float('inf')
-err_neglogpdist = err_neglogpdist.data
-err_neglogpdist[mask] = np.float('inf')
+    n_surf = surf_dat[1]
+    n_phob = surf_dat[4]
 
-avg_neglogpdist_N = masked_neglogpdist_N.mean(axis=0)
-err_neglogpdist_N = masked_neglogpdist_N.std(axis=0, ddof=1)
+    if name != 'ubiq':
+        fmt = '-o'
+        markersize=8
+    else:
+        fmt = '-'
+        markersize=0
 
-mask_N = avg_neglogpdist_N.mask
-avg_neglogpdist_N = avg_neglogpdist_N.data
-avg_neglogpdist_N[mask] = np.float('inf')
-err_neglogpdist_N = err_neglogpdist_N.data
-err_neglogpdist_N[mask] = np.float('inf')
+    ax.plot(n_dat[:,0], n_dat[:,2]/n_dat[:,1], fmt, color=colors[idx], linewidth=3, markersize=markersize)
 
-np.savetxt('neglogpdist.dat', np.vstack((bb[:-1], avg_neglogpdist, err_neglogpdist)).T)
-np.savetxt('neglogpdist_N.dat', np.vstack((bb[:-1], avg_neglogpdist_N, err_neglogpdist_N)).T)
+    max_sus = n_dat[:,2].max()
+    norm_max = max_sus / n_dat[0,1]
+    #ax.plot(n_phob/n_surf, norm_max, 'o')
+    #ax.bar(idx, max_sus, color=colors[idx], width=width)
+    #ax.plot(n_dat[0,1], max_sus, 'o')
 
-avg_peak_sus = boot_peak_sus.mean()
-err_peak_sus = boot_peak_sus.std(ddof=1)
-np.savetxt('peak_sus.dat', [avg_peak_sus, err_peak_sus])
+#ax.set_xticks([])
+ax.set_xlim(0,4)
+
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/peak_sus.pdf', transparent=True)
+#plt.show()
+
+plt.close('all')
