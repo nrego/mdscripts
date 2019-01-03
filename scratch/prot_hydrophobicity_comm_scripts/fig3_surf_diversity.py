@@ -10,8 +10,8 @@ import numpy as np
 import glob, os
 
 mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 40})
-mpl.rcParams.update({'ytick.labelsize': 40})
+mpl.rcParams.update({'xtick.labelsize': 60})
+mpl.rcParams.update({'ytick.labelsize': 60})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':40})
 

@@ -62,3 +62,20 @@ fig.savefig('/Users/nickrego/Desktop/ubiq_sus_v_phi.pdf', transparent=True)
 fig.show()
 
 
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(8.5, 15))
+dat = np.loadtxt('n_v_phi.dat')
+err_dat = dat[:,2]
+
+ax1.plot(dat[:,0], dat[:,1], 'k-', linewidth=6)
+plt_errorbars(dat[:,0], dat[:,1], dat[:,2], ax=ax1)
+
+dat = np.loadtxt('var_n_v_phi.dat')
+ax2.plot(dat[:,0], dat[:,1], 'k-', linewidth=6)
+plt_errorbars(dat[:,0], dat[:,1], dat[:,2], color='k', ax=ax2)
+ax2.set_xlim(0,4)
+ax2.set_xticks([0,2,4])
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/fig_ubq.pdf', transparent=True)
+
+plt.close('all')
+

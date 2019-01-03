@@ -71,4 +71,27 @@ fig.tight_layout()
 fig.savefig('/Users/nickrego/Desktop/sam_sus_v_phi.pdf', transparent=True)
 fig.show()
 
+plt.close('all')
 
+fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(8.5, 15))
+
+ch3_dat = np.loadtxt('CH3_Disks/n_v_phi.dat')
+oh_dat = np.loadtxt('OH_Disks/n_v_phi.dat')
+
+ax1.plot(ch3_dat[:,0], ch3_dat[:,1], 'r-', label=r'$\rm{CH}_3$', linewidth=6)
+plt_errorbars(ch3_dat[:,0], ch3_dat[:,1], ch3_dat[:,2], ax=ax1)
+ax1.plot(oh_dat[:,0], oh_dat[:,1], 'b-', label=r'$\rm{OH}$', linewidth=6)
+plt_errorbars(oh_dat[:,0], oh_dat[:,1], oh_dat[:,2], ax=ax1)
+
+
+ch3_dat = np.loadtxt('CH3_Disks/var_n_v_phi.dat')
+oh_dat = np.loadtxt('OH_Disks/var_n_v_phi.dat')
+
+ax2.plot(ch3_dat[:,0], ch3_dat[:,1], 'r-', label=r'$\rm{CH}_3$', linewidth=6)
+plt_errorbars(ch3_dat[:,0], ch3_dat[:,1], ch3_dat[:,2], ax=ax2)
+ax2.plot(oh_dat[:,0], oh_dat[:,1], 'b-', label=r'$\rm{OH}$', linewidth=6)
+plt_errorbars(oh_dat[:,0], oh_dat[:,1], oh_dat[:,2], ax=ax2)
+
+ax2.set_xlim(0,2)
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/sam_both_v_phi.pdf', transparent=True)
