@@ -136,40 +136,51 @@ not_pred_phob = (~pred_mask & hydropathy).sum() / n_surf
 not_pred_phil = (~pred_mask & ~hydropathy).sum() / n_surf
 print("    Predicted contacts: {:0.2f}   Predicted not contacts: {:0.2f}".format(pred_phob, not_pred_phob))
 
+
+color_phil = '#0560AD' # blue2
+color_phob = '#D7D7D7' # light gray
+color_pred = '#FF7F00' # orange 
+color_not_pred = '#7F7F7F' # gray
+
 #fig.tight_layout()
 fig, ax = plt.subplots(figsize=(5,5))
 wedgeprops = {'edgecolor':'k', 'linewidth':6}
-explode = (0.1, 0, 0, 0.1)
+explode = (0.0, 0, 0, 0.0)
 #explode = (0,0,0,0)
-patches, texts, pcts = ax.pie([pred_phob, pred_phil, not_pred_phil, not_pred_phob], explode=explode, labeldistance=1.15, colors=('#FF7F00', '#FF7F00', '#7F7F7F', '#7F7F7F'), autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
+colors = (color_pred, color_not_pred, color_not_pred, color_pred)
+patches, texts, pcts = ax.pie([pred_phob, not_pred_phob, not_pred_phil, pred_phil], explode=explode, labeldistance=1.15, colors=colors, autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
 [pct.set_fontsize(20) for pct in pcts]
 ax.axis('equal')
-patches[1].set_edgecolor('#0560AD')
-patches[2].set_edgecolor('#0560AD')
-#patches[0].set_hatch('/')
-patches[0].set_edgecolor('#D7D7D7')
-#patches[3].set_hatch('/')
-patches[3].set_edgecolor('#D7D7D7')
+
+patches[0].set_edgecolor(color_phob)
+patches[1].set_edgecolor(color_phob)
+patches[2].set_edgecolor(color_phil)
+patches[3].set_edgecolor(color_phil)
 
 fig.savefig('{}/Desktop/pct_pred_phobic.pdf'.format(homedir), transparent=True)
 
 fig, ax = plt.subplots(figsize=(5,5))
 ax.axis('equal')
 ax.axis('off')
-groups = [[0,3], [1,2]]
-radfraction = 0.5
+groups = [[0,1], [2,3]]
+radfraction = 0.2
 wedges = []
 
-for i in groups:
-    ang = np.deg2rad((patches[i[-1]].theta2 + patches[i[0]].theta2)/2.0)
-    for j in i:
-        patch = patches[j]
-        center = (radfraction*patch.r*np.cos(ang), radfraction*patch.r*np.sin(ang))
-        wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
+#embed()
+i = groups[0]
+ang = np.deg2rad((patches[i[-1]].theta2 + patches[i[0]].theta1)/2.0)
+for j in i:
+    patch = patches[j]
+    center = (radfraction*patch.r*np.cos(ang), radfraction*patch.r*np.sin(ang))
+    wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
+i = groups[1]
+for j in i:
+    patch = patches[j]
+    center = patch.center
+    wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
 
 
-colors=('#FF7F00', '#7F7F7F', '#FF7F00', '#7F7F7F')
-ecolors=('#D7D7D7', '#D7D7D7', '#0560AD', '#0560AD')
+ecolors=(color_phob, color_phob, color_phil, color_phil)
 collection = PatchCollection(wedges)
 collection.set_facecolors(colors)
 collection.set_linewidths(6)

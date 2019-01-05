@@ -149,9 +149,9 @@ print('...Done.')
 print('')
 print('Extracting all n_i\'s...')
 phi_vals = np.linspace(0,4,101)
-buried_mask = np.loadtxt('buried_mask.dat', dtype=bool)
-surf_mask = ~buried_mask
-n_heavies = surf_mask.size
+
+
+n_heavies = None
 
 
 n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz'))
@@ -183,7 +183,10 @@ for i in range(n_files):
 
     ## Shape: (n_heavies, n_frames) ##
     n_i = np.load(fname)['rho_water'].T
-
+    if n_heavies is None:
+        n_heavies = n_i.shape[0]
+    else:
+        assert n_i.shape[0] == n_heavies
 
     if all_data_n_i is None:
         all_data_n_i = n_i.copy()
