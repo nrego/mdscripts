@@ -24,6 +24,15 @@ mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':20})
 
+COLOR_CONTACT = '#7F00FF' # purple
+COLOR_NO_CONTACT = COLOR_NOT_PRED = COLOR_TN = '#7F7F7F' # gray
+COLOR_PHIL = '#0560AD' # blue2
+COLOR_PHOB = '#D7D7D7' # light gray
+COLOR_PRED = '#FF7F00' # orange 
+COLOR_TP = '#FF007F' # pink
+COLOR_FP = '#7F3F00' # dark orange
+COLOR_FN = '#3F007F' # dark purple
+
 def rms(pts, centroid):
     
     diff = pts-centroid
@@ -49,6 +58,73 @@ def bootstrap(atm_grp, n_sub, n_boot=100):
     return boot.mean(), boot.std(ddof=1)
 
 
+def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1],[2,3]], radfraction=0.2):
+    assert len(groups) == 2
+    plt.close('all')
+    fig, ax = plt.subplots(figsize=(5,5))
+    wedgeprops = {'edgecolor':'k', 'linewidth':6}
+
+    patches, texts, pcts = ax.pie(slices, labeldistance=1.15, colors=colors, autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
+    [pct.set_fontsize(20) for pct in pcts]
+    ax.axis('equal')
+
+    for patch, ecolor in zip(patches, ecolors):
+        patch.set_edgecolor(ecolor)
+
+    fig.savefig('{}'.format(outname), transparent=True)
+    plt.close('all')
+
+
+    fig, ax = plt.subplots(figsize=(5,5))
+    ax.axis('equal')
+    ax.axis('off')
+    #embed()
+    i = groups[0]
+    ang = np.deg2rad((patches[i[-1]].theta2 + patches[i[0]].theta1)/2.0)
+    wedges = []
+    for j in i:
+        patch = patches[j]
+        center = (radfraction*patch.r*np.cos(ang), radfraction*patch.r*np.sin(ang))
+        wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
+        text_ang = np.deg2rad((patch.theta1 + patch.theta2)/2.0)
+        if text_ang > np.pi and text_ang < (3*np.pi)/2.0:
+            align='top'
+            text_pos = np.array(((1.12)*patch.r*np.cos(text_ang), (1.12)*patch.r*np.sin(text_ang))) + np.array(center)
+        else:
+            align='baseline'
+            text_pos = np.array(((1.08)*patch.r*np.cos(text_ang), (1.08)*patch.r*np.sin(text_ang))) + np.array(center)
+        if showtext:
+            ax.text(*text_pos, s=pcts[j].get_text(), fontsize=20, verticalalignment=align)
+    i = groups[1]
+    for j in i:
+        patch = patches[j]
+        center = patch.center
+        
+        wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
+        text_ang = np.deg2rad((patch.theta1 + patch.theta2)/2.0)
+        if text_ang > np.pi and text_ang < (3*np.pi)/2.0:
+            align='top'
+            text_pos = np.array(((1.12)*patch.r*np.cos(text_ang), (1.12)*patch.r*np.sin(text_ang))) + np.array(center)
+        else:
+            align='baseline'
+            text_pos = np.array(((1.08)*patch.r*np.cos(text_ang), (1.08)*patch.r*np.sin(text_ang))) + np.array(center)
+        if showtext:
+            ax.text(*text_pos, s=pcts[j].get_text(), fontsize=20, verticalalignment=align)
+
+    collection = PatchCollection(wedges)
+    collection.set_facecolors(colors)
+    collection.set_linewidths(6)
+    collection.set_edgecolors(ecolors)
+
+    #collection.set_array(np.array(colors))
+    ax.add_collection(collection)
+    ax.autoscale(True)
+    #ax.text(*pcts[0].get_position(), s=pcts[0].get_text())
+
+    fig.savefig('{}_nolabel'.format(outname), transparent=False)
+
+    plt.close('all')
+
 ## Analyze composition of classified predictions
 
 parser = argparse.ArgumentParser('analyze atomic composition of TPs, FPs, etc')
@@ -58,14 +134,16 @@ parser.add_argument('-c', '--struct', type=str, required=True,
                     help='Structure (GRO) file')
 parser.add_argument('--sel-spec', type=str, default='segid seg_0_Protein_targ and not name H*',
                     help='Selection spec to get target heavy atoms')
-parser.add_argument('--actual-contact', type=str, required=True,
-                    help='Actual contacts')
-parser.add_argument('--buried', type=str, default='buried_mask.dat',
-                    help='Buried mask')
-parser.add_argument('--pred-contact', type=str, required=True,
-                    help='Predicted contact mask')
-parser.add_argument('--hydropathy', type=str, required=True,
-                    help='Hydropathy mask')
+parser.add_argument('--actual-contact', type=str, default='../../bound/actual_contact_mask.dat',
+                    help='Actual contacts (Default: %(default)s)')
+parser.add_argument('--buried', type=str, default='../../bound/buried_mask.dat',
+                    help='Buried mask (Default: %(default)s)')
+parser.add_argument('--pred-contact', type=str, default='pred_contact_mask.dat',
+                    help='Predicted contact mask (Default: %(default)s)')
+parser.add_argument('--hydropathy', type=str, default='../../bound/hydropathy_mask.dat',
+                    help='Hydropathy mask (Default: %(default)s)')
+parser.add_argument('--outpath', type=str, required=True,
+                    help='Prefix for output')
 
 args = parser.parse_args()
 
@@ -82,7 +160,8 @@ hydropathy = np.loadtxt(args.hydropathy, dtype=bool)[surf_mask]
 assert contact_mask.size == targ.n_atoms
 
 # size of prediction
-n_surf = targ.n_atoms
+n_surf = surf_mask.sum()
+assert n_surf == targ.n_atoms
 
 tp_mask = contact_mask & pred_mask
 fp_mask = ~contact_mask & pred_mask
@@ -96,6 +175,8 @@ fn = fn_mask.sum()
 
 cond_pos = tp + fn
 cond_neg = tn + fp
+
+assert cond_pos == contact_mask.sum()
 
 assert n_surf == cond_pos + cond_neg
 
@@ -129,69 +210,53 @@ surf_phil = (n_surf - hydropathy.sum()) / n_surf
 
 print("fraction of surface atoms that are hydrophobic: {:2.2f}".format(surf_phob))
 
-# fraction of total prediction patch that is hydrophobic
+
+##################################################
+## Now make pie plot of actual contact composition
+##################################################
+
+# fraction of actual contacts that are hydrophobic/philic
+contact_phob = (contact_mask & hydropathy).sum()/n_surf
+contact_phil = (contact_mask & ~hydropathy).sum()/n_surf
+no_contact_phob = (~contact_mask & hydropathy).sum()/n_surf
+no_contact_phil = (~contact_mask & ~hydropathy).sum()/n_surf
+
+print("fraction of actual contacts that are hydrophobic: {:2.2f}".format(contact_phob))
+colors = (COLOR_CONTACT, COLOR_NO_CONTACT, COLOR_NO_CONTACT, COLOR_CONTACT)
+ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL)
+make_piechart([contact_phob, no_contact_phob, no_contact_phil, contact_phil], colors, ecolors, '{}_contact'.format(args.outpath))
+
+##################################################
+## Now make pie plot of predicted contact composition
+##################################################
+
 pred_phob = (pred_mask & hydropathy).sum()/n_surf
 pred_phil = (pred_mask & ~hydropathy).sum()/n_surf
-not_pred_phob = (~pred_mask & hydropathy).sum() / n_surf
-not_pred_phil = (~pred_mask & ~hydropathy).sum() / n_surf
-print("    Predicted contacts: {:0.2f}   Predicted not contacts: {:0.2f}".format(pred_phob, not_pred_phob))
+no_pred_phob = (~pred_mask & hydropathy).sum()/n_surf
+no_pred_phil = (~pred_mask & ~hydropathy).sum()/n_surf
+
+colors = (COLOR_PRED, COLOR_NOT_PRED, COLOR_NOT_PRED, COLOR_PRED)
+ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL)
+#make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath), showtext=False)
+make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath))
+
+##################################################
+## Finally, of performance
+##################################################
+
+tp_phob = (tp_mask & hydropathy).sum()/n_surf
+tp_phil = (tp_mask & ~hydropathy).sum()/n_surf
+fp_phob = (tp_mask & hydropathy).sum()/n_surf
+fp_phil = (tp_mask & ~hydropathy).sum()/n_surf
+tp_phob = (tp_mask & hydropathy).sum()/n_surf
+tp_phil = (tp_mask & ~hydropathy).sum()/n_surf
+
+colors = (COLOR_PRED, COLOR_NOT_PRED, COLOR_NOT_PRED, COLOR_PRED)
+ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL)
+#make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath), showtext=False)
+make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath))
 
 
-color_phil = '#0560AD' # blue2
-color_phob = '#D7D7D7' # light gray
-color_pred = '#FF7F00' # orange 
-color_not_pred = '#7F7F7F' # gray
-
-#fig.tight_layout()
-fig, ax = plt.subplots(figsize=(5,5))
-wedgeprops = {'edgecolor':'k', 'linewidth':6}
-explode = (0.0, 0, 0, 0.0)
-#explode = (0,0,0,0)
-colors = (color_pred, color_not_pred, color_not_pred, color_pred)
-patches, texts, pcts = ax.pie([pred_phob, not_pred_phob, not_pred_phil, pred_phil], explode=explode, labeldistance=1.15, colors=colors, autopct=lambda p: '{:1.1f}\%'.format(p), wedgeprops=wedgeprops)
-[pct.set_fontsize(20) for pct in pcts]
-ax.axis('equal')
-
-patches[0].set_edgecolor(color_phob)
-patches[1].set_edgecolor(color_phob)
-patches[2].set_edgecolor(color_phil)
-patches[3].set_edgecolor(color_phil)
-
-fig.savefig('{}/Desktop/pct_pred_phobic.pdf'.format(homedir), transparent=True)
-
-fig, ax = plt.subplots(figsize=(5,5))
-ax.axis('equal')
-ax.axis('off')
-groups = [[0,1], [2,3]]
-radfraction = 0.2
-wedges = []
-
-#embed()
-i = groups[0]
-ang = np.deg2rad((patches[i[-1]].theta2 + patches[i[0]].theta1)/2.0)
-for j in i:
-    patch = patches[j]
-    center = (radfraction*patch.r*np.cos(ang), radfraction*patch.r*np.sin(ang))
-    wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
-i = groups[1]
-for j in i:
-    patch = patches[j]
-    center = patch.center
-    wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
-
-
-ecolors=(color_phob, color_phob, color_phil, color_phil)
-collection = PatchCollection(wedges)
-collection.set_facecolors(colors)
-collection.set_linewidths(6)
-collection.set_edgecolors(ecolors)
-
-#collection.set_array(np.array(colors))
-ax.add_collection(collection)
-ax.autoscale(True)
-#ax.text(*pcts[0].get_position(), s=pcts[0].get_text())
-
-fig.savefig('{}/Desktop/pct_pred_phobic2.pdf'.format(homedir), transparent=True)
 
 # Find fraction of groups that are phobic
 #   Expectation: TP will be more hydrophobic than FNs (indicating that we are capturing the **hydrophobic** parts of patch)
