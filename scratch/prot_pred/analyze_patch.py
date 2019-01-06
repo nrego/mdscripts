@@ -3,6 +3,7 @@ from __future__ import division, print_function
 import MDAnalysis
 import numpy as np
 import matplotlib as mpl
+mpl.use('Agg')
 from matplotlib import pyplot as plt
 
 from IPython import embed
@@ -97,7 +98,10 @@ def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1]
             ax.text(*text_pos, s=pcts[j].get_text(), fontsize=20, verticalalignment=align)
     i = groups[1]
     for j in i:
-        patch = patches[j]
+        try:
+            patch = patches[j]
+        except:
+            embed()
         center = patch.center
         
         wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
@@ -246,15 +250,16 @@ make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolor
 
 tp_phob = (tp_mask & hydropathy).sum()/n_surf
 tp_phil = (tp_mask & ~hydropathy).sum()/n_surf
-fp_phob = (tp_mask & hydropathy).sum()/n_surf
-fp_phil = (tp_mask & ~hydropathy).sum()/n_surf
-tp_phob = (tp_mask & hydropathy).sum()/n_surf
-tp_phil = (tp_mask & ~hydropathy).sum()/n_surf
+fp_phob = (fp_mask & hydropathy).sum()/n_surf
+fp_phil = (fp_mask & ~hydropathy).sum()/n_surf
+fn_phob = (fn_mask & hydropathy).sum()/n_surf
+fn_phil = (fn_mask & ~hydropathy).sum()/n_surf
+tn_phob = (tn_mask & hydropathy).sum()/n_surf
+tn_phil = (tn_mask & ~hydropathy).sum()/n_surf
 
-colors = (COLOR_PRED, COLOR_NOT_PRED, COLOR_NOT_PRED, COLOR_PRED)
-ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL)
-#make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath), showtext=False)
-make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath))
+colors = (COLOR_TP, COLOR_FP, COLOR_FN, COLOR_TN, COLOR_TN, COLOR_FN, COLOR_FP, COLOR_TP)
+ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL, COLOR_PHIL, COLOR_PHIL)
+make_piechart([tp_phob, fp_phob, fn_phob, tn_phob, tn_phil, fn_phil, fp_phil, tp_phil], colors, ecolors, '{}_perf'.format(args.outpath), groups=[[0,1,2,3], [4,5,6,7]])
 
 
 
