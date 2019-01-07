@@ -59,7 +59,7 @@ def bootstrap(atm_grp, n_sub, n_boot=100):
     return boot.mean(), boot.std(ddof=1)
 
 
-def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1],[2,3]], radfraction=0.2):
+def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1],[2,3]], radfraction=0.2, transparent=False):
     assert len(groups) == 2
     plt.close('all')
     fig, ax = plt.subplots(figsize=(5,5))
@@ -88,6 +88,16 @@ def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1]
         center = (radfraction*patch.r*np.cos(ang), radfraction*patch.r*np.sin(ang))
         wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
         text_ang = np.deg2rad((patch.theta1 + patch.theta2)/2.0)
+        pct = pcts[j].get_text()
+        if slices[j] == 0:
+            pct = ''
+            fontsize = 10
+        elif slices[j] < 0.01:
+            fontsize = 10
+        elif slices[j] < 0.1:
+            fontsize = 15
+        else:
+            fontsize = 20
         if text_ang > np.pi and text_ang < (3*np.pi)/2.0:
             align='top'
             text_pos = np.array(((1.12)*patch.r*np.cos(text_ang), (1.12)*patch.r*np.sin(text_ang))) + np.array(center)
@@ -95,7 +105,7 @@ def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1]
             align='baseline'
             text_pos = np.array(((1.08)*patch.r*np.cos(text_ang), (1.08)*patch.r*np.sin(text_ang))) + np.array(center)
         if showtext:
-            ax.text(*text_pos, s=pcts[j].get_text(), fontsize=20, verticalalignment=align)
+            ax.text(*text_pos, s=pct, fontsize=fontsize, verticalalignment=align)
     i = groups[1]
     for j in i:
         try:
@@ -106,6 +116,16 @@ def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1]
         
         wedges.append(mpatches.Wedge(center, patch.r, patch.theta1, patch.theta2, edgecolor=patch.get_edgecolor(), facecolor=patch.get_facecolor()))
         text_ang = np.deg2rad((patch.theta1 + patch.theta2)/2.0)
+        pct = pcts[j].get_text()
+        if slices[j] == 0:
+            pct = ''
+            fontsize = 10
+        elif slices[j] < 0.01:
+            fontsize = 10
+        elif slices[j] < 0.1:
+            fontsize = 15
+        else:
+            fontsize = 20
         if text_ang > np.pi and text_ang < (3*np.pi)/2.0:
             align='top'
             text_pos = np.array(((1.12)*patch.r*np.cos(text_ang), (1.12)*patch.r*np.sin(text_ang))) + np.array(center)
@@ -113,7 +133,7 @@ def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1]
             align='baseline'
             text_pos = np.array(((1.08)*patch.r*np.cos(text_ang), (1.08)*patch.r*np.sin(text_ang))) + np.array(center)
         if showtext:
-            ax.text(*text_pos, s=pcts[j].get_text(), fontsize=20, verticalalignment=align)
+            ax.text(*text_pos, s=pct, fontsize=fontsize, verticalalignment=align)
 
     collection = PatchCollection(wedges)
     collection.set_facecolors(colors)
@@ -125,7 +145,7 @@ def make_piechart(slices, colors, ecolors, outname, showtext=True, groups=[[0,1]
     ax.autoscale(True)
     #ax.text(*pcts[0].get_position(), s=pcts[0].get_text())
 
-    fig.savefig('{}_nolabel'.format(outname), transparent=False)
+    fig.savefig('{}_nolabel'.format(outname), transparent=transparent)
 
     plt.close('all')
 
@@ -228,7 +248,7 @@ no_contact_phil = (~contact_mask & ~hydropathy).sum()/n_surf
 print("fraction of actual contacts that are hydrophobic: {:2.2f}".format(contact_phob))
 colors = (COLOR_CONTACT, COLOR_NO_CONTACT, COLOR_NO_CONTACT, COLOR_CONTACT)
 ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL)
-make_piechart([contact_phob, no_contact_phob, no_contact_phil, contact_phil], colors, ecolors, '{}_contact'.format(args.outpath))
+make_piechart([contact_phob, no_contact_phob, no_contact_phil, contact_phil], colors, ecolors, '{}_contact'.format(args.outpath), transparent=True, showtext=False)
 
 ##################################################
 ## Now make pie plot of predicted contact composition
@@ -243,7 +263,7 @@ colors = (COLOR_PRED, COLOR_NOT_PRED, COLOR_NOT_PRED, COLOR_PRED)
 ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL)
 #make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath), showtext=False)
 make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_pred'.format(args.outpath))
-
+make_piechart([pred_phob, no_pred_phob, no_pred_phil, pred_phil], colors, ecolors, '{}_trans_pred'.format(args.outpath), transparent=True, showtext=False)
 ##################################################
 ## Finally, of performance
 ##################################################
@@ -257,9 +277,9 @@ fn_phil = (fn_mask & ~hydropathy).sum()/n_surf
 tn_phob = (tn_mask & hydropathy).sum()/n_surf
 tn_phil = (tn_mask & ~hydropathy).sum()/n_surf
 
-colors = (COLOR_TP, COLOR_FP, COLOR_FN, COLOR_TN, COLOR_TN, COLOR_FN, COLOR_FP, COLOR_TP)
+colors = (COLOR_FN, COLOR_TP, COLOR_FP, COLOR_TN, COLOR_TN, COLOR_FP, COLOR_TP, COLOR_FN)
 ecolors = (COLOR_PHOB, COLOR_PHOB, COLOR_PHOB, COLOR_PHOB, COLOR_PHIL, COLOR_PHIL, COLOR_PHIL, COLOR_PHIL)
-make_piechart([tp_phob, fp_phob, fn_phob, tn_phob, tn_phil, fn_phil, fp_phil, tp_phil], colors, ecolors, '{}_perf'.format(args.outpath), groups=[[0,1,2,3], [4,5,6,7]])
+make_piechart([fn_phob, tp_phob, fp_phob, tn_phob, tn_phil, fp_phil, tp_phil, fn_phil], colors, ecolors, '{}_perf'.format(args.outpath), groups=[[0,1,2,3], [4,5,6,7]])
 
 
 

@@ -11,3 +11,5 @@ color Display Background green
 color change rgb cyan 0.5 0.5 0.5 
 color change rgb yellow 1.0 0.5 0.0
 
+color Name C cyan
+color Name S yellow

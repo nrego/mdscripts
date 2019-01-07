@@ -5,8 +5,8 @@ import os, glob
 homedir = os.environ['HOME']
 
 mpl.rcParams.update({'axes.labelsize': 50})
-mpl.rcParams.update({'xtick.labelsize': 30})
-mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'xtick.labelsize': 50})
+mpl.rcParams.update({'ytick.labelsize': 50})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':20})
 
@@ -56,7 +56,7 @@ star_fn = []
 fig, ax = plt.subplots(figsize=(5.2,5))
 
 for i, dirname in enumerate(sys_names):
-    path = '{}/pred/performance.dat'.format(dirname)
+    path = '{}/pred_reweight/performance.dat'.format(dirname)
     names.append(name_lut[dirname])
     # need variance for phi*
     # This is in beta*phi...
@@ -74,7 +74,7 @@ for i, dirname in enumerate(sys_names):
     print('{}'.format(name_lut[dirname]))
     print('  phi: {}'.format(phi[best_perf]))
 
-    best_phi.append(beta*phi[best_perf])
+    best_phi.append(phi[best_perf])
     best_f1.append(f_1[best_perf])
     best_dh.append(d_h[best_perf])
     best_tpr.append(tpr[best_perf])
@@ -86,9 +86,9 @@ for i, dirname in enumerate(sys_names):
     best_fn.append(fn[best_perf])
 
     ## Find points corresponding to phi_star
-    star_idx = np.digitize(this_phi_star, beta*phi) - 1
+    star_idx = np.digitize(this_phi_star, phi) - 1
     star_indices.append(star_idx)
-    star_phi.append(beta*phi[star_idx])
+    star_phi.append(phi[star_idx])
     star_f1.append(f_1[star_idx])
     star_dh.append(d_h[star_idx])
     star_tpr.append(tpr[star_idx])
