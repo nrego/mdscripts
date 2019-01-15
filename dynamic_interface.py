@@ -321,7 +321,7 @@ Command-line options
             np.savez_compressed('rho_data_dump_rad_{}.dat'.format(self.r_cutoff), rho_water=self.rho_water, rho_solute=self.rho_solute, 
                                 header='start_frame: {}   end_frame: {}   n_frames: {}    n_solute_atoms: {}'.format(self.start_frame, self.last_frame, self.n_frames, self.n_solute_atoms))
             np.savez_compressed('min_dist_neighbor.dat', min_dist=self.min_dist,
-                                header='start_frame: {}   end_frame: {}   sol_spec: {}   neigh_spec: {}'.format(self.start_frame, self.last_frame, self.mol_sel_spec, self.neighbor_sel_spec))
+                                header='start_frame: {}   end_frame: {}   sel_spec: {}   neigh_spec: {}'.format(self.start_frame, self.last_frame, self.mol_sel_spec, self.neighbor_sel_spec))
 
         if self.outxtc:
             print("xtc output not yet supported")
