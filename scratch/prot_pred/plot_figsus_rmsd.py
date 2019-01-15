@@ -17,18 +17,18 @@ mpl.rcParams.update({'legend.fontsize':15})
 
 beta = 1 / (300*k)
 ## Plot rmsd vs phi ##
-sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge', '1brs_bn']
+sys_names = ['2tsc', '1msb', '1pp2', '1ycr_mdm2', 'ubiq_merge']
 
 name_lut = {
     '2b97': 'Hydrophobin',
-    '2tsc': 'Thymidylate\nsynthase',
+    '2tsc': 'Thymidylate\nSynthase',
     '1bi4': 'HIV\nInteg',
     '1ycr_mdm2': 'MDM2',
     '1bmd': 'Malate\ndehydrogenase',
-    '1msb': 'Mannose-\nbinding\nprotein',
+    '1msb': 'Mannose-\nBinding\nProtein',
     'ubiq_merge': 'Ubiquitin',
     '1brs_bn': 'Barnase',
-    '1pp2': 'phospholipase a'
+    '1pp2': 'Phospholipase A2'
 }
 
 fig, ax = plt.subplots(figsize=(10,10))
