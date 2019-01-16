@@ -12,7 +12,7 @@ mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':10})
+mpl.rcParams.update({'legend.fontsize':30})
 
 from constants import k
 
@@ -106,5 +106,30 @@ ax.set_xlim(0,4)
 fig.tight_layout()
 fig.savefig('{}/Desktop/dh.pdf'.format(homedir), transparent=True)
 
-print("beta phi opt: {}".format(beta_phi[best_idx]))
+tnr = 1 - fpr
+c1, c2 = 'c', 'm'
+## Plot TPR, 1-FPR v beta phi ##
+fig, ax = plt.subplots(figsize=(5.5,5.5))
+ax.plot(beta_phi, tpr, '-', color=c1, linewidth=4, label='TPR')
+ax.plot(np.delete(beta_phi, [minus_idx, best_idx, star_idx, plus_idx]), np.delete(tpr, [minus_idx, best_idx, plus_idx, star_idx]), 'o', color=c1, markersize=12)
+ax.plot(beta_phi[star_idx], tpr[star_idx], 'bD', markersize=18)
+ax.plot(beta_phi[best_idx], tpr[best_idx], 'rX', markersize=20)
+ax.plot(beta_phi[minus_idx], tpr[minus_idx], 'b<', markersize=18)
+ax.plot(beta_phi[plus_idx], tpr[plus_idx], 'b>', markersize=18)
+ax.plot(beta_phi, fpr, '-', color=c2, linewidth=4, label='FPR')
+ax.plot(np.delete(beta_phi, [minus_idx, best_idx, star_idx, plus_idx]), np.delete(fpr, [minus_idx, best_idx, plus_idx, star_idx]), 'o', color=c2, markersize=12)
+ax.plot(beta_phi[star_idx], fpr[star_idx], 'bD', markersize=18)
+ax.plot(beta_phi[best_idx], fpr[best_idx], 'rX', markersize=20)
+ax.plot(beta_phi[minus_idx], fpr[minus_idx], 'b<', markersize=18)
+ax.plot(beta_phi[plus_idx], fpr[plus_idx], 'b>', markersize=18)
 
+#ax.legend(handlelength=1)
+#ax.set_ylim(3,4)
+ax.set_yticks([])
+#ax.set_xlabel(r'$\beta \phi$')
+ax.set_xlim(0,4)
+ax.set_xticks([0,2,4])
+fig.tight_layout()
+fig.savefig('{}/Desktop/tpr_fpr.pdf'.format(homedir), transparent=True)
+
+print("beta phi opt: {}".format(beta_phi[best_idx]))
