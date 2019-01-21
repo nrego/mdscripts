@@ -6,6 +6,7 @@ import glob, os
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib import cm
+from IPython import embed
 ## From pattern_sample directory, extract free energies for each k, d value
 mpl.rcParams.update({'axes.labelsize': 20})
 mpl.rcParams.update({'xtick.labelsize': 10})
@@ -13,24 +14,31 @@ mpl.rcParams.update({'ytick.labelsize': 10})
 mpl.rcParams.update({'axes.titlesize': 30})
 
 max_val = 1.75
-rms_bins = np.arange(0, max_val+0.1, 0.05)
+rms_bins = np.arange(0, max_val+0.1, 0.05, dtype=np.float32)
 
 
-fnames = glob.glob('k_*/d_*/trial_0/PvN.dat')
+fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + glob.glob('k_36/PvN.dat')
 
 k_bins = np.sort(np.unique([int(fname.split('/')[0].split('_')[-1]) for fname in fnames]))
 k_bins = np.append(k_bins, k_bins.max()+1)
+k_bins = k_bins.astype(np.float32)
 
 energies = np.zeros((rms_bins.size-1, k_bins.size-1))
 energies[:] = np.nan
 errors = np.zeros((rms_bins.size-1, k_bins.size-1))
 errors[:] = np.nan
-
+range_k = np.zeros(k_bins.size-1)
 
 for fname in fnames:
 
-    this_k = int(fname.split('/')[0].split('_')[-1])
-    this_d = float(fname.split('/')[1].split('_')[-1]) / 100
+    this_k = float(fname.split('/')[0].split('_')[-1])
+    
+    if this_k == 36:
+        this_d = 1.14
+    else:
+        this_d = float(fname.split('/')[1].split('_')[-1]) / 100
+
+
 
     idx_k = np.digitize(this_k, k_bins) - 1
     idx_d = np.digitize(this_d, rms_bins) - 1
@@ -42,6 +50,15 @@ for fname in fnames:
     energies[idx_d, idx_k] = this_mu
     errors[idx_d, idx_k] = this_err
 
+for idx_k in range(k_bins.size-1):
+    range_k[idx_k] = np.nanmax(energies[:,idx_k]) - np.nanmin(energies[:,idx_k])
+
+fig, ax = plt.subplots(figsize=(6,5))
+ax.bar(k_bins[:-1], range_k, width=0.8, align='edge')
+ax.set_ylabel(r'$\Delta \beta F$')
+ax.set_xlabel(r'$k$')
+fig.savefig('/Users/nickrego/Desktop/range_k.pdf')
+plt.close('all')
 
 fig, ax = plt.subplots(figsize=(6,5))
 

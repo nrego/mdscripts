@@ -39,7 +39,7 @@ parser.add_argument('-ch3', required=True, type=str,
 parser.add_argument('--point-data', default='pt_idx_data.pkl', 
                     help='Pickled datafile with pattern indices')
 parser.add_argument('--n-samples', default=4, type=int,
-                    help='Number of samples to pull for each rms bin')
+                    help='Number of samples to pull for each rms bin (default: %(default)s)')
 
 args = parser.parse_args()
 
@@ -57,8 +57,6 @@ patch_start_idx = n_tot_res - 36
 with open(args.point_data, 'r') as fin:
     rms_bins, occupied_idx, positions, sampled_pt_idx = pickle.load(fin)
 
-
-
 n_bins = occupied_idx.sum()
 n_samples = args.n_samples
 
@@ -73,9 +71,14 @@ for rms_bin, pts in zip(rms_bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx
     print("{} pts with rms {}".format(n_pts, rms_bin))
 
     dirname = 'd_{:03d}'.format(int(rms_bin*100))
-    os.makedirs(dirname)
+    try:
+        os.makedirs(dirname)
+    except OSError:
+        print("directory {} already exits - exiting".format(dirname))
+        exit()
 
     this_n_sample = min(n_pts, args.n_samples)
+
 
     for i_sample in range(this_n_sample):
         
@@ -85,7 +88,11 @@ for rms_bin, pts in zip(rms_bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx
         this_pt = pts[random][i_sample]
         this_pos = positions[this_pt]
 
-        fig, ax = plt.subplots(figsize=(5,6))
+        #with open('{}/{}/this_pt.pkl'.format(dirname, subdir), 'w') as fout:
+        #    payload = (positions, this_pt)
+        #    pickle.dump(payload, fout)
+
+        fig, ax = plt.subplots(figsize=(5.5,6))
         ax.set_xticks([])
         ax.set_yticks([])
         ax.plot(positions[:,0], positions[:,1], 'bo', markersize=18)

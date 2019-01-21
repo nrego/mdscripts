@@ -14,12 +14,34 @@ import matplotlib.pyplot as plt
 
 from IPython import embed
 
+from constants import k
+
 ## Construct P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 
 
 def plot_errorbar(bb, dat, err):
     plt.plot(bb[:-1], dat)
     plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
+
+# Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
+def extract_and_reweight_data(logweights, ntwid, data, bins):
+    logweights -= logweights.max()
+    weights = np.exp(logweights) 
+    weights /= weights.sum()
+
+    pdist, bb = np.histogram(ntwid, bins=bins, weights=weights)
+    pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
+
+    neglogpdist = -np.log(pdist)
+    #neglogpdist -= neglogpdist.min()
+
+    neglogpdist_N = -np.log(pdist_N)
+    #neglogpdist_N -= neglogpdist_N.min()
+
+
+    return (neglogpdist, neglogpdist_N)
+
+
 
 temp = 300
 k = 8.3144598e-3
@@ -31,30 +53,26 @@ mpl.rcParams.update({'xtick.labelsize': 40})
 mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize': 50})
 
+all_data_ds = np.load('all_data.dat.npz')
+all_logweights = all_data_ds['logweights']
+all_data = all_data_ds['data']
+all_data_N = all_data_ds['data_N']
+
+max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
+
+bins = np.arange(0, max_val+1, 1)
+
+
+all_neglogpdist, all_neglogpdist_N = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins)
 
 dat = np.load('boot_fn_payload.dat.npy')
 
 n_iter = len(dat)
-
-max_val = 0
-for (this_logweights, boot_data, boot_data_N) in dat:
-    if boot_data.max() > max_val:
-        max_val = np.ceil(boot_data.max())
-
-bins = np.arange(0, max_val+1, 1)
 neglog_pdist = np.zeros((n_iter, bins.size-1))
 neglog_pdist_N = np.zeros((n_iter, bins.size-1))
 
 for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
-    weights = np.exp(this_logweights)
-    pdist, bb = np.histogram(boot_data, bins=bins, weights=weights)
-    pdist_N, bb = np.histogram(boot_data_N, bins=bins, weights=weights)
-
-    this_neglogpdist = -np.log(pdist)
-    this_neglogpdist_N = -np.log(pdist_N)
-
-    this_neglogpdist -= this_neglogpdist.min()
-    this_neglogpdist_N -= this_neglogpdist_N.min()
+    this_neglogpdist, this_neglogpdist_N = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins)
 
     neglog_pdist[i] = this_neglogpdist
     neglog_pdist_N[i] = this_neglogpdist_N
@@ -73,5 +91,5 @@ avg_dg_N = masked_dg_N.mean(axis=0)
 avg_dg_N[always_null_N] = np.inf
 err_dg_N = masked_dg_N.std(axis=0, ddof=1)
 
-dat = np.vstack((bb[:-1], avg_dg_N, err_dg_N)).T
+dat = np.vstack((bins[:-1], all_neglogpdist_N, err_dg_N)).T
 np.savetxt('PvN.dat', dat, header='bins   beta F_v(N)  err(beta F_v(N))   ')

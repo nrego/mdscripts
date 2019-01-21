@@ -26,7 +26,7 @@ N = 36
 pos_idx = np.arange(N)
 
 
-k = 35
+k = 1
 # Set up bins for density of states histogram
 
 
@@ -226,10 +226,14 @@ occupied_idx = states > 0
 
 ## Print out indices for each point at each rms
 dirname = 'k_{:02d}'.format(k)
-os.makedirs(dirname)
 
-fout = open('{}/pt_idx_data.pkl'.format(dirname), 'w')
-output_payload = (rms_bins, occupied_idx, positions, sampled_pt_idx)
-pickle.dump(output_payload, fout)
+try:
+    os.makedirs(dirname)
+except OSError:
+    print("directory {} already exists - exiting".format(dirname))
+    exit()
 
+with open('{}/pt_idx_data.pkl'.format(dirname), 'w') as fout:
+    output_payload = (rms_bins, occupied_idx, positions, sampled_pt_idx)
+    pickle.dump(output_payload, fout)
 
