@@ -27,15 +27,16 @@ def plot_errorbar(bb, dat, err):
 def extract_and_reweight_data(logweights, ntwid, data, bins):
     logweights -= logweights.max()
     weights = np.exp(logweights) 
+    weights /= weights.sum()
 
     pdist, bb = np.histogram(ntwid, bins=bins, weights=weights)
     pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
 
     neglogpdist = -np.log(pdist)
-    neglogpdist -= neglogpdist.min()
+    #neglogpdist -= neglogpdist.min()
 
     neglogpdist_N = -np.log(pdist_N)
-    neglogpdist_N -= neglogpdist_N.min()
+    #neglogpdist_N -= neglogpdist_N.min()
 
 
     return (neglogpdist, neglogpdist_N)
