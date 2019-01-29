@@ -23,8 +23,9 @@ def plot_errorbar(bb, dat, err):
     plt.plot(bb[:-1], dat)
     plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
 
+
 # Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
-def extract_and_reweight_data(logweights, ntwid, data, bins):
+def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
     logweights -= logweights.max()
     weights = np.exp(logweights) 
     weights /= weights.sum()
@@ -38,11 +39,39 @@ def extract_and_reweight_data(logweights, ntwid, data, bins):
     neglogpdist_N = -np.log(pdist_N)
     #neglogpdist_N -= neglogpdist_N.min()
 
+    avg_ntwid = np.zeros_like(beta_phi_vals)
+    var_ntwid = np.zeros_like(avg_ntwid)
 
-    return (neglogpdist, neglogpdist_N)
+    avg_data = np.zeros_like(avg_ntwid)
+    var_data = np.zeros_like(avg_ntwid)
+
+    ntwid_sq = ntwid**2
+    data_sq = data**2
+
+    for i, beta_phi_val in enumerate(beta_phi_vals):
+        bias_logweights = logweights - beta_phi_val*ntwid
+        bias_logweights -= bias_logweights.max()
+
+        bias_weights = np.exp(bias_logweights)
+        bias_weights /= bias_weights.sum()
+
+        this_avg_ntwid = np.dot(bias_weights, ntwid)
+        this_avg_ntwid_sq = np.dot(bias_weights, ntwid_sq)
+        this_var_ntwid = this_avg_ntwid_sq - this_avg_ntwid**2
+
+        this_avg_data = np.dot(bias_weights, data)
+        this_avg_data_sq = np.dot(bias_weights, data_sq)
+        this_var_data = this_avg_data_sq - this_avg_data**2
+
+        avg_ntwid[i] = this_avg_ntwid
+        var_ntwid[i] = this_var_ntwid
+        avg_data[i] = this_avg_data
+        var_data[i] = this_var_data
+
+    return (neglogpdist, neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_data, var_data)
 
 
-
+beta_phi_vals = np.arange(0,2.04,0.04)
 temp = 300
 k = 8.3144598e-3
 beta = 1./(k*temp)
@@ -63,7 +92,9 @@ max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 bins = np.arange(0, max_val+1, 1)
 
 
-all_neglogpdist, all_neglogpdist_N = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins)
+all_neglogpdist, all_neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_N, var_N = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, beta_phi_vals)
+dat = np.vstack((beta_phi_vals, avg_ntwid, var_ntwid, avg_N, var_N)).T
+np.savetxt('NvPhi.dat', dat, header='beta_phi  <Ntwid>   <d Ntwid^2>   <N>  <d N^2>')
 
 dat = np.load('boot_fn_payload.dat.npy')
 
@@ -72,7 +103,7 @@ neglog_pdist = np.zeros((n_iter, bins.size-1))
 neglog_pdist_N = np.zeros((n_iter, bins.size-1))
 
 for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
-    this_neglogpdist, this_neglogpdist_N = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins)
+    this_neglogpdist, this_neglogpdist_N, blah, blah, blah, blah, blah = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins, [0])
 
     neglog_pdist[i] = this_neglogpdist
     neglog_pdist_N[i] = this_neglogpdist_N
