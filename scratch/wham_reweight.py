@@ -71,7 +71,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
     return (neglogpdist, neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_data, var_data)
 
 
-beta_phi_vals = np.arange(0,2.04,0.04)
+beta_phi_vals = np.arange(0,4.04,0.04)
 temp = 300
 k = 8.3144598e-3
 beta = 1./(k*temp)
@@ -102,11 +102,17 @@ n_iter = len(dat)
 neglog_pdist = np.zeros((n_iter, bins.size-1))
 neglog_pdist_N = np.zeros((n_iter, bins.size-1))
 
+boot_var_ntwid = np.zeros((n_iter, beta_phi_vals.size))
+
 for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
-    this_neglogpdist, this_neglogpdist_N, blah, blah, blah, blah, blah = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins, [0])
+    this_neglogpdist, this_neglogpdist_N, bphi, this_avg_ntwid, this_var_ntwid, blah, blah = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins, beta_phi_vals)
 
     neglog_pdist[i] = this_neglogpdist
     neglog_pdist_N[i] = this_neglogpdist_N
+
+    boot_var_ntwid[i] = this_var_ntwid
+
+np.savetxt('boot_var.dat', boot_var_ntwid)
 
 masked_dg = np.ma.masked_invalid(neglog_pdist)
 masked_dg_N = np.ma.masked_invalid(neglog_pdist_N)
