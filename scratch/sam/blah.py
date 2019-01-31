@@ -4,63 +4,27 @@ import numpy as np
 import MDAnalysis
 
 
-ref_univ = MDAnalysis.Universe('equil.gro')
-ref_univ.add_TopologyAttr('tempfactor')
-ag = ref_univ.select_atoms('name S1')
+gauss = lambda x, mean, var: (x-mean)**2 / (2*var)
+entropy = lambda p1, p2, bc: np.trapz(p1*np.log(p1/p2), bc)
 
+n_v_phi = np.loadtxt('NvPhi.dat')
+loghist = np.loadtxt('PvN.dat')
 
-z_space = 5.0 # 5 A
-y_space = np.sqrt(3.0)/2.0 * z_space
-curr_y = -y_space
-curr_z = 0
+expt_dist = gauss(loghist[:,0], n_v_phi[0,3], n_v_phi[0,4])
 
-nz = 12
-ny = nz#+2
-zlen = nz * z_space
-ylen = ny * y_space
-npts = nz * ny
-natoms = 13 * npts
+#plt.plot(loghist[:,0], loghist[:,1]-loghist[:,1].min())
+#plt.plot(loghist[:,0], expt_dist, 'k--')
+#plt.show()
 
-ag = ag[:npts]
+act_dist = loghist[:,1] - loghist[:,1].min()
+diff = act_dist[0] - expt_dist[0]
 
-gridpts = np.zeros((npts, 3), dtype=float)
+np.savetxt('act_diff.dat', np.array([diff]))
+'''
+bc = loghist[:,0]
+hist_expt = np.exp(-expt_dist)
+hist_expt /= np.trapz(hist_expt, bc)
 
-row_num = -1
-indices = []
-not_seen = np.ones(npts, dtype=bool)
-for i in range(npts):
-
-    # Go to new row 
-    if i % nz == 0:
-        row_num += 1
-        curr_y += y_space
-        if (i/nz) % 2 == 0:
-            curr_z = 0.0
-        else:
-            curr_z = - z_space/2.0
-    else:
-        curr_z += z_space
-
-    # check if we're a nm away from edges
-    cent = row_num > 2 and row_num < ny-3 and i % nz > 2 and i % nz < nz - 3
-
-    gridpts[i] = 0, curr_y, curr_z
-
-    this_pt = gridpts[i]
-    min_idx = i
-
-    min_atm = ag[not_seen][min_idx]
-    min_res = ref_univ.residues[min_atm.resid-1]
-
-    shift_vec = this_pt - min_atm.position
-
-    for atm in min_res.atoms:
-        atm.position += shift_vec
-        indices.append(atm.index)
-        if cent:
-            atm.tempfactor = 0
-        else:
-            atm.tempfactor = 1
-
-ag = ref_univ.atoms[indices]
-ag.atoms.write('small.pdb')
+hist_act = np.exp(-act_dist)
+hist_act /= np.trapz(hist_act, bc)
+'''

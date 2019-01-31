@@ -17,7 +17,8 @@ max_val = 1.75
 rms_bins = np.arange(0, max_val+0.1, 0.05, dtype=np.float32)
 
 
-fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + glob.glob('k_36/PvN.dat')
+fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + ['k_36/PvN.dat', 'k_00/PvN.dat']
+#fnames = glob.glob('l_*/d_*/trial_0/PvN.dat')
 
 k_bins = np.sort(np.unique([int(fname.split('/')[0].split('_')[-1]) for fname in fnames]))
 k_bins = np.append(k_bins, k_bins.max()+1)
@@ -35,9 +36,10 @@ for fname in fnames:
     
     if this_k == 36:
         this_d = 1.14
+    elif this_k == 0:
+        this_d = 0
     else:
         this_d = float(fname.split('/')[1].split('_')[-1]) / 100
-
 
 
     idx_k = np.digitize(this_k, k_bins) - 1
