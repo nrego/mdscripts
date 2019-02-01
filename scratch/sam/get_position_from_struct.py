@@ -24,13 +24,10 @@ def find_idx_from_struct(struct):
     return indices
 
 
-with open('k_02/pt_idx_data.pkl', 'r') as fin:
-    rms_bins, occupied_idx, positions, sampled_pt_idx = pickle.load(fin)
-
-
 fnames = glob.glob('k_*/d_*/trial_0/struct.gro')
 
 for fname in fnames:
+    print("fname: {}".format(fname))
     subdir = os.path.dirname(fname)
 
     indices = find_idx_from_struct(fname)
