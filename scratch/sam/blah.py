@@ -3,28 +3,42 @@ from __future__ import division
 import numpy as np
 import MDAnalysis
 
+from mdtools import MDSystem
 
-gauss = lambda x, mean, var: (x-mean)**2 / (2*var)
-entropy = lambda p1, p2, bc: np.trapz(p1*np.log(p1/p2), bc)
+import glob, os
+from constants import k
 
-n_v_phi = np.loadtxt('NvPhi.dat')
-loghist = np.loadtxt('PvN.dat')
+beta = 1/(300*k)
+thresh = 0.5
 
-expt_dist = gauss(loghist[:,0], n_v_phi[0,3], n_v_phi[0,4])
+fnames = sorted(glob.glob('../phi_*/rho_data_dump_rad_6.0.dat.npz'))
 
-#plt.plot(loghist[:,0], loghist[:,1]-loghist[:,1].min())
-#plt.plot(loghist[:,0], expt_dist, 'k--')
-#plt.show()
+phi_vals = [ fname.split('/')[1].split('_')[-1] for fname in fnames ]
 
-act_dist = loghist[:,1] - loghist[:,1].min()
-diff = act_dist[0] - expt_dist[0]
+sys = MDSystem('../phi_000/confout.gro', '../phi_000/confout.gro', sel_spec='resid 4435-4470 and (name S*)')
+prot = sys.prot
+hydropathy_mask = (prot.resnames == 'CH3')
+k = hydropathy_mask.sum()
+print('k={} ({:0.2f})'.format(k, k/36))
 
-np.savetxt('act_diff.dat', np.array([diff]))
-'''
-bc = loghist[:,0]
-hist_expt = np.exp(-expt_dist)
-hist_expt /= np.trapz(hist_expt, bc)
+n_0 = np.load('../phi_000/rho_data_dump_rad_6.0.dat.npz')['rho_water'].mean(axis=0)
 
-hist_act = np.exp(-act_dist)
-hist_act /= np.trapz(hist_act, bc)
-'''
+
+for fname, phi_val in zip(fnames, phi_vals):
+
+    this_phi = float(phi_val)/10.0 #* beta
+    print('phi: {:0.2f}'.format(this_phi))
+
+    n_phi = np.load(fname)['rho_water'].mean(axis=0)
+
+    rho_phi = n_phi/n_0
+
+    dewet_mask = (rho_phi < thresh)
+    n_dewet = dewet_mask.sum()
+    dewet_phob = (dewet_mask & hydropathy_mask).sum()
+    dewet_phil = (dewet_mask & ~hydropathy_mask).sum()
+
+    print('  n_dewet: {}  frac_phob: {:0.2f}'.format(n_dewet, dewet_phob/n_dewet))
+
+    prot.tempfactors = rho_phi
+    prot.write('phi_{}_struct.pdb'.format(phi_val))

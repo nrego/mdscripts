@@ -15,7 +15,10 @@ mpl.rcParams.update({'axes.titlesize': 30})
 
 max_val = 1.75
 rms_bins = np.arange(0, max_val+0.1, 0.05, dtype=np.float32)
+homedir = os.environ['HOME']
 
+# beta mu_ex=-log(P_v(0)) in bulk
+ref_mu = np.loadtxt('{}/simulations/pattern_sample/bulk_00/PvN.dat'.format(homedir))[0,1]
 
 fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + ['k_36/PvN.dat', 'k_00/PvN.dat']
 #fnames = glob.glob('l_*/d_*/trial_0/PvN.dat')
