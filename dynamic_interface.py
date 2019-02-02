@@ -119,6 +119,8 @@ Command-line options
 
         self.mol_sel_spec = None
 
+        self.extra_water_sel = None
+
     @property
     def n_frames(self):
         return self.last_frame - self.start_frame
@@ -165,6 +167,8 @@ Command-line options
                             help='MDAnalysis-style selection spec for neighbor group (such as binding partner)')
         sgroup.add_argument('-rcut', '--rcutoff', type=float, default=6.0,
                             help='Radius of individual spherical subvolumes, in A (default: 6.0)')
+        sgroup.add_argument('--extra-water-sel', default=None, type=str,
+                            help='Extra selection string for filtering out waters further (default: None)')
         sgroup.add_argument('-b', '--start', type=int, default=0,
                             help='First timepoint (in ps)')
         sgroup.add_argument('-e', '--end', type=int, 
@@ -209,6 +213,8 @@ Command-line options
         self.mol_sel_spec = args.mol_sel_spec
         self.neighbor_sel_spec = args.neighbor_sel_spec
 
+        self.extra_water_sel = args.extra_water_sel
+
     #@profile
     def calc_rho(self):
 
@@ -236,6 +242,9 @@ Command-line options
                 self.univ.trajectory[frame_idx]
                 solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
                 water_atoms = self.univ.select_atoms("name OW and around {} ({})".format(water_dist_cutoff, self.mol_sel_spec))
+
+                if self.extra_water_sel is not None:
+                    water_atoms = water_atoms.select_atoms(self.extra_water_sel)
                 solute_pos = solute_atoms.positions
                 water_pos = water_atoms.positions
                 if self.neighbor_sel_spec is not None:
