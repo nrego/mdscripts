@@ -18,6 +18,17 @@ mpl.rcParams.update({'xtick.labelsize': 10})
 mpl.rcParams.update({'ytick.labelsize': 10})
 mpl.rcParams.update({'axes.titlesize': 30})
 
+class MidpointNormalize(mpl.colors.Normalize):
+    def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+        self.midpoint = midpoint
+        mpl.colors.Normalize.__init__(self, vmin, vmax, clip)
+
+    def __call__(self, value, clip=None):
+        # I'm ignoring masked values and all kinds of edge cases to make a
+        # simple example...
+        x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+
+        return np.ma.masked_array(np.interp(value, x, y))
 
 def gen_graph(positions, indices):
 
@@ -51,10 +62,9 @@ max_val = 1.75
 rms_bins = np.arange(0, max_val+0.1, 0.05, dtype=np.float32)
 homedir = os.environ['HOME']
 
-<<<<<<< HEAD
+
 # beta mu_ex=-log(P_v(0)) in bulk
 ref_mu = np.loadtxt('{}/simulations/pattern_sample/bulk_00/PvN.dat'.format(homedir))[0,1]
-=======
 positions = np.loadtxt('positions.dat')
 fig, ax = plt.subplots(figsize=(5.5,6))
 ax.set_xticks([])
@@ -66,10 +76,10 @@ for idx in range(36):
     ax.annotate(idx, xy=positions[idx]-0.025)
 fig.savefig('positions_labeled.pdf')
 plt.close('all')
->>>>>>> a27dd0fbb20b210dd83b88349c225b79f4dbc6d9
 
-fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + ['k_36/PvN.dat', 'k_00/PvN.dat']
-#fnames = glob.glob('l_*/d_*/trial_0/PvN.dat')
+
+#fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + ['k_36/PvN.dat', 'k_00/PvN.dat']
+fnames = glob.glob('l_*/d_*/trial_0/PvN.dat')
 
 k_bins = np.sort(np.unique([int(fname.split('/')[0].split('_')[-1]) for fname in fnames]))
 k_bins = np.append(k_bins, k_bins.max()+1)
@@ -79,6 +89,10 @@ energies = np.zeros((rms_bins.size-1, k_bins.size-1))
 energies[:] = np.nan
 errors = np.zeros((rms_bins.size-1, k_bins.size-1))
 errors[:] = np.nan
+
+dg_bind = np.zeros_like(energies)
+#dg_bind[:] = np.nan
+
 range_k = np.zeros(k_bins.size-1)
 
 n_clust = np.zeros((rms_bins.size-1, k_bins.size-1, 2))
@@ -108,6 +122,9 @@ for fname in fnames:
     energies[idx_d, idx_k] = this_mu
     errors[idx_d, idx_k] = this_err
 
+    dg_bind[idx_d, idx_k] = this_mu - ref_mu
+
+    '''
     # Find the graph of methyl and oh groups
     indices_ch3 = np.loadtxt('{}/this_pt.dat'.format(subdir), dtype=int)
     indices_oh = np.setdiff1d(np.arange(36), indices_ch3)
@@ -140,6 +157,7 @@ for fname in fnames:
         nx.draw(graph_oh, with_labels=True, ax=ax, pos=pos_oh, node_color='blue', markersize=18)
         fig.savefig('{}/graph_oh.pdf'.format(subdir))
         plt.close('all')
+    '''
 
 for idx_k in range(k_bins.size-1):
     range_k[idx_k] = np.nanmax(energies[:,idx_k]) - np.nanmin(energies[:,idx_k])
@@ -160,8 +178,8 @@ norm = mpl.colors.Normalize(vmin=min_energy, vmax=max_energy)
 extent = (rms_bins[0], rms_bins[-1], k_bins[0], k_bins[-1])
 im = ax.imshow(energies.T, extent=extent, origin='lower', aspect='auto', norm=norm, cmap=cm.nipy_spectral)
 cb = plt.colorbar(im)
-ax.set_xlabel(r'$d_\mathrm{CH3}$ (RMS)')
-ax.set_ylabel(r'$k$')
+#ax.set_xlabel(r'$d_\mathrm{CH3}$ (RMS)')
+#ax.set_ylabel(r'$k$')
 
 fig.tight_layout()
 fig.savefig('rms_k_2d.pdf')
@@ -181,6 +199,28 @@ fig.savefig('err.pdf')
 
 np.savez_compressed('analysis_data.dat', energies=energies, n_clust=n_clust, rms_bins=rms_bins, k_bins=k_bins)
 
+## Plot dg_bind ##
+
+
+fig, ax = plt.subplots(figsize=(6,5))
+min_dg = np.nanmin(dg_bind)
+max_dg = np.nanmax(dg_bind)
+dg_lim = np.abs(min_dg)
+assert np.abs(min_dg) > np.abs(max_dg)
+#norm = mpl.colors.Normalize(vmin=-dg_lim, vmax=dg_lim)
+norm = MidpointNormalize(vmin=min_dg, vmax=max_dg, midpoint=0)
+
+extent = (rms_bins[0], rms_bins[-1], k_bins[0], k_bins[-1])
+im = ax.imshow(dg_bind.T, extent=extent, origin='lower', aspect='auto', norm=norm, cmap=cm.seismic_r)
+cb = plt.colorbar(im)
+#ax.set_xlabel(r'$d_\mathrm{CH3}$ (RMS)')
+#ax.set_ylabel(r'$k$')
+#ax.set_clim(min_dg, max_dg)
+
+fig.tight_layout()
+fig.savefig('dg_bind_k_2d.pdf')
+
+'''
 #########################
 # Number of clusters
 #########################
@@ -220,3 +260,4 @@ ax.set_ylabel(r'$k$')
 
 fig.tight_layout()
 fig.savefig('n_oh_clust.pdf')
+'''

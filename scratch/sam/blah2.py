@@ -5,65 +5,47 @@ import MDAnalysis
 
 import argparse
 from IPython import embed
-import matplotlib as mpl
-from matplotlib import cm
 import os, glob
 
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+import numpy as np
 
-max_val = 1.75
-rms_bins = np.arange(0, max_val+0.1, 0.05, dtype=np.float32)
 
-mpl.rcParams.update({'axes.labelsize': 20})
-mpl.rcParams.update({'xtick.labelsize': 10})
-mpl.rcParams.update({'ytick.labelsize': 10})
-mpl.rcParams.update({'axes.titlesize': 30})
+ds = np.load('analysis_data.dat.npz')
 
-fnames = glob.glob('k_*/d_*/trial_0/act_diff.dat')
-fnames.append('k_00/act_diff.dat')
-fnames.append('k_36/act_diff.dat')
+energies = ds['energies']
+rms_bins = ds['rms_bins']
+k_bins = ds['k_bins']
 
-this_ks = np.arange(36)
-k_bins = np.sort(np.unique([int(fname.split('/')[0].split('_')[-1]) for fname in fnames]))
-k_bins = np.append(k_bins, k_bins.max()+1)
-k_bins = k_bins.astype(np.float32)
+fig = plt.figure()
+ax = fig.gca(projection='3d')
 
-energies = np.zeros((rms_bins.size-1, k_bins.size-1))
-energies[:] = np.nan
+X, Y = np.meshgrid(rms_bins[:-1], k_bins[:-1])
 
-for fname in fnames:
-    this_k = int(fname.split('/')[0].split('_')[-1])
-    if this_k == 0:
-        this_d = np.nan
-    elif this_k == 36:
-        this_d = 1.14
-    else:
-        this_d = float(fname.split('/')[1].split('_')[-1]) / 100
+min_energy = np.nanmin(energies)
+max_energy = np.nanmax(energies)
+norm = mpl.colors.Normalize(vmin=min_energy, vmax=max_energy)
+#surf = ax.plot_surface(X, Y, energies.T, cmap=cm.nipy_spectral, norm=norm)
+bottom = np.zeros_like(energies)
+dy = 1
+dx = 0.05
+dz = energies.T.ravel()
+mask = np.ma.masked_invalid(dz).mask
+vals = np.interp(dz, [min_energy, max_energy], [0, 1])
+colors = cm.nipy_spectral(vals)
+dz -= min_energy
+dz[mask] = 0
+erange = max_energy - min_energy
+colors[mask] = np.array([1.,1.,1.,0])
+ax.bar3d(X.ravel(), Y.ravel(), np.zeros_like(dz), dx, dy, dz, shade=True, color=colors)
 
-    dat = float(np.loadtxt(fname))
+ax.set_zlim(0, erange)
+zticks = ax.get_zticks()
+#ax.set_zticks(zticks)
+#ax.set_zticklabels(zticks+min_energy)
 
-    print("k: {}  d: {}   dg: {}".format(this_k, this_d, dat))
-
-    idx_k = np.digitize(this_k, k_bins) - 1
-    idx_d = np.digitize(this_d, rms_bins) - 1
-
-    try:
-        energies[idx_d, idx_k] = dat
-    except:
-        pass
-
-fig, ax = plt.subplots(figsize=(6,5))
-
-lim_energy = np.nanmax(np.abs(energies))
-
-norm = mpl.colors.Normalize(vmin=-lim_energy, vmax=lim_energy)
-
-extent = (rms_bins[0], rms_bins[-1], k_bins[0], k_bins[-1])
-im = ax.imshow(energies.T, extent=extent, origin='lower', aspect='auto', norm=norm, cmap=cm.seismic_r)
-cb = plt.colorbar(im)
-ax.set_xlabel(r'$d$ (RMS)')
-ax.set_ylabel(r'$k$')
-#ax.set_yticks(np.arange(0,37,4))
-
-fig.tight_layout()
-fig.savefig('/Users/nickrego/Desktop/blah.pdf')
-
+#ax.set_zlim(min_energy, max_energy)
