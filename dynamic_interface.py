@@ -45,6 +45,8 @@ def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff, neighbor_pos):
 
     solute_occ = np.zeros((solute_pos.shape[0]), dtype=int)
     solute_tree = cKDTree(solute_pos)
+    if water_pos.size == 0:
+        water_pos = np.array([[np.inf, np.inf, np.inf]])
     water_tree = cKDTree(water_pos)
 
     water_neighbors = solute_tree.query_ball_tree(water_tree, r=r_cutoff)
@@ -54,7 +56,7 @@ def _calc_rho(frame_idx, solute_pos, water_pos, r_cutoff, neighbor_pos):
     water_occ = np.array([len(neighbors) for neighbors in water_neighbors], dtype=int)
     solute_occ = np.array([len(neighbors) for neighbors in solute_neighbors], dtype=int)
 
-    water_unique_neighbors = itertools.chain(*solute_neighbors)
+    water_unique_neighbors = itertools.chain(*water_neighbors)
     water_unique_neighbors = np.unique( np.fromiter(water_unique_neighbors, dtype=int) )
 
     # Total number of waters in entire probe volume
@@ -271,7 +273,7 @@ Command-line options
             self.n_waters[frame_idx-self.start_frame] = total_n
             del water_occ_slice, solute_occ_slice, min_dist
 
-
+        embed()
     def _get_avg_rho(self):
         if self.rho is None:
             log.warning('Rho has not been calculated yet - must run calc_rho')
