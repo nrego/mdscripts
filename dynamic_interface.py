@@ -273,7 +273,7 @@ Command-line options
             self.n_waters[frame_idx-self.start_frame] = total_n
             del water_occ_slice, solute_occ_slice, min_dist
 
-        embed()
+        #embed()
     def _get_avg_rho(self):
         if self.rho is None:
             log.warning('Rho has not been calculated yet - must run calc_rho')
