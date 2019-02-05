@@ -151,7 +151,9 @@ for fname, phi_val in zip(fnames, phi_vals):
     print('  n_dewet: {}  frac_phob: {:0.2f}'.format(n_dewet, dewet_phob/n_dewet))
 
     prot.tempfactors = rho_phi
-    prot.write('phi_{}_struct.pdb'.format(phi_val))
+    prot.write('beta_phi_{:03d}_struct.pdb'.format(this_beta_phi))
+
+    #np.savetxt('dewet_mask.dat', dewet_mask, fmt='%1d')
 
     pred_phob = (pred_mask & hydropathy_mask).sum()/n_surf
     pred_phil = (pred_mask & ~hydropathy_mask).sum()/n_surf
