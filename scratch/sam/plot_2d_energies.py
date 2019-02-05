@@ -12,6 +12,8 @@ import networkx as nx
 
 from scipy.spatial import cKDTree
 
+# 'reg' or 'inv'
+mode = 'reg'
 ## From pattern_sample directory, extract free energies for each k, d value
 mpl.rcParams.update({'axes.labelsize': 20})
 mpl.rcParams.update({'xtick.labelsize': 10})
@@ -59,7 +61,7 @@ def gen_graph(positions, indices):
     return graph, pos_dict
 
 max_val = 1.75
-rms_bins = np.arange(0, max_val+0.1, 0.05, dtype=np.float32)
+rms_bins = np.arange(0, max_val+0.1, 0.05)
 homedir = os.environ['HOME']
 
 
@@ -77,13 +79,12 @@ for idx in range(36):
 fig.savefig('positions_labeled.pdf')
 plt.close('all')
 
+if mode == 'reg':
+    fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + ['k_36/PvN.dat', 'k_00/PvN.dat']
+else:
+    fnames = glob.glob('l_*/d_*/trial_0/PvN.dat')
 
-#fnames = glob.glob('k_*/d_*/trial_0/PvN.dat') + ['k_36/PvN.dat', 'k_00/PvN.dat']
-fnames = glob.glob('l_*/d_*/trial_0/PvN.dat')
-
-k_bins = np.sort(np.unique([int(fname.split('/')[0].split('_')[-1]) for fname in fnames]))
-k_bins = np.append(k_bins, k_bins.max()+1)
-k_bins = k_bins.astype(np.float32)
+k_bins = np.arange(0,38,1)
 
 energies = np.zeros((rms_bins.size-1, k_bins.size-1))
 energies[:] = np.nan
@@ -102,7 +103,7 @@ for fname in fnames:
     print("fname: {}".format(fname))
 
     subdir = os.path.dirname(fname)
-    this_k = float(fname.split('/')[0].split('_')[-1])
+    this_k = int(fname.split('/')[0].split('_')[-1])
     
     if this_k == 36:
         this_d = 1.14
@@ -111,9 +112,8 @@ for fname in fnames:
     else:
         this_d = float(fname.split('/')[1].split('_')[-1]) / 100
 
-
     idx_k = np.digitize(this_k, k_bins) - 1
-    idx_d = np.digitize(this_d+0.01, rms_bins) - 1
+    idx_d = np.digitize(this_d+0.001, rms_bins) - 1
 
     this_fvn = np.loadtxt(fname)
 
@@ -124,11 +124,12 @@ for fname in fnames:
 
     dg_bind[idx_d, idx_k] = this_mu - ref_mu
 
-    '''
+    
     # Find the graph of methyl and oh groups
-    indices_ch3 = np.loadtxt('{}/this_pt.dat'.format(subdir), dtype=int)
+    indices_ch3 = np.loadtxt('{}/this_pt.dat'.format(subdir), dtype=int, ndmin=1)
     indices_oh = np.setdiff1d(np.arange(36), indices_ch3)
 
+    '''
     graph_ch3, pos_ch3 = gen_graph(positions, indices_ch3)
     graph_oh, pos_oh = gen_graph(positions, indices_oh)
 
