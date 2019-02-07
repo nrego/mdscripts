@@ -13,7 +13,7 @@ import networkx as nx
 from scipy.spatial import cKDTree
 
 # 'reg' or 'inv'
-mode = 'reg'
+mode = 'inv'
 ## From pattern_sample directory, extract free energies for each k, d value
 mpl.rcParams.update({'axes.labelsize': 20})
 mpl.rcParams.update({'xtick.labelsize': 10})
@@ -99,6 +99,8 @@ range_k = np.zeros(k_bins.size-1)
 n_clust = np.zeros((rms_bins.size-1, k_bins.size-1, 2))
 n_clust[:] = np.nan
 
+methyl_masks = np.zeros((rms_bins.size-1, k_bins.size-1, 36), dtype=bool)
+
 for fname in fnames:
     print("fname: {}".format(fname))
 
@@ -128,6 +130,14 @@ for fname in fnames:
     # Find the graph of methyl and oh groups
     indices_ch3 = np.loadtxt('{}/this_pt.dat'.format(subdir), dtype=int, ndmin=1)
     indices_oh = np.setdiff1d(np.arange(36), indices_ch3)
+    methyl_mask = np.zeros(36, dtype=bool)
+    methyl_mask[indices_ch3] = True
+    if mode == 'reg':
+        assert methyl_mask.sum() == this_k
+    else:
+        assert methyl_mask.sum() == 36 - this_k
+
+    methyl_masks[idx_d, idx_k] = methyl_mask
 
     '''
     graph_ch3, pos_ch3 = gen_graph(positions, indices_ch3)
@@ -198,7 +208,7 @@ cb = plt.colorbar(im)
 fig.tight_layout()
 fig.savefig('err.pdf')
 
-np.savez_compressed('analysis_data.dat', energies=energies, n_clust=n_clust, rms_bins=rms_bins, k_bins=k_bins)
+np.savez_compressed('analysis_data.dat', energies=energies, methyl_mask=methyl_masks, positions=positions, rms_bins=rms_bins, k_bins=k_bins)
 
 ## Plot dg_bind ##
 

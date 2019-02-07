@@ -41,7 +41,7 @@ dz -= min_energy
 dz[mask] = 0
 erange = max_energy - min_energy
 colors[mask] = np.array([1.,1.,1.,0])
-ax.bar3d(X.ravel(), Y.ravel(), np.zeros_like(dz), dx, dy, dz, shade=True, color=colors)
+ax.bar3d(X.ravel(), Y.ravel(), np.zeros_like(dz), dx, dy, dz, color=colors)
 
 ax.set_zlim(0, erange)
 zticks = ax.get_zticks()
