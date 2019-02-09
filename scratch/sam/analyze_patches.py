@@ -15,7 +15,7 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
 
 # Template for analyzing mu_ex for all patch patterns
-homedir = os.environ('HOME')
+homedir = os.environ['HOME']
 ds_k = np.load('pattern_sample/analysis_data.dat.npz')
 ds_l = np.load('inv_pattern_sample/analysis_data.dat.npz')
 
@@ -38,6 +38,7 @@ mask_k = ~np.ma.masked_invalid(dat_k).mask
 dat_k = dat_k[mask_k]
 k_vals_k = k_vals_unpack[mask_k]
 rms_vals_k = rms_vals_unpack[mask_k]
+methyl_pos_k = ds_k['methyl_mask'].reshape(xx.size, 36)[mask_k,:]
 
 dat_l = ds_l['energies'].ravel()
 mask_l = ~np.ma.masked_invalid(dat_l).mask
