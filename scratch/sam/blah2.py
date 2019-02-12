@@ -24,7 +24,7 @@ k_bins = ds['k_bins']
 fig = plt.figure()
 ax = fig.gca(projection='3d')
 
-X, Y = np.meshgrid(rms_bins[:-1], k_bins[:-1])
+X, Y = np.meshgrid(rms_bins[:-1], 36-k_bins[:-1])
 
 min_energy = np.nanmin(energies)
 max_energy = np.nanmax(energies)

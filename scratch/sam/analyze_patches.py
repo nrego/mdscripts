@@ -17,6 +17,36 @@ import numpy as np
 import networkx as nx
 from scipy.spatial import cKDTree
 
+from sklearn import datasets, linear_model
+
+def unpack_data(ds):
+    energies = ds['energies'].ravel()
+    size = energies.size
+    mask = ~np.ma.masked_invalid(energies).mask
+    energies = energies[mask]
+    methyl_pos = ds['methyl_mask'].reshape(size, 36)
+    methyl_pos = methyl_pos[mask]
+
+    return (energies, methyl_pos)
+
+def plot_graph(w_graph, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6,6))
+
+    m_nodes = [n for (n,d) in w_graph.nodes(data=True) if d['phob']]
+    o_nodes = [n for (n,d) in w_graph.nodes(data=True) if not d['phob']]
+    esmall = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 0 ]
+    emed = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 0.5 ]
+    elarge = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 1 ]
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    nx.draw_networkx_nodes(w_graph, pos=positions, nodelist=m_nodes, node_color='k', ax=ax)
+    nx.draw_networkx_nodes(w_graph, pos=positions, nodelist=o_nodes, node_color='b', ax=ax)
+    nx.draw_networkx_edges(w_graph, pos=positions, edgelist=esmall, edge_color='b', style='dotted', ax=ax)
+    nx.draw_networkx_edges(w_graph, pos=positions, edgelist=emed, edge_color='k', style='dashed', ax=ax)
+    nx.draw_networkx_edges(w_graph, pos=positions, edgelist=elarge, edge_color='k', style='solid', ax=ax)
 
 def plot_pattern(positions, methyl_mask, ax=None):
     if ax is None:
@@ -32,6 +62,8 @@ def plot_pattern(positions, methyl_mask, ax=None):
 
 # Pos is a collection of points, shape (n_pts, ndim)
 def get_rms(pos, prec=2):
+    if pos.size == 0:
+        return 0.0
     centroid = pos.mean(axis=0)
     diff = pos-centroid
     sq_diff = np.linalg.norm(diff, axis=1)**2
@@ -77,21 +109,20 @@ def gen_w_graph(positions, methyl_mask):
     for i,j in edges:
         if i in indices_ch3 and j in indices_ch3:
             weight = 1
-        elif i in indices_oh and j in indices_oh:
-            weight = 0
         else:
-            weight = 0.5
+            weight = 0
 
         graph.add_edge(i,j,weight=weight)
 
 
     return graph
 
-# Template for analyzing mu_ex for all patch patterns
+# Template for analyzing energies_ex for all patch patterns
 homedir = os.environ['HOME']
 ds_k = np.load('pattern_sample/analysis_data.dat.npz')
 ds_l = np.load('inv_pattern_sample/analysis_data.dat.npz')
 
+## Just some constants stored in each array (should be the same in each)
 positions = ds_k['positions']
 assert np.array_equal(positions, ds_l['positions'])
 
@@ -101,86 +132,59 @@ assert np.array_equal(rms_bins, ds_l['rms_bins'])
 k_bins = ds_k['k_bins']
 assert np.array_equal(k_bins, ds_l['k_bins'])
 
+extent = (rms_bins[0], rms_bins[-1], k_bins[0], k_bins[-1])
+
 xx, yy = np.meshgrid(k_bins[:-1], rms_bins[:-1])
 k_vals_unpack = l_vals = xx.ravel()
 rms_vals_unpack = yy.ravel()
 
-# Now unpack and combine all data...
-dat_k = ds_k['energies'].ravel()
-mask_k = ~np.ma.masked_invalid(dat_k).mask
-dat_k = dat_k[mask_k]
-k_vals_k = k_vals_unpack[mask_k]
-rms_vals_k = []
-n_clust_k = []
-edge_sum_k = []
-methyl_pos_k = ds_k['methyl_mask'].reshape(xx.size, 36)[mask_k,:]
-for pos_mask in methyl_pos_k:
-    this_pos = positions[pos_mask]
-    indices = np.arange(36)[pos_mask]
-    graph = gen_graph(positions, indices)
-    n_clust_ch3 = len(list(nx.connected_components(graph)))
-    n_clust_k.append(n_clust_ch3)
-    if pos_mask.sum() == 0:
-        this_rms_val = 0
-    else:
-        this_rms_val = get_rms(this_pos)
-    rms_vals_k.append(this_rms_val)
-    w_graph = gen_w_graph(positions, pos_mask)
-    esum = np.array([d['weight'] for (u,v,d) in w_graph.edges(data=True)]).sum()
-    edge_sum_k.append(esum)
+## Extract all values from k dataset
+energies_k, methyl_pos_k = unpack_data(ds_k)
+energies_l, methyl_pos_l = unpack_data(ds_l)
 
-rms_vals_k = np.array(rms_vals_k)
-n_clust_k = np.array(n_clust_k)
-edge_sum_k = np.array(edge_sum_k)
+rms_k = np.zeros_like(energies_k)
+for idx, methyl_mask in enumerate(methyl_pos_k):
+    ch3_pos = positions[methyl_mask]
 
-dat_l = ds_l['energies'].ravel()
-mask_l = ~np.ma.masked_invalid(dat_l).mask
-dat_l = dat_l[mask_l]
-k_vals_l = 36 - k_vals_unpack[mask_l]
-methyl_pos_l = ds_l['methyl_mask'].reshape(xx.size, 36)[mask_l,:]
-rms_vals_l = []
-n_clust_l = []
-edge_sum_l = []
-# Need to get the D_ch3 values from positions...
-for pos_mask in methyl_pos_l:
-    this_pos = positions[pos_mask]
-    if pos_mask.sum() == 0:
-        this_rms_val = 0
-    else:
-        this_rms_val = get_rms(this_pos)
-    rms_vals_l.append(this_rms_val)
-    indices = np.arange(36)[pos_mask]
-    graph = gen_graph(positions, indices)
-    n_clust_ch3 = len(list(nx.connected_components(graph)))
-    n_clust_l.append(n_clust_ch3)
-    w_graph = gen_w_graph(positions, pos_mask)
-    esum = np.array([d['weight'] for (u,v,d) in w_graph.edges(data=True)]).sum()
-    edge_sum_l.append(esum)
-edge_sum_l = np.array(edge_sum_l)
-rms_vals_l = np.array(rms_vals_l)
-n_clust_l = np.array(n_clust_l)
+    rms_k[idx] = get_rms(ch3_pos)
 
-dat_pooled = np.append(dat_k, dat_l)
-k_vals = np.append(k_vals_k, k_vals_l)
-rms_vals = np.append(rms_vals_k, rms_vals_l)
-n_clust = np.append(n_clust_k, n_clust_l)
+# Pool all data 
+energies = np.append(energies_k, energies_l)
 methyl_pos = np.vstack((methyl_pos_k, methyl_pos_l))
-edge_sum = np.append(edge_sum_k, edge_sum_l)
+
+# number of methyls
+k_vals = methyl_pos.sum(axis=1)
+
+# Now go through each configuration and generate whatever other data we might want
+rms_ch3 = np.zeros_like(energies)
+rms_oh = np.zeros_like(energies)
+sum_edges = np.zeros_like(energies)
+k_eff = np.zeros_like(energies)
+sum_nodes = np.zeros_like(energies)
+for idx, methyl_mask in enumerate(methyl_pos):
+    ch3_pos = positions[methyl_mask]
+    oh_pos = positions[~methyl_mask]
+
+    rms_ch3[idx] = get_rms(ch3_pos)
+    rms_oh[idx] = get_rms(oh_pos)
+
+    w_graph = gen_w_graph(positions, methyl_mask)
+
+    sum_edges[idx] = np.array([d['weight'] for (u,v,d) in w_graph.edges(data=True)]).sum()
+    deg = np.array(w_graph.degree(weight='weight').values())
+    k_eff[idx] = (deg == 6).sum()
+    sum_nodes[idx] = deg.sum()
 
 w_graph = gen_w_graph(positions, methyl_pos[500])
-m_nodes = [n for (n,d) in w_graph.nodes(data=True) if d['phob']]
-o_nodes = [n for (n,d) in w_graph.nodes(data=True) if not d['phob']]
-esmall = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 0 ]
-emed = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 0.5 ]
-elarge = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 1 ]
+deg = np.array(w_graph.degree(weight='weight').values())
 
-fig, ax = plt.subplots(figsize=(6,6))
+fig, ax = plt.subplots(figsize=(5.5,6))
 ax.set_xticks([])
 ax.set_yticks([])
-
-nx.draw_networkx_nodes(w_graph, pos=positions, nodelist=m_nodes, node_color='k', ax=ax)
-nx.draw_networkx_nodes(w_graph, pos=positions, nodelist=o_nodes, node_color='b', ax=ax)
-nx.draw_networkx_edges(w_graph, pos=positions, edgelist=esmall, edge_color='b', style='dotted', ax=ax)
-nx.draw_networkx_edges(w_graph, pos=positions, edgelist=emed, edge_color='k', style='dashed', ax=ax)
-nx.draw_networkx_edges(w_graph, pos=positions, edgelist=elarge, edge_color='k', style='solid', ax=ax)
-
+ax.plot(positions[:,0], positions[:,1], 'o', markeredgecolor='k', markeredgewidth=2, markerfacecolor='w', markersize=24)
+xlim = ax.get_xlim()
+ylim = ax.get_ylim()
+for idx in range(36):
+    ax.annotate(deg[idx], xy=positions[idx]-0.025)
+fig.savefig('positions_labeled.pdf')
+plt.close('all')
