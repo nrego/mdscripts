@@ -27,13 +27,44 @@ mpl.rcParams.update({'axes.titlesize': 30})
 # regress y on set of n_dim features, X.
 #   Note this can do a polynomial regression on a single feature -
 #   just make each nth degree a power of that feature
-def fit_general_linear_model(X, y):
+def fit_general_linear_model(X, y, sort_axis=0):
+    np.random.seed()
+
+    assert y.ndim == 1
+    n_dat = y.size
     # Single feature (1d linear regression)
     if X.ndim == 1:
         X = X[:,None]
-        
+    
+    # For plotting fit...
+    sort_idx = np.argsort(X[:,sort_axis])
+    xvals = X[sort_idx, :]
+
     reg = linear_model.LinearRegression()
+    
+    # Randomly split data into fifths
+    n_cohort = n_dat // 5
+    rand_idx = np.random.permutation(n_dat)
+    y_rand = y[rand_idx]
+    X_rand = X[rand_idx]
+
+    # R^2 for each round
+    perf = np.zeros(5)
+    for k in range(5):
+        slc = slice(k*n_cohort, (k+1)*n_cohort)
+        y_validate = y_rand[slc]
+        X_validate = X_rand[slc]
+
+        y_train = np.delete(y_rand, slc)
+        X_train = np.delete(X_rand, slc, axis=0)
+
+        reg.fit(X_train, y_train)
+        perf[k] = reg.score(X_validate, y_validate)
+
     reg.fit(X, y)
+    pred = reg.predict(xvals)
+
+    return(perf, xvals, pred, reg)
 
 def plot_3d(x, y, z, colors):
     fig = plt.figure()
@@ -182,7 +213,7 @@ k_vals = methyl_pos.sum(axis=1)
 rms_ch3 = np.zeros_like(energies)
 rms_oh = np.zeros_like(energies)
 sum_edges = np.zeros_like(energies)
-k_eff = np.zeros_like(energies)
+
 sum_nodes = np.zeros_like(energies)
 for idx, methyl_mask in enumerate(methyl_pos):
     ch3_pos = positions[methyl_mask]
@@ -195,9 +226,9 @@ for idx, methyl_mask in enumerate(methyl_pos):
 
     sum_edges[idx] = np.array([d['weight'] for (u,v,d) in w_graph.edges(data=True)]).sum()
     deg = np.array(dict(w_graph.degree(weight='weight')).values())
-    k_eff[idx] = (deg == 6).sum()
     sum_nodes[idx] = deg.sum()
 
+k_eff = sum_nodes / 6
 w_graph = gen_w_graph(positions, methyl_pos[500])
 deg = np.array(dict(w_graph.degree(weight='weight')).values())
 
