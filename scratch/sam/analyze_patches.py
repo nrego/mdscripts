@@ -49,7 +49,8 @@ def fit_general_linear_model(X, y, sort_axis=0):
     X_rand = X[rand_idx]
 
     # R^2 for each round
-    perf = np.zeros(5)
+    perf_r2 = np.zeros(5)
+    perf_mse = np.zeros(5)
     for k in range(5):
         slc = slice(k*n_cohort, (k+1)*n_cohort)
         y_validate = y_rand[slc]
@@ -59,12 +60,15 @@ def fit_general_linear_model(X, y, sort_axis=0):
         X_train = np.delete(X_rand, slc, axis=0)
 
         reg.fit(X_train, y_train)
-        perf[k] = reg.score(X_validate, y_validate)
+        pred = reg.predict(X_train)
+        mse = np.mean((pred - y_train)**2)
+        perf_r2[k] = reg.score(X_validate, y_validate)
+        perf_mse[k] = mse
 
     reg.fit(X, y)
     pred = reg.predict(xvals)
 
-    return(perf, xvals, pred, reg)
+    return(perf_r2, perf_mse, xvals, pred, reg)
 
 def plot_3d(x, y, z, colors):
     fig = plt.figure()
