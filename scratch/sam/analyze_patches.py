@@ -19,6 +19,29 @@ from scipy.spatial import cKDTree
 
 from sklearn import datasets, linear_model
 
+mpl.rcParams.update({'axes.labelsize': 20})
+mpl.rcParams.update({'xtick.labelsize': 20})
+mpl.rcParams.update({'ytick.labelsize': 20})
+mpl.rcParams.update({'axes.titlesize': 30})
+
+# regress y on set of n_dim features, X.
+#   Note this can do a polynomial regression on a single feature -
+#   just make each nth degree a power of that feature
+def fit_general_linear_model(X, y):
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+        
+    reg = linear_model.LinearRegression()
+    reg.fit(X, y)
+
+def plot_3d(x, y, z, colors):
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    ax.scatter(x, y, z, c=colors)
+
+    fig.show()
+
 def unpack_data(ds):
     energies = ds['energies'].ravel()
     size = energies.size
@@ -171,12 +194,12 @@ for idx, methyl_mask in enumerate(methyl_pos):
     w_graph = gen_w_graph(positions, methyl_mask)
 
     sum_edges[idx] = np.array([d['weight'] for (u,v,d) in w_graph.edges(data=True)]).sum()
-    deg = np.array(w_graph.degree(weight='weight').values())
+    deg = np.array(dict(w_graph.degree(weight='weight')).values())
     k_eff[idx] = (deg == 6).sum()
     sum_nodes[idx] = deg.sum()
 
 w_graph = gen_w_graph(positions, methyl_pos[500])
-deg = np.array(w_graph.degree(weight='weight').values())
+deg = np.array(dict(w_graph.degree(weight='weight')).values())
 
 fig, ax = plt.subplots(figsize=(5.5,6))
 ax.set_xticks([])
@@ -188,3 +211,9 @@ for idx in range(36):
     ax.annotate(deg[idx], xy=positions[idx]-0.025)
 fig.savefig('positions_labeled.pdf')
 plt.close('all')
+
+min_energy = energies.min()
+max_energy = energies.max()
+norm = mpl.colors.Normalize(min_energy, max_energy)
+cmap = cm.nipy_spectral
+colors = cmap(norm(energies))
