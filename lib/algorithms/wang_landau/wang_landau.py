@@ -14,6 +14,8 @@ import cPickle as pickle
 import os
 
 
+# Generate SAM configurations (from a list of positions and methyl positions)
+#   That span over an arbitrary order parameter
 class WangLandau:
 
     @staticmethod
@@ -52,10 +54,15 @@ class WangLandau:
     def pos_idx(self):
         return np.arange(self.N)
 
-
     def gen_states(self, k, do_brute=False):
 
-        pass
+        if do_brute:
+            self._gen_states_brute(k)
+        else:
+            self._gen_states_wl(k)
 
+    ## Private methods
+    def _gen_states_brute(k):
+        pass
 
 
