@@ -21,12 +21,12 @@ mpl.rcParams.update({'axes.titlesize': 50})
 mpl.rcParams.update({'legend.fontsize':20})
 
 # Do exhaustive brute-force search thru states
-do_brute = True
+do_brute = False
 N = 36
 pos_idx = np.arange(N)
 
 
-k = 1
+k = 5
 # Set up bins for density of states histogram
 
 
@@ -147,7 +147,7 @@ else:
     
     max_iter = 60000
     n_iter = 0
-    eps = 10**(-4)
+    eps = 10**(-8)
     wl_entropies = np.zeros_like(states)
     wl_hist = np.zeros_like(states)
 
@@ -165,7 +165,6 @@ else:
     print("M: {}".format(M_iter))
     while f > eps:
         n_iter += 1
-
 
         pt_idx_new = np.sort( trial_move2(pt_idx) )
         pt_new = positions[pt_idx_new]
@@ -207,7 +206,7 @@ else:
             center_bin_slice = slice(center_bin_lo, center_bin_hi)
 
         if is_flat(wl_hist[center_bin_slice], 0.7) or n_iter > max_iter:
-
+            embed()
             #break
             print(" n_iter: {}".format(n_iter))
             n_iter = 0

@@ -172,7 +172,6 @@ def gen_w_graph(positions, methyl_mask):
 
         graph.add_edge(i,j,weight=weight)
 
-
     return graph
 
 # Template for analyzing energies_ex for all patch patterns
