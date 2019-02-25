@@ -93,8 +93,8 @@ def plot_graph(w_graph, ax=None):
 
     m_nodes = [n for (n,d) in w_graph.nodes(data=True) if d['phob']]
     o_nodes = [n for (n,d) in w_graph.nodes(data=True) if not d['phob']]
-    esmall = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 0 ]
-    emed = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 0.5 ]
+    esmall = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == -1 ]
+    emed = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == -0.5 ]
     elarge = [(u,v) for (u,v,d) in w_graph.edges(data=True) if d['weight'] == 1 ]
 
     ax.set_xticks([])
