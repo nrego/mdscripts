@@ -75,7 +75,7 @@ def plot_3d(x, y, z, colors):
     ax = fig.gca(projection='3d')
     ax.scatter(x, y, z, c=colors)
 
-    fig.show()
+    #fig.show()
 
 def unpack_data(ds):
     energies = ds['energies'].ravel()
@@ -152,8 +152,8 @@ def gen_graph(positions, indices):
 
     return graph
 
-def gen_w_graph(positions, methyl_mask):
-    indices_all = np.arange(36)
+def gen_w_graph(positions, methyl_mask, wt_mm=1, wt_oo=0, wt_mo=0):
+    indices_all = np.arange(positions.shape[0])
     indices_ch3 = indices_all[methyl_mask]
     indices_oh = indices_all[~methyl_mask]
 
@@ -166,9 +166,11 @@ def gen_w_graph(positions, methyl_mask):
     
     for i,j in edges:
         if i in indices_ch3 and j in indices_ch3:
-            weight = 1
+            weight = wt_mm
+        elif i in indices_oh and j in indices_oh:
+            weight = wt_oo
         else:
-            weight = 0
+            weight = wt_mo
 
         graph.add_edge(i,j,weight=weight)
 

@@ -24,7 +24,7 @@ def find_idx_from_struct(struct):
     return indices
 
 
-fnames = glob.glob('k_*/d_*/trial_0/struct.gro')
+fnames = glob.glob('l_*/d_*/trial_0/struct.gro')
 
 for fname in fnames:
     print("fname: {}".format(fname))
