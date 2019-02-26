@@ -105,4 +105,8 @@ fig.subplots_adjust(hspace=0.0)
 fig.savefig('{}/both.pdf'.format(savedir), transparent=True)
 
 
-print("phi_star: {}".format(beta_phi_vals[chi_max_idx]))
+print("beta phi_star: {}".format(beta_phi_vals[chi_max_idx]))
+print("beta phi_minus: {}".format(beta_phi_minus))
+print("beta phi_plus: {}".format(beta_phi_plus))
+
+

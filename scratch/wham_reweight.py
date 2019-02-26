@@ -73,7 +73,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
 
 beta_phi_vals = np.arange(0,4.04,0.04)
 temp = 300
-k = 8.3144598e-3
+#k = 8.3144598e-3
 beta = 1./(k*temp)
 dtype = np.float64
 
