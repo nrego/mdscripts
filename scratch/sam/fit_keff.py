@@ -70,21 +70,42 @@ for i, methyl_mask in enumerate(methyl_pos):
     k_eff[i] = find_keff(methyl_mask, nn, nn_ext).sum(axis=0)
 
 
+
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_eff, energies)
 
 methyl_mask = methyl_pos[500]
 deg = find_keff(methyl_mask, nn, nn_ext)
 
+k_eff_orig = np.zeros(n_samples)
+for i, methyl_mask in enumerate(methyl_pos):
+    wt_graph = gen_w_graph(positions, methyl_mask, wt_mm=1, wt_oo=0, wt_mo=0)
+    deg = np.sum(dict(wt_graph.degree(weight='weight')).values())
+    k_eff_orig[i] = deg
 
-lam_vals = (0.1, 1, 10, 100)
+l_mm, l_oo, l_mo, l_me, l_oe = 1000, 10, 100, 0.1, 1000
+
+k_kernal = np.zeros((n_samples, 5))
+
+for i, methyl_mask in enumerate(methyl_pos):
+    k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=l_mm, lam_oo=l_oo, lam_mo=l_mo, lam_me=l_me, lam_oe=l_oe).sum(axis=0)
+
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_kernal, energies)
+
+'''
+lam_vals = (0.1, 1, 10, 100, 1000)
+val_combos = list(itertools.product(lam_vals, repeat=5))
 perf = []
-for l_mm, l_oo in itertools.product(lam_vals, repeat=2):
+i_run = 0
+for l_mm, l_oo, l_mo, l_me, l_oe in val_combos:
+    if i_run % 100 == 0:
+        print("iter: {}".format(i_run))
     k_kernal = np.zeros((n_samples, 5))
     for i, methyl_mask in enumerate(methyl_pos):
-        k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=l_mm, lam_oo=l_oo).sum(axis=0)
+        k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=l_mm, lam_oo=l_oo, lam_mo=l_mo, lam_me=l_me, lam_oe=l_oe).sum(axis=0)
 
     perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_kernal, energies)
     perf.append(perf_mse.mean())
-
+    i_run += 1
+'''
 
 

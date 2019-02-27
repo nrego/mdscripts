@@ -245,10 +245,21 @@ def find_keff(methyl_mask, nn, nn_ext):
         oe = (~i_mask & nn_ext_mask).sum()
 
         #deg += mm*wt_mm + oo*wt_oo + mo*wt_mo
+
+
         deg[i] = [mm, oo, mo, me, oe]
 
     ## Sanity - every node's total degree should be 6
+    degsum = deg.sum(axis=0)
+    assert degsum[0] % 2 == 0
+    assert degsum[1] % 2 == 0
+    assert degsum[2] % 2 == 0
+
     assert (deg.sum(axis=1) == 6).all()
+
+    deg[:,0] /= 2
+    deg[:,1] /= 2
+    deg[:,2] /= 2
 
     return deg
 
@@ -283,6 +294,11 @@ def find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=1, lam_oo=1, lam_mo=1, lam_
             oe = ( gaus(d_ext, lam_oe) ).sum()
 
         deg[i] = [mm, oo, mo, me, oe]
+
+    # Double counted #
+    deg[:,0] /= 2
+    deg[:,1] /= 2
+    deg[:,2] /= 2
 
     return deg
 
