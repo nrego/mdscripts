@@ -42,8 +42,8 @@ def fit_general_linear_model(X, y, sort_axis=0, alpha=1):
     sort_idx = np.argsort(X[:,sort_axis])
     xvals = X[sort_idx, :]
 
-    #reg = linear_model.LinearRegression()
-    reg = linear_model.Ridge(alpha=alpha)
+    reg = linear_model.LinearRegression()
+    #reg = linear_model.Ridge(alpha=alpha)
     
     # Randomly split data into fifths
     n_cohort = n_dat // 5
@@ -82,7 +82,7 @@ def fit_general_linear_model(X, y, sort_axis=0, alpha=1):
 
     return(perf_r2, perf_mse, err, xvals, fit, reg)
 
-def plot_3d(x, y, z, colors):
+def plot_3d(x, y, z, colors='k'):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.scatter(x, y, z, c=colors)

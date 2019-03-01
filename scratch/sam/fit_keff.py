@@ -84,6 +84,8 @@ for i, methyl_mask in enumerate(methyl_pos):
 
 l_mm, l_oo, l_mo, l_me, l_oe = 1000, 10, 100, 0.1, 1000
 
+#l_mm, l_oo, l_mo, l_me, l_oe = 1000, 1000, 1000, 1000, 1000
+
 k_kernal = np.zeros((n_samples, 5))
 
 for i, methyl_mask in enumerate(methyl_pos):

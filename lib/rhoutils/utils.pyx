@@ -73,9 +73,9 @@ cpdef np.ndarray[f_DTYPE_t, ndim=1] phi_1d(np.ndarray[f_DTYPE_t, ndim=1] r_array
     r_sq = (r_array**2)
 
     phic = exp(-(cutoff_sq/(2*sigma_sq)))
-    pref = (1 / ( (2*pi)**(0.5) * sigma * erf(cutoff / (2**0.5 * sigma)) - 2*cutoff*phic ))
+    pref = 1 / ( (2*pi)**(0.5) * sigma * erf(cutoff / (2**0.5 * sigma)) - 2*cutoff*phic )
 
-    phi_vec = pref * (exp_lut(-(r_sq/(2*sigma_sq))) - phic).astype(f_DTYPE)
+    phi_vec = pref * (exp(-(r_sq/(2*sigma_sq))) - phic).astype(f_DTYPE)
     phi_vec[r_sq > cutoff_sq] = 0.0
 
     return phi_vec
