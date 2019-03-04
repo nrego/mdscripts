@@ -49,7 +49,7 @@ mpl.rcParams.update({'axes.titlesize': 30})
 homedir = os.environ['HOME']
 
 ## Units in A
-pos = np.loadtxt('{}/pos.dat'.format(homedir), dtype=np.float32)
+pos = np.loadtxt('pos.dat'.format(homedir), dtype=np.float32)
 buried_mask = np.loadtxt('{}/simulations/ppi_analysis/2b97/bound/buried_mask.dat'.format(homedir), dtype=bool)
 surf_mask = ~buried_mask
 
@@ -86,7 +86,9 @@ collection.set_facecolors([0,0,0,0])
 collection.set_edgecolors([0,0,0,1])
 
 ax.pcolormesh(dx, dy, rho, cmap=cmap, norm=norm)
-#ax.add_collection(collection)
 
-#plt.scatter(pos[:,0], pos[:,1], color='k')
+contour = measure.find_contours(rho, 0.5)[0]
+contour *= res
+contour += min_pt
+plt.plot(contour[:,1], contour[:,0])
 
