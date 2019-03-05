@@ -9,7 +9,7 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib import cm
 from matplotlib.patches import Circle
-from matplotlib.collections import PatchCollection
+from matplotlib.collections import PatchCollection, LineCollection
 
 import MDAnalysis
 
@@ -23,8 +23,35 @@ from rhoutils import phi_1d
 
 from skimage import measure
 
+from scipy.interpolate import CubicSpline
+
 ## Testing ##
 gaus = lambda x_sq, sig_sq: np.exp(-x_sq/(2*sig_sq))
+
+def construct_local_curve(contour, pt_idx, window=100):
+    n_pts_tot = contour.shape[0]
+    assert type(window) is int and type(pt_idx) is int, "Pt_idx and window must both be ints"
+    assert pt_idx >= 0 and pt_idx < n_pts_tot, "Invalid pt_idx"
+    assert window < n_pts_tot / 2, "window size is larger than n_pts_tot/2"
+    
+    ## point in middle of curve ##
+    if pt_idx - window >= 0 and pt_idx + window < n_pts_tot:
+        return contour[pt_idx - window:pt_idx+window+1].copy()
+
+    if pt_idx - window < 0:
+        remainder = np.abs(pt_idx - window)
+        pts_under = contour[-remainder:].copy()
+        pts_over = contour[:pt_idx+window+1].copy()
+
+        return np.vstack((pts_under, pts_over))
+
+    if pt_idx + window >= n_pts_tot:
+        remainder = pt_idx + window + 1 - n_pts_tot
+        pts_under = contour[pt_idx-window:n_pts_tot].copy()
+        pts_over = contour[:remainder].copy()
+
+        return np.vstack((pts_under, pts_over))
+        
 
 def phi(r, sig, sig_sq, rcut, rcut_sq):
 
@@ -90,5 +117,35 @@ ax.pcolormesh(dx, dy, rho, cmap=cmap, norm=norm)
 contour = measure.find_contours(rho, 0.5)[0]
 contour *= res
 contour += min_pt
-plt.plot(contour[:,1], contour[:,0])
+contour[:,0], contour[:,1] = contour[:,1], contour[:,0].copy()
+#plt.plot(contour[:,1], contour[:,0])
+points = contour.reshape(-1,1,2)
+
+segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+cmap2 = cm.seismic
+norm = plt.Normalize(0, segments.shape[0])
+lc = LineCollection(segments, cmap='rainbow', norm=norm)
+lc.set_array(np.arange(segments.shape[0]))
+
+ax.add_collection(lc)
+
+plt.show()
+
+
+## Find curvature from finite differences
+
+dx_ds = np.gradient(contour[:,0])
+dy_ds = np.gradient(contour[:,1])
+
+d2x_ds2 = np.gradient(dx_ds)
+d2y_ds2 = np.gradient(dy_ds)
+
+curvature = (dx_ds*d2y_ds2 - dy_ds*d2x_ds2) / (dx_ds**2 + dy_ds**2)**1.5
+range_pt = np.max(np.abs(curvature))
+
+norm = plt.Normalize(-range_pt, range_pt)
+
+plt.plot(contour[:,0], contour[:,1], 'k-')
+plt.scatter(contour[:,0], contour[:,1], c=curvature, cmap='seismic', norm=norm)
 

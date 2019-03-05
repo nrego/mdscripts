@@ -67,46 +67,53 @@ def _calc_rho(frame_idx, prot_heavies, water_ow, cutoff, sigma, gridpts, npts, r
         rho_prot_slice[neighboridx] += rhovals
 
         del dist_vectors, neighborpts
-
+    
     # find all gridpoints within 12 A of protein atoms
     #   so we can set the rho to 1.0 (to take care of edge effects due to, e.g. v-l interfaces)
-    neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=water_cutoff-3)
-    neighbor_list = itertools.chain(*neighbor_list_by_point)
-    # neighbor_idx is a unique list of all grid_pt *indices* that are within r=12 from
-    #   *any* atom in prot_heavies
-    neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
+    if water_cutoff == np.inf:
+        far_pt_idx = np.array([])
+    else:
+        neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=water_cutoff-3)
+        neighbor_list = itertools.chain(*neighbor_list_by_point)
+        # neighbor_idx is a unique list of all grid_pt *indices* that are within r=12 from
+        #   *any* atom in prot_heavies
+        neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
 
-    # Find indices of all grid points that are *farther* than 12 A from protein
-    far_pt_idx = np.setdiff1d(np.arange(npts), neighbor_idx)
+        # Find indices of all grid points that are *farther* than 12 A from protein
+        far_pt_idx = np.setdiff1d(np.arange(npts), neighbor_idx)
 
-    assert neighbor_idx.shape[0] + far_pt_idx.shape[0] == npts
+        assert neighbor_idx.shape[0] + far_pt_idx.shape[0] == npts
 
-    del prot_tree, prot_neighbors, neighbor_list_by_point, neighbor_list, neighbor_idx
+        del prot_tree, prot_neighbors, neighbor_list_by_point, neighbor_list, neighbor_idx
+    
+    if water_ow.shape[0] > 0:
+        water_tree = cKDTree(water_ow)
+        water_neighbors = water_tree.query_ball_tree(tree, cutoff, p=float('inf'))
 
-    water_tree = cKDTree(water_ow)
-    water_neighbors = water_tree.query_ball_tree(tree, cutoff, p=float('inf'))
+        for atm_idx, pos in enumerate(water_ow):
+            neighboridx = np.array(water_neighbors[atm_idx])
+            if neighboridx.size == 0:
+                continue
+            neighborpts = gridpts[neighboridx]
 
-    for atm_idx, pos in enumerate(water_ow):
-        neighboridx = np.array(water_neighbors[atm_idx])
-        if neighboridx.size == 0:
-            continue
-        neighborpts = gridpts[neighboridx]
+            dist_vectors = neighborpts[:, ...] - pos
+            dist_vectors = dist_vectors.astype(RHO_DTYPE)
 
-        dist_vectors = neighborpts[:, ...] - pos
-        dist_vectors = dist_vectors.astype(RHO_DTYPE)
+            rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
+            rho_water_slice[neighboridx] += rhovals
 
-        rhovals = rho(dist_vectors, sigma, sigma_sq, cutoff, cutoff_sq)
-        rho_water_slice[neighboridx] += rhovals
-
-        del dist_vectors, neighborpts
+            del dist_vectors, neighborpts
 
     #far_pt_idx = (gridpts[:,2] < ZMIN) #& (gridpts[:,1] > 10) & (gridpts[:,1] < 50)
-    del water_tree, water_neighbors
+        del water_tree, water_neighbors
     # Can probably move this out of here and perform at end
     rho_slice = rho_prot_slice/rho_prot_bulk \
         + rho_water_slice/rho_water_bulk
 
-    rho_slice[far_pt_idx] = 1.0
+    try:
+        rho_slice[far_pt_idx] = 1.0
+    except IndexError:
+        pass
 
     return (rho_slice, frame_idx)
 
@@ -282,6 +289,7 @@ Command-line options
                 
                 if self.all_waters:
                     water_ow = self.univ.select_atoms('name OW')
+                    water_dist_cutoff = np.inf
                 else:
                     water_ow = self.univ.select_atoms("(name OW and around {} ({}))".format(water_dist_cutoff, self.mol_sel_spec))
 
