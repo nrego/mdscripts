@@ -88,11 +88,16 @@ max_pt = np.ceil(pos.max()) + buff
 
 grid_pts = np.arange(min_pt, max_pt+res, res, dtype=np.float32)
 
-dy, dx = np.meshgrid(grid_pts, grid_pts)
+dx, dy = np.meshgrid(grid_pts, grid_pts, indexing='ij')
 
+# atoms per A^2
+rho_prot = 0.040
 rho = np.zeros_like(dx)
 sig = 1
 rcut = 10
+
+# surface threshold
+s = 0.5
 
 circles = []
 for i in range(pos.shape[0]):
@@ -104,6 +109,7 @@ for i in range(pos.shape[0]):
 
     rho += phix*phiy
 
+rho /= rho_prot
 cmap = cm.hot_r
 norm = mpl.colors.Normalize(0, rho.max())
 
@@ -113,12 +119,12 @@ collection.set_facecolors([0,0,0,0])
 collection.set_edgecolors([0,0,0,1])
 
 ax.pcolormesh(dx, dy, rho, cmap=cmap, norm=norm)
+ax.add_collection(collection)
 
-contour = measure.find_contours(rho, 0.5)[0]
+contour = measure.find_contours(rho, s)[0]
 contour *= res
 contour += min_pt
-#contour[:,0], contour[:,1] = contour[:,1], contour[:,0].copy()
-#plt.plot(contour[:,1], contour[:,0])
+
 points = contour.reshape(-1,1,2)
 
 segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -133,45 +139,93 @@ ax.add_collection(lc)
 plt.show()
 
 
-## Find curvature from finite differences
+## Find curvature, etc of implicit surface from rho grid ##
+rho_x, rho_y = np.gradient(rho)
+rho_xx, rho_xy = np.gradient(rho_x)
+rho_yx, rho_yy = np.gradient(rho_y)
 
-dx_ds = np.gradient(contour[:,0])
-dy_ds = np.gradient(contour[:,1])
+k_rho = -( (rho_x**2)*rho_yy + (rho_y**2)*rho_xx - 2*rho_x*rho_y*rho_xy ) / (rho_x**2 + rho_y**2)**1.5
+#k_rho = np.ma.masked_invalid(k_rho)
 
-d2x_ds2 = np.gradient(dx_ds)
-d2y_ds2 = np.gradient(dy_ds)
+## Make binary surface - rho is either >= 0.5 (1) or < 0.5 (0)
+surf = (rho >= s).astype(float)
+surf_x, surf_y = np.gradient(surf)
+surf_xx, surf_xy = np.gradient(surf_x)
+surf_yx, surf_yy = np.gradient(surf_y)
 
-curvature = (dx_ds*d2y_ds2 - dy_ds*d2x_ds2) / (dx_ds**2 + dy_ds**2)**1.5
-range_pt = np.max(np.abs(curvature))
+# curvature at each point #
+k_surf = ( (surf_x**2)*surf_yy + (surf_y**2)*surf_xx - 2*surf_x*surf_y*surf_xy ) / (surf_x**2 + surf_y**2)**1.5
+k_surf = np.ma.masked_invalid(k_surf)
 
-norm = plt.Normalize(-range_pt, range_pt)
+# Mask of curve values
+mask = k_surf.mask
 
-plt.plot(contour[:,0], contour[:,1], 'k-')
-plt.scatter(contour[:,0], contour[:,1], c=curvature, cmap='seismic', norm=norm)
+#k_rho[mask] = np.nan
+k_rho = np.ma.masked_invalid(k_rho)
+rng_pt = 0.25 #np.abs(k_rho).max()
+norm = plt.Normalize(-rng_pt, rng_pt)
+
+
+fig, ax = plt.subplots(figsize=(7,6))
+
+m = ax.pcolormesh(dx, dy, k_rho, norm=norm, cmap='seismic')
+collection = PatchCollection(circles)
+collection.set_facecolors([0,0,0,0])
+collection.set_edgecolors([0,0,0,1])
+ax.add_collection(collection)
+cb = plt.colorbar(m)
+
+ax.plot(contour[:,0], contour[:,1], 'k--')
+
+plt.show()
+
+## Find mean curvature for each atom - gaussian-distance weighted sum of its local curvature ##
+mean_curvature = np.zeros(pos.shape[0])
+rcut = 3
+sig = 1
+circles_colored = []
+for i, pt in enumerate(pos):
+
+    phix = phi(dx-pt[0], sig, sig**2, rcut, rcut**2)
+    phiy = phi(dy-pt[1], sig, sig**2, rcut, rcut**2)
+    wt = phix*phiy
+    wt[mask] = 0
+    wt /= wt.sum()
+    
+    mean_curvature[i] = np.sum(k_rho * wt)
 
 
 
-## Find parametrized contour manually ##
-s = 0.5
+cmap = cm.seismic
+rng_pt = np.abs( np.ma.masked_invalid(mean_curvature) ).max()
+norm = plt.Normalize(-rng_pt, rng_pt)
+colors = cmap(norm(mean_curvature))
+new_mask = np.ma.masked_invalid(mean_curvature).mask
+colors[new_mask] = np.array([0,0,0,0])
 
-thetas = np.linspace(0, 2*np.pi, 101)
-rvals = grid_pts
+collection = PatchCollection(circles_colored)
+collection.set_facecolors([0,0,0,0])
+#collection.set_edgecolors([0,0,0,1])
 
-x_cont = np.zeros_like(thetas)
-y_cont = np.zeros_like(thetas)
+collection.set_edgecolors(colors)
 
-center_pt = pos[:, :-1].mean(axis=0)
+# Curvature of just the curve
+k_curve = k_rho.copy()
+k_curve[mask] = 0
 
-for i, theta in enumerate(thetas):
-    for j, r in enumerate(rvals):
-        x = r*np.cos(theta) + center_pt[0]
-        y = r*np.sin(theta) + center_pt[1]
+fig, ax = plt.subplots()
 
-        ix = np.digitize(x, grid_pts) - 1
-        iy = np.digitize(y, grid_pts) - 1
+m = ax.pcolormesh(dx, dy, k_curve, norm=norm, cmap='seismic')
+plt.colorbar(m)
+#ax.add_collection(collection)
+ax.scatter(pos[:,0], pos[:,1], c=mean_curvature, norm=norm, cmap='seismic')
 
-        if rho[ix, iy] < s:
-            x_cont[i] = x
-            y_cont[i] = y
-            break
+for i, curv in enumerate(mean_curvature):
+    pt = pos[i]
+    if surf_mask[i] and ~new_mask[i]:
+        ax.add_artist(Circle(pt, 1.6, fill=False, edgecolor=colors[i]))
+
+plt.show()
+
+
 

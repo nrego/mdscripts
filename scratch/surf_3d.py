@@ -30,6 +30,22 @@ from scipy.interpolate import CubicSpline
 ## Testing ##
 gaus = lambda x_sq, sig_sq: np.exp(-x_sq/(2*sig_sq))
 
+def dump_dx(fileout, rho_shape, res, min_pt):
+    with open(fileout, 'w') as f:
+        f.write("object 1 class gridpositions counts {} {} {}\n".format(*rho.shape))
+        f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(min_pt, min_pt, min_pt))
+        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(res,0,0))
+        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0,res,0))
+        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,res))
+        f.write("object 2 class gridconnections counts {} {} {}\n".format(*rho.shape))
+        f.write("object 3 class array type double rank 0 items {} data follows\n".format(rho_shape.size))
+        cntr = 0 
+        for pt in rho_shape:
+            f.write("{:1.8e} ".format(pt))
+            cntr += 1
+            if (cntr % 3 ==0):
+                f.write("\n")
+
 def plot_3d(x, y, z, colors='k'):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
@@ -68,15 +84,16 @@ max_pt = np.ceil(pos.max()) + buff
 
 grid_pts = np.arange(min_pt, max_pt+res, res, dtype=np.float32)
 
-YY, XX, ZZ = np.meshgrid(grid_pts, grid_pts, grid_pts)
+XX, YY, ZZ = np.meshgrid(grid_pts, grid_pts, grid_pts, indexing='ij')
 
 rho = np.zeros_like(XX)
-sig = 1
-rcut = 10
+sig = 1.2
+rcut = 6
 
+rho_prot = 0.040
+s = 0.5
 
 for i in range(pos.shape[0]):
-#for i in range(1):
     pt = pos[i]
     phix = phi(XX-pt[0], sig, sig**2, rcut, rcut**2)
     phiy = phi(YY-pt[1], sig, sig**2, rcut, rcut**2)
@@ -85,9 +102,9 @@ for i in range(pos.shape[0]):
     rho += phix*phiy*phiz
 
 
-rho /= (40.0 / 1000)
+rho /= rho_prot
 
-verts, faces, normals, values = measure.marching_cubes_lewiner(rho, 0.5, spacing=(1,1,1))
+verts, faces, normals, values = measure.marching_cubes_lewiner(rho, s, spacing=(1,1,1))
 
 mesh = Poly3DCollection(verts[faces]+min_pt)
 mesh.set_edgecolor('k')
@@ -103,106 +120,64 @@ ax.set_zlim(min_pt, max_pt)
 fileout = 'blah.dx'
 
 rho_shape = np.reshape(rho, rho.size)
-with open(fileout, 'w') as f:
-    f.write("object 1 class gridpositions counts {} {} {}\n".format(*rho.shape))
-    f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(min_pt, min_pt, min_pt))
-    f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(res,0,0))
-    f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0,res,0))
-    f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,res))
-    f.write("object 2 class gridconnections counts {} {} {}\n".format(*rho.shape))
-    f.write("object 3 class array type double rank 0 items {} data follows\n".format(rho_shape.size))
-    cntr = 0 
-    for pt in rho_shape:
-        f.write("{:1.8e} ".format(pt))
-        cntr += 1
-        if (cntr % 3 ==0):
-            f.write("\n")
+
+dump_dx(fileout, rho_shape, res, min_pt)
+
+## Find curvature, etc of implicit surface from rho grid ##
+rho_x, rho_y, rho_z = np.gradient(rho)
+rho_xx, rho_xy, rho_xz = np.gradient(rho_x)
+rho_yx, rho_yy, rho_yz = np.gradient(rho_y)
+rho_zx, rho_zy, rho_zz = np.gradient(rho_z)
+
+# terms for adjoint hessian # 
+
+# as in:
+###   h_xx  h_xy  h_xz   ###
+###   h_yx  h_yy  h_yz   ###
+###   h_zx  h_zy  h_zz   ###
+
+h_xx = rho_yy*rho_zz - rho_yz*rho_zy
+h_xy = rho_yz*rho_zx - rho_yx*rho_zz
+h_xz = rho_yx*rho_zy - rho_yy*rho_zx
+
+h_yx = rho_xz*rho_zy - rho_xy*rho_zz
+h_yy = rho_xx*rho_zz - rho_xz*rho_zx
+h_yz = rho_xy*rho_zx - rho_xx*rho_zy
+
+h_zx = rho_xy*rho_yz - rho_xz*rho_yy
+h_zy = rho_yx*rho_xz - rho_xx*rho_yz
+h_zz = rho_xx*rho_yy - rho_xy*rho_yx
 
 
-
-# X, Y, Z all 2d arrays (e.g. X(u,v), etc)
-def find_surf_curvature(X, Y, Z):
-    # First derivatives
-    Xu, Xv = np.gradient(X)
-    Yu, Yv = np.gradient(Y)
-    Zu, Zv = np.gradient(Z)
-
-    # Second derivatives
-    Xuu, Xuv = np.gradient(Xu)
-    Yuu, Yuv = np.gradient(Yu)
-    Zuu, Zuv = np.gradient(Zu)
-
-    Xvu, Xvv = np.gradient(Xv)
-    Yvu, Yvv = np.gradient(Yv)
-    Zvu, Zvv = np.gradient(Zv)
-
-    # 'sig(u,v)' is the parametric representation of the surface 
-    #      These are its derivatives for each (u,v) gridpoint 
-    sig_u = np.vstack((Xu.ravel(), Yu.ravel(), Zu.ravel())).T
-    sig_v = np.vstack((Xv.ravel(), Yv.ravel(), Zv.ravel())).T
-
-    sig_uu = np.vstack((Xuu.ravel(), Yuu.ravel(), Zuu.ravel())).T
-    sig_uv = np.vstack((Xuv.ravel(), Yuv.ravel(), Zuv.ravel())).T
-    sig_vv = np.vstack((Xvv.ravel(), Yvv.ravel(), Zvv.ravel())).T
-
-    # First fundamental coefficients 
-    E = (sig_u**2).sum(axis=1)
-    F = (sig_u * sig_v).sum(axis=1)
-    G = (sig_v * sig_v).sum(axis=1)
-
-    m = np.cross(sig_u, sig_v)
-    p = np.sqrt(np.sum(m**2, axis=1))
-    # normals
-    n = m/p[:,None]
-
-    # Second fundamental coefficients
-    L = (sig_uu * n).sum(axis=1)
-    M = (sig_uv * n).sum(axis=1)
-    N = (sig_vv * n).sum(axis=1)
-
-    nu, nv = X.shape
-
-    # Gaussian curvature for each sig(u,v) pt
-    K = (L*N - M**2) / (E*G - F**2)
-    K = K.reshape(nu, nv)
-
-    # Mean curvature for each sig(u,v) pt
-    H = (E*N + G*L - 2*F*M) / (2*(E*G - F**2))
-    H = H.reshape(nu, nv)
-
-    # principal curvatures
-    kap_max = H + np.sqrt(H**2 - K)
-    kap_min = H - np.sqrt(H**2 - K)
+k_gaus_rho = ((rho_x**2)*h_xx + rho_x*rho_y*h_yx + rho_x*rho_z*h_xz + rho_x*rho_y*h_xy + (rho_y**2)*h_yy + rho_y*rho_z*h_yz + rho_x*rho_z*h_xz + rho_y*rho_z*h_yz + (rho_z**2)*h_zz)
+k_gaus_rho /= (rho_x**2 + rho_y**2 + rho_z**2)**2
 
 
-    return (K, H, kap_min, kap_max)
+surf = (rho > s).astype(float)
+surf_x, surf_y, surf_z = np.gradient(surf)
+surf_xx, surf_xy, surf_xz = np.gradient(surf_x)
+surf_yx, surf_yy, surf_yz = np.gradient(surf_y)
+surf_zx, surf_zy, surf_zz = np.gradient(surf_z)
 
+# terms for adjoint hessian # 
 
-## Sample stuff with torus - parametric surface ## 
+# as in:
+###   h_xx  h_xy  h_xz   ###
+###   h_yx  h_yy  h_yz   ###
+###   h_zx  h_zy  h_zz   ###
 
+h_xx = surf_yy*surf_zz - surf_yz*surf_zy
+h_xy = surf_yz*surf_zx - surf_yx*surf_zz
+h_xz = surf_yx*surf_zy - surf_yy*surf_zx
 
-# Generate torus mesh
-angle = np.linspace(0, 2 * np.pi, 32)
-theta, phi = np.meshgrid(angle, angle)
-r, R = .25, 1.
-X = (R + r * np.cos(phi)) * np.cos(theta)
-Y = (R + r * np.cos(phi)) * np.sin(theta)
-Z = r * np.sin(phi)
+h_yx = surf_xz*surf_zy - surf_xy*surf_zz
+h_yy = surf_xx*surf_zz - surf_xz*surf_zx
+h_yz = surf_xy*surf_zx - surf_xx*surf_zy
 
-# Display the mesh
-fig = plt.figure()
-ax = fig.gca(projection = '3d')
-ax.set_xlim3d(-1, 1)
-ax.set_ylim3d(-1, 1)
-ax.set_zlim3d(-1, 1)
+h_zx = surf_xy*surf_yz - surf_xz*surf_yy
+h_zy = surf_yx*surf_xz - surf_xx*surf_yz
+h_zz = surf_xx*surf_yy - surf_xy*surf_yx
 
-K, H, kap_min, kap_max = find_surf_curvature(X, Y, Z)
-
-## plot and color according to gaussian curvature ##
-rng_pt = np.abs(kap_max.max() * kap_min.min())
-norm = plt.Normalize(-rng_pt, rng_pt)
-colors = cm.seismic(norm(K))
-ax.plot_surface(X, Y, Z, facecolors=colors, rstride = 1, cstride = 1)
-plt.show()
-
+k_gaus_surf = ((surf_x**2)*h_xx + surf_x*surf_y*h_yx + surf_x*surf_z*h_xz + surf_x*surf_y*h_xy + (surf_y**2)*h_yy + surf_y*surf_z*h_yz + surf_x*surf_z*h_xz + surf_y*surf_z*h_yz + (surf_z**2)*h_zz)
+k_gaus_surf /= (surf_x**2 + surf_y**2 + surf_z**2)**2
 
