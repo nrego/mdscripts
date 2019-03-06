@@ -88,7 +88,7 @@ max_pt = np.ceil(pos.max()) + buff
 
 grid_pts = np.arange(min_pt, max_pt+res, res, dtype=np.float32)
 
-dx, dy = np.meshgrid(grid_pts, grid_pts)
+dy, dx = np.meshgrid(grid_pts, grid_pts)
 
 rho = np.zeros_like(dx)
 sig = 1
@@ -117,7 +117,7 @@ ax.pcolormesh(dx, dy, rho, cmap=cmap, norm=norm)
 contour = measure.find_contours(rho, 0.5)[0]
 contour *= res
 contour += min_pt
-contour[:,0], contour[:,1] = contour[:,1], contour[:,0].copy()
+#contour[:,0], contour[:,1] = contour[:,1], contour[:,0].copy()
 #plt.plot(contour[:,1], contour[:,0])
 points = contour.reshape(-1,1,2)
 
@@ -148,4 +148,30 @@ norm = plt.Normalize(-range_pt, range_pt)
 
 plt.plot(contour[:,0], contour[:,1], 'k-')
 plt.scatter(contour[:,0], contour[:,1], c=curvature, cmap='seismic', norm=norm)
+
+
+
+## Find parametrized contour manually ##
+s = 0.5
+
+thetas = np.linspace(0, 2*np.pi, 101)
+rvals = grid_pts
+
+x_cont = np.zeros_like(thetas)
+y_cont = np.zeros_like(thetas)
+
+center_pt = pos[:, :-1].mean(axis=0)
+
+for i, theta in enumerate(thetas):
+    for j, r in enumerate(rvals):
+        x = r*np.cos(theta) + center_pt[0]
+        y = r*np.sin(theta) + center_pt[1]
+
+        ix = np.digitize(x, grid_pts) - 1
+        iy = np.digitize(y, grid_pts) - 1
+
+        if rho[ix, iy] < s:
+            x_cont[i] = x
+            y_cont[i] = y
+            break
 

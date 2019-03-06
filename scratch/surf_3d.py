@@ -93,8 +93,8 @@ mesh = Poly3DCollection(verts[faces]+min_pt)
 mesh.set_edgecolor('k')
 fig = plt.figure()
 ax = fig.gca(projection='3d')
-ax.add_collection(mesh)
-#ax.plot(verts[:,0]+min_pt, verts[:,1]+min_pt, verts[:,2]+min_pt)
+#ax.add_collection(mesh)
+ax.scatter(verts[:,0]+min_pt, verts[:,1]+min_pt, verts[:,2]+min_pt)
 ax.set_xlim(min_pt, max_pt)
 ax.set_ylim(min_pt, max_pt)
 ax.set_zlim(min_pt, max_pt)
@@ -117,4 +117,92 @@ with open(fileout, 'w') as f:
         cntr += 1
         if (cntr % 3 ==0):
             f.write("\n")
+
+
+
+# X, Y, Z all 2d arrays (e.g. X(u,v), etc)
+def find_surf_curvature(X, Y, Z):
+    # First derivatives
+    Xu, Xv = np.gradient(X)
+    Yu, Yv = np.gradient(Y)
+    Zu, Zv = np.gradient(Z)
+
+    # Second derivatives
+    Xuu, Xuv = np.gradient(Xu)
+    Yuu, Yuv = np.gradient(Yu)
+    Zuu, Zuv = np.gradient(Zu)
+
+    Xvu, Xvv = np.gradient(Xv)
+    Yvu, Yvv = np.gradient(Yv)
+    Zvu, Zvv = np.gradient(Zv)
+
+    # 'sig(u,v)' is the parametric representation of the surface 
+    #      These are its derivatives for each (u,v) gridpoint 
+    sig_u = np.vstack((Xu.ravel(), Yu.ravel(), Zu.ravel())).T
+    sig_v = np.vstack((Xv.ravel(), Yv.ravel(), Zv.ravel())).T
+
+    sig_uu = np.vstack((Xuu.ravel(), Yuu.ravel(), Zuu.ravel())).T
+    sig_uv = np.vstack((Xuv.ravel(), Yuv.ravel(), Zuv.ravel())).T
+    sig_vv = np.vstack((Xvv.ravel(), Yvv.ravel(), Zvv.ravel())).T
+
+    # First fundamental coefficients 
+    E = (sig_u**2).sum(axis=1)
+    F = (sig_u * sig_v).sum(axis=1)
+    G = (sig_v * sig_v).sum(axis=1)
+
+    m = np.cross(sig_u, sig_v)
+    p = np.sqrt(np.sum(m**2, axis=1))
+    # normals
+    n = m/p[:,None]
+
+    # Second fundamental coefficients
+    L = (sig_uu * n).sum(axis=1)
+    M = (sig_uv * n).sum(axis=1)
+    N = (sig_vv * n).sum(axis=1)
+
+    nu, nv = X.shape
+
+    # Gaussian curvature for each sig(u,v) pt
+    K = (L*N - M**2) / (E*G - F**2)
+    K = K.reshape(nu, nv)
+
+    # Mean curvature for each sig(u,v) pt
+    H = (E*N + G*L - 2*F*M) / (2*(E*G - F**2))
+    H = H.reshape(nu, nv)
+
+    # principal curvatures
+    kap_max = H + np.sqrt(H**2 - K)
+    kap_min = H - np.sqrt(H**2 - K)
+
+
+    return (K, H, kap_min, kap_max)
+
+
+## Sample stuff with torus - parametric surface ## 
+
+
+# Generate torus mesh
+angle = np.linspace(0, 2 * np.pi, 32)
+theta, phi = np.meshgrid(angle, angle)
+r, R = .25, 1.
+X = (R + r * np.cos(phi)) * np.cos(theta)
+Y = (R + r * np.cos(phi)) * np.sin(theta)
+Z = r * np.sin(phi)
+
+# Display the mesh
+fig = plt.figure()
+ax = fig.gca(projection = '3d')
+ax.set_xlim3d(-1, 1)
+ax.set_ylim3d(-1, 1)
+ax.set_zlim3d(-1, 1)
+
+K, H, kap_min, kap_max = find_surf_curvature(X, Y, Z)
+
+## plot and color according to gaussian curvature ##
+rng_pt = np.abs(kap_max.max() * kap_min.min())
+norm = plt.Normalize(-rng_pt, rng_pt)
+colors = cm.seismic(norm(K))
+ax.plot_surface(X, Y, Z, facecolors=colors, rstride = 1, cstride = 1)
+plt.show()
+
 
