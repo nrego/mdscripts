@@ -30,27 +30,6 @@ from scipy.interpolate import CubicSpline
 ## Testing ##
 gaus = lambda x_sq, sig_sq: np.exp(-x_sq/(2*sig_sq))
 
-def dump_dx(fileout, rho_shape, res, min_pt):
-    with open(fileout, 'w') as f:
-        f.write("object 1 class gridpositions counts {} {} {}\n".format(*rho.shape))
-        f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(min_pt, min_pt, min_pt))
-        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(res,0,0))
-        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0,res,0))
-        f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0,0,res))
-        f.write("object 2 class gridconnections counts {} {} {}\n".format(*rho.shape))
-        f.write("object 3 class array type double rank 0 items {} data follows\n".format(rho_shape.size))
-        cntr = 0 
-        for pt in rho_shape:
-            f.write("{:1.8e} ".format(pt))
-            cntr += 1
-            if (cntr % 3 ==0):
-                f.write("\n")
-
-def plot_3d(x, y, z, colors='k'):
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
-    ax.scatter(x, y, z, c=colors)
-
 def phi(r, sig, sig_sq, rcut, rcut_sq):
 
     r = np.array(r, ndmin=1)
@@ -74,36 +53,41 @@ mpl.rcParams.update({'axes.titlesize': 30})
 homedir = os.environ['HOME']
 
 ## Units in A
-pos = np.loadtxt('pos.dat')
+pt = np.array([0,0,0])
 
 buff = 4
-res = 0.01
+res = 0.1
 
-min_pt = np.floor(pos.min()) - buff
-max_pt = np.ceil(pos.max()) + buff
+min_pt = -10
+max_pt = 10
 
-grid_pts = np.arange(min_pt, max_pt+res, res, dtype=np.float32)
+grid_pts = np.arange(min_pt, max_pt+res, res)
+
+
+# volume taken up by single point with radius=1.6 A
+vol = np.pi*(1.6)**3
+# its density
+density = 1/vol
+sig = 1
+rcut = 6
+
+s = 0.5
+
+phivals = phi(grid_pts, sig, sig**2, rcut, rcut**2)
+plt.plot(grid_pts, phivals)
+plt.show()
+
 
 XX, YY, ZZ = np.meshgrid(grid_pts, grid_pts, grid_pts, indexing='ij')
 
 rho = np.zeros_like(XX)
-sig = 1.2
-rcut = 6
 
-rho_prot = 0.040
-s = 0.5
+phix = phi(XX, sig, sig**2, rcut, rcut**2)
+phiy = phi(YY, sig, sig**2, rcut, rcut**2)
+phiz = phi(ZZ, sig, sig**2, rcut, rcut**2)
 
-for i in range(pos.shape[0]):
-#for i in [0]:
-    pt = pos[i]
-    phix = phi(XX-pt[0], sig, sig**2, rcut, rcut**2)
-    phiy = phi(YY-pt[1], sig, sig**2, rcut, rcut**2)
-    phiz = phi(ZZ-pt[2], sig, sig**2, rcut, rcut**2)
-
-    rho += phix*phiy*phiz
-
-
-rho /= rho_prot
+rho += phix*phiy*phiz
+rho /= density
 
 verts, faces, normals, values = measure.marching_cubes_lewiner(rho, s, spacing=(1,1,1))
 
@@ -112,17 +96,11 @@ mesh.set_edgecolor('k')
 fig = plt.figure()
 ax = fig.gca(projection='3d')
 #ax.add_collection(mesh)
-ax.scatter(verts[:,0]+min_pt, verts[:,1]+min_pt, verts[:,2]+min_pt)
-ax.set_xlim(min_pt, max_pt)
-ax.set_ylim(min_pt, max_pt)
-ax.set_zlim(min_pt, max_pt)
+ax.scatter(verts[:,0]*res + min_pt, verts[:,1]*res + min_pt, verts[:,2]*res + min_pt)
+#ax.set_xlim(min_pt, max_pt)
+#ax.set_ylim(min_pt, max_pt)
+#ax.set_zlim(min_pt, max_pt)
 #ax.scatter(pos[:,0], pos[:,1], pos[:,2], 'k')
-
-fileout = 'blah.dx'
-
-rho_shape = np.reshape(rho, rho.size)
-
-dump_dx(fileout, rho_shape, res, min_pt)
 
 ## Find curvature, etc of implicit surface from rho grid ##
 rho_x, rho_y, rho_z = np.gradient(rho)
@@ -184,8 +162,8 @@ k_gaus_surf /= (surf_x**2 + surf_y**2 + surf_z**2)**2
 
 surf_mask = ~np.ma.masked_invalid(k_gaus_surf.ravel()).mask
 
-fig = plt.figure()
-ax = fig.gca(projection='3d')
+#fig = plt.figure()
+#ax = fig.gca(projection='3d')
 
 all_pts = np.vstack((XX.ravel(), YY.ravel(), ZZ.ravel())).T
 surf_pts = all_pts[surf_mask]
