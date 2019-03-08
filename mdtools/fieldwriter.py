@@ -203,7 +203,7 @@ class RhoField:
                 r = top.add_residue('II', c)
                 a = top.add_atom('II', md.element.get_by_symbol('VS'), r, i)
 
-        with md.formats.GroTrajectoryFile(fileout, 'w') as f:
+        with md.formats.PDBTrajectoryFile(fileout, 'w') as f:
             # Mesh pts have to be in nm
             f.write(mesh/10, top, unitcell_vectors=self.box.reshape(1,3,3)/10)
 

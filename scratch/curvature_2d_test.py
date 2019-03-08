@@ -120,7 +120,6 @@ ax.plot(contour[:,0], contour[:,1], 'k--')
 
 plt.show()
 
-
 ## Find curvature, etc of implicit surface from rho grid ##
 rho_x, rho_y = np.gradient(rho)
 rho_xx, rho_xy = np.gradient(rho_x)
@@ -159,3 +158,6 @@ isocurve_curvature[~isocurve_mask] = 0
 
 ax = plt.gca()
 ax.pcolormesh(XX, YY, isocurve_curvature, cmap='seismic', norm=plt.Normalize(-1,1))
+
+
+
