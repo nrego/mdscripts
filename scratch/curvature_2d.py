@@ -82,11 +82,11 @@ min_pt = pos.min()-buff
 max_pt = pos.max()+buff
 
 grid_pts = np.arange(min_pt, max_pt+res, res, dtype=np.float32)
-
-phi_vals = phi(grid_pts, sig, sig**2, rcut, rcut**2)
+xvals = np.arange(-5,5+res,res)
+phi_vals = phi(xvals, sig, sig**2, rcut, rcut**2)
 
 #ax = plt.gca()
-#ax.plot(grid_pts, phi_vals)
+#ax.plot(xvals, phi_vals)
 #ax.set_xlim(min_pt, max_pt)
 #plt.show()
 
@@ -94,7 +94,7 @@ XX, YY = np.meshgrid(grid_pts, grid_pts, indexing='ij')
 
 # atoms per A^2
 vol = np.pi*(1.6)**2
-density = 0.040
+density = 0.10
 
 rho = np.zeros_like(XX)
 
@@ -159,7 +159,9 @@ isocurve_curvature[~isocurve_mask] = 0
 norm = plt.Normalize(-1,1)
 
 ax = plt.gca()
-ax.pcolormesh(XX, YY, isocurve_curvature, cmap='seismic', norm=norm)
+pmesh = ax.pcolormesh(XX, YY, isocurve_curvature, cmap='seismic', norm=norm)
+plt.colorbar(pmesh)
+
 
 circles = []
 rcut = 3

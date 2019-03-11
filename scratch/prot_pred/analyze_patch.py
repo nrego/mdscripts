@@ -33,6 +33,8 @@ COLOR_PRED = '#FF7F00' # orange
 COLOR_TP = '#FF007F' # pink
 COLOR_FP = '#7F3F00' # dark orange
 COLOR_FN = '#3F007F' # dark purple
+COLOR_CONVEX = '#FF0000' # red
+COLOR_CONCAVE = '#0000FF' # blue
 
 def rms(pts, centroid):
     
@@ -166,6 +168,8 @@ parser.add_argument('--pred-contact', type=str, default='pred_contact_mask.dat',
                     help='Predicted contact mask (Default: %(default)s)')
 parser.add_argument('--hydropathy', type=str, default='../../bound/hydropathy_mask.dat',
                     help='Hydropathy mask (Default: %(default)s)')
+parser.add_argument('--curv', type=str, default=None,
+                    help='List of atomic curvatures, optional')
 parser.add_argument('--outpath', type=str, required=True,
                     help='Prefix for output')
 
@@ -180,6 +184,9 @@ targ = univ.select_atoms(args.sel_spec)[surf_mask]
 contact_mask = np.loadtxt(args.actual_contact, dtype=bool)[surf_mask]
 pred_mask = np.loadtxt(args.pred_contact, dtype=bool)[surf_mask]
 hydropathy = np.loadtxt(args.hydropathy, dtype=bool)[surf_mask]
+
+if args.curv is not None:
+    curv = np.loadtxt(args.curv)
 
 assert contact_mask.size == targ.n_atoms
 
@@ -320,4 +327,42 @@ print("   actual patch: {:1.2f}   TP: {:1.2f}   FN: {:1.2f}".format(p_spread, tp
 print("   TP_boot_avg: {:1.2f}  ({:1.2f});   actual TP zscore (sd's): {:1.2f}".format(tp_expected_avg, tp_expected_se, z_tp))
 print("   FN_boot_avg: {:1.2f}  ({:1.2f});   actual FN zscore (sd's): {:1.2f}".format(fn_expected_avg, fn_expected_se, z_fn))
 
+#embed()
+
+## Find fraction of surface atoms that are convex, concave
+if curv is not None:
+    # Convex surface atoms (positive curvature)
+    curv_mask = (curv > 0)[surf_mask]
+
+    n_convex_surf = (curv_mask).sum()
+    n_concave_surf = (~curv_mask).sum()
+
+    print("Surface curvature: ")
+    print("  convex surface atoms: {:0.2f}".format(n_convex_surf/n_surf))
+    print("  concave surface atoms: {:0.2f}".format(n_concave_surf/n_surf))
+
+    contact_convex = (contact_mask & curv_mask).sum()/n_surf
+    contact_concave = (contact_mask & ~curv_mask).sum()/n_surf
+    no_contact_convex = (~contact_mask & curv_mask).sum()/n_surf
+    no_contact_concave = (~contact_mask & ~curv_mask).sum()/n_surf
+
+    print("fraction of actual contacts that are convex: {:2.2f}".format(contact_convex))
+    colors = (COLOR_CONTACT, COLOR_NO_CONTACT, COLOR_NO_CONTACT, COLOR_CONTACT)
+    ecolors = (COLOR_CONVEX, COLOR_CONVEX, COLOR_CONCAVE, COLOR_CONCAVE)
+    make_piechart([contact_convex, no_contact_convex, no_contact_concave, contact_concave], colors, ecolors, '{}_curv_contact'.format(args.outpath), transparent=True, showtext=False)
+
+    ##################################################
+    ## Now make pie plot of predicted contact composition
+    ##################################################
+
+    pred_convex = (pred_mask & curv_mask).sum()/n_surf
+    pred_concave = (pred_mask & ~curv_mask).sum()/n_surf
+    no_pred_convex = (~pred_mask & curv_mask).sum()/n_surf
+    no_pred_concave = (~pred_mask & ~curv_mask).sum()/n_surf
+
+    colors = (COLOR_PRED, COLOR_NOT_PRED, COLOR_NOT_PRED, COLOR_PRED)
+    ecolors = (COLOR_CONVEX, COLOR_CONVEX, COLOR_CONCAVE, COLOR_CONCAVE)
+    
+    make_piechart([pred_convex, no_pred_convex, no_pred_concave, pred_concave], colors, ecolors, '{}_curv_pred'.format(args.outpath))
+    make_piechart([pred_convex, no_pred_convex, no_pred_concave, pred_concave], colors, ecolors, '{}_curv_trans_pred'.format(args.outpath), transparent=True, showtext=False)
 

@@ -38,9 +38,9 @@ class MDSystem():
         self.hydrogens = self.univ.select_atoms('({}) and name H*'.format(sel_spec))
         self.prot.tempfactors = NULL
         self.other = self.univ.select_atoms('not ({})'.format(sel_spec))
-
+        
         for k,v in kwargs.iteritems():
-            self.k = v
+            self.__dict__[k] = v
         
 
     @property
@@ -147,6 +147,7 @@ class MDSystem():
                 hydrophil = float(raw_input('enter hydrophilicity for atom {} of {} (-1 for hydrophilic, 0 for hydrophobic):  '.format(atm.name, atm.resname)))
                 charge_assign[atm.resname][atm.name] = hydrophil
             atm.tempfactor = hydrophil
+
 
 
 

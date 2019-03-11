@@ -113,7 +113,7 @@ homedir = os.environ['HOME']
 ## Units in A
 
 buff = 2
-res = 0.1
+res = 0.5
 sig = 1
 rcut = 5
 
@@ -202,6 +202,7 @@ isosurf_curvature_mean = k_mean_rho.copy()
 isosurf_curvature_mean[~isosurf_mask] = 0
 isosurf_curv_vals = isosurf_curvature_mean[isosurf_mask]
 
+# grid points on the isosurface
 pts_all = np.vstack([XX[isosurf_mask].ravel(), YY[isosurf_mask].ravel(), ZZ[isosurf_mask].ravel()]).T
 
 norm = plt.Normalize(-1,1)
@@ -233,7 +234,8 @@ for i, pt in enumerate(pos):
 
 univ.atoms.write('curv.pdb', bonds=None)
 
-'''
+np.savetxt('atomic_curvature.dat', univ.atoms.tempfactors)
+
 vert_curv = []
 for vert in verts:
     phix = phi(vert[0]-XX, sig, sig**2, rcut, rcut**2)
@@ -248,4 +250,4 @@ for vert in verts:
 
     vert_curv.append(this_curv)   
 
-'''
+
