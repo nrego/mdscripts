@@ -22,7 +22,7 @@ from sklearn import datasets, linear_model
 from scipy.integrate import cumtrapz
 
 from util import gen_pos_grid, construct_neighbor_dist_lists
-from util import plot_pattern, plot_3d, plot_graph, plot_annotate
+from util import plot_pattern, plot_3d, plot_graph, plot_annotate, plot_edges
 from util import gen_w_graph
 from util import find_keff, find_keff_kernel
 from util import fit_general_linear_model
@@ -64,12 +64,14 @@ nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 
 ## Compute k_eff for each sample ##
 
-# edge types: methyl-methyl (mm), methyl-hydroxyl (mo), hydroxyl-hydoxyl (oo), methyl-extended (me), hydroxyl-extended (oe)
+# edge types: methyl-methyl (mm), hydroxyl-hydoxyl (oo), methyl-hydroxyl (mo), methyl-extended (me), hydroxyl-extended (oe)
 k_eff = np.zeros((n_samples, 5))
 for i, methyl_mask in enumerate(methyl_pos):
     k_eff[i] = find_keff(methyl_mask, nn, nn_ext).sum(axis=0)
 
-
+# Remove n_mo and n_oe, which are linear combo's of the other features
+k_eff_all = k_eff
+k_eff = np.delete(k_eff_all, (1,4), axis=1)
 
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_eff, energies)
 
@@ -82,32 +84,42 @@ for i, methyl_mask in enumerate(methyl_pos):
     deg = np.sum(dict(wt_graph.degree(weight='weight')).values())
     k_eff_orig[i] = deg
 
-l_mm, l_oo, l_mo, l_me, l_oe = 1000, 10, 100, 0.1, 1000
-
-#l_mm, l_oo, l_mo, l_me, l_oe = 1000, 1000, 1000, 1000, 1000
+sig_sq = np.ones(5)
+#rcut = np.ones(5) * 0.6
+rcut = (0.6, -1, 1.2, 1.8, -1)
 
 k_kernal = np.zeros((n_samples, 5))
 
 for i, methyl_mask in enumerate(methyl_pos):
-    k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=l_mm, lam_oo=l_oo, lam_mo=l_mo, lam_me=l_me, lam_oe=l_oe).sum(axis=0)
+    k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, sig_sq, rcut).sum(axis=0)
+
+k_kernal = np.delete(k_kernal, (1,4), axis=1)
 
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_kernal, energies)
 
+
+methyl_mask = methyl_pos[500]
+#ax = plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext)
+#ax = plot_pattern(positions, methyl_mask, ax=ax)
+#ax.plot(pos_ext[:,0], pos_ext[:,1], 'bx', markersize=12)
+
+
 '''
-lam_vals = (0.1, 1, 10, 100, 1000)
-val_combos = list(itertools.product(lam_vals, repeat=5))
+rcut_vals = (0.6, 1.2, 1.8, 2.4)
+val_combos = list(itertools.product(rcut_vals, repeat=3))
 perf = []
 i_run = 0
-for l_mm, l_oo, l_mo, l_me, l_oe in val_combos:
-    if i_run % 100 == 0:
+for rcut_mm, rcut_mo, rcut_me in val_combos:
+    rcut = (rcut_mm, 1, rcut_mo, rcut_me, 1)
+    if i_run % 10 == 0:
         print("iter: {}".format(i_run))
     k_kernal = np.zeros((n_samples, 5))
     for i, methyl_mask in enumerate(methyl_pos):
-        k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=l_mm, lam_oo=l_oo, lam_mo=l_mo, lam_me=l_me, lam_oe=l_oe).sum(axis=0)
+        k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, sig_sq, rcut).sum(axis=0)
+    k_kernal = np.delete(k_kernal, (1,4), axis=1)
 
     perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_kernal, energies)
     perf.append(perf_mse.mean())
     i_run += 1
+
 '''
-
-

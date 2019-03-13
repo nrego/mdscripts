@@ -116,7 +116,40 @@ def plot_pattern(positions, methyl_mask, ax=None):
     pos = positions[methyl_mask]
     ax.plot(positions[:,0], positions[:,1], 'bo', markersize=18)
     ax.plot(pos[:,0], pos[:,1], 'ko', markersize=18)
-    plt.show()
+    #plt.show()
+
+    return ax
+
+# Draw edge types (including to outside)
+def plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext, ax=None):
+    edge_in = ['b--', 'k--', 'k-']
+    edge_out = ['b:', 'k:']
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6,6))
+
+    n = positions.shape[0]
+    assert len(nn.keys()) == len(nn_ext.keys()) == n
+
+    for i in range(n):
+        meth_i = int(methyl_mask[i])
+        neighbor_idx_in = nn[i]
+        neighbor_idx_out = nn_ext[i]
+
+        for j in neighbor_idx_in:
+            if j < i:
+                continue
+            meth_j = int(methyl_mask[j])
+
+            # 0: oo, 1: mo, 2: mm
+            edge_type_in = meth_i+meth_j
+
+            ax.plot([positions[i,0], positions[j,0]], [positions[i,1], positions[j,1]], edge_in[edge_type_in])
+            
+        for j in neighbor_idx_out:
+            ax.plot([positions[i,0], pos_ext[j,0]], [positions[i,1], pos_ext[j,1]], edge_out[meth_i])
+
+
+    return ax
 
 def plot_annotate(positions, annotations, ax=None):
     if ax is None:
@@ -213,16 +246,23 @@ def construct_neighbor_dist_lists(positions, pos_ext):
     for i in range(36):
         assert np.array_equal(np.sort(i_self[i]), np.arange(36))
         sort_idx_self = np.argsort(i_self[i])
-        dd[i] = d_self[i][sort_idx_self] - 0.5
+        dd[i] = d_self[i][sort_idx_self] #- 0.5
         dd[i,i] = np.inf
 
         assert np.array_equal(np.sort(i_ext[i]), np.arange(108))
         sort_idx_ext = np.argsort(i_ext[i])
-        dd_ext[i] = d_ext[i][sort_idx_ext] - 0.5
+        dd_ext[i] = d_ext[i][sort_idx_ext] #- 0.5
 
 
     return nn, nn_ext, dd, dd_ext
 
+
+def aic_ols(reg, err):
+    n_sample = err.size
+    sse = np.sum(err**2)
+    n_param = reg.coef_.size + 1
+
+    return n_sample * np.log(sse/n_sample) + 2*n_param
 
 def find_keff(methyl_mask, nn, nn_ext):
 
@@ -264,9 +304,22 @@ def find_keff(methyl_mask, nn, nn_ext):
     return deg
 
 ## gaussian kernal function
-gaus = lambda x, lam: np.exp(-lam * x**2)
+gaus = lambda x, sig_sq: np.exp(-x**2/(2*sig_sq))
 
-def find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=1, lam_oo=1, lam_mo=1, lam_me=1, lam_oe=1):
+## Truncated, shifted gaussian
+def gaus_cut(x, sig_sq, xcut):
+    x = np.array(x, ndmin=1)
+    g = np.exp(-x**2/(2*sig_sq)) - np.exp(-xcut**2/(2*sig_sq))
+    pref = 1 / ( np.sqrt(np.pi*2*sig_sq) * math.erf(xcut/np.sqrt(2*sig_sq)) - 2*xcut*np.exp(-xcut**2/2*sig_sq) )
+    g[x**2>xcut**2] = 0
+
+    return pref*g
+
+
+def find_keff_kernel(methyl_mask, dd, dd_ext, sig_sq, rcut):
+
+    sig_sq_mm, sig_sq_oo, sig_sq_mo, sig_sq_me, sig_sq_oe = sig_sq
+    rcut_mm, rcut_oo, rcut_mo, rcut_me, rcut_oe = rcut
     
     deg = np.zeros((36,5))
     for i in range(36):
@@ -279,19 +332,19 @@ def find_keff_kernel(methyl_mask, dd, dd_ext, lam_mm=1, lam_oo=1, lam_mo=1, lam_
         i_mask = methyl_mask[i]
         
         # i-j connections (j on patch) that are m-m
-        mm = (gaus(d_self[(i_mask & methyl_mask)], lam_mm)).sum()
-        oo = (gaus(d_self[(~i_mask & ~methyl_mask)], lam_oo)).sum()
+        mm = (gaus_cut(d_self[(i_mask & methyl_mask)], sig_sq_mm, rcut_mm)).sum()
+        oo = (gaus_cut(d_self[(~i_mask & ~methyl_mask)], sig_sq_oo, rcut_oo)).sum()
 
         mo_mask = ((~i_mask & methyl_mask) | (i_mask & ~methyl_mask))
-        mo = (gaus(d_self[mo_mask], lam_mo)).sum()
+        mo = (gaus_cut(d_self[mo_mask], sig_sq_mo, rcut_mo)).sum()
         #connection to extended methyl-extended
         if i_mask:
-            me = ( gaus(d_ext, lam_me) ).sum()
+            me = ( gaus_cut(d_ext, sig_sq_me, rcut_me) ).sum()
             oe = 0
         #connection to extended hydroxyl-extended
         else:
             me = 0
-            oe = ( gaus(d_ext, lam_oe) ).sum()
+            oe = ( gaus_cut(d_ext, sig_sq_oe, rcut_oe) ).sum()
 
         deg[i] = [mm, oo, mo, me, oe]
 
