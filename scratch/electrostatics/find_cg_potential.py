@@ -28,7 +28,7 @@ ag = univ.select_atoms('resname SOL')
 
 box = np.array([85., 52., 60.])
 
-res = 1
+res = cd
 grid_x = np.arange(0, box[0]+res, res)
 grid_y = np.arange(0, box[1]+res, res)
 grid_z = np.arange(0, box[2]+res, res)
