@@ -21,6 +21,8 @@ from sklearn import datasets, linear_model
 
 from scipy.integrate import cumtrapz
 
+import math
+
 mpl.rcParams.update({'axes.labelsize': 20})
 mpl.rcParams.update({'xtick.labelsize': 20})
 mpl.rcParams.update({'ytick.labelsize': 20})
