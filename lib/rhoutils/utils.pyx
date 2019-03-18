@@ -3,7 +3,7 @@
 import numpy as np
 from numpy import searchsorted
 # Use from math.h instead??
-from math import pi, exp
+from numpy import pi, exp
 from scipy.spatial import cKDTree
 #from scipy.interpolate import interp1d, UnivariateSpline
 
@@ -58,7 +58,6 @@ cdef int min_lup = -15
 cdef np.ndarray xvals = np.linspace(min_lup, 0, 10000, dtype=f_DTYPE)
 cdef np.ndarray exp_table = np.exp(xvals, dtype=f_DTYPE)
 exp_lut = interp1d(xvals, exp_table)
-#exp_lut = UnivariateSpline(xvals, exp_table, k=1)
 
 # Gets phi for a 1d array of values for the given sigma and cutoff
 @cython.boundscheck(False)
@@ -186,3 +185,30 @@ def cartesian(arrays, out=None):
             out[j*m:(j+1)*m,1:] = out[0:m,1:]
     return out
 
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef np.ndarray[f_DTYPE_t, ndim=1] gaus_1d(np.ndarray[f_DTYPE_t, ndim=1] r_array, double sigma, double sigma_sq):
+
+    cdef np.ndarray[f_DTYPE_t, ndim=1] ret_vals
+    cdef double norm
+
+    norm = (2*pi)**(0.5)*sigma
+
+    ret_vals = exp(-r_array**2/(2*sigma_sq)) / norm
+
+    return ret_vals
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef np.ndarray[f_DTYPE_t, ndim=1] gaus(np.ndarray[f_DTYPE_t, ndim=2] r_array, double sigma, double sigma_sq):
+
+    cdef np.ndarray[f_DTYPE_t, ndim=1] ret_vals, phix, phiy, phiz
+
+    phix = gaus_1d(r_array[:,0], sigma, sigma_sq)
+    phiy = gaus_1d(r_array[:,1], sigma, sigma_sq)
+    phiz = gaus_1d(r_array[:,2], sigma, sigma_sq)
+
+    ret_vals = phix*phiy*phiz
+
+    return ret_vals

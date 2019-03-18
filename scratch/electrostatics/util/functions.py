@@ -19,33 +19,56 @@ from scipy.spatial import cKDTree
 
 from scipy.integrate import cumtrapz
 
-import math
+import math, scipy
 
-gaus = lambda r, sig_sq: (1/(np.sqrt(2*np.pi*sig_sq))) * np.exp(-r**2/(2*sig_sq))
+from rhoutils import rho2, gaus, gaus_1d, interp1d
+
+#gaus = lambda r, sig_sq: (1/(np.sqrt(2*np.pi*sig_sq))) * np.exp(-r**2/(2*sig_sq))
+sig = 4.5/np.sqrt(2)
+sig_sq = sig**2
+sqrt_sig = np.sqrt(2)*sig
+
 
 # Find charge density of a group of atoms (ag, AtomGroup)
 ##  according to their point charges and positions in 
 ###   grid space
-def charge_density(bx, by, bz, xx, yy, zz, d, dcg, ag):
+def charge_density(grid_x, grid_y, grid_z, xx, yy, zz, ag):
 
-    for atm in ag:
+    x_ravel = xx.ravel()
+    y_ravel = yy.ravel()
+    z_ravel = zz.ravel()
+
+    y_ravel2 = yy[40,...].ravel()
+    z_ravel2 = zz[40,...].ravel(0)
+    pts = np.vstack((x_ravel, y_ravel, z_ravel)).T
+    #pts = np.vstack((40.*np.ones_like(y_ravel2), y_ravel2, z_ravel2)).T
+    d = np.zeros_like(xx)
+    dcg = np.zeros_like(x_ravel)
+
+    grid_x = np.unique(x_ravel)
+    dcg = np.zeros_like(grid_x)
+    potential = np.zeros(pts.shape[0])
+    for i, atm in enumerate(ag):
+        if i % 1000 == 0:
+            print(i)
         charge = atm.charge
 
         pos = atm.position
-        idx_x = np.digitize(pos[0], bx)-1
-        idx_y = np.digitize(pos[1], by)-1
-        idx_z = np.digitize(pos[2], bz)-1
+        idx_x = np.digitize(pos[0], grid_x)-1
+        idx_y = np.digitize(pos[1], grid_y)-1
+        idx_z = np.digitize(pos[2], grid_z)-1
 
         d[idx_x, idx_y, idx_z] += charge
 
-        phix = gaus(pos[0]-xx, 2)
-        phiy = gaus(pos[1]-yy, 2)
-        phiz = gaus(pos[2]-zz, 2)
+        #phi = gaus(pos-pts, sig, sig_sq)
+        #dcg += charge*phi
+        dcg += charge*gaus_1d(pos[0]-grid_x, sig, sig_sq)
+        r = np.sqrt(((pos-pts)**2).mean(axis=1))
+        potential += (charge/r) * scipy.special.erf(r/(sqrt_sig))
 
-        phi = phix*phiy*phiz
+    potential = potential.reshape((d.shape[0], d.shape[1], d.shape[2]))
 
-        dcg += charge*phi
-
+    return d, dcg, potential
 
 
 

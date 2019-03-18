@@ -164,3 +164,4 @@ norm = plt.Normalize(-1,1)
 ax = plt.gca(projection='3d')
 ax.scatter(pts_all[:,0], pts_all[:,1], pts_all[:,2], c=isosurf_curv_vals, norm=norm, cmap='seismic')
 plt.show()
+
