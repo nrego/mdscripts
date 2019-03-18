@@ -23,7 +23,7 @@ import math
 
 from util import charge_density
 
-univ = MDAnalysis.Universe('top.tpr', 'whole.xtc')
+univ = MDAnalysis.Universe('top.tpr', 'phi_200.xtc')
 ag = univ.select_atoms('resname SOL')
 
 box = np.array([85., 52., 60.])
@@ -37,9 +37,9 @@ xx, yy, zz = np.meshgrid(grid_x, grid_y, grid_z, indexing='ij')
 
 densities = np.zeros((univ.trajectory.n_frames,  xx.shape[0], xx.shape[1], xx.shape[2]))
 d_cg = np.zeros((univ.trajectory.n_frames, grid_x.size))
-pot = np.zeros((univ.trajectory.n_frames, xx.shape[0], xx.shape[1], xx.shape[2]))
-for i in range(1):
-    univ.trajectory[150]
+pot = np.zeros((univ.trajectory.n_frames, xx.shape[1], xx.shape[2]))
+for i in range(50, univ.trajectory.n_frames):
+    univ.trajectory[i]
     this_d = np.zeros_like(xx)
     this_dcg = np.zeros_like(xx)
 
@@ -51,3 +51,5 @@ for i in range(1):
     d_cg[i,:] = this_dcg
 
     pot[i,:] = this_pot
+
+norm = plt.Normalize(-0.2,0.2)
