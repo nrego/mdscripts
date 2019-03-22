@@ -25,7 +25,7 @@ import itertools
 
 #from util import charge_density
 
-i_frame = 0
+i_frame = -2
 # Note: alpha = 1/(np.sqrt(2) * sigma) for the sigma of the ewald screening charge
 def get_alpha_from_cutoff(rtol, rcoulcut=10.0):
 
@@ -102,7 +102,8 @@ cutoff = 1e-5
 screen_alpha = get_alpha_from_cutoff(cutoff)
 
 # alpha for test charge
-test_alpha = 0.1
+test_sig = 0.5
+test_alpha = 1/(np.sqrt(2)*test_sig)
 
 box = univ.dimensions[:3]
 assert box[0] == box[1] == box[2]
@@ -135,7 +136,7 @@ for n_vec in n:
 pot_gaus = 0.5*k_e*pot_gaus
 
 # Recip sum
-max_vec = 12
+max_vec = 10
 
 m = [np.array(m_vec) for m_vec in itertools.product(range(-max_vec, max_vec+1), repeat=3)]
 

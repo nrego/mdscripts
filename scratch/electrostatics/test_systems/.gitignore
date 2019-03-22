@@ -1,0 +1,3 @@
+*/*/*/
+*/*.{tpr,cpt,xvg,xtc,edr}
+*/test_*
