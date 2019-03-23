@@ -28,7 +28,7 @@ pbc             = xyz
 rlist           = 1.0
 
 ; ELECTROSTATICS
-coulombtype     = PME
+coulombtype     = PME-User
 rcoulomb        = 1.0
 
 ; EWALD stuff
@@ -74,4 +74,6 @@ lincs_order          = 4
 lincs_iter           = 1
 continuation         = no
 
-
+; Gaussian and point charges (everything else)
+energygrps = G Pt
+energygrp_table = G G G Pt
