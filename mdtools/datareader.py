@@ -331,6 +331,26 @@ class XvgDataSet(DataSet):
             pyplot.ylim(ylim)
 
 
+# For free energy calcs
+class SimpleDataSet(DataSet):
+
+    def __init__(self, filename, corr_len=1):
+        super(SimpleDataSet, self).__init__()
+
+        # Value of lambda for each window
+
+        self.title=filename
+        self.header = ''
+        self.header = self.header.rstrip()
+
+        data = np.loadtxt(filename, comments=['#', '@'])
+        log.debug('Datareader {} reading input file {}'.format(self, filename))
+
+        #self.dhdl1 = pandas.DataFrame(data[::corr_len, 1], index=data[::corr_len, 0])
+        # Data has biases in kJ/mol !
+        self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0])
+
+        
 
 # For rama.xvg datasets - need to get phi*, rama* as well
 # Needs to abstract getting the phi, psi angles, as well as kappa_phi, kappa_psi, and phi_star, psi_star
@@ -513,6 +533,11 @@ class DataReader:
     @classmethod
     def loadXVG(cls, filename, corr_len=1):
         ds = XvgDataSet(filename, corr_len)
+        return cls._addSet(ds)
+
+    @classmethod
+    def loadSimple(cls, filename, corr_len=1):
+        ds = SimpleDataSet(filename, corr_len)
         return cls._addSet(ds)
 
     @classmethod

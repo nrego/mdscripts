@@ -25,6 +25,9 @@ from scipy.integrate import cumtrapz
 import math
 import itertools
 
+# Electrostatic constant, in units: kJ mol^-1 A e^-2
+k_e = 138.9354859
+
 # Between gaussian and point charge, or two gaussians
 def coul_erf(qi, qj, rij, alpha):
     zero_idx = rij == 0
@@ -101,28 +104,28 @@ if do_plot:
     plt.show()
 
 
-    plt.plot(rvals, one_over_r, label='1/r')
-    plt.plot(rvals, one_over_r-screen, label='screened')
-    plt.legend()
-    plt.ylim(0,2)
-    plt.show()
+    # plt.plot(rvals, one_over_r, label='1/r')
+    # plt.plot(rvals, one_over_r-screen, label='screened')
+    # plt.legend()
+    # plt.ylim(0,2)
+    # plt.show()
 
 
-    plt.plot(rvals, vals_gaus_pt, label='gaus')
-    plt.plot(rvals, vals_gaus_pt-screen, label='screened')
-    plt.legend()
-    plt.show()
+    # plt.plot(rvals, vals_gaus_pt, label='gaus')
+    # plt.plot(rvals, vals_gaus_pt-screen, label='screened')
+    # plt.legend()
+    # plt.show()
 
-    plt.plot(rvals, one_over_r-screen, label='1/r screened')
-    plt.plot(rvals, vals_gaus_pt-screen, 'k--', label='gaus screened')
-    plt.legend()
-    plt.ylim(0,2)
-    plt.show()
+    # plt.plot(rvals, one_over_r-screen, label='1/r screened')
+    # plt.plot(rvals, vals_gaus_pt-screen, 'k--', label='gaus screened')
+    # plt.legend()
+    # plt.ylim(0,2)
+    # plt.show()
 
 
     # Test derivatives
-    plt.plot(rvals, prime_gaus_pt)
-    plt.plot(rvals, np.gradient(vals_gaus_pt, np.diff(rvals)[0]), 'k--')
+    plt.plot(rvals, k_e*prime_gaus_pt)
+    plt.plot(rvals, k_e*np.gradient(vals_gaus_pt, np.diff(rvals)[0]), 'k--')
 
     plt.show()
 
@@ -147,7 +150,7 @@ if force[0] == 0:
 outarray = np.vstack([rvals, vals_gaus_pt, force, np.ones(n_vals), np.zeros(n_vals), np.ones(n_vals), np.zeros(n_vals)])
 
 header = 'r(nm)      coulombic   coul_force   vdw...(not used)'
-np.savetxt('gaus_G_Pt.xvg', outarray.T, fmt='%1.12e ', header=header)
+np.savetxt('table_G_Pt.xvg', outarray.T, fmt='%1.12e ', header=header)
 
 
 # gaus-gaus table
@@ -156,4 +159,4 @@ if force[0] == 0:
     force[0] = 0
 
 outarray = np.vstack([rvals, vals_gaus_gaus, force, np.ones(n_vals), np.zeros(n_vals), np.ones(n_vals), np.zeros(n_vals)])
-np.savetxt('gaus_G_G.xvg', outarray.T, fmt='%1.12e ', header=header)
+np.savetxt('table_G_G.xvg', outarray.T, fmt='%1.12e ', header=header)

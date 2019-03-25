@@ -7,6 +7,7 @@ OW_spc       8      15.9994  0.0000  A   3.16557e-01  6.50629e-01
 HW_spc       1       1.0080  0.0000  A   0.00000e+00  0.00000e+00
 Cl          17      35.45    0.0000  A   4.40104e-01  4.18400e-01
 Na          11      22.99    0.0000  A   3.32840e-01  1.15897e-02
+G            0      16.043   0.0000  A   0.00000e-01  0.00000e-02 
 
 [ moleculetype ]
 ; molname       nrexcl
@@ -42,7 +43,6 @@ SOL             2
 
 #endif
 
-
 [ moleculetype ]
 ; molname       nrexcl
 CL              1
@@ -50,6 +50,7 @@ CL              1
 [ atoms ]
 ; id    at type         res nr  residu name     at name  cg nr  charge
 1       Cl              1       CL              CL       1      -1.00000
+
 
 [ moleculetype ]
 ; molname       nrexcl
@@ -59,6 +60,23 @@ NA              1
 ; id    at type         res nr  residu name     at name  cg nr  charge
 1       Na              1       NA              NA       1      1.00000
 
+
+; Negative and positive gaussians
+[ moleculetype ]
+; molname       nrexcl
+Gn              1
+
+[ atoms ]
+; id    at type         res nr  residu name     at name  cg nr  charge
+1       G                1       Gn              Gn       1      -1.00000
+
+[ moleculetype ]
+; molname       nrexcl
+Gp              1
+
+[ atoms ]
+; id    at type         res nr  residu name     at name  cg nr  charge
+1       G                1       Gp              Gp       1      1.00000
 
 [ system ]
 water box

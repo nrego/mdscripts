@@ -198,7 +198,7 @@ Command-line options
         sgroup = parser.add_argument_group('(Binless) WHAM/MBAR error options')
         sgroup.add_argument('input', metavar='INPUT', type=str, nargs='+',
                             help='Input file names')
-        sgroup.add_argument('--fmt', type=str, choices=['phi', 'xvg', 'rama'], default='phi',
+        sgroup.add_argument('--fmt', type=str, choices=['phi', 'xvg', 'rama', 'simple'], default='phi',
                             help='Format of input data files:  \'phi\' for phiout.dat; \ '
                             '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims); \ '
                             '\'rama\' for RAMA type files (alanine dipeptide)')
@@ -247,6 +247,8 @@ Command-line options
                 elif self.fmt == 'xvg': 
                     ds = self.dr.loadXVG(infile)
                     self.for_lmbdas.append(ds.lmbda)
+                elif self.fmt == 'simple':
+                    ds = self.dr.loadSimple(infile)
                 self.n_windows += 1
         except:
             raise IOError("Error: Unable to successfully load inputs")
@@ -303,6 +305,51 @@ Command-line options
 
         elif self.fmt == 'rama':
             self._unpack_rama_data(start, end)
+
+        elif self.fmt == 'simple':
+            self._unpack_simple_data(start, end)
+
+
+    # Construct bias matrix from data
+    def _unpack_simple_data(self, start, end=None):
+
+
+        self.n_samples = np.array([]).astype(int)
+
+        if self.autocorr is None:
+            do_autocorr = True
+            self.autocorr = np.zeros(self.n_windows)
+        else:
+            do_autocorr = False
+
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+
+            if self.ts == None:
+                self.ts = []
+                
+            # Sanity check - every input should have same timestep
+            #else:
+            #    np.testing.assert_almost_equal(self.ts, ds.ts)
+            self.ts.append(ds.ts)
+            data = ds.data[start:end]
+            dataframe = np.array(data)
+
+            if do_autocorr:
+                autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:, -1]))
+                self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
+
+            self.n_samples = np.append(self.n_samples, dataframe.shape[0])
+
+            if self.bias_mat is None:
+                self.bias_mat = self.beta*dataframe.copy()
+            else:
+                self.bias_mat = np.vstack((self.bias_mat, self.beta*dataframe))
+            
+        #if do_autocorr:
+        log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
+        np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
+        self.ts = np.array(self.ts)
+        dr.clearData()
 
     # Put all data points into N dim vector
     def _unpack_phi_data(self, start, end=None):
