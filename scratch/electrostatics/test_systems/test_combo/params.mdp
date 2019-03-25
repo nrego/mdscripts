@@ -1,0 +1,78 @@
+; in case of posres, etc
+; define        =
+
+; RUN CONTROL shit
+
+integrator      = md
+dt              = 0.002
+; set to taste
+nsteps          = 5000 ; 10 ps
+
+comm-mode       = Linear
+nstcomm         = 10
+comm-grps       = System
+
+; OUTPUT CONTROL
+nstxout         = 0
+nstvout         = 0
+nstfout         = 0
+nstxtcout       = 50 ; output every 0.1 ps
+; Change if you want to output energies more often
+nstenergy       = 50
+nstlog          = 10
+
+; NEIGHBOR SEARCHING
+nstlist         = 10
+ns_type         = grid
+pbc             = xyz
+rlist           = 1.0
+
+; ELECTROSTATICS
+coulombtype     = PME-User
+rcoulomb        = 1.0
+
+; EWALD stuff
+fourierspacing  = 0.12
+pme_order       = 4
+ewald_rtol      = 1e-5
+ewald_geometry  = 3d
+optimize_fft    = no
+
+; VDW
+vdwtype         = cut-off
+rvdw            = 1.0
+DispCorr        = no
+
+; TEMPERATURE COUPLING
+tcoupl          = v-rescale
+tc_grps         = System
+tau_t           = 0.5 
+ref_t           = 300
+
+
+; PRESSURE COUPLING
+; Parrinello-rahman generates correct thermo ensemble, but can be unstable
+;   if system far from ref_p - that's why we used Berendsen to get the system
+;   close to 1 bar first
+;pcoupl          = Parrinello-Rahman
+;pcoupl          = no
+pcoupltype      = isotropic
+tau_p           = 1.0
+compressibility = 4.5e-5
+ref_p           = 1.0
+refcoord_scaling= no
+
+; VELOCITY GENERATION
+gen_vel         = yes 
+gen_temp        = 300
+gen_seed        = -1
+
+; BOND CONSTRAINTS
+constraints          = h-bonds ; actually not really relevant here, water constraints are handled by SETTLE (specified in topology file)
+constraint-algorithm = lincs
+lincs_order          = 4
+lincs_iter           = 1
+continuation         = no
+
+energygrps = G Pt
+energygrp-table = G Pt  G G

@@ -112,6 +112,8 @@ parser.add_argument('--traj', '-f', type=str, default='traj.xtc',
                     help='XTC file (default: %(default)s)')
 parser.add_argument('--n-frame', type=int, default=0,
                     help='Frame to calculate potential (default: first frame)')
+parser.add_argument('--all-frames', action='store_true',
+                    help='If true, calculate potential for all frames')
 parser.add_argument('--pt-grp', type=str, default="name _",
                     help='selection string for point charge residues')
 parser.add_argument('--gaus-grp', type=str, default="name _",
@@ -158,79 +160,97 @@ assert box[0] == box[1] == box[2]
 L = box[0]
 print("box length (nm): {:0.1f}".format(L))
 
-print("Frame: {}".format(args.n_frame))
-univ.trajectory[args.n_frame]
+if args.all_frames:
+    frames = np.arange(univ.trajectory.n_frames)
+else:
+    frames = [args.n_frame]
 
-## DIRECT SUMS (SR) ##
+# Total direct, total LR, Pt-Pt SR, G-G SR, Pt-G SR
+energy = np.zeros((len(frames), 5))
 
-# Pt-Pt charge #
-print("Calculating pt-pt coul SR...")
-pot_dir_pt_pt = 0.5*k_e*get_electro_dir(pt_grp, excl_list, L, coul_pt, kappa=screen_alpha)
+for i, frame in enumerate(frames):
+    print("Frame: {}".format(frame))
+    univ.trajectory[frame]
 
+    ## DIRECT SUMS (SR) ##
 
-print("pt-pt coul SR: {}".format(pot_dir_pt_pt))
+    # Pt-Pt charge #
+    print("Calculating pt-pt coul SR...")
+    pot_dir_pt_pt = 0.5*k_e*get_electro_dir(pt_grp, excl_list, L, coul_pt, kappa=screen_alpha)
 
-# Gaus-Gaus charge #
-pot_dir_gaus_gaus = 0.5*k_e*get_electro_dir(gaus_grp, [], L, coul_gaus, kappa=screen_alpha, alpha1=test_alpha, alpha2=test_alpha)
+    energy[i,2] = pot_dir_pt_pt
 
-print("gaus-gaus coul SR: {}".format(pot_dir_gaus_gaus))
+    print("pt-pt coul SR: {}".format(pot_dir_pt_pt))
 
+    # Gaus-Gaus charge #
+    pot_dir_gaus_gaus = 0.5*k_e*get_electro_dir(gaus_grp, [], L, coul_gaus, kappa=screen_alpha, alpha1=test_alpha, alpha2=test_alpha)
 
+    print("gaus-gaus coul SR: {}".format(pot_dir_gaus_gaus))
 
-# pt-Gaus charge #
-pot_dir_pt_gaus = 0
+    energy[i,3] = pot_dir_gaus_gaus
 
-for atm_i in pt_grp.atoms:
-    for atm_j in gaus_grp.atoms:
-        rij = np.linalg.norm(atm_i.position - atm_j.position)
-        pot_dir_pt_gaus += ((atm_i.charge*atm_j.charge)/rij) * (erf(test_alpha*rij) - erf(screen_alpha*rij))
+    # pt-Gaus charge #
+    pot_dir_pt_gaus = 0
 
-pot_dir_pt_gaus *= k_e
-print("pt-gaus coul SR: {}".format(pot_dir_pt_gaus))
-
-# Recip vectors
-max_vec = args.m_recip
-
-m = [np.array(m_vec) for m_vec in itertools.product(range(-max_vec, max_vec+1), repeat=3)]
-
-# Recip for point charges
-#embed()
-pot_recip = 0
-for m_vec in m:
-    if np.array_equal(m_vec, np.zeros(3)):
-        continue
-    K = (2*np.pi/L)
-    k_sq = np.sum((K*m_vec)**2)
-    sig = 1/(np.sqrt(2)*screen_alpha)
-    pref = np.exp(-0.5*sig*sig*k_sq) / k_sq
-
-    pot_recip += pref*get_electro_recip(atms, m_vec, K)
-
-V = box.prod()
-pot_recip /= (2*V*eps)
-
-# Between gaussian and point charge
-pot_self = k_e * (1/(np.sqrt(2*np.pi)*sig)) * np.sum([atm.charge**2 for atm in atms])
-
-# Between each gaussian and its excl point charges
-pot_excl = 0.0
-for res in pt_grp:
-    atms = res.atoms
-    for i in excl_list:
-        atm_i = atms[i]
-        
-        for j in excl_list:
-            if j == i:
-                continue
-            atm_j = atms[j]
-
+    for atm_i in pt_grp.atoms:
+        for atm_j in gaus_grp.atoms:
             rij = np.linalg.norm(atm_i.position - atm_j.position)
-            pot_excl += ((atm_i.charge*atm_j.charge)/rij) * erf(screen_alpha*rij)
+            pot_dir_pt_gaus += ((atm_i.charge*atm_j.charge)/rij) * (erf(test_alpha*rij) - erf(screen_alpha*rij))
 
-pot_excl = 0.5*k_e*pot_excl
-#embed()
+    pot_dir_pt_gaus *= k_e
+    print("pt-gaus coul SR: {}".format(pot_dir_pt_gaus))
 
-pot_recip -= pot_self+pot_excl
+    energy[i,4] = pot_dir_pt_gaus
 
-print("Coul LR: {}".format(pot_recip))
+    energy[i,0] = pot_dir_pt_pt + pot_dir_gaus_gaus + pot_dir_pt_gaus
 
+    # Recip vectors
+    max_vec = args.m_recip
+
+    m = [np.array(m_vec) for m_vec in itertools.product(range(-max_vec, max_vec+1), repeat=3)]
+
+    # Recip for point charges
+    #embed()
+    pot_recip = 0
+    for m_vec in m:
+        if np.array_equal(m_vec, np.zeros(3)):
+            continue
+        K = (2*np.pi/L)
+        k_sq = np.sum((K*m_vec)**2)
+        sig = 1/(np.sqrt(2)*screen_alpha)
+        pref = np.exp(-0.5*sig*sig*k_sq) / k_sq
+
+        pot_recip += pref*get_electro_recip(atms, m_vec, K)
+
+    V = box.prod()
+    pot_recip /= (2*V*eps)
+
+    # Between gaussian and point charge
+    pot_self = k_e * (1/(np.sqrt(2*np.pi)*sig)) * np.sum([atm.charge**2 for atm in atms])
+
+    # Between each gaussian and its excl point charges
+    pot_excl = 0.0
+    for res in pt_grp:
+        atms = res.atoms
+        for i in excl_list:
+            atm_i = atms[i]
+            
+            for j in excl_list:
+                if j == i:
+                    continue
+                atm_j = atms[j]
+
+                rij = np.linalg.norm(atm_i.position - atm_j.position)
+                pot_excl += ((atm_i.charge*atm_j.charge)/rij) * erf(screen_alpha*rij)
+
+    pot_excl = 0.5*k_e*pot_excl
+    #embed()
+
+    pot_recip -= pot_self+pot_excl
+
+    print("Coul LR: {}".format(pot_recip))
+    energy[i,1] = pot_recip
+
+embed()
+header = 'SR   LR    Pt-Pt SR   G-G SR    Pt-G SR'
+np.savetxt('energy.dat', energy, header=header)
