@@ -31,6 +31,42 @@ import itertools
 
 from sklearn.cluster import AgglomerativeClustering
 
+
+def merge_grp(grp_i, merged_pts):
+    ret_grps = np.array([])
+
+    # Base case
+    if grp_i.size == 1:
+        return np.append(ret_grps, grp_i)
+    else:
+        for m_i in grp_i:
+            ret_grps = np.append(ret_grps, merge_grp(merged_pts[m_i], merged_pts))
+
+
+    return ret_grps
+
+# Merge non-singleton clusters i and j, re-label all non-singleton
+def merge_and_renumber_cluster(labels, idx_i, idx_j):
+    n_non_singleton = np.unique(labels) - 1
+    assert n_non_singleton > 1
+
+    # Sorted current cluster labels
+    clust_labels = np.unique(labels)[1:]
+    assert np.array_equal(clust_labels, np.arange(n_non_singleton))
+
+    # Clust labels for all other clusters (that we aren't merging)
+    clust_labels = np.delete(labels, [idx_i, idx_j])
+
+    new_labels = labels.copy()
+
+    new_labels[(labels == idx_i) || (labels == idx_j)] = 0
+
+    for idx, i in enumerate(clust_labels):
+        new_labels[labels==i] = idx+1
+
+    return new_labels
+
+
 mpl.rcParams.update({'axes.labelsize': 20})
 mpl.rcParams.update({'xtick.labelsize': 20})
 mpl.rcParams.update({'ytick.labelsize': 20})
@@ -106,19 +142,8 @@ clust.fit(coefs)
 
 #plot_edge_list(pos_ext, edges, patch_indices, annotation=clust.labels_)
 
+clust_labels_all = np.zeros((clust.children_.shape[0], n_edges), dtype=int)
 
-def merge_grp(grp_i, merged_pts):
-    ret_grps = np.array([])
-
-    # Base case
-    if grp_i.size == 1:
-        return np.append(ret_grps, grp_i)
-    else:
-        for m_i in grp_i:
-            ret_grps = np.append(ret_grps, merge_grp(merged_pts[m_i], merged_pts))
-
-
-    return ret_grps
 
 merged_pts = dict()
 for i in range(n_edges):
@@ -134,6 +159,7 @@ for i_round, (m_i, m_j) in enumerate(clust.children_):
     grp_i = merge_grp(merged_pts[m_i], merged_pts)
     grp_j = merge_grp(merged_pts[m_j], merged_pts)
 
+    # What kind of merge?
 
     # m_i and m_j are getting merged...
     this_merge = np.append(grp_i, grp_j)
