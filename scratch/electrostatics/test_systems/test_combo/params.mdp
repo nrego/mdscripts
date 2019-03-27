@@ -16,9 +16,15 @@ comm-grps       = System
 nstxout         = 0
 nstvout         = 0
 nstfout         = 0
+<<<<<<< HEAD
 nstxtcout       = 10 ; output every 0.02 ps
 ; Change if you want to output energies more often
 nstenergy       = 10
+=======
+nstxtcout       = 50 ; output every 0.1 ps
+; Change if you want to output energies more often
+nstenergy       = 50
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 nstlog          = 10
 
 ; NEIGHBOR SEARCHING
@@ -74,6 +80,11 @@ lincs_order          = 4
 lincs_iter           = 1
 continuation         = no
 
+<<<<<<< HEAD
 ; Treat interactions between gaussians and point charges (i.e., everything else)
 ;energygrps = G Pt
 ;energygrp_table = G G  G Pt
+=======
+energygrps = G Pt
+energygrp-table = G Pt  G G
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282

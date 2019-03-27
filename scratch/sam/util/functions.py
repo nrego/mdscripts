@@ -31,7 +31,7 @@ mpl.rcParams.update({'axes.titlesize': 30})
 # regress y on set of n_dim features, X.
 #   Note this can do a polynomial regression on a single feature -
 #   just make each nth degree a power of that feature
-def fit_general_linear_model(X, y, sort_axis=0, alpha=1):
+def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1):
     np.random.seed()
 
     assert y.ndim == 1
@@ -44,8 +44,11 @@ def fit_general_linear_model(X, y, sort_axis=0, alpha=1):
     sort_idx = np.argsort(X[:,sort_axis])
     xvals = X[sort_idx, :]
 
-    reg = linear_model.LinearRegression()
-    #reg = linear_model.Ridge(alpha=alpha)
+    if do_ridge:
+        reg = linear_model.Ridge(alpha=alpha)
+    else:
+        reg = linear_model.LinearRegression()
+    
     
     # Randomly split data into fifths
     n_cohort = n_dat // 5
@@ -153,6 +156,61 @@ def plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext, ax=None):
 
     return ax
 
+# Generates a list of all edges 
+def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
+    assert len(nn_ext.keys()) == positions.shape[0]
+
+    edges = []
+    for i in range(positions.shape[0]):
+        # Index of this patch point in pos_ext
+        global_i = patch_indices[i]
+        neighbor_idx = nn_ext[i]
+        for j in neighbor_idx:
+            if j in patch_indices and j <= global_i:
+                continue
+
+            edges.append((global_i,j))
+
+    edges = np.array(edges)
+
+    return edges
+
+def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=None, colors=None, line_styles=None, ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    if annotation is None:
+        annotation = np.arange(edges.shape[0])
+
+
+    for i_edge, (i,j) in enumerate(edges):
+
+        i_int = i in patch_indices
+        j_int = j in patch_indices
+
+        i_symbol = 'ko' if i_int else 'rx'
+        j_symbol = 'ko' if j_int else 'rx'
+
+        if line_styles is None:
+            edge_style = '-' #if (i_int and j_int) else '--'
+        else:
+            edge_style = line_styles[i_edge]
+
+        ax.plot(pos_ext[i,0], pos_ext[i,1], i_symbol)
+        ax.plot(pos_ext[j,0], pos_ext[j,1], j_symbol)
+
+        if colors is not None:
+            this_color = colors[i_edge]
+        else:
+            this_color = 'k'
+        ax.plot([pos_ext[i,0], pos_ext[j,0]], [pos_ext[i,1], pos_ext[j,1]], color=this_color, linestyle=edge_style)
+
+        midpt = (pos_ext[i] + pos_ext[j]) / 2.0
+
+        if do_annotate:
+            ax.annotate(annotation[i_edge], xy=midpt-0.025)
+
+
 def plot_annotate(positions, annotations, ax=None):
     if ax is None:
         ax = plt.gca()
@@ -216,6 +274,9 @@ def gen_pos_grid(ny=6, nz=None, z_offset=False, shift_y=0, shift_z=0):
     return np.array(positions)
 
 def construct_neighbor_dist_lists(positions, pos_ext):
+
+    n_positions = positions.shape[0]
+    n_pos_ext = pos_ext.shape[0]
     ## Set up dict of nearest neighbors
     tree = cKDTree(positions)
     pairs = tree.query_pairs(r=0.51)
@@ -223,8 +284,8 @@ def construct_neighbor_dist_lists(positions, pos_ext):
     tree_ext = cKDTree(pos_ext)
     ext_neighbors = tree.query_ball_tree(tree_ext, r=0.51)
 
-    d_self, i_self = tree.query(positions, k=36)
-    d_ext, i_ext = tree_ext.query(positions, k=108)
+    d_self, i_self = tree.query(positions, k=n_positions)
+    d_ext, i_ext = tree_ext.query(positions, k=n_pos_ext)
 
     # Dict of nearest neighbor patch indices
     #   for patch index i, nn[i] = {j}; j is index of patch atom that is nearest neighbor to patch atom i
@@ -232,7 +293,7 @@ def construct_neighbor_dist_lists(positions, pos_ext):
     #    for patch index i, nn_ext[i] = {k}; k is index of extended pos (non-patch) atom that is nearest neighbor to patch atom i
     nn = dict()
     nn_ext = dict()
-    for i in range(36):
+    for i in range(n_positions):
         nn[i] = np.array([], dtype=int)
         nn_ext[i] = np.array(ext_neighbors[i], dtype=int)
     for i,j in pairs:
@@ -243,15 +304,15 @@ def construct_neighbor_dist_lists(positions, pos_ext):
 
     # Dict of patch i's distance to every other patch point - its distance to itself is set to infinity
     #  dd[i,k] is distance from point i to point k
-    dd = np.zeros((36,36))
-    dd_ext = np.zeros((36,108))
-    for i in range(36):
-        assert np.array_equal(np.sort(i_self[i]), np.arange(36))
+    dd = np.zeros((n_positions,n_positions))
+    dd_ext = np.zeros((n_positions,n_pos_ext))
+    for i in range(n_positions):
+        assert np.array_equal(np.sort(i_self[i]), np.arange(n_positions))
         sort_idx_self = np.argsort(i_self[i])
         dd[i] = d_self[i][sort_idx_self] #- 0.5
         dd[i,i] = np.inf
 
-        assert np.array_equal(np.sort(i_ext[i]), np.arange(108))
+        assert np.array_equal(np.sort(i_ext[i]), np.arange(n_pos_ext))
         sort_idx_ext = np.argsort(i_ext[i])
         dd_ext[i] = d_ext[i][sort_idx_ext] #- 0.5
 
@@ -302,6 +363,43 @@ def find_keff(methyl_mask, nn, nn_ext):
     deg[:,0] /= 2
     deg[:,1] /= 2
     deg[:,2] /= 2
+
+    return deg
+
+# Slightly different inputs, but should give same as find_keff, only now for each of the 131 edges
+def get_keff_all(methyl_mask, edges, patch_indices):
+
+    # each line is: n_mm, n_oo, n_mo, n_me, n_oe
+    deg = np.zeros((131, 5), dtype=float)
+
+    for i_edge, (i,j) in enumerate(edges):
+
+        global_methyl_indices = patch_indices[methyl_mask]
+        # Are i,j in patch or external?
+        i_patch = i in patch_indices
+        j_patch = j in patch_indices
+
+        # At least one must be in patch
+        assert (i_patch or j_patch)
+
+        # Is this an internal edge type?
+        int_edge = i_patch and j_patch
+
+        # Is i, j a methyl?
+        i_meth = i in global_methyl_indices
+        j_meth = j in global_methyl_indices
+
+        # Flags
+        mo_flag = (i_meth and (j_patch and not j_meth)) or (j_meth and (i_patch and not i_meth))
+        me_flag = (i_meth and not j_patch) or (j_meth and not i_patch)
+        oe_flag = (not i_meth and not j_patch) or (not j_meth and not i_patch)
+
+        i_bin = np.array([i_meth, not i_meth and i_patch, mo_flag, me_flag, oe_flag])
+        j_bin = np.array([j_meth, not j_meth and j_patch, mo_flag, me_flag, oe_flag])
+
+        deg[i_edge] = (i_bin & j_bin)
+
+    assert deg.sum() == 131
 
     return deg
 

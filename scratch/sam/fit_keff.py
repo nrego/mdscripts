@@ -71,6 +71,7 @@ for i, methyl_mask in enumerate(methyl_pos):
 
 # Remove n_mo and n_oe, which are linear combo's of the other features
 k_eff_all = k_eff
+np.savetxt('k_eff_all.dat', k_eff_all)
 k_eff = np.delete(k_eff_all, (1,4), axis=1)
 
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_eff, energies)
@@ -99,27 +100,4 @@ perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_kernal, ene
 
 
 methyl_mask = methyl_pos[500]
-#ax = plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext)
-#ax = plot_pattern(positions, methyl_mask, ax=ax)
-#ax.plot(pos_ext[:,0], pos_ext[:,1], 'bx', markersize=12)
 
-
-'''
-rcut_vals = (0.6, 1.2, 1.8, 2.4)
-val_combos = list(itertools.product(rcut_vals, repeat=3))
-perf = []
-i_run = 0
-for rcut_mm, rcut_mo, rcut_me in val_combos:
-    rcut = (rcut_mm, 1, rcut_mo, rcut_me, 1)
-    if i_run % 10 == 0:
-        print("iter: {}".format(i_run))
-    k_kernal = np.zeros((n_samples, 5))
-    for i, methyl_mask in enumerate(methyl_pos):
-        k_kernal[i] = find_keff_kernel(methyl_mask, dd, dd_ext, sig_sq, rcut).sum(axis=0)
-    k_kernal = np.delete(k_kernal, (1,4), axis=1)
-
-    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_kernal, energies)
-    perf.append(perf_mse.mean())
-    i_run += 1
-
-'''

@@ -1,8 +1,14 @@
 ;
 ;	File 'mdout.mdp' was generated
+<<<<<<< HEAD
 ;	By user: nick (1000)
 ;	On host: nick-ThinkPad-T440p
 ;	At date: Sat Mar 23 16:37:41 2019
+=======
+;	By user: nickrego (501)
+;	On host: hnt-ve510-0594.apn.wlan.upenn.edu
+;	At date: Mon Mar 25 12:38:27 2019
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ;
 
 ; VARIOUS PREPROCESSING OPTIONS
@@ -19,9 +25,15 @@ tinit                    = 0
 dt                       = 0.002
 nsteps                   = 5000
 ; For exact run continuation or redoing part of a run
+<<<<<<< HEAD
 init_step                = 0
 ; Part index is updated automatically on checkpointing (keeps files separate)
 simulation_part          = 1
+=======
+init-step                = 0
+; Part index is updated automatically on checkpointing (keeps files separate)
+simulation-part          = 1
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; mode for center of mass motion removal
 comm-mode                = Linear
 ; number of steps for center of mass motion removal
@@ -38,7 +50,11 @@ ld-seed                  = 1993
 ; Force tolerance and initial step-size
 emtol                    = 10
 emstep                   = 0.01
+<<<<<<< HEAD
 ; Max number of iterations in relax_shells
+=======
+; Max number of iterations in relax-shells
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 niter                    = 20
 ; Step size (ps^2) for minimization of flexible constraints
 fcstep                   = 0
@@ -56,33 +72,60 @@ nstvout                  = 0
 nstfout                  = 0
 ; Output frequency for energies to log file and energy file
 nstlog                   = 10
+<<<<<<< HEAD
 nstcalcenergy            = -1
 nstenergy                = 10
 ; Output frequency and precision for .xtc file
 nstxtcout                = 10
+=======
+nstcalcenergy            = 100
+nstenergy                = 50
+; Output frequency and precision for .xtc file
+nstxtcout                = 50
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 xtc-precision            = 1000
 ; This selects the subset of atoms for the .xtc file. You can
 ; select multiple groups. By default all atoms will be written.
 xtc-grps                 = 
 ; Selection of energy groups
+<<<<<<< HEAD
 energygrps               = 
 
 ; NEIGHBORSEARCHING PARAMETERS
+=======
+energygrps               = G Pt
+
+; NEIGHBORSEARCHING PARAMETERS
+; cut-off scheme (group: using charge groups, Verlet: particle based cut-offs)
+cutoff-scheme            = Group
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; nblist update frequency
 nstlist                  = 10
 ; ns algorithm (simple or grid)
 ns_type                  = grid
 ; Periodic boundary conditions: xyz, no, xy
 pbc                      = xyz
+<<<<<<< HEAD
 periodic_molecules       = no
+=======
+periodic-molecules       = no
+; Allowed energy drift due to the Verlet buffer in kJ/mol/ps per atom,
+; a value of -1 means: use rlist
+verlet-buffer-drift      = 0.005
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; nblist cut-off        
 rlist                    = 1.0
 ; long-range cut-off for switched potentials
 rlistlong                = -1
+<<<<<<< HEAD
+=======
+nstcalclr                = -1
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 
 ; OPTIONS FOR ELECTROSTATICS AND VDW
 ; Method for doing electrostatics
 coulombtype              = PME-User
+<<<<<<< HEAD
 rcoulomb-switch          = 0
 rcoulomb                 = 1.0
 ; Relative dielectric constant for the medium and the reaction field
@@ -90,6 +133,17 @@ epsilon_r                = 1
 epsilon_rf               = 1
 ; Method for doing Van der Waals
 vdwtype                  = cut-off
+=======
+coulomb-modifier         = Potential-shift-Verlet
+rcoulomb-switch          = 0
+rcoulomb                 = 1.0
+; Relative dielectric constant for the medium and the reaction field
+epsilon-r                = 1
+epsilon-rf               = 0
+; Method for doing Van der Waals
+vdwtype                  = cut-off
+vdw-modifier             = Potential-shift-Verlet
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; cut-off lengths       
 rvdw-switch              = 0
 rvdw                     = 1.0
@@ -98,6 +152,7 @@ DispCorr                 = no
 ; Extension of the potential lookup tables beyond the cut-off
 table-extension          = 1
 ; Separate tables between energy group pairs
+<<<<<<< HEAD
 energygrp_table          = 
 ; Spacing for the PME/PPPM FFT grid
 fourierspacing           = 0.12
@@ -105,10 +160,20 @@ fourierspacing           = 0.12
 fourier_nx               = 0
 fourier_ny               = 0
 fourier_nz               = 0
+=======
+energygrp-table          = G Pt  G G
+; Spacing for the PME/PPPM FFT grid
+fourierspacing           = 0.12
+; FFT grid size, when a value is 0 fourierspacing will be used
+fourier-nx               = 0
+fourier-ny               = 0
+fourier-nz               = 0
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; EWALD/PME/PPPM parameters
 pme_order                = 4
 ewald_rtol               = 1e-5
 ewald_geometry           = 3d
+<<<<<<< HEAD
 epsilon_surface          = 0
 optimize_fft             = no
 
@@ -118,12 +183,24 @@ implicit_solvent         = No
 ; GENERALIZED BORN ELECTROSTATICS
 ; Algorithm for calculating Born radii
 gb_algorithm             = Still
+=======
+epsilon-surface          = 0
+optimize_fft             = no
+
+; IMPLICIT SOLVENT ALGORITHM
+implicit-solvent         = No
+
+; GENERALIZED BORN ELECTROSTATICS
+; Algorithm for calculating Born radii
+gb-algorithm             = Still
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; Frequency of calculating the Born radii inside rlist
 nstgbradii               = 1
 ; Cutoff for Born radii calculation; the contribution from atoms
 ; between rlist and rgbradii is updated every nstlist steps
 rgbradii                 = 1
 ; Dielectric coefficient of the implicit solvent
+<<<<<<< HEAD
 gb_epsilon_solvent       = 80
 ; Salt concentration in M for Generalized Born models
 gb_saltconc              = 0
@@ -136,19 +213,42 @@ sa_algorithm             = Ace-approximation
 ; Surface tension (kJ/mol/nm^2) for the SA (nonpolar surface) part of GBSA
 ; The value -1 will set default value for Still/HCT/OBC GB-models.
 sa_surface_tension       = -1
+=======
+gb-epsilon-solvent       = 80
+; Salt concentration in M for Generalized Born models
+gb-saltconc              = 0
+; Scaling factors used in the OBC GB model. Default values are OBC(II)
+gb-obc-alpha             = 1
+gb-obc-beta              = 0.8
+gb-obc-gamma             = 4.85
+gb-dielectric-offset     = 0.009
+sa-algorithm             = Ace-approximation
+; Surface tension (kJ/mol/nm^2) for the SA (nonpolar surface) part of GBSA
+; The value -1 will set default value for Still/HCT/OBC GB-models.
+sa-surface-tension       = -1
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 
 ; OPTIONS FOR WEAK COUPLING ALGORITHMS
 ; Temperature coupling  
 tcoupl                   = v-rescale
 nsttcouple               = -1
 nh-chain-length          = 10
+<<<<<<< HEAD
+=======
+print-nose-hoover-chain-variables = no
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; Groups to couple separately
 tc_grps                  = System
 ; Time constant (ps) and reference temperature (K)
 tau_t                    = 0.5
 ref_t                    = 300
+<<<<<<< HEAD
 ; Pressure coupling     
 Pcoupl                   = No
+=======
+; pressure coupling     
+pcoupl                   = No
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 pcoupltype               = isotropic
 nstpcouple               = -1
 ; Time constant (ps), compressibility (1/bar) and reference P (bar)
@@ -157,8 +257,11 @@ compressibility          = 4.5e-5
 ref_p                    = 1.0
 ; Scaling of reference coordinates, No, All or COM
 refcoord_scaling         = no
+<<<<<<< HEAD
 ; Random seed for Andersen thermostat
 andersen_seed            = 815131
+=======
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 
 ; OPTIONS FOR QMMM calculations
 QMMM                     = no
@@ -192,11 +295,19 @@ bTS                      =
 ; Type of annealing for each temperature group (no/single/periodic)
 annealing                = 
 ; Number of time points to use for specifying annealing in each group
+<<<<<<< HEAD
 annealing_npoints        = 
 ; List of times at the annealing points for each group
 annealing_time           = 
 ; Temp. at each annealing point, for each group.
 annealing_temp           = 
+=======
+annealing-npoints        = 
+; List of times at the annealing points for each group
+annealing-time           = 
+; Temp. at each annealing point, for each group.
+annealing-temp           = 
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 
 ; GENERATE VELOCITIES FOR STARTUP RUN
 gen_vel                  = yes
@@ -227,11 +338,16 @@ morse                    = no
 
 ; ENERGY GROUP EXCLUSIONS
 ; Pairs of energy groups for which all non-bonded interactions are excluded
+<<<<<<< HEAD
 energygrp_excl           = 
+=======
+energygrp-excl           = 
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 
 ; WALLS                
 ; Number of walls, type, atom types, densities and box-z scale factor for Ewald
 nwall                    = 0
+<<<<<<< HEAD
 wall_type                = 9-3
 wall_r_linpot            = -1
 wall_atomtype            = 
@@ -242,6 +358,22 @@ wall_ewald_zfac          = 3
 ; Pull type: no, umbrella, constraint or constant_force
 pull                     = no
 
+=======
+wall-type                = 9-3
+wall-r-linpot            = -1
+wall-atomtype            = 
+wall-density             = 
+wall-ewald-zfac          = 3
+
+; COM PULLING          
+; Pull type: no, umbrella, constraint or constant-force
+pull                     = no
+
+; ENFORCED ROTATION    
+; Enforced rotation: No or Yes
+rotation                 = no
+
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; NMR refinement stuff 
 ; Distance restraints type: No, Simple or Ensemble
 disre                    = No
@@ -261,6 +393,7 @@ orire-tau                = 0
 orire-fitgrp             = 
 ; Output frequency for trace(SD) and S to energy file
 nstorireout              = 100
+<<<<<<< HEAD
 ; Dihedral angle restraints: No or Yes
 dihre                    = no
 dihre-fc                 = 1000
@@ -274,14 +407,45 @@ sc-alpha                 = 0
 sc-power                 = 0
 sc-sigma                 = 0.3
 nstdhdl                  = 10
-separate-dhdl-file       = yes
-dhdl-derivatives         = yes
-dh_hist_size             = 0
-dh_hist_spacing          = 0.1
+=======
+
+; Free energy variables
+free-energy              = no
 couple-moltype           = 
 couple-lambda0           = vdw-q
 couple-lambda1           = vdw-q
 couple-intramol          = no
+init-lambda              = -1
+init-lambda-state        = -1
+delta-lambda             = 0
+nstdhdl                  = 50
+fep-lambdas              = 
+mass-lambdas             = 
+coul-lambdas             = 
+vdw-lambdas              = 
+bonded-lambdas           = 
+restraint-lambdas        = 
+temperature-lambdas      = 
+calc-lambda-neighbors    = 1
+init-lambda-weights      = 
+dhdl-print-energy        = no
+sc-alpha                 = 0
+sc-power                 = 1
+sc-r-power               = 6
+sc-sigma                 = 0.3
+sc-coul                  = no
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
+separate-dhdl-file       = yes
+dhdl-derivatives         = yes
+dh_hist_size             = 0
+dh_hist_spacing          = 0.1
+<<<<<<< HEAD
+couple-moltype           = 
+couple-lambda0           = vdw-q
+couple-lambda1           = vdw-q
+couple-intramol          = no
+=======
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 
 ; Non-equilibrium MD stuff
 acc-grps                 = 
@@ -291,6 +455,15 @@ freezedim                =
 cos-acceleration         = 0
 deform                   = 
 
+<<<<<<< HEAD
+=======
+; simulated tempering variables
+simulated-tempering      = no
+simulated-tempering-scaling = geometric
+sim-temp-low             = 300
+sim-temp-high            = 300
+
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; Electric fields      
 ; Format is number of terms (int) and for all terms an amplitude (real)
 ; and a phase angle (real)
@@ -301,6 +474,12 @@ E-yt                     =
 E-z                      = 
 E-zt                     = 
 
+<<<<<<< HEAD
+=======
+; AdResS parameters    
+adress                   = no
+
+>>>>>>> 3cc6b8257abcf917f3003572a7c0b5238e7ae282
 ; User defined thingies
 user1-grps               = 
 user2-grps               = 

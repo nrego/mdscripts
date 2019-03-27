@@ -53,6 +53,8 @@ parser.add_argument('--rtol', type=float, default=1e-5,
                     help='rtol gromacs parameter for determining ewald screen width (default: %(default)s)')
 parser.add_argument('--rcut', type=float, default=1.0,
                     help='SR cutoff, in nm; used with \'rtol\' for determining ewald screen width (default: %(default)s)')
+parser.add_argument('--r-core', type=float, default=None,
+                    help='Core radius, to set potential to zero for distances less than r-core (default: none)')
 args = parser.parse_args()
 
 do_plot = args.do_plot
@@ -160,3 +162,18 @@ if force[0] == 0:
 
 outarray = np.vstack([rvals, vals_gaus_gaus, force, np.ones(n_vals), np.zeros(n_vals), np.ones(n_vals), np.zeros(n_vals)])
 np.savetxt('table_G_G.xvg', outarray.T, fmt='%1.12e ', header=header)
+
+
+# Coul without hard core region - region defined by Rv-rc, Rv is probe volume, rc is Ntilde cutoff
+if args.r_core is not None:
+    force = one_over_rsq
+    cut_pts = rvals <= args.r_core
+    force[cut_pts] = 0
+    one_over_r[cut_pts] = 0
+
+    outarray = np.vstack([rvals, one_over_r, force, np.ones(n_vals), np.zeros(n_vals), np.ones(n_vals), np.zeros(n_vals)])
+
+    header = 'r(nm)      coulombic   coul_force   vdw...(not used)'
+    np.savetxt('table_Gc_Pt.xvg', outarray.T, fmt='%1.12e ', header=header)
+
+
