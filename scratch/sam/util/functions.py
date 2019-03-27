@@ -161,6 +161,8 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
     assert len(nn_ext.keys()) == positions.shape[0]
 
     edges = []
+    # Indices of edges to external OH's
+    ext_indices = []
     for i in range(positions.shape[0]):
         # Index of this patch point in pos_ext
         global_i = patch_indices[i]
@@ -169,11 +171,14 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
             if j in patch_indices and j <= global_i:
                 continue
 
+            if j not in patch_indices:
+                ext_indices.append(len(edges))
+
             edges.append((global_i,j))
 
     edges = np.array(edges)
 
-    return edges
+    return edges, ext_indices
 
 def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None):
     if ax is None:

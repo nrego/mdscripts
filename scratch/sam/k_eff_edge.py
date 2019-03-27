@@ -139,12 +139,15 @@ nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 methyl_pos = ds['methyl_pos']
 n_configs = methyl_pos.shape[0]
 
-edges = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
+edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
 n_edges = edges.shape[0]
 
 ## Sanity check - plot edges ##
 assert n_edges == 131
-plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True)
+
+fig, ax = plt.subplots(figsize=(6,6))
+plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, ax=ax)
+ax.axis('off')
 plt.savefig('/Users/nickrego/Desktop/edges_labeled.png')
 plt.close('all')
 
@@ -167,15 +170,23 @@ k_eff_prev = np.loadtxt('k_eff_all.dat')
 assert np.array_equal(k_eff_prev, k_eff_all_shape.sum(axis=1))
 
 
-# Now remove oo and oe - redundant terms
-#    Also treat n_me and n_mo equivalently - different edge types will automatically account for external
-#    edges, if necessary
-k_eff_shape = np.delete(k_eff_all_shape, (2,3), axis=2)
-k_eff_shape = np.dstack((k_eff_shape[:,:,0][:,:,None], np.sum(k_eff_shape[:,:,1:], axis=2, keepdims=True)))
-k_eff = k_eff_shape.reshape((n_configs, n_edges*2))
+# n_mm  n_oo  n_mo  n_me   n_oe
+#   0    1     2     3      4
 
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_eff, energies, do_ridge=True)
-coefs = reg.coef_.reshape((n_edges, 2))
+# n_oo + n_oe
+oo = k_eff_all_shape[:,:,1] + k_eff_all_shape[:,:,4]
+# n_mo + n_me
+mo = k_eff_all_shape[:,:,2] + k_eff_all_shape[:,:,3]
+mm = k_eff_all_shape[:,:,0]
+
+
+# Now only mm, oo, mo;  still have redundancy
+k_eff_all_shape = np.dstack((mm, oo, mo))
+n_connection_type = k_eff_all_shape.shape[2]
+k_eff_all = k_eff_all_shape.reshape((n_configs, n_edges*n_connection_type))
+
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_eff_all, energies, do_ridge=True)
+coefs = reg.coef_.reshape((n_edges, n_connection_type))
 
 # distance matrix between coefs
 tree = cKDTree(coefs)
@@ -271,15 +282,17 @@ for i_round, (m_i, m_j) in enumerate(clust.children_):
 
     if plot_it:
         plt.close('all')
-        fig, ax = plt.subplots(figsize=(6,6))
-
+        fig, ax = plt.subplots(figsize=(6,7))
+        n_edge_type = np.unique(clust_labels_curr[clust_labels_curr!=-1]).size + (clust_labels_curr==-1).sum()
         plot_edge_list(pos_ext, edges, patch_indices, do_annotate=False, colors=this_colors, line_styles=line_styles, line_widths=line_widths, ax=ax)
-        
-        plt.savefig("/Users/nickrego/Desktop/merge_round_{}".format(i_round))
+        ax.axis('off')
+        ax.set_title('Edges: {} \n Clusters: {}'.format(n_edge_type, n_non_singleton))
+        fig.tight_layout()
+        plt.savefig("/Users/nickrego/Desktop/merge_round_{:03d}".format(i_round))
         
 
     # Fit new model to merged struct
-    merged_keff = gen_merged_keff(k_eff_shape, clust_labels_curr)
+    merged_keff = gen_merged_keff(k_eff_all_shape, clust_labels_curr)
     perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(merged_keff, energies, do_ridge=True)
 
     print("  N features: {}".format(merged_keff.shape[1]))
@@ -289,4 +302,22 @@ for i_round, (m_i, m_j) in enumerate(clust.children_):
     mses[i_round] = perf_mse.mean()
     tot_mses[i_round] = np.mean(err**2)
     aics[i_round] = aic_ols(reg, err)
+
+
+## Now remove redundancies
+# Remove redundant features
+
+# K_eff_all_shape:   shape: (n_samples, n_edges, n_conn_type)
+# Conn types:
+#             mm    oo    mo
+#              0     1     2
+# Note: we also have k_vals (# of methyls, also a function of connection types)
+k_vals = ds['k_vals']
+k_eff_shape = np.delete(k_eff_all_shape, 1, axis=2)
+n_connection_type = k_eff_shape.shape[2]
+k_eff = k_eff_shape.reshape((n_configs, n_edges*n_connection_type))
+
+
+
+
 

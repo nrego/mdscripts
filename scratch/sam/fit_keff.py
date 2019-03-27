@@ -72,10 +72,34 @@ for i, methyl_mask in enumerate(methyl_pos):
 # Remove n_mo and n_oe, which are linear combo's of the other features
 k_eff_all = k_eff
 np.savetxt('k_eff_all.dat', k_eff_all)
-k_eff = np.delete(k_eff_all, (1,4), axis=1)
 
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_eff, energies)
 
+
+
+
+## Iterate over combos
+combos_no_k = [(0,3), (0,4), (1,3), (1,4), (2,3), (2,4)]
+combos_k = [(0,1,3), (0,1,4), (0,2,3), (0,2,4), (1,2,3), (1,2,4)]
+
+coefs = []
+ints = []
+for (i,j) in combos_no_k:
+    feat_vec = np.delete(k_eff_all, (i,j), axis=1)
+    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies)
+    print(perf_mse.mean())
+    coefs.append(reg.coef_)
+    ints.append(reg.intercept_)
+
+for (i,j,k) in combos_k:
+    feat_vec = np.delete(k_eff_all, (i,j,k), axis=1)
+    feat_vec = np.hstack((k_vals[:,None], feat_vec))
+    
+    
+    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies)
+    print(perf_mse.mean())
+    coefs.append(reg.coef_)
+    ints.append(reg.intercept_)
+'''
 methyl_mask = methyl_pos[500]
 deg = find_keff(methyl_mask, nn, nn_ext)
 
@@ -100,4 +124,4 @@ perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_kernal, ene
 
 
 methyl_mask = methyl_pos[500]
-
+'''
