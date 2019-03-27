@@ -175,7 +175,7 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
 
     return edges
 
-def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=None, colors=None, line_styles=None, ax=None):
+def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None):
     if ax is None:
         ax = plt.gca()
 
@@ -196,14 +196,19 @@ def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=N
         else:
             edge_style = line_styles[i_edge]
 
-        ax.plot(pos_ext[i,0], pos_ext[i,1], i_symbol)
-        ax.plot(pos_ext[j,0], pos_ext[j,1], j_symbol)
+        if line_widths is None:
+            line_width = 3
+        else:
+            line_width = line_widths[i_edge]
+
+        ax.plot(pos_ext[i,0], pos_ext[i,1], i_symbol, markersize=12, zorder=3)
+        ax.plot(pos_ext[j,0], pos_ext[j,1], j_symbol, markersize=12, zorder=3)
 
         if colors is not None:
             this_color = colors[i_edge]
         else:
             this_color = 'k'
-        ax.plot([pos_ext[i,0], pos_ext[j,0]], [pos_ext[i,1], pos_ext[j,1]], color=this_color, linestyle=edge_style)
+        ax.plot([pos_ext[i,0], pos_ext[j,0]], [pos_ext[i,1], pos_ext[j,1]], color=this_color, linestyle=edge_style, linewidth=line_width)
 
         midpt = (pos_ext[i] + pos_ext[j]) / 2.0
 
