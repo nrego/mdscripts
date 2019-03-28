@@ -11,9 +11,12 @@ splitter = lambda instr: instr.split('/')[0].split('_')[-1]
 parser = argparse.ArgumentParser("Combine results of g_energy on trajectory evaluated with different topologies into single file")
 parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
                     help='Input file names')
+parser.add_argument('--this-lambda', type=float, required=True,
+                    help='Lambda of this value')
 
 args = parser.parse_args()
 
+this_lambda = args.this_lambda
 
 infiles = sorted(args.input)
 
@@ -33,7 +36,9 @@ for i, infile in enumerate(infiles):
 
 energies -= energies[:,0][:,None]
 
-header = 'time (ps) U_lam'
+for_lam_str = ' '.join(['{:0.2f}'.format(lam) for lam in lam_vals])
+
+header = 'this_lmbda: {:0.2f}\nlmbdas: {}\ntime (ps) U_lmbda-U_0'.format(this_lambda, for_lam_str)
 
 np.savetxt('du.dat', np.hstack((timepts[:,None], energies)), fmt='%0.6f', header=header)
 

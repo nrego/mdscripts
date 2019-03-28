@@ -334,7 +334,10 @@ class XvgDataSet(DataSet):
 # For free energy calcs
 class SimpleDataSet(DataSet):
 
-    def __init__(self, filename, corr_len=1):
+    # can provide additional string arguments in args - if provided
+    #   will search for string in data's header file and extract corresponding
+    #   float
+    def __init__(self, filename, corr_len=1, addl_args=None):
         super(SimpleDataSet, self).__init__()
 
         # Value of lambda for each window
@@ -342,6 +345,12 @@ class SimpleDataSet(DataSet):
         self.title=filename
         self.header = ''
         self.header = self.header.rstrip()
+        if addl_args is not None:
+            for arg in addl_args:
+                if type(arg) != str:
+                    raise TypeError, "additional arguments must be strings"
+
+                self._scan_header_dat(filename, arg)
 
         data = np.loadtxt(filename, comments=['#', '@'])
         log.debug('Datareader {} reading input file {}'.format(self, filename))
@@ -350,7 +359,15 @@ class SimpleDataSet(DataSet):
         # Data has biases in kJ/mol !
         self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0])
 
+    def _scan_header_dat(self, filename, arg):
+
         
+        with open(filename, 'r') as fin:
+            for line in fin:
+                if arg in line:
+                    self.__dict__[arg] = extractFloat(line).pop()
+                    break
+
 
 # For rama.xvg datasets - need to get phi*, rama* as well
 # Needs to abstract getting the phi, psi angles, as well as kappa_phi, kappa_psi, and phi_star, psi_star
@@ -536,8 +553,8 @@ class DataReader:
         return cls._addSet(ds)
 
     @classmethod
-    def loadSimple(cls, filename, corr_len=1):
-        ds = SimpleDataSet(filename, corr_len)
+    def loadSimple(cls, filename, corr_len=1, addl_args=None):
+        ds = SimpleDataSet(filename, corr_len, addl_args)
         return cls._addSet(ds)
 
     @classmethod

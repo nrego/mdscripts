@@ -7,6 +7,8 @@ from mdtools import dr
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
+from IPython import embed
+
 mpl.rcParams.update({'axes.labelsize': 40})
 mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
