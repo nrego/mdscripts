@@ -34,6 +34,8 @@ parser.add_argument('--plotDistAll', action='store_true',
                     help='If true, plot all delta_U dists')
 parser.add_argument('--bin-width', type=float, default=1.0,
                     help='Binning width for histograms - default: %(default)s')
+parser.add_argument('--plotDU', action='store_true',
+                    help='If true, plot each <DU>_lmbda v lmda')
 
 args = parser.parse_args()
 
@@ -70,12 +72,23 @@ bb *= beta
 if args.plotDistAll:
     for i, ds in enumerate(dr.datasets.values()):
         color = cmap(norm(i))
-        dat = np.array(ds.data[start_time:])[:, -1]
+        dat = beta*np.array(ds.data[start_time:])[:, -1]
         
-        hist, bb = np.histogram(beta*dat, bins=bb)
+        hist, bb = np.histogram(dat, bins=bb)
 
         plt.plot(bb[:-1], hist, label='{}'.format(ds.title), color=color)
 
     plt.legend()
     plt.show()
+
+avg_du = np.zeros(n_files)
+if args.plotDU:
+    for i, ds in enumerate(dr.datasets.values()):
+        avg_du[i] = beta*np.array(ds.data[start_time:])[:, -1].mean()
+
+    plt.plot(avg_du, 'o')
+    plt.show()
+
+
+
 
