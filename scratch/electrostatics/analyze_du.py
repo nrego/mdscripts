@@ -86,7 +86,9 @@ if args.plotDU:
     for i, ds in enumerate(dr.datasets.values()):
         avg_du[i] = beta*np.array(ds.data[start_time:])[:, -1].mean()
 
-    plt.plot(avg_du, 'o')
+    plt.plot(np.arange(0,1.1,0.1), avg_du, '-o')
+    plt.xlabel(r'$\lambda$')
+    plt.ylabel(r'$\langle \Delta U_1 \rangle_\lambda$')
     plt.show()
 
 
