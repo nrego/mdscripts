@@ -31,7 +31,7 @@ import itertools
 
 from sklearn.cluster import AgglomerativeClustering
 
-plot_it = True
+plot_it = False
 
 def gen_merged_keff(k_eff_shape, labels):
     
