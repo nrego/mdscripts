@@ -16,9 +16,6 @@ from mdtools import dr
 
 from constants import k
 
-def write_lines(fouts, line):
-    for fout in fouts:
-        fout.write(line)
 
 splitter = lambda s: [float(val) for val in s.split(',')]
 
@@ -33,8 +30,6 @@ parser.add_argument('--sel-spec', required=True, type=str,
                     help='Selection spec for protein atoms')
 parser.add_argument('--top-file', required=True, type=str,
                     help='Topology file for protein; will replace each interface atom\'s partial charge with scaled charge')
-parser.add_argument('--lmbdas', type=str, default='0.0,1.0', 
-                    help='List of lambda values (default: %(default)s)')
 
 args = parser.parse_args()
 
@@ -66,66 +61,57 @@ for i, (k, v) in enumerate(contact_atom_charges.iteritems()):
 
 np.savetxt('contact_atom_charges.dat', outdata, fmt='%d %0.4f', header='atom_index  q_i')
 
-lmbdas = splitter(args.lmbdas)
 
 with open(args.top_file, 'r') as fin:
     lines = fin.readlines()
 
 
-fouts = []
-for lmbda in lmbdas:
-    fouts.append(open('topol_prot_lam_{:03d}.itp'.format(int(lmbda*100)), 'w'))
-
 done_with_atoms = False
 
-fmtstr = '{:>6s}{:>11s}{:>7s}{:>7s}{:>7s}{:>7s}{:>11.4f}{:>11s}{:>15s}'
-for i, line in enumerate(lines):
+fmtstr = '{:>6s}{:>11s}{:>7s}{:>7s}{:>7s}{:>7s}{:>11.4f}{:>11s}{:>7s}{:>11.4f}{:>15s}'
 
-    if done_with_atoms:
-        write_lines(fouts, line)
-        continue
+with open('topol_prot_lam.itp', 'w') as fout:
+    for i, line in enumerate(lines):
 
-    split = line.split()
+        if done_with_atoms:
+            fout.write(line)
+            continue
 
-    try:
-        index = split[0]
-    except IndexError:
-        write_lines(fouts, line)
-        continue
+        split = line.split()
 
-    try:
-        index = split[1]
-    except IndexError:
-        write_lines(fouts, line)
-        continue
-
-    if split[1] == 'bonds':
-        done_with_atoms = True
-        write_lines(fouts, line)
-        continue
-
-    try:
-        index = int(split[0])
-    except ValueError:
-        write_lines(fouts, line)
-        continue
-
-    ## Check if atom index ##
-    if index not in contact_atom_charges.keys():
-        write_lines(fouts, line)
-
-    else:
         try:
-            blah, atm_type, res_index, resname, atm_name, chggrp, charge, mass, _, _, _ = line.split()
-        except:
-            embed()
-        assert abs(float(charge) - contact_atom_charges[index]) < 1e-7
+            index = split[0]
+        except IndexError:
+            fout.write(line)
+            continue
 
-        newcharge = contact_atom_charges[index]
-        for lmbda, fout in zip(lmbdas, fouts):
-            newcharge = lmbda*contact_atom_charges[index]
-            fout.write(fmtstr.format(blah, atm_type, res_index, resname, atm_name, chggrp, newcharge, mass, '; XXX\n'))
+        try:
+            index = split[1]
+        except IndexError:
+            fout.write(line)
+            continue
 
+        if split[1] == 'bonds':
+            done_with_atoms = True
+            fout.write(line)
+            continue
 
-for fout in fouts:
-    fout.close()
+        try:
+            index = int(split[0])
+        except ValueError:
+            fout.write(line)
+            continue
+
+        ## Check if atom index ##
+        if index not in contact_atom_charges.keys():
+            fout.write(line)
+
+        else:
+            try:
+                blah, atm_type, res_index, resname, atm_name, chggrp, charge, mass, _, _, _ = line.split()
+            except:
+                embed()
+            assert abs(float(charge) - contact_atom_charges[index]) < 1e-7
+
+            fout.write(fmtstr.format(blah, atm_type, res_index, resname, atm_name, chggrp, float(charge), mass, atm_type, 0.0000, '; XXX\n'))
+
