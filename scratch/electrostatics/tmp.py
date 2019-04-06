@@ -24,22 +24,22 @@ import math
 import itertools
 
 k_e = 138.9354859 * 10.0
-univ = MDAnalysis.Universe('run.tpr', 'traj.xtc')
+
+fnames = glob.glob('*/*/contact_atom_charges.dat')
 
 
-rvals = np.zeros(univ.trajectory.n_frames)
-atm1 = univ.atoms[0]
-atm2 = univ.atoms[1]
+for fname in fnames:
+    headdir = os.path.dirname(os.path.dirname(fname))
 
-for i, ts in enumerate(univ.trajectory):
-    rvals[i] = np.linalg.norm( atm1.position - atm2.position )
+    print("PROT: {}".format(headdir))
+    contact_charge = np.loadtxt(fname)
+    n_atms = contact_charge.size
 
-tab_dat = np.loadtxt('coul.xvg')
-plt.plot(tab_dat[:,0]*10, tab_dat[:,1]/10)
+    f_k_bulk = np.loadtxt('{}/bulk/f_k_all.dat'.format(headdir))[-1]
+    f_k_bound = np.loadtxt('{}/bound/f_k_all.dat'.format(headdir))[-1]
 
-e_dat = np.loadtxt('test_tab/energy.xvg', comments=['@', '#'])
+    dg = f_k_bulk - f_k_bound
 
-pot_sr = (e_dat[:,1]+e_dat[:,2]) / k_e
-
-plt.scatter(rvals, -pot_sr)
-plt.show()
+    print("  n_inter_atoms: {}".format(n_atms))
+    print("  dg_coul: {:0.1f}".format(dg))
+    print("  dg per atom: {:0.4f}".format(dg/n_atms))
