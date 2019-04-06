@@ -42,14 +42,19 @@ prot_h = prot.select_atoms('not name H*')
 contact_mask = np.loadtxt(args.contact_mask, dtype=bool)
 contacts = prot_h[contact_mask]
 
+# In case protein's global first index is not 1
+start_idx = prot.atoms[0].id
+
 contact_atom_charges = {}
 for contact_atm in contacts:
     contact_atm.tempfactor = 1
-    contact_atom_charges[contact_atm.id+1] = contact_atm.charge
+    contact_atom_charges[contact_atm.id+1-start_idx] = contact_atm.charge
 
     for atm in contact_atm.bonded_atoms:
+        if atm.name[0] != 'H':
+            continue
         atm.tempfactor = 1
-        contact_atom_charges[atm.id+1] = atm.charge
+        contact_atom_charges[atm.id+1-start_idx] = atm.charge
 
 prot.write('contacts.pdb')
 
