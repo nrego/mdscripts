@@ -41,5 +41,10 @@ for fname in fnames:
     dg = f_k_bulk - f_k_bound
 
     print("  n_inter_atoms: {}".format(n_atms))
-    print("  dg_coul: {:0.1f}".format(dg))
-    print("  dg per atom: {:0.4f}".format(dg/n_atms))
+    print("  dg_water: {:0.1f} (kT)".format(f_k_bulk))
+    print("  dg_part: {:0.1f} (kT)".format(f_k_bound))
+    print("  dg_coul: {:0.1f} (kT)".format(dg))
+    print("  dg per atom: {:0.4f} (kT)".format(dg/n_atms))
+
+
+
