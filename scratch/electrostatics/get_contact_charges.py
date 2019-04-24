@@ -40,13 +40,13 @@ prot = univ.select_atoms(args.sel_spec)
 prot_h = prot.select_atoms('not name H*')
 
 contact_mask = np.loadtxt(args.contact_mask, dtype=bool)
-contacts = prot_h[contact_mask]
+contacts_h = prot_h[contact_mask]
 
 # In case protein's global first index is not 1
 start_idx = prot.atoms[0].id
 
 contact_atom_charges = {}
-for contact_atm in contacts:
+for contact_atm in contacts_h:
     contact_atm.tempfactor = 1
     contact_atom_charges[contact_atm.id+1-start_idx] = contact_atm.charge
 
@@ -64,9 +64,24 @@ for i, (k, v) in enumerate(contact_atom_charges.iteritems()):
     outdata[i,0] = k
     outdata[i,1] = v
 
-np.savetxt('contact_atom_charges.dat', outdata, fmt='%d %0.4f', header='atom_index  q_i')
+sort_idx = np.argsort(outdata[:,0])
+
+np.savetxt('contact_atom_charges.dat', outdata[sort_idx], fmt='%d %0.4f', header='atom_index  q_i')
+
+##############################################
+## Write out new umbrella file for contact heavy atoms
+with open('umbr_contact.conf', 'w') as fout:
+    header_string = "; Umbrella potential for a spherical shell cavity\n"\
+    "; Name    Type          Group  Kappa   Nstar    mu    width  cutoff  outfile    nstout\n"\
+    "hydshell dyn_union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
+    fout.write(header_string)
+    for atm in contacts_h:
+        fout.write("{:<10.1f} {:<10.1f} {:d} \\\n".format(-0.5, 0.6, atm.index+1))
+#############################################
 
 
+##############################################
+## Make new topology file
 with open(args.top_file, 'r') as fin:
     lines = fin.readlines()
 
