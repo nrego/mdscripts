@@ -16,10 +16,13 @@ tree_contact = cKDTree(contact.positions)
 tree_ow = cKDTree(ow.positions)
 
 res = tree_contact.query_ball_tree(tree_ow, r=6.0)
-close_water_ids = np.unique( np.concatenate(res) ).astype(int)
+close_ow_ids = np.unique( np.concatenate(res) ).astype(int)
+sel_str = ''.join([' {}'.format(idx) for idx in ow[close_ow_ids].ids])
 
-sel_str = ''.join([' {}'.format(idx) for idx in ow[close_water_ids].ids])
+close_ow = univ.select_atoms('bynum {}'.format(sel_str))
+close_water_ids = np.ravel([[idx, idx+1, idx+2] for idx in close_ow.ids])
 
+sel_str = ''.join([' {}'.format(idx) for idx in close_water_ids])
 close_waters = univ.select_atoms('bynum {}'.format(sel_str))
 close_waters.write('close_waters.pdb')
 
