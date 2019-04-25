@@ -3,7 +3,7 @@ from constants import k
 
 kT = k * 300
 
-ds = dr.loadPhi('phi_000/phiout.dat')
+ds = dr.loadPhi('phiout.dat')
 dat = np.array(ds.data[200:]['$\~N$'])
 
 avg_n = dat.mean()
