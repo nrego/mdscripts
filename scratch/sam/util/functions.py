@@ -158,6 +158,7 @@ def plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext, ax=None):
 
 # Generates a list of all edges 
 def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
+    # nn_ext's are indexed by local patch index -> give global index of nn
     assert len(nn_ext.keys()) == positions.shape[0]
 
     edges = []
@@ -168,9 +169,11 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
         global_i = patch_indices[i]
         neighbor_idx = nn_ext[i]
         for j in neighbor_idx:
+            # patch-patch edge that's already been seen
             if j in patch_indices and j <= global_i:
                 continue
 
+            # This is an external edge, so save this edge's index to ext_indices
             if j not in patch_indices:
                 ext_indices.append(len(edges))
 
@@ -178,7 +181,7 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
 
     edges = np.array(edges)
 
-    return edges, ext_indices
+    return edges, np.array(ext_indices)
 
 def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None):
     if ax is None:

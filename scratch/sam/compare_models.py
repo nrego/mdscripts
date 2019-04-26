@@ -59,9 +59,12 @@ methyl_pos = ds['methyl_pos']
 positions = ds['positions']
 
 pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
-# patch_idx is list of patch indices
+# patch_idx is list of patch indices in pos_ext 
+#   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
+# nn_ext is dictionary of (global) nearest neighbor's to each patch point
+#   nn_ext[i]  global idxs of neighbor to local patch i 
 nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 
 methyl_pos = ds['methyl_pos']
@@ -70,15 +73,19 @@ n_configs = methyl_pos.shape[0]
 edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
 n_edges = edges.shape[0]
 
-# shape: (n_samples, n_edges, n_conn_type)
 
+## k_eff_all_shape is an exhaustive list of the connection type of every
+# edge for every pattern
+## n_mm n_oo  n_mo ##
 # Conn types:   mm  oo  mo
+# shape: (n_samples, n_edges, n_conn_type)
 k_eff_all_shape = np.load('k_eff_all.dat.npy')
 assert n_edges == k_eff_all_shape.shape[1]
-
-
 n_conn_type = k_eff_all_shape.shape[2]
+
+
 ## One model ##
+###############
 
 # k_ch3 #
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_vals, energies, do_ridge=False)
@@ -89,7 +96,12 @@ perf_r2, perf_mse, err_orig, xvals, fit, reg = fit_general_linear_model(36-k_val
 aics.append(aic_ols(reg, err))
 perf_mses.append(perf_mse.mean())
 
-## n_mm n_oo  n_mo ##
+
+### TWO MODEL ##
+################
+
+## Simply counting number of each connection type for each pattern, irrespective of edge location
+
 conn_names = ['mm', 'oo', 'mo']
 
 # Choose 2 to keep
@@ -141,6 +153,8 @@ for idx in indices:
     print("  alpha_kO: {:0.2f}".format(reg.coef_[0]))
     print("  alpha_{}: {:0.2f}".format(conn_0, reg.coef_[1]))
     print("  perf: {:0.2f}".format(perf_mse.mean()))
+
+
 aics.append(aic_ols(reg, err))
 perf_mses.append(perf_mse.mean())
 
@@ -152,9 +166,12 @@ coefs = reg.coef_.reshape((n_edges, n_conn_type))
 clust.fit(coefs)
 
 int_mask = clust.labels_ == 0
-assert int_mask.sum() == 85
 
-k_eff_int = k_eff_all_shape[:,int_mask, :].sum(axis=1)
+# Sanity check that this clustering step gives us internal and external edge types
+assert int_mask.sum() == 85
+assert np.array_equal(np.arange(n_edges)[~int_mask], ext_indices)
+
+k_eff_int = k_eff_all_shape[:, int_mask, :].sum(axis=1)
 k_eff_ext = k_eff_all_shape[:,~int_mask, :].sum(axis=1)
 assert k_eff_ext[:,0].max() == 0
 
@@ -274,6 +291,8 @@ for k_idx in [0,1,2]:
                 print("  alpha_{}: {:0.2f}".format(conn_0, reg.coef_[1]))
                 print("  alpha_{}: {:0.2f}".format(conn_1, reg.coef_[2]))
                 print("  perf: {:0.2f}".format(perf_mse.mean()))
+
+                
 aics.append(aic_ols(reg, err))
 perf_mses.append(perf_mse.mean())
 

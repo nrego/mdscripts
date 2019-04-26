@@ -109,7 +109,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, uncorr_ones_n, bias_mat, n_samples, uncor
         
         if boot_fn is not None:
             boot_logweights = gen_data_logweights(boot_uncorr_bias_mat, boot_f_k, uncorr_n_samples)
-            embed()
+            #embed()
             boot_fn_ret[batch_num] = boot_fn(all_data, all_data_N, boot_indices, boot_logweights)
             del boot_logweights
 

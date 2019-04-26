@@ -26,10 +26,11 @@ class WangLandau:
 
         return test.all()
 
-    def __init__(self, positions, fn, bins, eps=1e-8, max_iter=60000, f_init=1, f_scale=0.5):
-        self.positions = positions
+    def __init__(self, positions, bins, fn, fn_kwargs=None, eps=1e-8, max_iter=60000, f_init=1, f_scale=0.5):
         self.fn = fn
-        assert bins.ndim == 1
+        self.fn_kwargs = fn_kwargs if fn_kwargs is not None else {}
+
+        self.positions = positions
         self.bins = bins
 
         self._init_state()
@@ -44,7 +45,7 @@ class WangLandau:
     def _init_state(self):
         # density of states histogram
         self.density = np.zeros(self.bins.size-1)
-        # indices of the sampled points
+        # indices of the sampled points - a record of patterns in each bin
         self.sampled_pt_idx = np.empty(self.bins.size-1, dtype=object)
 
     @property
@@ -55,6 +56,7 @@ class WangLandau:
     def pos_idx(self):
         return np.arange(self.N)
 
+    # Run WL for given fixed k (# methyls)
     def gen_states(self, k, do_brute=False):
         self._init_state()
 
@@ -79,7 +81,7 @@ class WangLandau:
         # Indices of the k methyl positions
         for pt_idx in combos:
 
-            order_param = self.fn(self.positions, pt_idx)
+            order_param = self.fn(pt_idx, **self.fn_kwargs)
             bin_assign = np.digitize(order_param, self.bins) - 1
 
             try:
@@ -116,7 +118,7 @@ class WangLandau:
 
         pt_idx = np.sort( np.random.choice(self.pos_idx, size=k, replace=False) )
 
-        order_param = self.fn(self.positions, pt_idx)
+        order_param = self.fn(pt_idx, **self.fn_kwargs)
         bin_assign = np.digitize(order_param, self.bins) - 1
 
         f = self.f_init
@@ -133,7 +135,7 @@ class WangLandau:
             pt_idx_new = np.sort( self._trial_move(pt_idx) )
             assert np.unique(pt_idx_new).size == k
 
-            order_param_new = self.fn(self.positions, pt_idx_new)
+            order_param_new = self.fn(pt_idx_new, **self.fn_kwargs)
             bin_assign_new = np.digitize(order_param_new, self.bins) - 1
 
             # Accept trial move
@@ -143,9 +145,12 @@ class WangLandau:
                 bin_assign = bin_assign_new
 
             # Update histogram and density of states
-            wl_entropies[bin_assign] += f
-            wl_states[bin_assign] += 1
-            wl_hist[bin_assign] += 1
+            try:
+                wl_entropies[bin_assign] += f
+                wl_states[bin_assign] += 1
+                wl_hist[bin_assign] += 1
+            except:
+                embed()
             
             this_arr = self.sampled_pt_idx[bin_assign]
             if this_arr is None:
