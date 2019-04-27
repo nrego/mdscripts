@@ -129,5 +129,5 @@ wl = WangLandau(positions, bins, get_energy, fn_kwargs=fn_kwargs, eps=args.eps)
 
 wl.gen_states(k_ch3, do_brute, hist_flat_tol=args.hist_flat_tol)
 
-np.savez_compressed('density_k_c_{:d}.dat'.format(k_ch3), bins=bins, density=wl.density, k_ch3=k_ch3, eps=args.eps, hist_flat_tol=args.hist_flat_tol,
-                    do_brute=do_brute, omega=wl.omega)
+np.savez_compressed('density_k_c_{:02d}.dat'.format(k_ch3), bins=bins, density=wl.density, k_ch3=k_ch3, eps=args.eps, hist_flat_tol=args.hist_flat_tol,
+                    do_brute=do_brute, omega=wl.omega, sampled_pt_idx=wl.sampled_pt_idx)
