@@ -31,6 +31,8 @@ import itertools
 
 from sklearn.cluster import AgglomerativeClustering
 
+homedir = os.environ['HOME']
+
 plot_it = False
 
 def gen_merged_keff(k_eff_shape, labels):
@@ -148,7 +150,7 @@ assert n_edges == 131
 fig, ax = plt.subplots(figsize=(6,6))
 plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, ax=ax)
 ax.axis('off')
-plt.savefig('/Users/nickrego/Desktop/edges_labeled.png')
+plt.savefig('{}/Desktop/edges_labeled.png'.format(homedir))
 plt.close('all')
 
 ## Find k_eff for each point - this each config now has a 131x5 length feature vector!
@@ -288,7 +290,7 @@ for i_round, (m_i, m_j) in enumerate(clust.children_):
         ax.axis('off')
         ax.set_title('Edges: {} \n Clusters: {}'.format(n_edge_type, n_non_singleton))
         fig.tight_layout()
-        plt.savefig("/Users/nickrego/Desktop/merge_round_{:03d}".format(i_round))
+        plt.savefig("{}/Desktop/merge_round_{:03d}".format(homedir, i_round))
         
 
     # Fit new model to merged struct
