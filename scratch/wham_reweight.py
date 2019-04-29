@@ -71,7 +71,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
     return (neglogpdist, neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_data, var_data)
 
 
-beta_phi_vals = np.arange(0,4.04,0.04)
+beta_phi_vals = np.arange(0,10.04,0.04)
 temp = 300
 #k = 8.3144598e-3
 beta = 1./(k*temp)
@@ -96,6 +96,16 @@ all_neglogpdist, all_neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_N, 
 dat = np.vstack((beta_phi_vals, avg_ntwid, var_ntwid, avg_N, var_N)).T
 np.savetxt('NvPhi.dat', dat, header='beta_phi  <Ntwid>   <d Ntwid^2>   <N>  <d N^2>')
 
+logweights = all_logweights
+logweights -= all_logweights.max()
+weights = np.exp(logweights) 
+weights /= weights.sum()
+exp_phi = np.exp(- beta*1000*all_data)
+maxval = exp_phi.max()
+
+avg_exp_phi = -np.log(np.dot(weights, exp_phi))
+
+'''
 dat = np.load('boot_fn_payload.dat.npy')
 
 n_iter = len(dat)
@@ -130,3 +140,4 @@ err_dg_N = masked_dg_N.std(axis=0, ddof=1)
 
 dat = np.vstack((bins[:-1], all_neglogpdist_N, err_dg_N)).T
 np.savetxt('PvN.dat', dat, header='bins   beta F_v(N)  err(beta F_v(N))   ')
+'''

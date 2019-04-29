@@ -8,6 +8,30 @@ import matplotlib as mpl
 
 from matplotlib import pyplot as plt
 
+from scipy.spatial import cKDTree
+import os
+
+def generate_pattern(univ, univ_ch3, ids_res):
+    univ.atoms.tempfactors = 1
+
+    for idx_res in ids_res:
+        res = univ.residues[idx_res]
+        ag_ref = res.atoms
+        res.atoms.tempfactors = 0
+
+        ch3_res = univ_ch3.residues[idx_res]
+        ag_ch3 = ch3_res.atoms
+
+        ch3_shift = ag_ref[-1].position - ag_ch3[-1].position
+        ag_ch3.positions += ch3_shift
+
+    newuniv = MDAnalysis.core.universe.Merge(univ.atoms[univ.atoms.tempfactors == 1], univ_ch3.residues[ids_res].atoms)
+
+    univ.atoms.tempfactors = 1
+
+    return newuniv
+
+
 
 mpl.rcParams.update({'axes.labelsize': 60})
 mpl.rcParams.update({'xtick.labelsize': 40})
@@ -15,64 +39,61 @@ mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize': 50})
 mpl.rcParams.update({'legend.fontsize':40})
 
+from util import *
 
-# Pos is a collection of points, shape (n_pts, ndim)
-def get_rms(pos):
-    centroid = pos.mean(axis=0)
-    diff = pos-centroid
-    sq_diff = np.linalg.norm(diff, axis=1)**2
-    return np.sqrt(sq_diff.mean())
+homedir = os.environ['HOME']
 
-def is_flat(hist, s=0.8):
-    avg = hist.mean()
-
-    test = hist > avg*s
-
-    return test.all()
-
-## Generate grid of center points
 z_space = 0.5 # 0.5 nm spacing
 y_space = np.sqrt(3)/2.0 * z_space
+pos = gen_pos_grid(ny=24, z_offset=True)
+cent = gen_pos_grid(ny=12, z_offset=True, shift_y=6.0, shift_z=6)
 
-pos_row = np.array([0. , 0.5, 1. , 1.5, 2. , 2.5, 3.])
-y_pos = 0
-positions = []
-for i in range(6):
-    if i % 2 == 0:
-        this_pos_row = pos_row
-    else:
-        this_pos_row = pos_row - z_space/2.0
+#plt.plot(pos[:,0], pos[:,1], 'x')
+#plt.plot(cent[:,0], cent[:,1], 'o')
 
-    for j in range(6):
-        z_pos = this_pos_row[j]
-        positions.append(np.array([y_pos, z_pos]))
 
-    y_pos += y_space
+univ = MDAnalysis.Universe('whole_oh.gro')
 
-positions = np.array(positions)
-N = positions.shape[0]
 
-pos_idx = np.arange(N)
+sulfurs = univ.select_atoms('name S1')
+sulf_pos = sulfurs.positions[:,1:] / 10.0
 
-#indices = [8,9,10,13,14,15, 20, 21, 22]
-indices = [8,10,14,15, 20, 21, 22,25, 33]
-indices = np.random.choice(pos_idx, 9, replace=True)
+tree_all = cKDTree(sulf_pos)
 
-pos_cent = positions[indices]
+pos += sulf_pos.min(axis=0)
+cent += sulf_pos.min(axis=0)
+tree = cKDTree(cent)
+res = tree.query_ball_tree(tree_all, r=0.2)
 
-print("RMS: {}".format(get_rms(pos_cent)))
 
-fig, ax = plt.subplots(figsize=(5,4.8))
+global_patch_indices = np.unique(res)
 
-ax.plot(positions[:,0], positions[:,1], 'bo', markersize=20)
-ax.plot(pos_cent[:,0], pos_cent[:,1], 'ko', markersize=20)
+patch = univ.residues[global_patch_indices]
+patch.atoms.write('patch.gro')
 
-ax.set_xlim(-0.5, 2.7)
-ax.set_xticks([0,1.0,2.0])
-ax.set_ylim(-0.5, 2.7)
-ax.set_yticks([0,1.0,2.0])
+not_patch_indices = np.setdiff1d(np.arange(univ.residues.n_residues), global_patch_indices)
+not_patch = univ.residues[not_patch_indices]
+not_patch = not_patch.atoms.select_atoms('not (resname SOL and prop x < 18)')
+not_patch.write('not_patch.gro')
 
-#ax.set_xlabel(r'$y$')
-#ax.set_ylabel(r'$z$')
-plt.tight_layout()
-plt.show()
+univ = MDAnalysis.Universe('whole_oh.gro')
+univ.add_TopologyAttr('tempfactors')
+univ.atoms.tempfactors = 1
+
+oh_patch = univ.residues[-144:]
+
+ch3_patch = MDAnalysis.Universe('ch3_patch.gro').residues[:144]
+
+for oh_res, ch3_res in zip(oh_patch, ch3_patch):
+    ag_ref = oh_res.atoms
+    oh_res.atoms.tempfactors = 0
+
+    ag_ch3 = ch3_res.atoms
+
+    ch3_shift = ag_ref[-1].position - ag_ch3[-1].position
+    ag_ch3.positions += ch3_shift
+
+newuniv = MDAnalysis.core.universe.Merge(univ.atoms[univ.atoms.tempfactors == 1], ch3_patch.atoms)
+newuniv.atoms.write('whole_ch3.gro')
+univ.atoms.tempfactors = 1
+
