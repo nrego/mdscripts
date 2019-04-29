@@ -1,24 +1,25 @@
+import os, glob
 
-from constants import k
+fnames_bulk_discharge = sorted(glob.glob('*/bulk_discharge/f_k_all.dat'))
+fnames_bound_discharge = sorted(glob.glob('*/bound_discharge/f_k_all.dat'))
+fnames_bulk_charge_cav = sorted(glob.glob('*/bulk_charge_cav/f_k_all.dat'))
 
-kT = k * 300
+names = []
+bulk_discharge = []
+bulk_charge_cav = []
+bound_discharge = []
 
-ds = dr.loadPhi('phiout.dat')
-dat = np.array(ds.data[200:]['$\~N$'])
+for fname_bulk_discharge, fname_bound_discharge, fname_bulk_charge_cav in zip(fnames_bulk_discharge, fnames_bound_discharge, fnames_bulk_charge_cav):
+    
+    name = fname_bulk_discharge.split('/')[0]
+    assert name == fname_bound_discharge.split('/')[0] == fname_bulk_charge_cav.split('/')[0]
+    names.append(name)
 
-avg_n = dat.mean()
-var_n = dat.var()
+    bulk_discharge.append(np.loadtxt(fname_bulk_discharge)[-1])
+    bound_discharge.append(np.loadtxt(fname_bound_discharge)[-1])
+    bulk_charge_cav.append(np.loadtxt(fname_bulk_charge_cav)[-1])
 
-alpha = 3.
-
-k = (alpha*kT) / (var_n)
-n_min = int(np.floor(- (avg_n / alpha) - var_n))
-n_max = int(np.ceil(avg_n + var_n))
-dn = int(np.ceil(4 * (np.sqrt(1+alpha)/alpha) * np.sqrt(var_n)))
-
-nstars = np.arange(n_min, n_max+dn, dn)
-
-print(" kappa: {:.4f}".format(k))
-print(" n_min: {:d}  n_max: {:d}".format(n_min, n_max))
-print(" dn: {:d}".format(dn))
-print(" n_windows: {:d}".format(nstars.size))
+names = np.array(names)
+bulk_discharge = np.array(bulk_discharge)
+bound_discharge = np.array(bound_discharge)
+bulk_charge_cav = np.array(bulk_charge_cav)
