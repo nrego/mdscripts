@@ -45,6 +45,8 @@ def fit_model(data_vecs, indices, energies):
 
     return reg
 
+homedir = os.environ['HOME']
+
 aics = []
 perf_mses = []
 
@@ -96,7 +98,8 @@ perf_r2, perf_mse, err_orig, xvals, fit, reg = fit_general_linear_model(36-k_val
 aics.append(aic_ols(reg, err))
 perf_mses.append(perf_mse.mean())
 
-
+np.savetxt('err_one.dat', err)
+err_one = err.copy()
 ### TWO MODEL ##
 ################
 
@@ -157,7 +160,8 @@ for idx in indices:
 
 aics.append(aic_ols(reg, err))
 perf_mses.append(perf_mse.mean())
-
+np.savetxt('err_two.dat', err)
+err_two = err.copy()
 ## 3 model ##
 clust = AgglomerativeClustering(n_clusters=2, linkage='average', affinity='euclidean')
 k_eff_all = k_eff_all_shape.reshape((n_configs, n_edges*n_conn_type))
@@ -295,6 +299,35 @@ for k_idx in [0,1,2]:
                 
 aics.append(aic_ols(reg, err))
 perf_mses.append(perf_mse.mean())
+
+aics = np.array(aics)
+aics -= aics.max()
+
+np.savetxt('err_three.dat', err)
+err_three = err.copy()
+
+plt.close('all')
+fig, ax = plt.subplots(figsize=(7,6))
+ax.scatter(k_vals, err_one, label='model 1', s=12)
+ax.scatter(k_vals, err_two, label='model 2', s=12)
+ax.scatter(k_vals, err_three, label='model 3', s=12)
+ax.set_xticks(np.arange(0,42,6))
+plt.tight_layout()
+plt.legend()
+plt.savefig('{}/Desktop/err_comparison.png'.format(homedir), transparent=True)
+
+plt.close('all')
+fig, ax1 = plt.subplots(figsize=(7,6))
+ax1.plot(np.array([1,2,3]), np.sqrt(perf_mses), '-bo', markersize=12, linewidth=3)
+ax1.tick_params(axis='y', labelcolor='b')
+
+ax2 = ax1.twinx()
+ax2.plot(np.array([1,2,3]), aics, '-ro', markersize=12, linewidth=4)
+
+ax2.tick_params(axis='y', labelcolor='r')
+ax1.set_xticks([1,2,3])
+plt.tight_layout()
+plt.savefig('{}/Desktop/perf_comparison.png'.format(homedir), transparent=True)
 
 ## Final three edge types ##
 ############################

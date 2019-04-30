@@ -87,7 +87,7 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1):
 
     return(perf_r2, perf_mse, err, xvals, fit, reg)
 
-def plot_3d(x, y, z, colors='k'):
+def plot_3d(x, y, z, norm=None, cmap=None):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.scatter(x, y, z, c=colors)
