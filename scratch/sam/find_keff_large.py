@@ -42,3 +42,24 @@ k_eff_oh_ext = k_eff_hydroxyl[ext_indices].sum(axis=0)
 k_eff_methyl = get_keff_all(methyl_mask, edges, patch_indices)
 k_eff_ch3_int = k_eff_methyl[int_indices].sum(axis=0)
 k_eff_ch3_ext = k_eff_methyl[ext_indices].sum(axis=0)
+
+m2_coef = np.array([-1.99519508, -0.91546819])
+m2_int = 282.23667687264373
+
+m3_coef = np.array([-1.66049927, -0.46594186, -0.17488402])
+m3_int = 284.56628291300677
+
+f_oh_act = np.loadtxt('/Users/nickrego/simulations/large_patch/umbr_k_000/PvN.dat')[0,1]
+f_oh_err = np.loadtxt('/Users/nickrego/simulations/large_patch/umbr_k_000/PvN.dat')[0,2]
+f_ch3_act = np.loadtxt('/Users/nickrego/simulations/large_patch/umbr_k_144/PvN.dat')[0,1]
+f_ch3_err = np.loadtxt('/Users/nickrego/simulations/large_patch/umbr_k_144/PvN.dat')[0,2]
+
+arr2 = np.array([positions.shape[0], k_eff_ch3_int[0]])
+arr3 = np.array([k_eff_ch3_int[0], k_eff_ch3_int[2], k_eff_ch3_ext[3]])
+
+
+print("actual difference: {:.2f}".format(f_ch3_act - f_oh_act))
+print("M2 pred diff: {:.2f}".format(np.dot(m2_coef, arr2)))
+print("M3 pred diff: {:.2f}".format(np.dot(m3_coef, arr3)))
+
+

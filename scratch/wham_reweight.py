@@ -146,6 +146,7 @@ for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
     this_neglogpdist, this_neglogpdist_N, bphi, this_avg_ntwid, this_var_ntwid, blah, blah = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins, beta_phi_vals)
 
     neglog_pdist[i] = this_neglogpdist
+    this_neglogpdist_N[this_neglogpdist_N == 0] = np.nan
     neglog_pdist_N[i] = this_neglogpdist_N
 
     boot_var_ntwid[i] = this_var_ntwid

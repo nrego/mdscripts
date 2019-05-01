@@ -97,7 +97,8 @@ k_eff_one_edge = k_eff_all_shape.sum(axis=1)
 # K_C, n_mm
 feat_vec = np.dstack((k_vals, k_eff_one_edge[:,0])).squeeze(axis=0)
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
-
+np.savetxt('m2_coef.dat', reg.coef_)
+np.savetxt('m2_int.dat', reg.intercept_)
 norm = plt.Normalize(132, 287)
 cmap = cm.spectral
 

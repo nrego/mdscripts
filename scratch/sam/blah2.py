@@ -69,3 +69,13 @@ evals = np.arange(135,287,0.01)
 plt.plot(evals, p(evals))
 
 plt.plot(bins[:-1], entropy, 'x')
+
+
+fig, ax = plt.subplots()
+pprime = p.deriv()
+
+ax.plot(evals, 1/pprime(evals))
+ax.set_ylim(-10, 90)
+ax.set_yticks([0,300,600,900])
+fig.tight_layout()
+fig.savefig('/Users/nickrego/Desktop/fig.png')
