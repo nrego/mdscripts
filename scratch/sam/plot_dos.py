@@ -1,5 +1,13 @@
 import os, glob
 from scipy import special
+import matplotlib as mpl
+from matplotlib import pyplot as plt
+
+mpl.rcParams.update({'axes.labelsize': 40})
+mpl.rcParams.update({'xtick.labelsize': 30})
+mpl.rcParams.update({'ytick.labelsize': 30})
+mpl.rcParams.update({'axes.titlesize':40})
+mpl.rcParams.update({'legend.fontsize':10})
 
 fnames = sorted(glob.glob('density_*'))
 
@@ -27,6 +35,12 @@ for fname in fnames:
     k_ch3 = int(ds['k_ch3'])
 
     this_omega = ds['omega']
+    plt.close('all')
+    fig, ax = plt.subplots(figsize=(7,6))
+    ax.plot(bins[:-1], k*np.log(this_omega))
+    ax.set_xlim(135, 287)
+    plt.tight_layout()
+    plt.savefig('{}/Desktop/s_k_{:d}.png'.format(homedir, k_ch3))
     this_prob = this_omega / special.binom(36, k_ch3)
 
     avg_e = np.dot(bins[:-1], this_prob)
@@ -48,6 +62,17 @@ k_vals = np.array(k_vals)
 avg_es = np.array(avg_es)
 var_es = np.array(var_es)
 
+plt.close('all')
+fig, ax1 = plt.subplots(figsize=(7,6))
+ax1.plot(k_vals, avg_es, '-bo', markersize=8, linewidth=3)
+ax1.tick_params(axis='y', labelcolor='b')
+ax2 = ax1.twinx()
+ax2.plot(k_vals, var_es, '-ro', markersize=8, linewidth=3)
+ax2.tick_params(axis='y', labelcolor='r')
+ax1.set_xticks(np.arange(0,42,6))
+plt.tight_layout()
+plt.savefig('{}/Desktop/avg_var_with_k.png'.format(homedir))
+
 entropy = k*np.log(omega_tot)
 mask = ~np.ma.masked_invalid(entropy).mask
 
@@ -65,7 +90,15 @@ coef = np.polyfit(bins[:-1][mask], entropy[mask], deg=5)
 p = np.poly1d(coef)
 
 evals = np.arange(135,287,0.01)
+plt.close('all')
+fig, ax = plt.subplots(figsize=(7,6))
 
-plt.plot(evals, p(evals))
+ax.plot(evals, p(evals))
+ax.plot(bins[:-1], entropy, 'x')
 
-plt.plot(bins[:-1], entropy, 'x')
+ax.set_xlim(135,287)
+
+plt.tight_layout()
+plt.savefig('{}/Desktop/s_tot.png'.format(homedir))
+
+
