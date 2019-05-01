@@ -383,7 +383,7 @@ def find_keff(methyl_mask, nn, nn_ext):
 def get_keff_all(methyl_mask, edges, patch_indices):
 
     # each line is: n_mm, n_oo, n_mo, n_me, n_oe
-    deg = np.zeros((131, 5), dtype=float)
+    deg = np.zeros((edges.shape[0], 5), dtype=float)
 
     for i_edge, (i,j) in enumerate(edges):
 
@@ -412,7 +412,7 @@ def get_keff_all(methyl_mask, edges, patch_indices):
 
         deg[i_edge] = (i_bin & j_bin)
 
-    assert deg.sum() == 131
+    assert deg.sum() == edges.shape[0]
 
     return deg
 

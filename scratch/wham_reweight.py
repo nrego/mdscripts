@@ -23,6 +23,31 @@ def plot_errorbar(bb, dat, err):
     plt.plot(bb[:-1], dat)
     plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
 
+def get_negloghist(data, bins, logweights):
+
+    weights = np.exp(logweights)
+    norm = weights.sum()
+    logweights -= np.log(norm)
+
+    bin_assign = np.digitize(data, bins) - 1
+
+    negloghist = np.zeros(bins.size-1)
+
+    for i in range(bins.size-1):
+        this_bin_mask = bin_assign == i
+        this_logweights = logweights[this_bin_mask]
+        this_data = data[this_bin_mask]
+        if this_data.size == 0:
+            continue
+        this_logweights_max = this_logweights.max()
+        this_logweights -= this_logweights.max()
+
+        this_weights = np.exp(this_logweights)
+
+        negloghist[i] = -np.log(this_weights.sum()) - this_logweights_max
+
+    return negloghist
+
 
 # Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
 def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
@@ -34,11 +59,14 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
     pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
 
     neglogpdist = -np.log(pdist)
+    neglogpdist = get_negloghist(ntwid, bins, logweights)
+
     #neglogpdist -= neglogpdist.min()
 
     neglogpdist_N = -np.log(pdist_N)
+    neglogpdist_N = get_negloghist(data, bins, logweights)
     #neglogpdist_N -= neglogpdist_N.min()
-
+    #embed()
     avg_ntwid = np.zeros_like(beta_phi_vals)
     var_ntwid = np.zeros_like(avg_ntwid)
 
@@ -71,7 +99,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
     return (neglogpdist, neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_data, var_data)
 
 
-beta_phi_vals = np.arange(0,10.04,0.04)
+beta_phi_vals = np.arange(0,4.04,0.04)
 temp = 300
 #k = 8.3144598e-3
 beta = 1./(k*temp)
@@ -105,7 +133,7 @@ maxval = exp_phi.max()
 
 avg_exp_phi = -np.log(np.dot(weights, exp_phi))
 
-'''
+
 dat = np.load('boot_fn_payload.dat.npy')
 
 n_iter = len(dat)
@@ -140,4 +168,3 @@ err_dg_N = masked_dg_N.std(axis=0, ddof=1)
 
 dat = np.vstack((bins[:-1], all_neglogpdist_N, err_dg_N)).T
 np.savetxt('PvN.dat', dat, header='bins   beta F_v(N)  err(beta F_v(N))   ')
-'''
