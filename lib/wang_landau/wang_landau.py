@@ -207,7 +207,7 @@ class WangLandau:
             is_flat = self.is_flat(wl_hist[center_bin_mask], hist_flat_tol)
 
             if  is_flat or n_iter > self.max_iter:
-                #embed()
+                embed()
                 print(" n_iter: {}".format(n_iter+1))
                 center_bin_mask = (wl_states > 0)
                 n_iter = 0
