@@ -335,8 +335,11 @@ Command-line options
             dataframe = np.array(data)
 
             if do_autocorr:
-                autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:, -1]))
-                self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
+                try:
+                    autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:, -1]))
+                    self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
+                except:
+                    embed()
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 

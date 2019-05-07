@@ -102,11 +102,14 @@ class WangLandau:
         combos = np.array(list(combinations(self.pos_idx, k)))
         rand_idx = np.random.permutation(combos.shape[0])
         combos = combos[rand_idx]
-
+        #embed()
         # Indices of the k methyl positions
         for pt_idx in combos:
-            m_mask = np.zeros(36, dtype=bool)
-            m_mask[pt_idx] = True
+            m_mask = np.zeros(self.N, dtype=bool)
+            try:
+                m_mask[pt_idx] = True
+            except IndexError:
+                pass
             order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
             bin_assign = np.digitize(order_param, self.bins) - 1
 
@@ -144,7 +147,7 @@ class WangLandau:
         initial_iter_update = self.max_iter // 100
 
         pt_idx = np.sort( np.random.choice(self.pos_idx, size=k, replace=False) )
-        m_mask = np.zeros(36, dtype=bool)
+        m_mask = np.zeros(self.N, dtype=bool)
         m_mask[pt_idx] = True
         order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
         bin_assign = np.digitize(order_param, self.bins) - 1
@@ -163,7 +166,7 @@ class WangLandau:
             n_iter += 1
 
             pt_idx_new = self._trial_move(pt_idx)
-            m_mask = np.zeros(36, dtype=bool)
+            m_mask = np.zeros(self.N, dtype=bool)
             m_mask[pt_idx_new] = True
             assert np.unique(pt_idx_new).size == k
             # Outside call is slow!

@@ -19,14 +19,17 @@ for fname in fnames:
         bins = ds['bins']
     else:
         assert np.array_equal(bins, ds['bins'])
+    k_ch3 = int(ds['k_ch3'])
+    this_omega = ds['omega']
+    if this_omega[26] > 0:
+        print(' occupied for k: {:01d}'.format(k_ch3))
+    assert np.allclose(this_omega.sum(), special.binom(36, k_ch3))
     if omega_tot is None:
         omega_tot = ds['omega']
     else:
         omega_tot += ds['omega']
 
-    k_ch3 = int(ds['k_ch3'])
-
-    this_omega = ds['omega']
+    
     this_prob = this_omega / special.binom(36, k_ch3)
 
     avg_e = np.dot(bins[:-1], this_prob)
@@ -61,12 +64,13 @@ for i in range(6):
     print("i: {} Mse: {:1.2e}".format(i, mse))
     errs.append(np.sqrt(mse))
 
-coef = np.polyfit(bins[:-1][mask], entropy[mask], deg=5)
+coef = np.polyfit(bins[:-1][mask], entropy[mask], deg=6)
 p = np.poly1d(coef)
 
 evals = np.arange(135,287,0.01)
-
-plt.plot(evals, p(evals))
+fit = p(evals)
+fit[fit < 0] = np.nan
+plt.plot(evals, fit)
 
 plt.plot(bins[:-1], entropy, 'x')
 
