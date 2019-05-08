@@ -1,85 +1,40 @@
 import os, glob
 from scipy import special
-
-fnames = sorted(glob.glob('density_*'))
-
-bins = None
-omega_tot = None
-
-homedir = os.environ['HOME']
-
-from constants import k
-
-avg_es = []
-var_es = []
-k_vals = []
-for fname in fnames:
-    ds = np.load(fname)
-    if bins is None:
-        bins = ds['bins']
-    else:
-        assert np.array_equal(bins, ds['bins'])
-    k_ch3 = int(ds['k_ch3'])
-    this_omega = ds['omega']
-    if this_omega[26] > 0:
-        print(' occupied for k: {:01d}'.format(k_ch3))
-    assert np.allclose(this_omega.sum(), special.binom(36, k_ch3))
-    if omega_tot is None:
-        omega_tot = ds['omega']
-    else:
-        omega_tot += ds['omega']
-
-    
-    this_prob = this_omega / special.binom(36, k_ch3)
-
-    avg_e = np.dot(bins[:-1], this_prob)
-    avg_esq = np.dot(bins[:-1]**2, this_prob)
-
-    var_e = avg_esq - avg_e**2
-
-    occ = this_omega > 0
-    min_e = bins[:-1][occ].min()
-    max_e = bins[:-1][occ].max()
-    print('K_C: {:d}'.format(int(ds['k_ch3'])))
-    print('  energy range: {:.2f} to {:.2f} ({:.2f})'.format(min_e, max_e, max_e-min_e))
-    print('  avg e: {:0.2f}  var_e: {:0.2f}'.format(avg_e, var_e))
-    k_vals.append(k_ch3)
-    avg_es.append(avg_e)
-    var_es.append(var_e)
-
-k_vals = np.array(k_vals)
-avg_es = np.array(avg_es)
-var_es = np.array(var_es)
-
-entropy = k*np.log(omega_tot)
-mask = ~np.ma.masked_invalid(entropy).mask
-
-errs = []
-for i in range(6):
-    coef = np.polyfit(bins[:-1][mask], entropy[mask], deg=i)
-    p = np.poly1d(coef)
-    fit = p(bins[:-1])
-    err = fit[mask] - entropy[mask]
-    mse = np.mean(err**2)
-    print("i: {} Mse: {:1.2e}".format(i, mse))
-    errs.append(np.sqrt(mse))
-
-coef = np.polyfit(bins[:-1][mask], entropy[mask], deg=6)
-p = np.poly1d(coef)
-
-evals = np.arange(135,287,0.01)
-fit = p(evals)
-fit[fit < 0] = np.nan
-plt.plot(evals, fit)
-
-plt.plot(bins[:-1], entropy, 'x')
+from util import *
 
 
-fig, ax = plt.subplots()
-pprime = p.deriv()
+pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
+coef = np.array([-1.66049927, -0.46594186, -0.17488402])
 
-ax.plot(evals, 1/pprime(evals))
-ax.set_ylim(-10, 90)
-ax.set_yticks([0,300,600,900])
-fig.tight_layout()
-fig.savefig('/Users/nickrego/Desktop/fig.png')
+pred = []
+for n in range(2,7):
+    positions = gen_pos_grid(n)
+
+    # patch_idx is list of patch indices in pos_ext 
+    #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
+    d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
+
+    # nn_ext is dictionary of (global) nearest neighbor's to each patch point
+    #   nn_ext[i]  global idxs of neighbor to local patch i 
+    nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
+
+    edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
+    n_edges = edges.shape[0]
+    int_indices = np.setdiff1d(np.arange(n_edges), ext_indices)
+
+    methyl_mask = np.ones(n*n, dtype=bool)
+    k_eff_all = get_keff_all(methyl_mask, edges, patch_indices)
+
+    int_edges = k_eff_all[int_indices].sum(axis=0)
+    ext_edges = k_eff_all[ext_indices].sum(axis=0)
+
+    n_mm_int = int_edges[0]
+    n_mo_int = int_edges[2]
+    n_mo_ext = ext_edges[-2]
+
+    delta_g = np.dot(coef, np.array([n_mm_int, n_mo_int, n_mo_ext]))
+    pred.append(delta_g)
+
+    print("n: {:01d}   dg: {:0.2f}".format(n, delta_g))
+
+pred = np.array(pred)
