@@ -38,7 +38,7 @@ for fname in fnames:
     plt.close('all')
     fig, ax = plt.subplots(figsize=(7,6))
     ax.plot(bins[:-1], k*np.log(this_omega))
-    ax.set_xlim(135, 287)
+    ax.set_xlim(bins.min(), bins.max())
     plt.tight_layout()
     plt.savefig('{}/Desktop/s_k_{:d}.png'.format(homedir, k_ch3))
     this_prob = this_omega / special.binom(36, k_ch3)

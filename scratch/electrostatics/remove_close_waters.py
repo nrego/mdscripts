@@ -2,11 +2,12 @@ from scipy.spatial import cKDTree
 import numpy as np
 import MDAnalysis
 
-univ = MDAnalysis.Universe('../bulk_discharge/contacts.pdb')
+univ = MDAnalysis.Universe('../../bound_discharge/contacts.pdb')
 contact_mask = univ.atoms.tempfactors == 1
 
-univ = MDAnalysis.Universe('phi_200/confout.gro')
-univ.add_TopologyAttr('tempfactors')
+univ = MDAnalysis.Universe('confout.gro')
+univ.add_TopologyAttr('tempconfout.gro')
+univ.add_TopologyAttr('tempffactors')
 prot = univ.select_atoms('protein')
 prot[contact_mask].tempfactors = 1
 contact = prot[contact_mask].select_atoms('not name H*')
