@@ -67,6 +67,8 @@ parser.add_argument('--de', default=0.5, type=float,
                     help='Bin width for energy, in kT (default: %(default)s)')
 parser.add_argument('--eps', type=float, default='1e-10',
                     help='Epsilon (tolerance) for Wang Landau (default: 1e-10)')
+parser.add_argument('--max-wl-iter', type=int, default=60000,
+                    help='Maximum number of WL MC steps to take each iteration (default: %(default)s)')
 parser.add_argument('--hist-flat-tol', type=float, default=0.8,
                     help='Criterion for determining if histogram is flat for each \
                           Wang-Landau iteration (default: %(default)s)')
@@ -139,12 +141,12 @@ nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 ext_count = np.zeros(args.patch_size**2, dtype=int)
 for i in range(args.patch_size**2):
     ext_count[i] = np.intersect1d(ext_indices, nn_ext[i]).size
-embed()
+
 # Run WL
 fn_kwargs = dict(nn=nn, ext_count=ext_count, coef1=reg.coef_[0], coef2=reg.coef_[1], coef3=reg.coef_[2], inter=reg.intercept_)
-wl = WangLandau(positions, bins, get_energy, fn_kwargs=fn_kwargs, eps=args.eps)
+wl = WangLandau(positions, bins, get_energy, fn_kwargs=fn_kwargs, eps=args.eps, max_iter=args.max_wl_iter)
 #embed()
 wl.gen_states(k_ch3, do_brute, hist_flat_tol=args.hist_flat_tol)
 
-np.savez_compressed('density_k_c_{:02d}.dat'.format(k_ch3), bins=bins, density=wl.density, k_ch3=k_ch3, eps=args.eps, hist_flat_tol=args.hist_flat_tol,
+np.savez_compressed('density_k_c_{:03d}.dat'.format(k_ch3), bins=bins, entropies=wl.entropies, density=wl.density, k_ch3=k_ch3, eps=args.eps, hist_flat_tol=args.hist_flat_tol,
                     do_brute=do_brute, omega=wl.omega, sampled_pt_idx=wl.sampled_pt_idx)

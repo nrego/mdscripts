@@ -51,6 +51,7 @@ class WangLandau:
     def _init_state(self):
         # density of states histogram
         self.density = np.zeros(self.bins.size-1)
+        self.entropies = np.zeros(self.bins.size-1)
         # indices of the sampled points - a record of patterns in each bin
         self.sampled_pt_idx = np.empty(self.bins.size-1, dtype=object)
         self._k_current = None
@@ -67,6 +68,13 @@ class WangLandau:
     def omega(self):
         try:
             return int(binom(self.N, self._k_current)) * self.density / self.density.sum()
+        except TypeError:
+            raise ValueError("k not yet set: use gen_states")
+
+    @property
+    def omega_k(self):
+        try:
+            return int(binom(self.N, self._k_current))
         except TypeError:
             raise ValueError("k not yet set: use gen_states")
 
@@ -129,6 +137,8 @@ class WangLandau:
                 self.sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
 
         ## Normalize density of states histogram ##
+        self.entropies = np.log(self.density)
+        self.entropies -= np.nanmax(self.entropies)
         self.density /= np.trapz(self.density, self.bins[:-1])
 
     ## Wang-Landau ##
@@ -207,7 +217,7 @@ class WangLandau:
             is_flat = self.is_flat(wl_hist[center_bin_mask], hist_flat_tol)
 
             if  is_flat or n_iter > self.max_iter:
-                embed()
+                
                 print(" n_iter: {}".format(n_iter+1))
                 center_bin_mask = (wl_states > 0)
                 n_iter = 0
@@ -219,6 +229,7 @@ class WangLandau:
 
         occ = wl_entropies > 0
         wl_entropies -= wl_entropies.max()
+        self.entropies = wl_entropies.copy()
         self.density = np.exp(wl_entropies)
         self.density[~occ] = 0.0
         self.density /= np.trapz(self.density, self.bins[:-1])
