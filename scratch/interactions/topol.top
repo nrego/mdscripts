@@ -1,0 +1,27 @@
+;
+;   Template topology file
+
+; Include forcefield parameters and spc/e
+#include "plate_ff.itp"
+
+; Include plate topology
+#include "plate.itp"
+
+; Include water topology
+#include "spce.itp"
+
+#ifdef POSRES_WATER
+; Position restraint for each water oxygen
+[ position_restraints ]
+;  i funct       fcx        fcy        fcz
+   1    1       1000       1000       1000
+#endif
+
+[ system ]
+; Name
+Plate system
+
+[ molecules ]
+; Compound        #mols
+Plate             1
+

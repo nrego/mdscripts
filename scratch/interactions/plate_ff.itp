@@ -1,0 +1,53 @@
+
+[ defaults ]
+;nbfunc     comb-rule      gen-pairs     fudgeLJ      fudgeQQ
+      1             2            yes         0.5      0.0
+
+[ atomtypes ]
+; name    mass      charge      ptype      sigma         epsilon
+CH3     12.010      0.00000        A        0.3905e+00  0.73220e-00 ; opls_068 
+OH      16.000     -0.48936        A        0.3120e+00  0.71128e+00 ; opls_154
+BOH     16.000     -0.48936        A        0.3120e+00  0.71128e+00 ; OH's on bottom
+HO       1.008      0.48936        A        0.0000e+00  0.00000e+00
+N       15.9994    -1.00000        A        0.2960e+00  0.87864e+00 ; opls_272
+P       15.9994    +1.00000        A        0.2960e+00  0.87864e+00 ; opls_272
+OW_spc  16.000     -0.84760        A        0.3169e+00  0.65020e+00
+HW_spc   1.008     +0.42380        A        0.0000e+00  0.00000e+00
+
+[ bondtypes ]
+; i    j  func       b0          kb
+CH3   BOH      1      0.25        224262.4 ; CT-CT bond 
+OH    BOH      1      0.25        224262.4 ; CT-CT bond 
+N     BOH      1      0.25        224262.4 ; CT-CT bond 
+P     BOH      1      0.25        224262.4 ; CT-CT bond 
+BOH   BOH      1      0.25        224262.4 
+CH3   CH3      1      0.25        224262.4 
+OH    CH3      1      0.25        224262.4 
+N     CH3      1      0.25        224262.4 
+P     CH3      1      0.25        224262.4 
+OH     OH      1      0.25        224262.4
+N      OH      1      0.25        224262.4
+P      OH      1      0.25        224262.4
+N       N      1      0.25        224262.4
+P       N      1      0.25        224262.4
+P       P      1      0.25        224262.4
+; OH-H bonds
+BOH    HO      1      0.0945      462750.4 ; will be constrained anyway
+OH     HO      1      0.0945      462750.4
+CH3    HO      1      0.0945      462750.4
+N      HO      1      0.0945      462750.4
+P      HO      1      0.0945      462750.4
+
+; enforce angles between top heavy, BOH, and HO (and BOH, OH, HO for any top OH's)
+[ angletypes ]
+;  i    j    k  func       th0       cth
+  CH3     BOH     HO      1   108.500    460.240 ; from CT-OH-HO
+  OH      BOH     HO      1   108.500    460.240 
+  N       BOH     HO      1   108.500    460.240
+  P       BOH     HO      1   108.500    460.240
+  BOH     OH      HO      1   108.500    460.240
+  BOH     CH3     HO      1   108.500    460.240
+  BOH     N       HO      1   108.500    460.240
+  BOH     P       HO      1   108.500    460.240
+
+
