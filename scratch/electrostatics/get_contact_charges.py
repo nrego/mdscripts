@@ -129,8 +129,8 @@ with open('topol_prot_lam.itp', 'w') as fout:
         else:
             try:
                 blah, atm_type, res_index, resname, atm_name, chggrp, charge, mass, _, _, _ = line.split()
-            except:
-                embed()
+            except ValueError:
+                blah, atm_type, res_index, resname, atm_name, chggrp, charge, mass = line.split()
             assert abs(float(charge) - contact_atom_charges[index]) < 1e-7
 
             fout.write(fmtstr.format(blah, atm_type, res_index, resname, atm_name, chggrp, float(charge), mass, atm_type, 0.0000, '; XXX\n'))
