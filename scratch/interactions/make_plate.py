@@ -10,8 +10,7 @@ from scipy.spatial import cKDTree
 
 from IPython import embed
 
-n_mid = 5
-d = 2.5
+
 
 # head group names
 # C: non-polar group (methyl), D: polar group (h-bond donor), N: negative group, P: positive group
@@ -30,8 +29,27 @@ atom_charge = {'CH3': 0.0,
               'P':   1.0}
 res_names = ['CH3', 'OH', 'NEG', 'POS']
 
+
+parser = argparse.ArgumentParser("Construct hex-packed plate system, given number of central atoms. Also build topology")
+parser.add_argument("--n-mid", default=7, type=int,
+                    help="Number of middle atoms (default: %(default)s)")
+parser.add_argument("--pattern", type=str, default=None,
+                    help="filename of file detailing surface pattern (should be readable as numpy array,"\
+                         "each entry indicates type of headgroup for that position; e.g. 0 for ch3, 1 for oh, 2 for neg, and 3 for pos")
+parser.add_argument("--d-space", "--d", type=float, default=3.0,
+                    help="Lattice spacing (Angstroms) between atoms (default: %(default)s)")
+args = parser.parse_args()
+
+n_mid = args.n_mid
+d = args.d_space
+
 n_res = n_mid + 2*fib(n_mid, n_mid)
-pattern = np.zeros(n_res, dtype=int)
+
+if args.pattern is not None:
+    pattern = np.loadtxt(args.pattern, dtype=int)
+else:
+    pattern = np.zeros(n_res, dtype=int)
+
 assert pattern.size == n_res
 
 positions = gen_plate_position(n_mid, d)
@@ -136,7 +154,7 @@ with open('plate.itp', 'w') as fout:
     mtype_str = """
 [ moleculetype ]
 ; Name            nrexcl
-Plate            2
+Plate             1
 """
     fout.write(mtype_str)
     fout.write('\n')
@@ -164,21 +182,21 @@ Plate            2
         else:
             raise
         fout.write(outstr)
-
-    fout.write('\n')
-    fout.write('[ pairs ]\n')
-    fout.write(';  ai    aj funct            c0            c1            c2            c3\n')
-    for i in range(univ.atoms.n_atoms):
-        for j in bond_list_second[i]:
-            if univ.atoms[i].name != 'HO' and univ.atoms[j].name != 'HO':
-                if i < j:
-                    outstr = '{:>5}{:>6}{:>6}\n'.format(i+1, j+1, 1)
-                elif j < i:
-                    outstr = '{:>5}{:>6}{:>6}\n'.format(j+1, i+1, 1)
-                else:
-                    continue
-                fout.write(outstr)
-
+    
+    # fout.write('\n')
+    # fout.write('[ pairs ]\n')
+    # fout.write(';  ai    aj funct            c0            c1            c2            c3\n')
+    # for i in range(univ.atoms.n_atoms):
+    #     for j in bond_list_second[i]:
+    #         if univ.atoms[i].name != 'HO' and univ.atoms[j].name != 'HO':
+    #             if i < j:
+    #                 outstr = '{:>5}{:>6}{:>6}\n'.format(i+1, j+1, 1)
+    #             elif j < i:
+    #                 outstr = '{:>5}{:>6}{:>6}\n'.format(j+1, i+1, 1)
+    #             else:
+    #                 continue
+    #             fout.write(outstr)
+    
     fout.write('\n')
     fout.write('[ angles ]\n')
     fout.write(';  ai    aj    ak funct            c0            c1            c2            c3\n')
@@ -187,4 +205,26 @@ Plate            2
         fout.write('{:>6}{:>6}{:>6}{:>6}\n'.format(atoms[0].id, atoms[2].id, atoms[3].id, 1))
         fout.write('{:>6}{:>6}{:>6}{:>6}\n'.format(atoms[2].id, atoms[0].id, atoms[1].id, 1))
 
+
+    outstr = """
+; Include Position restraint file
+#ifdef POSRES
+#include "posre.itp"
+#endif
+"""
+    fout.write(outstr)
+
+
+# Write out posre.itp file
+with open('posre.itp', 'w') as fout:
+    fout.write('; position restraints for plate\n')
     fout.write('\n')
+    fout.write('[ position_restraints ]\n')
+    fout.write(';  i funct       fcx        fcy        fcz\n')
+
+    for atm in univ.atoms:
+        if atm.name != 'HO':
+            fout.write('{:>4d}{:>5d}{:>11s}{:>11s}{:>11s}\n'.format(atm.id, 1, '1000', '1000', '1000'))
+
+
+

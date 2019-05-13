@@ -21,41 +21,81 @@ def plot_errorbar(bb, dat, err):
     plt.plot(bb[:-1], dat)
     plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
 
+def get_negloghist(data, bins, logweights):
+
+    weights = np.exp(logweights)
+    norm = weights.sum()
+    logweights -= np.log(norm)
+
+    bin_assign = np.digitize(data, bins) - 1
+
+    negloghist = np.zeros(bins.size-1)
+
+    for i in range(bins.size-1):
+        this_bin_mask = bin_assign == i
+        this_logweights = logweights[this_bin_mask]
+        this_data = data[this_bin_mask]
+        if this_data.size == 0:
+            continue
+        this_logweights_max = this_logweights.max()
+        this_logweights -= this_logweights.max()
+
+        this_weights = np.exp(this_logweights)
+
+        negloghist[i] = -np.log(this_weights.sum()) - this_logweights_max
+
+    return negloghist
+
+
 # Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
-def extract_and_reweight_data(logweights, ntwid, data, bins, phi_vals):
+def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
     logweights -= logweights.max()
     weights = np.exp(logweights) 
+    weights /= weights.sum()
 
     pdist, bb = np.histogram(ntwid, bins=bins, weights=weights)
     pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
 
     neglogpdist = -np.log(pdist)
-    neglogpdist -= neglogpdist.min()
+    neglogpdist = get_negloghist(ntwid, bins, logweights)
+
+    #neglogpdist -= neglogpdist.min()
 
     neglogpdist_N = -np.log(pdist_N)
-    neglogpdist_N -= neglogpdist_N.min()
+    neglogpdist_N = get_negloghist(data, bins, logweights)
+    #neglogpdist_N -= neglogpdist_N.min()
+    #embed()
+    avg_ntwid = np.zeros_like(beta_phi_vals)
+    var_ntwid = np.zeros_like(avg_ntwid)
 
-    avg_N = np.zeros_like(phi_vals)
-    chi = np.zeros_like(phi_vals)
+    avg_data = np.zeros_like(avg_ntwid)
+    var_data = np.zeros_like(avg_ntwid)
 
-    # Now get average N and chi for each phi
-    for idx_phi, phi_val in enumerate(phi_vals):
-        bias = phi_val * ntwid
+    ntwid_sq = ntwid**2
+    data_sq = data**2
 
-        bias_logweights = logweights - bias
+    for i, beta_phi_val in enumerate(beta_phi_vals):
+        bias_logweights = logweights - beta_phi_val*ntwid
         bias_logweights -= bias_logweights.max()
+
         bias_weights = np.exp(bias_logweights)
         bias_weights /= bias_weights.sum()
 
-        this_avg_N = np.dot(data, bias_weights)
-        this_avg_N_sq = np.dot(data**2, bias_weights)
-        this_chi = this_avg_N_sq - this_avg_N**2
+        this_avg_ntwid = np.dot(bias_weights, ntwid)
+        this_avg_ntwid_sq = np.dot(bias_weights, ntwid_sq)
+        this_var_ntwid = this_avg_ntwid_sq - this_avg_ntwid**2
 
-        avg_N[idx_phi] = this_avg_N
-        chi[idx_phi] = this_chi
+        this_avg_data = np.dot(bias_weights, data)
+        this_avg_data_sq = np.dot(bias_weights, data_sq)
+        this_var_data = this_avg_data_sq - this_avg_data**2
 
-    
-    return (neglogpdist, neglogpdist_N, avg_N, chi)
+        avg_ntwid[i] = this_avg_ntwid
+        var_ntwid[i] = this_var_ntwid
+        avg_data[i] = this_avg_data
+        var_data[i] = this_var_data
+
+    return (neglogpdist, neglogpdist_N, avg_data, var_data)
+
 
 print('Constructing Nv v phi, chi v phi...')
 temp = 300

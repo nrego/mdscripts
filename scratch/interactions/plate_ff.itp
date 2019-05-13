@@ -16,21 +16,21 @@ HW_spc   1.008     +0.42380        A        0.0000e+00  0.00000e+00
 
 [ bondtypes ]
 ; i    j  func       b0          kb
-CH3   BOH      1      0.25        224262.4 ; CT-CT bond 
-OH    BOH      1      0.25        224262.4 ; CT-CT bond 
-N     BOH      1      0.25        224262.4 ; CT-CT bond 
-P     BOH      1      0.25        224262.4 ; CT-CT bond 
-BOH   BOH      1      0.25        224262.4 
-CH3   CH3      1      0.25        224262.4 
-OH    CH3      1      0.25        224262.4 
-N     CH3      1      0.25        224262.4 
-P     CH3      1      0.25        224262.4 
-OH     OH      1      0.25        224262.4
-N      OH      1      0.25        224262.4
-P      OH      1      0.25        224262.4
-N       N      1      0.25        224262.4
-P       N      1      0.25        224262.4
-P       P      1      0.25        224262.4
+CH3   BOH      1      0.30        224262.4 ; CT-CT bond 
+OH    BOH      1      0.30        224262.4 ; CT-CT bond 
+N     BOH      1      0.30        224262.4 ; CT-CT bond 
+P     BOH      1      0.30        224262.4 ; CT-CT bond 
+BOH   BOH      1      0.30        224262.4 
+CH3   CH3      1      0.30        224262.4 
+OH    CH3      1      0.30        224262.4 
+N     CH3      1      0.30        224262.4 
+P     CH3      1      0.30        224262.4 
+OH     OH      1      0.30        224262.4
+N      OH      1      0.30        224262.4
+P      OH      1      0.30        224262.4
+N       N      1      0.30        224262.4
+P       N      1      0.30        224262.4
+P       P      1      0.30        224262.4
 ; OH-H bonds
 BOH    HO      1      0.0945      462750.4 ; will be constrained anyway
 OH     HO      1      0.0945      462750.4

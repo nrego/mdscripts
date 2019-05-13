@@ -15,7 +15,7 @@ from constants import k
 from IPython import embed
 
 dat = np.load('prod/phi_sims/ni_weighted.dat.npz')
-
+#dat = np.load('ni_weighted.dat.npz')
 beta_phi_vals = dat['beta_phi']
 
 # shape: (n_heavies, n_phi_vals)
