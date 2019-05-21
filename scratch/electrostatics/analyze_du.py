@@ -10,6 +10,8 @@ from matplotlib import pyplot as plt
 import argparse
 import os, glob
 
+import sys
+
 from mdtools import dr
 
 from constants import k
@@ -54,6 +56,11 @@ for fname in infiles:
         dat_max = np.array(ds.data).max()
     if np.array(ds.data).min() < dat_min:
         dat_min = np.array(ds.data).min()
+
+if len(infiles) == 1:
+    embed()
+    plt.plot(ds.data[ds.data.keys()[-1]])
+    sys.exit()
 
 dat_max = np.ceil(dat_max)
 dat_min = np.floor(dat_min)

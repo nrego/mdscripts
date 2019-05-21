@@ -313,7 +313,7 @@ Command-line options
     # Construct bias matrix from data
     def _unpack_simple_data(self, start, end=None):
 
-
+        self.all_data = np.array([], dtype=np.float32)
         self.n_samples = np.array([]).astype(int)
 
         if self.autocorr is None:
@@ -347,6 +347,8 @@ Command-line options
                 self.bias_mat = self.beta*dataframe.copy()
             else:
                 self.bias_mat = np.vstack((self.bias_mat, self.beta*dataframe))
+
+            self.all_data = np.append(self.all_data, dataframe[:,-1])
             
         #if do_autocorr:
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
