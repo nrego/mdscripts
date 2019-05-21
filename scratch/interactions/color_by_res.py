@@ -1,7 +1,9 @@
 
 outer_ring_idx = np.array([1,8,14,19,20,21,22,18,13,7,28,33,37,36,35,34,29,23])
-center_ring_idx_targ = np.array([3,5,10,11,25,26])
-center_ring_idx_part = np.array([5,3,11,10,26,25])
+
+center_ring_idx_targ = np.array([3,10,25,5,11,26])
+center_ring_idx_part = np.array([5,11,26,3,10,25])
+
 center_pt = 3
 
 pattern = np.zeros(37, dtype=int)
@@ -42,7 +44,9 @@ for i,res in enumerate(res_targ):
 try:
     res_part = part.residues[center_ring_idx_part-1]
     for i,res in enumerate(res_part):
-        newtype = 'P' if i < 3 else 'N'
+
+        newtype = 'N' if i < 3 else 'P'
+
         atm = res.atoms[0]
         atm.name = newtype
         res.resname = newtype
@@ -60,10 +64,11 @@ except IndexError:
     pass
 
 for i, idx in enumerate(center_ring_idx_targ):
-    newtype = 3 if i < 0 else 2
+
+    newtype = 3 if i < 3 else 2
+
     pattern[idx-1] = newtype
 
 pattern[3] = 1
 np.savetxt('pattern_charged.dat', pattern, fmt='%d')
 univ.atoms.write("charged.gro")
-
