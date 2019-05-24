@@ -183,19 +183,26 @@ Plate             1
             raise
         fout.write(outstr)
     
-    # fout.write('\n')
-    # fout.write('[ pairs ]\n')
-    # fout.write(';  ai    aj funct            c0            c1            c2            c3\n')
-    # for i in range(univ.atoms.n_atoms):
-    #     for j in bond_list_second[i]:
-    #         if univ.atoms[i].name != 'HO' and univ.atoms[j].name != 'HO':
-    #             if i < j:
-    #                 outstr = '{:>5}{:>6}{:>6}\n'.format(i+1, j+1, 1)
-    #             elif j < i:
-    #                 outstr = '{:>5}{:>6}{:>6}\n'.format(j+1, i+1, 1)
-    #             else:
-    #                 continue
-    #             fout.write(outstr)
+    fout.write('\n')
+    fout.write('[ pairs ]\n')
+    fout.write(';  ai    aj funct            c0            c1            c2            c3\n')
+    for i in range(atoms.n_atoms):
+        if atoms[i].name == 'HO':
+            continue
+        for j in range(i+1, atoms.n_atoms):
+            if j not in bond_list[i] and atoms[j].name != 'HO':
+                outstr = '{:>5}{:>6}{:>6}\n'.format(i+1, j+1, 1)
+                fout.write(outstr)
+
+    fout.write('\n')
+    fout.write('[ exclusions ]\n')
+    fout.write(';  ai    [...]\n')
+    for i in range(univ.atoms.n_atoms):
+        outstr = '{:>5}'.format(i+1)
+        for j in range(i+1, atoms.n_atoms):
+            outstr += '{:>6}'.format(j+1)
+        outstr += '{:>6}\n'.format(1)
+        fout.write(outstr)
     
     fout.write('\n')
     fout.write('[ angles ]\n')

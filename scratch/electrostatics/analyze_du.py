@@ -58,8 +58,9 @@ for fname in infiles:
         dat_min = np.array(ds.data).min()
 
 if len(infiles) == 1:
-    embed()
+    #embed()
     plt.plot(ds.data[ds.data.keys()[-1]])
+    plt.show()
     sys.exit()
 
 dat_max = np.ceil(dat_max)
