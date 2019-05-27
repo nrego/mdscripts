@@ -12,42 +12,24 @@ splitter = lambda instr: instr.split('/')[0].split('_')[-1]
 
 extractFloat = lambda string: map(float, re.findall(r"[-+]?\d*\.\d+|\d+", string))
 
-parser = argparse.ArgumentParser("Convert dhdl.xvg file to du.dat")
+parser = argparse.ArgumentParser("Convert pullx.xvg file to pmf.dat")
 parser.add_argument('-f', metavar='INPUT', type=str,
-                    help='dhdl nput file name')
+                    help='pullx.xvg input file name')
+parser.add_argument('--rstar', required=True, type=float,
+                    help='Rstar for this pulling window (in nm)')
+parser.add_argument('--kappa', default=1000.0, type=float,
+                    help='Spring constant for this rstar (in kj/mol-nm^2), default: %s(default)')
 
 
 args = parser.parse_args()
 
 filename = args.f
+kappa = args.kappa
+rstar = args.rstar
 
-lam_vals = []
-with open(filename, 'r') as f:
-    
-    for line in f:
-        #print(line)
-        if line.startswith('#'):
-            continue
-        elif line.startswith('@'):
-            
-            if line.find('T =') != -1:
-                this_lambda = extractFloat(line)[1]
-            elif re.findall('s[0-9]+', line):
-                lam_vals.append(extractFloat(line)[1])
-        else:
-            break
+dat = np.loadtxt(filename, comments=['@', '#'])
 
-dat = np.loadtxt(filename, comments=["@", "#"])
-timepts = dat[:,0]
-energies = dat[:,1:]
-energies -= energies[:,0][:,None]
+headerstr = 'kappa(kJ/mol-nm^2): {:.2f}\nrstar(nm): {:1.2f}\n\ntime (ps)  r (nm)'.format(kappa, rstar)
 
-print("This lambda: {:0.2f}".format(this_lambda))
-
-for_lam_str = ' '.join(['{:0.2f}'.format(lam) for lam in lam_vals])
-
-header = 'this_lmbda: {:0.2f}\nlmbdas: {}\ntime (ps) U_lmbda-U_0'.format(this_lambda, for_lam_str)
-
-np.savetxt('du.dat', np.hstack((timepts[:,None], energies)), fmt='%0.6f', header=header)
-
+np.savetxt('pmf.dat', np.delete(dat, 1, axis=1), header=headerstr, fmt='%1.4f  %1.6f')
 

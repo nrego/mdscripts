@@ -229,27 +229,24 @@ class PMFDataSet(DataSet):
         #linecache.clearcache()
         data = np.loadtxt(filename)
         log.debug('Datareader {} reading input file {}'.format(self, filename))
-        self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
-                                     columns=['N', r'$\~N$'])
+        self.data = pandas.DataFrame(data[::corr_len, 1], index=data[::corr_len, 0],
+                                     columns=['rstar'])
         self.title = filename
-        log.debug('....DONE;  kappa={}, Nstar={}, phi={}'.format(self.kappa,self.Nstar,self.phi))
+        log.debug('....DONE;  kappa={}, rstar={}'.format(self.kappa,self.rstar))
 
     def _scan_header_dat(self, filename):
         kappa_found = False
-        Nstar_found = False
+        rstar_found = False
         phi_found = False
         with open(filename, 'r') as fin:
             for line in fin:
                 if 'kappa' in line:
                     self.kappa = extractFloat(line).pop()
                     kappa_found = True
-                elif 'NStar' in line:
-                    self.Nstar = extractFloat(line).pop()
-                    Nstar_found = True
-                elif 'mu' in line:
-                    self.phi = extractFloat(line).pop()
-                    phi_found = True
-                if (kappa_found and Nstar_found and phi_found):
+                elif 'rstar' in line:
+                    self.rstar = extractFloat(line).pop()
+                    rstar_found = True
+                if (kappa_found and rstar_found):
                     break
 
 
@@ -460,116 +457,6 @@ class RAMADataSet(DataSet):
         return np.amin([dx, 360-dx], axis=0)
 
 
-class PMFDataSet(DataSet):
-
-    def __init__(self, root_dirname,  kappa=1000, corr_len=1):
-        super(PMFDataSet, self).__init__()
-
-        data = np.loadtxt("{}/pullx.xvg".format(root_dirname), comments=['@','#'])
-        data[:,-1] = np.abs(data[:,-1])
-        data_force = np.loadtxt("{}/pullf.xvg".format(root_dirname), comments=['@','#'])
-
-        self.inter_pos = None
-        try:
-            self.inter_pos = np.loadtxt("{}/slab_position.dat".format(root_dirname))
-            self.inter_pos /= 10.0 # in nm
-        except:
-            self.inter_pos = None
-
-        dz_0 = data[-1, -1]
-        force_0 = data_force[-1, -1]
-
-        log.debug('Datareader {} reading input file {}'.format(self, "{}/pullx.xvg".format(root_dirname)))
-        
-        # Ugh really hackish
-        # NVT sim with 2 pull groups (slab, then solute)
-        if data.shape[1] == 4:
-            self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
-                                         columns=['r0', 'slabDZ', 'solDZ'])
-        # NPT binding sim with 1 pull group (solute to its binding partner)
-        if data.shape[1] == 3:
-            self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
-                                         columns=['r0', 'solDZ'])
-        self.title = root_dirname
-        self.kappa = kappa
-
-        self.rstar = np.round(dz_0 + (force_0/self.kappa), decimals=3)
-
-
-    def blockAvg(self, start, end=None, outfile=None):
-
-        data = np.array(self.data[start:end]['solDZ'])
-        data = data[1:]
-        #data = ds
-        data_var = data.var()
-        n_obs = len(data)  # Total number of observations
-
-        #blocks = (np.power(2, xrange(int(np.log2(n_obs))))).astype(int)
-        # Block size
-        blocks = np.arange(1,len(data)/2+1,1)
-
-        n_blocks = len(blocks)
-
-        block_vals = np.zeros((n_blocks, 3))
-        block_vals[:, 0] = blocks.copy()
-
-        block_ctr = 0
-
-        for block in blocks:
-            n_block = int(n_obs/block)
-            obs_prop = np.zeros(n_block)
-
-            for i in xrange(n_block):
-                ibeg = i*block
-                iend = ibeg + block
-                obs_prop[i] = data[ibeg:iend].mean()
-
-            block_vals[block_ctr, 1] = obs_prop.mean()
-            block_vals[block_ctr, 2] = obs_prop.var() / (n_block-1)
-
-            block_ctr += 1
-
-        return block_vals
-
-    def plot(self, start=0, ylim=None, block=1, end=None):
-        pandas.DataFrame.rolling(self.data[start:end:10], window=block).plot()
-
-        mean = self.getMean(start=start, end=end)
-        line = pyplot.hlines(mean, start, self.shape[0])
-        line.set_label('mean: {:.2f}'.format(mean))
-
-        if (ylim is not None):
-            pyplot.ylim(ylim)
-
-    def getRange(self, start=0, end=None):
-        rng = self.data[start:end].max() - self.data[start:end:10].min()
-
-        return rng['solDZ']
-
-    def max(self, start=0, end=None):
-        return self.data[start:end].max()
-
-    def min(self, start=0, end=None):
-        return self.data[start:end].min()
-
-    def getMean(self, start=0, bphi=1, end=None):
-        dz = self.data[start:end]['solDZ']
-
-        return Ntwid.mean()
-
-    def getSecondMom(self, start=0, bphi=1, end=None):
-        dz_sq = (self.data[start:end]['solDZ'])**2
-
-        return dz_sq.mean()
-
-    def getVar(self, start=0, bphi=1, end=None):
-        dz = self.data[start:end]['solDZ']
-        return dz.var()
-
-    def getHist(self, start=0, nbins=50, end=None):
-        return np.histogram(self.data[start:end]['solDZ'], bins=nbins)
-
-
 
 class DataReader:
     '''Global class for handling datasets, etc'''
@@ -596,8 +483,8 @@ class DataReader:
         return cls._addSet(ds)
 
     @classmethod
-    def loadPmf(cls, filename, kappa=1000.0, corr_len=1):
-        ds = PMFDataSet(filename, kappa, corr_len)
+    def loadPMF(cls, filename, corr_len=1):
+        ds = PMFDataSet(filename, corr_len)
         return cls._addSet(ds)
 
     @classmethod 
