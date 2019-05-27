@@ -309,6 +309,9 @@ Command-line options
         elif self.fmt == 'simple':
             self._unpack_simple_data(start, end)
 
+        elif self.fmt == 'pmf':
+            self._unpack_pmf_data(start, end)
+
 
     # Construct bias matrix from data
     def _unpack_simple_data(self, start, end=None):
@@ -350,6 +353,54 @@ Command-line options
 
             self.all_data = np.append(self.all_data, dataframe[:,-1])
             
+        #if do_autocorr:
+        log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
+        np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
+        self.ts = np.array(self.ts)
+        dr.clearData()
+
+    # Put all data points into N dim vector
+    def _unpack_pmf_data(self, start, end=None):
+
+        self.all_data = np.array([], dtype=np.float32)
+        self.all_data_N = np.array([]).astype(int)
+        self.n_samples = np.array([]).astype(int)
+
+        if self.autocorr is None:
+            do_autocorr = True
+            self.autocorr = np.zeros(self.n_windows)
+        else:
+            do_autocorr = False
+
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+
+            if self.ts == None:
+                self.ts = []
+                
+            # Sanity check - every input should have same timestep
+            #else:
+            #    np.testing.assert_almost_equal(self.ts, ds.ts)
+            self.ts.append(ds.ts)
+            data = ds.data[start:end]
+            dataframe = np.array(data['$\~N$'])
+            dataframe_N = np.array(data['N']).astype(np.int32)
+
+            if do_autocorr:
+                autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
+                self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
+
+            self.n_samples = np.append(self.n_samples, dataframe.shape[0])
+
+            self.all_data = np.append(self.all_data, dataframe)
+            self.all_data_N = np.append(self.all_data_N, dataframe_N)
+
+        self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
+        
+        # Ugh !
+        #embed()
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+            self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
+        
         #if do_autocorr:
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
         np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
@@ -403,159 +454,14 @@ Command-line options
         np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
         self.ts = np.array(self.ts)
         dr.clearData()
-
+        
     # Put all data points into N dim vector
     def _unpack_xvg_data(self, start, end=None,skip=None):
-
-        self.all_data = None
-        self.n_samples = np.array([], dtype=np.int32)
-        self.bias_mat = None
-
-        if self.autocorr is None:
-            do_autocorr = True
-            self.autocorr = np.zeros(self.n_windows)
-        else:
-            do_autocorr = False
-
-        do_skip = False
-        if skip is not None:
-            do_skip = True
-
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-
-            log.info("Unpacking {}th dataset ({:s})".format(i, ds_name))
-
-            # Only set the ts once, for first ds (and check that it's the same for subsequent)
-            # This is also the time to check for the step size if we are skipping data, by
-            #   dividing skip by the timestep
-            if self.ts == None:
-                self.ts = ds.ts
-                if do_skip:
-                    step = int(skip / self.ts)
-                    log.info("only grabbing data every {} ps ({} steps)".format(skip, step))
-                else:
-                    step = 1 # by default take every data point
-                    log.info("grabbing data every step ({} ps)".format(self.ts))
-            else:
-                np.testing.assert_almost_equal(self.ts, ds.ts)
-
-            ## quick test that dataset makes sense - DU's for its own lambda should be all zeros
-            arr_self = ds.data[ds.lmbda]
-            np.testing.assert_array_almost_equal(arr_self, np.zeros_like(arr_self), decimal=5)
-
-
-            ## Sanity checks done. Now grab this window's data (i.e. its du's) and poss. calc the iact
-            dataframe = np.array(ds.data[start:end:step][self.for_lmbdas], dtype=np.float32)
-
-            if do_autocorr:
-                log.info("    Calculating autocorrelation time...")
-                
-                n_samples = dataframe.shape[0]
-                max_autocorr_len = n_samples // 50 # Can only accurately get tau if (n_samples > 50*tau)
-                iact = 0 # initial guess
-                # Get autocorr time for this lambda window by looking at its dU's for its adjacent windows
-                for k in [i-1, i+1]:
-                    
-                    if k < 0:
-                        continue
-                    try:
-                        # iact in units of *steps*, *NOT* time
-                        curr_iact = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:,k], fast=True))
-                        if curr_iact > iact:
-                            iact = curr_iact
-                    except:
-                        continue
-                # self.autocorr is IACT in **ps**
-                self.autocorr[i] = max(self.ts * iact, self.min_autocorr_time)
-                log.info("      Tau={} ps ({}) steps".format(self.autocorr[i], iact))
-                
-
-            bias = self.beta*dataframe # biased values for all windows
-            self.n_samples = np.append(self.n_samples, dataframe.shape[0])
-            
-            this_dudl = self.beta * np.array(ds.dhdl[start:end:step], dtype=np.float32)
-            if self.dudl is None:
-                self.dudl = this_dudl
-            else:
-                self.dudl = np.vstack((self.dudl, this_dudl))
-            if self.all_data is None:
-                self.all_data = dataframe
-            else:
-                self.all_data = np.vstack((self.all_data, dataframe))
-
-            if self.bias_mat is None:
-                self.bias_mat = bias
-            else:
-                self.bias_mat = np.vstack((self.bias_mat, bias))
-
-        ## Finished unpacking all data windows - now rearrange the bias matrix, clean up, etc
-        self.dudl = np.squeeze(self.dudl)
-
-        # Fix bias matrix so each column lam_i is now U_i-U_0; i.e. bias w.r.t window 0
-        col0 = self.bias_mat[:, 0].copy()
-        #for i in xrange(self.n_windows):
-        #   self.bias_mat[:, i] = self.bias_mat[:, i] - col0
-        
-        if do_autocorr:
-            log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
-            np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
-        dr.clearData()
+        raise NotImplementedError
 
     # Put all data points into N dim vector
     def _unpack_rama_data(self, start, end=None):
-
-        # all data, over all windows, in one array:
-        #   shape: (n_tot,)
-        self.all_data = np.array([], dtype=np.float32)
-        # Number of samples for each window
-        #   shape: (n_windows,)
-        self.n_samples = np.array([]).astype(int)
-        #embed()
-        if self.autocorr is None:
-            do_autocorr = False
-            log.info("Autocorrelation not yet implemented for RAMA...")
-            self.autocorr = np.ones(self.n_windows)
-        else:
-            do_autocorr = False
-
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-
-            if self.ts == None:
-                self.ts = ds.ts
-            # Sanity check - every input should have same timestep
-            else:
-                np.testing.assert_almost_equal(self.ts, ds.ts)
-
-            data = ds.data[start:end]
-            dataframe = np.array(data[:])
-
-            if do_autocorr:
-                autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
-                self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
-
-            self.n_samples = np.append(self.n_samples, dataframe.shape[0])
-
-            self.all_data = np.append(self.all_data, dataframe)
-
-        assert self.n_tot == self.all_data.size/2
-
-        self.all_data = np.reshape(self.all_data, (self.n_tot, 2))
-        self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
-        
-        # Ugh !
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-            this_phi_diffs = ds.min_dist(ds.phi_star, self.all_data[:,0])
-            this_psi_diffs = ds.min_dist(ds.psi_star, self.all_data[:,1])
-            this_phi_kappa = ds.phi_kappa
-            this_psi_kappa = ds.psi_kappa
-
-            self.bias_mat[:, i] = 0.5*self.beta*(this_phi_kappa*(this_phi_diffs)**2 + this_psi_kappa*(this_psi_diffs)**2) 
-        
-        #if do_autocorr:
-        log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
-        np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
-
-        dr.clearData()
+        raise NotImplementedError
 
     def go(self):
         

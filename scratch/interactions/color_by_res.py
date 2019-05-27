@@ -1,10 +1,10 @@
 
 outer_ring_idx = np.array([1,8,14,19,20,21,22,18,13,7,28,33,37,36,35,34,29,23])
 
-center_ring_idx_targ = np.array([3,10,25,5,11,26])
-center_ring_idx_part = np.array([5,11,26,3,10,25])
+center_ring_idx_targ = np.array([4])
+center_ring_idx_part = np.array([4])
 
-center_pt = 3
+
 
 pattern = np.zeros(37, dtype=int)
 np.savetxt('pattern_phobic.dat', pattern, fmt='%d')
@@ -37,7 +37,7 @@ univ.atoms.write("polar_ring.gro")
 # Make charged center
 res_targ = targ.residues[center_ring_idx_targ-1]
 for i,res in enumerate(res_targ):
-    newtype = 'P' if i < 3 else 'N'
+    newtype = 'N'
     atm = res.atoms[0]
     atm.name = newtype
     res.resname = newtype
@@ -45,7 +45,7 @@ try:
     res_part = part.residues[center_ring_idx_part-1]
     for i,res in enumerate(res_part):
 
-        newtype = 'N' if i < 3 else 'P'
+        newtype = 'P'
 
         atm = res.atoms[0]
         atm.name = newtype
@@ -53,22 +53,10 @@ try:
 except IndexError:
     pass
 
-atm = targ.residues[3].atoms[0]
-atm.name = 'OH'
-atm.residue.resname = 'OH'
-try:
-    atm = part.residues[3].atoms[0]
-    atm.name = 'OH'
-    atm.residue.resname = 'OH'
-except IndexError:
-    pass
 
-for i, idx in enumerate(center_ring_idx_targ):
 
-    newtype = 3 if i < 3 else 2
-
-    pattern[idx-1] = newtype
-
-pattern[3] = 1
-np.savetxt('pattern_charged.dat', pattern, fmt='%d')
+pattern[3] = 2
+np.savetxt('pattern_charged_targ.dat', pattern, fmt='%d')
+pattern[3] = 3
+np.savetxt('pattern_charged_part.dat', pattern, fmt='%d')
 univ.atoms.write("charged.gro")

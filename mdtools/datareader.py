@@ -214,6 +214,44 @@ class PhiDataSet(DataSet):
     def getHist(self, start=0, nbins=50, end=None):
         return np.histogram(self.data[start:end]['$\~N$'], bins=nbins)
 
+class PMFDataSet(DataSet):
+
+    def __init__(self, filename, corr_len=1):
+        super(PMFDataSet, self).__init__()
+
+        # Assume output file from pull.xvg
+        #self.kappa = extractFloat(linecache.getline(filename, 1)).pop()
+        #self.Nstar = extractFloat(linecache.getline(filename, 2)).pop()
+        #self.phi = extractFloat(linecache.getline(filename, 3)).pop() # Ugh
+        # Scan first few lines of phiout.dat file, looking for 'phi', 'Nstar', 
+        #   and 'kappa'
+        self._scan_header_dat(filename)
+        #linecache.clearcache()
+        data = np.loadtxt(filename)
+        log.debug('Datareader {} reading input file {}'.format(self, filename))
+        self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0],
+                                     columns=['N', r'$\~N$'])
+        self.title = filename
+        log.debug('....DONE;  kappa={}, Nstar={}, phi={}'.format(self.kappa,self.Nstar,self.phi))
+
+    def _scan_header_dat(self, filename):
+        kappa_found = False
+        Nstar_found = False
+        phi_found = False
+        with open(filename, 'r') as fin:
+            for line in fin:
+                if 'kappa' in line:
+                    self.kappa = extractFloat(line).pop()
+                    kappa_found = True
+                elif 'NStar' in line:
+                    self.Nstar = extractFloat(line).pop()
+                    Nstar_found = True
+                elif 'mu' in line:
+                    self.phi = extractFloat(line).pop()
+                    phi_found = True
+                if (kappa_found and Nstar_found and phi_found):
+                    break
+
 
 
 # For free energy calcs

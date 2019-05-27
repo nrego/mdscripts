@@ -8,6 +8,8 @@ from util import *
 
 from scipy.spatial import cKDTree
 
+from matplotlib import pyplot as plt
+
 from IPython import embed
 
 
@@ -38,10 +40,14 @@ parser.add_argument("--pattern", type=str, default=None,
                          "each entry indicates type of headgroup for that position; e.g. 0 for ch3, 1 for oh, 2 for neg, and 3 for pos")
 parser.add_argument("--d-space", "--d", type=float, default=3.0,
                     help="Lattice spacing (Angstroms) between atoms (default: %(default)s)")
+parser.add_argument("--rcut", "-rc", type=float, default=1.0,
+                    help="Cut-off for pair-wise interactions")
 args = parser.parse_args()
+
 
 n_mid = args.n_mid
 d = args.d_space
+rcut = args.rcut
 
 n_res = n_mid + 2*fib(n_mid, n_mid)
 
@@ -52,7 +58,16 @@ else:
 
 assert pattern.size == n_res
 
-positions = gen_plate_position(n_mid, d)
+positions, center_pt_idx, vert_slice, slices = gen_plate_position(n_mid, d)
+
+## make an anotated schematic of our plate
+fig, ax = plt.subplots(figsize=(7,6))
+for i, pos in enumerate(positions):
+    x = pos[0]
+    y = pos[1]
+    ax.scatter(x, y, marker='.')
+    ax.text(x, y, '{:d}'.format(i), fontsize=20)
+#plt.show()
 
 assert n_res == positions.shape[0]
 n_atoms = 4*n_res
@@ -61,8 +76,10 @@ n_atoms = 4*n_res
 res_map = []
 for i in range(n_res):
     for j in range(4): res_map.append(i)
+for i in range(n_res, n_res+6):
+    res_map.append(i)
 
-univ = MDAnalysis.Universe.empty(n_atoms, n_res, atom_resindex=res_map, trajectory=True)
+univ = MDAnalysis.Universe.empty(n_atoms+6, n_res+6, atom_resindex=res_map, trajectory=True)
 univ.add_TopologyAttr('name')
 univ.add_TopologyAttr('resname')
 univ.add_TopologyAttr('id')
@@ -71,9 +88,17 @@ univ.add_TopologyAttr('mass')
 univ.add_TopologyAttr('charge')
 #univ.add_TopologyAttr('index')
 
-atoms = univ.atoms
-residues = univ.residues
+atoms = univ.atoms[:-6]
+residues = univ.residues[:-6]
+
 for i_res, res in enumerate(univ.residues):
+    if i_res >= n_res:
+        res.atoms[0].name = 'V'
+        res.atoms[0].charge = 0
+        res.atoms[0].mass = 0
+        res.resname = 'V'
+        continue
+
     this_pattern_idx = pattern[i_res]
     res.resname = res_names[this_pattern_idx]
 
@@ -101,10 +126,20 @@ atoms[1::4].positions = positions + np.array([0,0,1])
 atoms[2::4].positions = positions - np.array([0,0,d])
 atoms[3::4].positions = positions - np.array([0,0,d+1])
 
-atoms.write('plate.gro')
+univ.atoms.write('plate.gro')
 
 tree = cKDTree(atoms.positions)
 bond_pairs = sorted(list(tree.query_pairs(r=d*1.005)))
+rlist_pairs = sorted(list(tree.query_pairs(r=rcut*1.005)))
+
+# List of pairlist
+rlist = {i:[] for i in range(atoms.n_atoms)}
+for i,j in rlist_pairs:
+    if i == j:
+        continue
+    rlist[i].append(j)
+    rlist[j].append(i)
+
 # list of direct bonds
 bond_list = {i:[] for i in range(atoms.n_atoms)}
 for i,j in bond_pairs:
@@ -167,6 +202,17 @@ Plate             1
 
         for atm in res.atoms:
             fout.write('{:>6d}{:>11s}{:>7d}{:>7s}{:>7s}{:>7d}{:>11s}{:>11s}\n'.format(atm.id, atm.name, atm.resid, atm.resname, atm.name, atm.id, str(atm.charge), str(atm.mass)))
+            last_id = atm.id
+            last_resid = atm.resid
+    # virtual sites
+    vsite_indices = []
+    fout.write('; virtual sites - 1-6 are up l, lo l, up r, lo r, up mid, lo mid, 7th is total com\n')
+    for i in range(6):
+        last_id += 1
+        last_resid += 1
+        fout.write('{:>6d}{:>11s}{:>7d}{:>7s}{:>7s}{:>7d}{:>11s}{:>11s}\n'.format(last_id, 'V', last_resid, 'V', 'V', last_id, '0', '0'))
+        vsite_indices.append(last_id)
+
 
     fout.write('\n')
     fout.write('[ bonds ]\n')
@@ -183,26 +229,6 @@ Plate             1
             raise
         fout.write(outstr)
     
-    fout.write('\n')
-    fout.write('[ pairs ]\n')
-    fout.write(';  ai    aj funct            c0            c1            c2            c3\n')
-    for i in range(atoms.n_atoms):
-        if atoms[i].name == 'HO':
-            continue
-        for j in range(i+1, atoms.n_atoms):
-            if j not in bond_list[i] and atoms[j].name != 'HO':
-                outstr = '{:>5}{:>6}{:>6}\n'.format(i+1, j+1, 1)
-                fout.write(outstr)
-
-    fout.write('\n')
-    fout.write('[ exclusions ]\n')
-    fout.write(';  ai    [...]\n')
-    for i in range(univ.atoms.n_atoms):
-        outstr = '{:>5}'.format(i+1)
-        for j in range(i+1, atoms.n_atoms):
-            outstr += '{:>6}'.format(j+1)
-        outstr += '{:>6}\n'.format(1)
-        fout.write(outstr)
     
     fout.write('\n')
     fout.write('[ angles ]\n')
@@ -212,6 +238,43 @@ Plate             1
         fout.write('{:>6}{:>6}{:>6}{:>6}\n'.format(atoms[0].id, atoms[2].id, atoms[3].id, 1))
         fout.write('{:>6}{:>6}{:>6}{:>6}\n'.format(atoms[2].id, atoms[0].id, atoms[1].id, 1))
 
+
+    dihed_vsites = [[(0,1,5), (1,5,3)], 
+                    [(1,5,3), (5,3,2)],
+                    [(5,3,2), (3,2,4)],
+                    [(3,2,4), (2,4,0)],
+                    [(2,4,0), (4,0,1)],
+                    [(4,0,1), (0,1,5)]]
+
+    fout.write('\n')
+    fout.write('[ dihedrals ]\n')
+    fout.write(';  ai    aj    ak    al funct\n')
+    for dihed_indices in dihed_vsites:
+        i,j,k = dihed_indices[0]
+        j,k,l = dihed_indices[1]
+
+        i = vsite_indices[i]
+        j = vsite_indices[j]
+        k = vsite_indices[k]
+        l = vsite_indices[l]
+
+        fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i, j, k, l, 2))
+
+    fout.write('\n')
+    fout.write('[ virtual_sitesn ]\n')
+    fout.write('; Vsite funct     from  \n')
+    for i, this_slice in enumerate(slices):
+        vsite_idx = vsite_indices[i]
+
+        outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
+        for slice_idx in this_slice:
+            res = residues[slice_idx]
+            for atm in res.atoms:
+                outstr += '{:>6}'.format(atm.id)
+        outstr += '\n'
+        fout.write(outstr)
+
+    fout.write('\n')
 
     outstr = """
 ; Include Position restraint file

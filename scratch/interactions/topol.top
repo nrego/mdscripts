@@ -2,7 +2,7 @@
 ;   Template topology file
 
 ; Include forcefield parameters and spc/e
-#include "plate_ff.itp"
+#include "ff_plate.itp"
 
 ; Include plate topology
 #include "plate.itp"
