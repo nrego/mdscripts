@@ -1,18 +1,41 @@
+import networkx as nx
+from networkx import karate_club_graph, to_numpy_matrix
+from scratch.neural_net import GCN
 import torch
-import torch.nn as nn
+
+zkc = karate_club_graph()
+order = sorted(list(zkc.nodes()))
+labels = np.array([ 0 if zkc.nodes[node]['club'] == 'Mr. Hi' else 1 for node in zkc.nodes()])
+y = torch.tensor(labels[:,None], dtype=torch.float64)
+
+colors = []
+for i in zkc.nodes():
+    if labels[i] == 0:
+        colors.append('blue')
+    else:
+        colors.append('red')
+
+A = to_numpy_matrix(zkc, nodelist=order)
+
+net = GCN(A)
+I = torch.tensor(np.eye(net.N))
 
 
-# Sample data
-X = torch.tensor(([2, 9], [1, 5], [3, 6]), dtype=torch.float) # 3 X 2 tensor
-y = torch.tensor(([92], [100], [89]), dtype=torch.float) # 3 X 1 tensor
-xPredicted = torch.tensor(([4, 8]), dtype=torch.float) # 1 X 2 tensor
+learning_rate = 1e-5
 
-# Scale units
-X_max, _ = torch.max(X, 0)
-xPredicted_max, _ = torch.max(xPredicted, 0)
+n_iter = 50000
+losses = np.zeros(n_iter, dtype=float)
+for i,t in enumerate(range(n_iter)):
+    y_pred = net.forward(I)
 
-X = torch.div(X, X_max)
-xPredicted = torch.div(xPredicted, xPredicted_max)
-y = y / 100  # max test score is 100
+    loss = ((y_pred - y)**2).sum()
+    loss.backward()
 
+    with torch.no_grad():
+        net.W1 -= learning_rate*net.W1.grad
+        net.W2 -= learning_rate*net.W2.grad
 
+        net.W1.grad.zero_()
+        net.W2.grad.zero_()
+
+    losses[i] = loss.item()

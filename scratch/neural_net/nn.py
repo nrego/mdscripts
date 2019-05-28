@@ -1,41 +1,53 @@
+from __future__ import division, print_function
+
 import torch
 import torch.nn as nn
+import numpy as np
+from IPython import embed
 
-class Neural_Network(nn.Module):
-    def __init__(self, ):
-        super(Neural_Network, self).__init__()
+class GCN(nn.Module):
+    def __init__(self, A):
+        super(GCN, self).__init__()
         # parameters
-        # TODO: parameters can be parameterized instead of declaring them here
-        self.inputSize = 2
+
+        # Make sure A - the adjacency matrix - is square and symmetrical
+        assert A.shape[0] == A.shape[1]
+        assert np.array_equal(A, A.T)
+        N = A.shape[0]
+        I = np.eye(N)
+        A_hat = A + I
+        #
+        #Normalization for A_hat
+        row_sum = np.array(A_hat.sum(axis=1)).squeeze()
+        D_inv = np.matrix(np.diag(row_sum**(-0.5)))
+
+        self.N = A.shape[0]
+        self.A_hat = torch.tensor(A_hat)
+        self.D_inv = torch.tensor(D_inv)
+        # Normalized connectivity
+        #  and N x N tensor
+        pre = torch.matmul(self.D_inv, self.A_hat)
+        self.pre = torch.matmul(pre, self.D_inv)
         self.outputSize = 1
-        self.hiddenSize = 3
+        self.hiddenSize = 4
         
         # weights
-        self.W1 = torch.randn(self.inputSize, self.hiddenSize) # 2 X 3 tensor
-        self.W2 = torch.randn(self.hiddenSize, self.outputSize) # 3 X 1 tensor
+        self.W1 = torch.randn(self.N, self.hiddenSize, dtype=torch.float64, requires_grad=True) # N X 4 tensor
+        self.W2 = torch.randn(self.hiddenSize, self.outputSize, dtype=torch.float64, requires_grad=True) # 3 X 2 tensor
         
     def forward(self, X):
-        # X is N X 2
-        self.z = torch.matmul(X, self.W1) # 3 X 3 ".dot" does not broadcast in PyTorch
-        self.z2 = self.sigmoid(self.z) # activation function
-        self.z3 = torch.matmul(self.z2, self.W2)
-        o = self.sigmoid(self.z3) # final activation function
+        self.conv1 = torch.matmul(self.pre, X) # N x D, where D is number of att for each node
+        self.z1 = torch.matmul(self.conv1, self.W1)
+
+        self.conv2 = torch.matmul(self.pre, self.z1)
+        self.z2 = torch.matmul(self.conv2, self.W2)
+        self.o = o = self.z2.clone()
         return o
-        
-    def sigmoid(self, s):
-        return 1 / (1 + torch.exp(-s))
-    
-    def sigmoidPrime(self, s):
-        # derivative of sigmoid
-        return s * (1 - s)
     
     def backward(self, X, y, o):
-        self.o_error = y - o # error in output
-        self.o_delta = self.o_error * self.sigmoidPrime(o) # derivative of sig to error
-        self.z2_error = torch.matmul(self.o_delta, torch.t(self.W2))
-        self.z2_delta = self.z2_error * self.sigmoidPrime(self.z2)
-        self.W1 += torch.matmul(torch.t(X), self.z2_delta)
-        self.W2 += torch.matmul(torch.t(self.z2), self.o_delta)
+        self.loss = (o - y).pow(2).sum()
+
+        return self.loss.backward()
         
     def train(self, X, y):
         # forward + backward pass for training
