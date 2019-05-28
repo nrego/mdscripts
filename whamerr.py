@@ -243,7 +243,7 @@ Command-line options
                 if self.fmt == 'phi': 
                     self.dr.loadPhi(infile) 
                 elif self.fmt == 'pmf':
-                    self.dr.loadRAMA(infile)
+                    self.dr.loadPMF(infile)
                 elif self.fmt == 'simple':
                     ds = self.dr.loadSimple(infile)
                 self.n_windows += 1
