@@ -198,7 +198,7 @@ Command-line options
         sgroup = parser.add_argument_group('(Binless) WHAM/MBAR error options')
         sgroup.add_argument('input', metavar='INPUT', type=str, nargs='+',
                             help='Input file names')
-        sgroup.add_argument('--fmt', type=str, choices=['phi', 'xvg', 'rama', 'simple'], default='phi',
+        sgroup.add_argument('--fmt', type=str, choices=['phi', 'pmf', 'simple'], default='phi',
                             help='Format of input data files:  \'phi\' for phiout.dat; \ '
                             '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims); \ '
                             '\'rama\' for RAMA type files (alanine dipeptide)')
@@ -242,11 +242,8 @@ Command-line options
 
                 if self.fmt == 'phi': 
                     self.dr.loadPhi(infile) 
-                elif self.fmt == 'rama':
+                elif self.fmt == 'pmf':
                     self.dr.loadRAMA(infile)
-                elif self.fmt == 'xvg': 
-                    ds = self.dr.loadXVG(infile)
-                    self.for_lmbdas.append(ds.lmbda)
                 elif self.fmt == 'simple':
                     ds = self.dr.loadSimple(infile)
                 self.n_windows += 1
@@ -362,8 +359,7 @@ Command-line options
     # Put all data points into N dim vector
     def _unpack_pmf_data(self, start, end=None):
 
-        self.all_data = np.array([], dtype=np.float32)
-        self.all_data_N = np.array([]).astype(int)
+        self.all_data = np.array([], dtype=np.float32) # R dists
         self.n_samples = np.array([]).astype(int)
 
         if self.autocorr is None:
@@ -382,8 +378,7 @@ Command-line options
             #    np.testing.assert_almost_equal(self.ts, ds.ts)
             self.ts.append(ds.ts)
             data = ds.data[start:end]
-            dataframe = np.array(data['$\~N$'])
-            dataframe_N = np.array(data['N']).astype(np.int32)
+            dataframe = np.array(data['rstar'])
 
             if do_autocorr:
                 autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
@@ -392,14 +387,13 @@ Command-line options
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
             self.all_data = np.append(self.all_data, dataframe)
-            self.all_data_N = np.append(self.all_data_N, dataframe_N)
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
         
         # Ugh !
         #embed()
         for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
-            self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
+            self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.rstar)**2) 
         
         #if do_autocorr:
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")

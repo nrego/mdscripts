@@ -42,6 +42,8 @@ parser.add_argument("--d-space", "--d", type=float, default=3.0,
                     help="Lattice spacing (Angstroms) between atoms (default: %(default)s)")
 parser.add_argument("--rcut", "-rc", type=float, default=1.0,
                     help="Cut-off for pair-wise interactions")
+parser.add_argument("--idx-offset", type=int, default=0,
+                    help="shift indices by this offset")
 args = parser.parse_args()
 
 
@@ -125,7 +127,7 @@ atoms[::4].positions = positions
 atoms[1::4].positions = positions + np.array([0,0,1])
 atoms[2::4].positions = positions - np.array([0,0,d])
 atoms[3::4].positions = positions - np.array([0,0,d+1])
-
+atoms.ids += args.idx_offset
 univ.atoms.write('plate.gro')
 
 tree = cKDTree(atoms.positions)
