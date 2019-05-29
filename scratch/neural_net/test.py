@@ -39,3 +39,7 @@ for i,t in enumerate(range(n_iter)):
         net.W2.grad.zero_()
 
     losses[i] = loss.item()
+
+A = np.matrix([[0,1,1,0],[1,0,1,1],[1,1,0,1],[0,1,1,0]])
+X = np.matrix([[1,0,0,0],[0,1,0,0],[0,0,0,0],[0,0,0,1]])
+

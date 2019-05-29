@@ -106,7 +106,7 @@ err_dg = masked_dg.std(axis=0, ddof=1)
 dat = np.vstack((bins[:-1], all_neglogpdist, err_dg)).T
 np.savetxt('PMF.dat', dat, header='r(nm)   beta F(r)  err(beta F(r))   ')
 
-plot_errorbar(bins, all_neglogpdist, err_dg)
-plt.show()
+#plot_errorbar(bins, all_neglogpdist, err_dg)
+#plt.show()
 
 
