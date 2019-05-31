@@ -20,8 +20,8 @@ from constants import k
 
 
 def plot_errorbar(bb, dat, err):
-    plt.plot(bb[:-1], dat)
-    plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
+    plt.plot(bb, dat)
+    plt.fill_between(bb, dat-err, dat+err, alpha=0.5)
 
 def get_negloghist(data, bins, logweights, do_norm=True):
 
@@ -106,7 +106,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals, do_n
     return (neglogpdist, neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_data, var_data)
 
 
-beta_phi_vals = np.arange(0,4.04,0.04)
+beta_phi_vals = np.arange(-1,5.04,0.04)
 temp = 300
 #k = 8.3144598e-3
 beta = 1./(k*temp)
@@ -156,8 +156,8 @@ for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
     this_neglogpdist_N[this_neglogpdist_N == 0] = np.nan
     neglog_pdist_N[i] = this_neglogpdist_N
 
-    boot_avg_n[i] = this_avg_n
-    boot_var_n[i] = this_var_n
+    boot_avg_n[i] = this_avg_ntwid
+    boot_var_n[i] = this_var_ntwid
 
 
 err_avg_n = boot_avg_n.std(axis=0, ddof=1)

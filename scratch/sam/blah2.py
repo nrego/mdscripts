@@ -6,74 +6,25 @@ from util import *
 
 import matplotlib as mpl
 
-fnames = glob.glob('pattern_sample/*/d_*/trial_0/PvN.dat')
-fnames = np.append(fnames, glob.glob('inv_pattern_sample/*/d_*/trial_0/PvN.dat'))
-
-nvphis = []
-pvns = []
-phistars = []
-fes = []
-ndats = []
-kvals = []
-peak_vars = []
-for fname in fnames:
-
-    is_k = fname.split('/')[1].split('_')[0] == 'k'
-    number = int(fname.split('/')[1].split('_')[1])
-    if is_k:
-        kval = number
-    else:
-        kval = 36 - number
-
-    kvals.append(kval)
-
-    dirname = os.path.dirname(fname)
-    nvphi = np.loadtxt('{}/NvPhi.dat'.format(dirname))
-    #ndat = np.loadtxt('{}/n_out.dat'.format(dirname))
-    pvn = np.loadtxt(fname)
-
-    nvphis.append(nvphi)
-    pvns.append(pvn)
-    fe = pvn[0,1]
-    fes.append(fe)
-    phistar_idx = np.argmax(nvphi[:,4])
-    var_0 = nvphi[0, 4]
-    peak_var = nvphi[phistar_idx, 4]
-    peak_vars.append(peak_var/var_0)
-    phistar = nvphi[phistar_idx, 0]
-
-    phistars.append(phistar)
-
-    #ndats.append(ndat)
-
-phistars = np.array(phistars)
-fes = np.array(fes)
-nvphis = np.array(nvphis)
-ndats = np.array(ndats)
-
-peak_vars = np.array(peak_vars)
-sort_idx = np.argsort(phistars)
-plt.close('all')
-
-norm = plt.Normalize(1, np.ceil(peak_vars.max()))
-cmap = mpl.cm.jet
-sc = plt.scatter(phistars, fes, c=peak_vars, cmap=cmap, norm=norm)
-plt.colorbar(sc)
 
 
+ds = np.load('sam_pattern_data.dat.npz')
+pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
 
-plt.close('all')
-for idx in [0,5,24]:
-    
-    this_phistar = phistars[sort_idx][idx]
-    this_fe = fes[sort_idx][idx]
-    this_nvphi = nvphis[sort_idx][idx]
-    this_fname = fnames[sort_idx][idx]
-    this_ndat = ndats[sort_idx][idx]
+positions = gen_pos_grid(6, z_offset=False)
+all_indices = np.arange(36).astype(int)
 
-    print("fname: {}  phistar: {:0.2f}  fe: {:0.2f}".format(this_fname, this_phistar, this_fe))
+for i in range(6, 1, -1):
+    patch_positions = gen_pos_grid(i)
+    nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(patch_positions, pos_ext)
+    d, patch_indices = cKDTree(pos_ext).query(patch_positions, k=1)
+    edges, ext_indices = enumerate_edges(patch_positions, pos_ext, nn_ext, patch_indices)
+    n_mo = len(edges[ext_indices])
+    n_mm = len(edges) - n_mo
+    dg = -2.8 * i**2 - 0.73 * n_mm + 0.29 * n_mo
+    dg_ch3 = np.loadtxt('N_{}/ch3/f_k_all.dat'.format(i))[-1]
+    dg_oh = np.loadtxt('N_{}/oh/f_k_all.dat'.format(i))[-1]
 
-    plt.plot(this_nvphi[:,0], this_nvphi[:,4], label=r'$\phi^*={:1.2f}$'.format(this_phistar))
-    #plt.plot(this_ndat[:,0], this_ndat[:,2], '-o', label=r'$\phi^*={:1.2f}$'.format(this_phistar))
-
-
+    print("N : {}".format(i))
+    print("  dg pred: {:.2f} ".format(dg))
+    print("  dg act: {:.2f}".format(dg_ch3 - dg_oh))
