@@ -19,8 +19,8 @@ from constants import k
 ## Construct P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 
 
-def plot_errorbar(bb, dat, err):
-    plt.plot(bb, dat)
+def plot_errorbar(bb, dat, err, **kwargs):
+    plt.plot(bb, dat, **kwargs)
     plt.fill_between(bb, dat-err, dat+err, alpha=0.5)
 
 def get_negloghist(data, bins, logweights, do_norm=True):
@@ -61,15 +61,15 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals, do_n
     weights = np.exp(logweights) 
     weights /= weights.sum()
 
-    pdist, bb = np.histogram(ntwid, bins=bins, weights=weights)
-    pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
+    #pdist, bb = np.histogram(ntwid, bins=bins, weights=weights)
+    #pdist_N, bb = np.histogram(data, bins=bins, weights=weights)
 
-    neglogpdist = -np.log(pdist)
+    #neglogpdist = -np.log(pdist)
     neglogpdist = get_negloghist(ntwid, bins, logweights, do_norm)
 
     #neglogpdist -= neglogpdist.min()
 
-    neglogpdist_N = -np.log(pdist_N)
+    #neglogpdist_N = -np.log(pdist_N)
     neglogpdist_N = get_negloghist(data, bins, logweights, do_norm)
 
     #neglogpdist_N -= neglogpdist_N.min()

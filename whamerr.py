@@ -527,8 +527,7 @@ Command-line options
         log.info("MBAR results on entire dataset: {}".format(f_k_actual))
 
         np.savetxt('f_k_all.dat', f_k_actual, fmt='%3.6f')
-        all_logweights = gen_data_logweights(self.bias_mat, f_k_actual, uncorr_n_samples)
-        
+        all_logweights = gen_data_logweights(self.bias_mat, f_k_actual, self.n_samples)
         
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
@@ -579,7 +578,7 @@ Command-line options
         np.savetxt('err_f_k.dat', f_k_se, fmt='%3.6f')
         np.savetxt('boot_f_k.dat', f_k_boot)
         np.savetxt('f_k_all.dat', f_k_actual)
-        np.savez_compressed('all_data.dat', logweights=all_logweights, data=self.all_data, data_N=self.all_data_N)
+        np.savez_compressed('all_data.dat', logweights=all_logweights, data=self.all_data, data_N=self.all_data_N, bias_mat=self.bias_mat, n_samples=self.n_samples)
 
 
         if self.boot_fn is not None:
