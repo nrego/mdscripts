@@ -83,7 +83,7 @@ def get_2d_rama(all_data, all_data_N, boot_indices, boot_logweights):
 
     return (neglogpdist, binbounds)
     
-def get_weighted_data_N(all_data, all_data_N, boot_indices, boot_logweights):
+def get_weighted_data(all_data, all_data_N, boot_indices, boot_logweights):
 
     boot_data = all_data[boot_indices]
     try:
