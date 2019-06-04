@@ -26,7 +26,7 @@ def gen_plate_position(n_mid=3, d=3):
     height = (rad/2.0)*np.sqrt(3)
 
     y_offset = np.sqrt(3)*0.5*d
-
+    all_indices = np.arange(n_atoms)
     positions = np.zeros((n_atoms, 3))
 
     pos_idx = 0
@@ -37,6 +37,9 @@ def gen_plate_position(n_mid=3, d=3):
     vert_slice_dict = []
     # indices in each "slice"
     slices = [[], [], [], [], [], []]
+
+    # indices of center 
+    center_indices = []
 
     # Use these lists as stacks to keep track of vertex pairs
     left_verts_top = list()
@@ -50,6 +53,10 @@ def gen_plate_position(n_mid=3, d=3):
         vert_row = (i == 0) or (i == (n_mid - 1)//2)
 
         for j in range(n_row):
+            if j > 0 and j < n_row-1 and n_row-2 > 2:
+                center_indices.append(pos_idx)
+                if i > 0:
+                    center_indices.append(pos_idx+n_edge)
             x_offset = i*0.5*d
             x_pos = x_offset + j*d
 
@@ -92,8 +99,6 @@ def gen_plate_position(n_mid=3, d=3):
                         vert_slice_dict.append((prev_vert_bot, pos_idx+n_edge))
 
             # Add this position to appropriate slice
-            #if pos_idx == 14:
-                #embed()
             if i != 0:
                 if x_pos <= rad:
                     ylim = 2*height - (2*height)/rad * x_pos
@@ -127,4 +132,5 @@ def gen_plate_position(n_mid=3, d=3):
         this_slice.append(center_pt_idx)
         slices[i] = np.unique(this_slice)
 
-    return positions, center_pt_idx, vert_slice_dict, slices
+    edge_indices = np.setdiff1d(all_indices, center_indices)
+    return positions, center_pt_idx, center_indices, edge_indices, vert_slice_dict, slices

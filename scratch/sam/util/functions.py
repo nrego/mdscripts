@@ -90,7 +90,7 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1):
 def plot_3d(x, y, z, norm=None, cmap=None):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
-    ax.scatter(x, y, z, c=colors)
+    ax.scatter(x, y, z)
 
     
 def plot_graph(w_graph, ax=None):

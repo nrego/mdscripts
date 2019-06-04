@@ -49,7 +49,7 @@ parser.add_argument("--idx-offset", type=int, default=0,
                     help="shift indices by this offset")
 args = parser.parse_args()
 
-
+n_vsites = 16
 n_mid = args.n_mid
 d = args.d_space
 rcut = args.rcut
@@ -63,8 +63,7 @@ else:
 
 assert pattern.size == n_res
 
-positions, center_pt_idx, vert_slice, slices = gen_plate_position(n_mid, d)
-
+positions, center_pt_idx, center_indices, edge_indices, vert_slice, slices = gen_plate_position(n_mid, d)
 
 ## make an anotated schematic of our plate
 fig, ax = plt.subplots(figsize=(7,6))
@@ -82,10 +81,10 @@ n_atoms = 4*n_res
 res_map = []
 for i in range(n_res):
     for j in range(4): res_map.append(i)
-for i in range(n_res, n_res+19):
+for i in range(n_res, n_res+n_vsites):
     res_map.append(i)
 
-univ = MDAnalysis.Universe.empty(n_atoms+19, n_res+19, atom_resindex=res_map, trajectory=True)
+univ = MDAnalysis.Universe.empty(n_atoms+n_vsites, n_res+n_vsites, atom_resindex=res_map, trajectory=True)
 univ.add_TopologyAttr('name')
 univ.add_TopologyAttr('resname')
 univ.add_TopologyAttr('id')
@@ -94,8 +93,8 @@ univ.add_TopologyAttr('mass')
 univ.add_TopologyAttr('charge')
 #univ.add_TopologyAttr('index')
 
-atoms = univ.atoms[:-19]
-residues = univ.residues[:-19]
+atoms = univ.atoms[:-n_vsites]
+residues = univ.residues[:-n_vsites]
 
 for i_res, res in enumerate(univ.residues):
     if i_res >= n_res:
@@ -127,10 +126,17 @@ for i_res, res in enumerate(univ.residues):
         else:
             atm.charge = atom_charge[atm.name]
 
+# Top heavies
 atoms[::4].positions = positions
+# Top hydrogens
 atoms[1::4].positions = positions + np.array([0,0,1])
-atoms[2::4].positions = positions - np.array([0,0,d])
-atoms[3::4].positions = positions - np.array([0,0,d+1])
+# bottom heavies
+#atoms[2::4].positions = positions - np.array([0,0,d])
+atoms[2::4].positions = positions + np.array([0.5*d,-(1/6.)*np.sqrt(3)*d,-np.sqrt(2/3.)*d])
+# bottom hydrogens
+#atoms[3::4].positions = positions - np.array([0,0,d+1])
+atoms[3::4].positions = positions + np.array([0.5*d,-(1/6.)*np.sqrt(3)*d,-np.sqrt(2/3.)*d-1])
+
 atoms.ids += args.idx_offset
 univ.atoms.write('plate.gro')
 
@@ -215,13 +221,13 @@ Plate             4
     # virtual sites
     vsite_indices = []
     fout.write('; virtual sites - 1-6 are up l, lo l, up r, lo r, up mid, lo mid, 7th is total com\n')
-    for i in range(19):
+    for i in range(n_vsites):
         last_id += 1
         last_resid += 1
         fout.write('{:>6d}{:>11s}{:>7d}{:>7s}{:>7s}{:>7d}{:>11s}{:>11s}\n'.format(last_id, 'V', last_resid, 'V', 'V', last_id, '0', '0'))
         vsite_indices.append(last_id)
 
-    vsite_indices = vsite_indices[::3][:-1]
+    vsite_indices = vsite_indices[::2][:6]
 
 
     fout.write('\n')
@@ -242,6 +248,7 @@ Plate             4
         fout.write(outstr)
 
     ## Now v-site bonds
+    '''
     for i, (slice_i, slice_j) in enumerate(slice_pairs):
         vsite_idx1 = vsite_indices[slice_i]
         vsite_idx2 = vsite_indices[slice_j]
@@ -249,7 +256,13 @@ Plate             4
         fout.write(outstr)
         outstr = '{:>5}{:>6}{:>6}\n'.format(vsite_idx1+1, vsite_idx2, 6)
         fout.write(outstr)
-    
+
+    for i, j in [(2,3), (4,5)]:
+        vsite_idx1 = vsite_indices[-1] + i
+        vsite_idx2 = vsite_indices[-1] + j
+        outstr = '{:>5}{:>6}{:>6}{:>6.1f}{:>10.1f}\n'.format(vsite_idx1, vsite_idx2, 6, 0.0, 224262.4)
+        fout.write(outstr)
+    '''
 
     fout.write('\n')
     fout.write('[ pairs ]\n')
@@ -295,7 +308,6 @@ Plate             4
 
         fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i, j, k, l, 2))
         fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i+1, j+1, k+1, l+1, 2))
-        fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i+2, j+2, k+2, l+2, 2))
 
     fout.write('\n')
     fout.write('[ virtual_sitesn ]\n')
@@ -323,26 +335,48 @@ Plate             4
         outstr += '\n'
         fout.write(outstr)
 
-        # Top+bottom slice
-        vsite_idx = vsite_indices[i] + 2
+    # Final vsites - center of top and center of bottom
+    atoms = univ.atoms[:n_vsites]
 
-        outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-        for slice_idx in this_slice:
-            res = residues[slice_idx]
-            for atm in res.atoms:
-                if atm.name == 'HO':
-                    continue
-                outstr += '{:>6}'.format(atm.id)
-        outstr += '\n'
-        fout.write(outstr)
+    # Top center
+    vsite_idx = vsite_indices[-1] + 2
+    outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
+    for center_idx in center_indices:
+        res = residues[center_idx]
+        atm = res.atoms[0]
+        outstr += '{:>6}'.format(atm.id)
+    outstr += '\n'
+    fout.write(outstr)
 
-    # Final vsite - all atoms
-    atoms = univ.atoms[:-19]
+    # Top edge
+    
     vsite_idx = vsite_indices[-1] + 3
     outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-    for atm in atoms:
-        if atm.name == 'HO':
-            continue
+    for edge_idx in edge_indices:
+        res = residues[edge_idx]
+        atm = res.atoms[0]
+        outstr += '{:>6}'.format(atm.id)
+    outstr += '\n'
+    fout.write(outstr)
+    
+
+    # Bottom center
+    vsite_idx = vsite_indices[-1] + 4
+    outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
+    for center_idx in center_indices:
+        res = residues[center_idx]
+        atm = res.atoms[2]
+        outstr += '{:>6}'.format(atm.id)
+    outstr += '\n'
+    fout.write(outstr)
+
+    # Bottom edge
+
+    vsite_idx = vsite_indices[-1] + 5
+    outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
+    for edge_idx in edge_indices:
+        res = residues[edge_idx]
+        atm = res.atoms[2]
         outstr += '{:>6}'.format(atm.id)
     outstr += '\n'
     fout.write(outstr)
