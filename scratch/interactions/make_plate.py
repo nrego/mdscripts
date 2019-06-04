@@ -49,7 +49,7 @@ parser.add_argument("--idx-offset", type=int, default=0,
                     help="shift indices by this offset")
 args = parser.parse_args()
 
-n_vsites = 16
+n_vsites = 0
 n_mid = args.n_mid
 d = args.d_space
 rcut = args.rcut
@@ -93,8 +93,12 @@ univ.add_TopologyAttr('mass')
 univ.add_TopologyAttr('charge')
 #univ.add_TopologyAttr('index')
 
-atoms = univ.atoms[:-n_vsites]
-residues = univ.residues[:-n_vsites]
+if n_vsites == 0:
+    atoms = univ.atoms
+    residues = univ.residues
+else:
+    atoms = univ.atoms[:-n_vsites]
+    residues = univ.residues[:-n_vsites]
 
 for i_res, res in enumerate(univ.residues):
     if i_res >= n_res:
@@ -141,8 +145,8 @@ atoms.ids += args.idx_offset
 univ.atoms.write('plate.gro')
 
 tree = cKDTree(atoms.positions)
-bond_pairs = sorted(list(tree.query_pairs(r=d*1.005)))
-rlist_pairs = sorted(list(tree.query_pairs(r=rcut*1.005)))
+bond_pairs = sorted(list(tree.query_pairs(r=d*1.01)))
+rlist_pairs = sorted(list(tree.query_pairs(r=rcut*1.01)))
 
 # List of pairlist
 rlist = {i:[] for i in range(atoms.n_atoms)}
@@ -262,7 +266,7 @@ Plate             4
         vsite_idx2 = vsite_indices[-1] + j
         outstr = '{:>5}{:>6}{:>6}{:>6.1f}{:>10.1f}\n'.format(vsite_idx1, vsite_idx2, 6, 0.0, 224262.4)
         fout.write(outstr)
-    '''
+    
 
     fout.write('\n')
     fout.write('[ pairs ]\n')
@@ -277,6 +281,7 @@ Plate             4
                 continue
             outstr = '{:>5}{:>6}{:>6}\n'.format(i+1, j+1, 1)
             fout.write(outstr)    
+    '''
 
     fout.write('\n')
     fout.write('[ angles ]\n')
@@ -295,93 +300,49 @@ Plate             4
                     [(4,0,1), (0,1,5)]]
 
     fout.write('\n')
-    fout.write('[ dihedrals ]\n')
-    fout.write(';  ai    aj    ak    al funct\n')
-    for dihed_indices in dihed_vsites:
-        i,j,k = dihed_indices[0]
-        j,k,l = dihed_indices[1]
+    if n_vsites > 0:
 
-        i = vsite_indices[i]
-        j = vsite_indices[j]
-        k = vsite_indices[k]
-        l = vsite_indices[l]
+        fout.write('[ dihedrals ]\n')
+        fout.write(';  ai    aj    ak    al funct\n')
+        for dihed_indices in dihed_vsites:
+            i,j,k = dihed_indices[0]
+            j,k,l = dihed_indices[1]
 
-        fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i, j, k, l, 2))
-        fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i+1, j+1, k+1, l+1, 2))
+            i = vsite_indices[i]
+            j = vsite_indices[j]
+            k = vsite_indices[k]
+            l = vsite_indices[l]
 
-    fout.write('\n')
-    fout.write('[ virtual_sitesn ]\n')
-    fout.write('; Vsite funct     from  \n')
-    for i, this_slice in enumerate(slices):
-        # Top slice
-        vsite_idx = vsite_indices[i]
-        
-        outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-        for slice_idx in this_slice:
-            res = residues[slice_idx]
-            atm = res.atoms[0]
-            outstr += '{:>6}'.format(atm.id)
-        outstr += '\n'
-        fout.write(outstr)
+            fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i, j, k, l, 2))
+            fout.write('{:>6}{:>6}{:>6}{:>6}{:>6}\n'.format(i+1, j+1, k+1, l+1, 2))
 
-        # Bottom slice (BOH)
-        vsite_idx = vsite_indices[i] + 1
+        fout.write('\n')
+        fout.write('[ virtual_sitesn ]\n')
+        fout.write('; Vsite funct     from  \n')
+        for i, this_slice in enumerate(slices):
+            # Top slice
+            vsite_idx = vsite_indices[i]
+            
+            outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
+            for slice_idx in this_slice:
+                res = residues[slice_idx]
+                atm = res.atoms[0]
+                outstr += '{:>6}'.format(atm.id)
+            outstr += '\n'
+            fout.write(outstr)
 
-        outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-        for slice_idx in this_slice:
-            res = residues[slice_idx]
-            atm = res.atoms[2]
-            outstr += '{:>6}'.format(atm.id)
-        outstr += '\n'
-        fout.write(outstr)
+            # Bottom slice (BOH)
+            vsite_idx = vsite_indices[i] + 1
 
-    # Final vsites - center of top and center of bottom
-    atoms = univ.atoms[:n_vsites]
+            outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
+            for slice_idx in this_slice:
+                res = residues[slice_idx]
+                atm = res.atoms[2]
+                outstr += '{:>6}'.format(atm.id)
+            outstr += '\n'
+            fout.write(outstr)
 
-    # Top center
-    vsite_idx = vsite_indices[-1] + 2
-    outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-    for center_idx in center_indices:
-        res = residues[center_idx]
-        atm = res.atoms[0]
-        outstr += '{:>6}'.format(atm.id)
-    outstr += '\n'
-    fout.write(outstr)
-
-    # Top edge
-    
-    vsite_idx = vsite_indices[-1] + 3
-    outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-    for edge_idx in edge_indices:
-        res = residues[edge_idx]
-        atm = res.atoms[0]
-        outstr += '{:>6}'.format(atm.id)
-    outstr += '\n'
-    fout.write(outstr)
-    
-
-    # Bottom center
-    vsite_idx = vsite_indices[-1] + 4
-    outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-    for center_idx in center_indices:
-        res = residues[center_idx]
-        atm = res.atoms[2]
-        outstr += '{:>6}'.format(atm.id)
-    outstr += '\n'
-    fout.write(outstr)
-
-    # Bottom edge
-
-    vsite_idx = vsite_indices[-1] + 5
-    outstr = '{:>6}{:>4}'.format(vsite_idx, 2)
-    for edge_idx in edge_indices:
-        res = residues[edge_idx]
-        atm = res.atoms[2]
-        outstr += '{:>6}'.format(atm.id)
-    outstr += '\n'
-    fout.write(outstr)
-
-    fout.write('\n')
+        fout.write('\n')
 
     outstr = """
 ; Include Position restraint file
