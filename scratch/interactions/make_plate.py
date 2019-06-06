@@ -353,6 +353,15 @@ Plate             4
 #endif
 """
     fout.write(outstr)
+    fout.write('\n')
+
+    outstr = """
+; Include Position restraint file
+#ifdef POSRESXY
+#include "posre_xy.itp"
+#endif
+"""
+    fout.write(outstr)
 
 
 # Write out posre.itp file

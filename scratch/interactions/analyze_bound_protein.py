@@ -13,7 +13,7 @@ import itertools
 
 k_e = 138.9354859
 from constants import k
-
+beta = 1/ (300.*k)
 
 parser = argparse.ArgumentParser('Analyze bound state of protein-protein complex')
 parser.add_argument('-s', '--top', required=True, type=str,
@@ -42,7 +42,7 @@ part.assign_hydropathy(charge_assign)
 with open(args.charge_assign, 'w') as fout:
     pickle.dump(charge_assign, fout)
 
-embed()
+
 
 tree_targ = cKDTree(targ.prot.positions)
 tree_targ_h = cKDTree(targ.prot_h.positions)
@@ -128,11 +128,18 @@ targ_charges = np.matrix(targ_contact_atoms.charges)
 part_charges = np.matrix(part_contact_atoms.charges).T
 
 coul = (beta * k_e * targ_charges * r_recip * part_charges).item()
+n_contact_atoms = targ_contact_atoms.n_atoms+part_contact_atoms.n_atoms
 
-print("targ contacts (all) : {}  part contacts (all) : {}".format(targ_contact_atoms.n_atoms, part_contact_atoms.n_atoms))
+n_np_np_contacts = len(contacts_np_np)
+n_p_p_contacts = len(contacts_p_p)
+n_np_p_contacts = len(contacts_np_p)
+n_tot_contact_pairs = n_np_np_contacts + n_p_p_contacts + n_np_p_contacts
+print("\n")
+print("targ contacts (all) : {}  part contacts (all) : {}  (total: {})".format(targ_contact_atoms.n_atoms, part_contact_atoms.n_atoms, n_contact_atoms))
 print("NP-NP contacts: {}  P-P contacts: {}  NP-P contacts: {}".format(len(contacts_np_np), len(contacts_p_p), len(contacts_np_p)))
-print("coul (kT) : {:0.2f}  coul per atom (kT) : {:0.2f}".format(coul, coul/(targ_contact_atoms.n_atoms+part_contact_atoms.n_atoms)))
-
+print(" total contact pairs: {}   np-np {:.2f}  p-p {:.2f}  np-p {:.2f}".format(n_tot_contact_pairs, n_np_np_contacts/n_tot_contact_pairs, n_p_p_contacts/n_tot_contact_pairs, n_np_p_contacts/n_tot_contact_pairs))
+print("coul (kT) : {:0.2f}  coul per atom (kT) : {:0.2f}".format(coul, coul/(n_contact_atoms)))
+print("\n")
 
 # test
 #t, p = np.meshgrid(targ_charges, part_charges, indexing='ij')
@@ -146,3 +153,4 @@ for i, targ_atm in enumerate(targ_contact_atoms):
         qj = part_atm.charge
         coul += (qi * qj)/dist
 '''
+
