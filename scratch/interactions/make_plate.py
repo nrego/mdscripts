@@ -66,6 +66,7 @@ assert pattern.size == n_res
 positions, center_pt_idx, center_indices, edge_indices, vert_slice, slices = gen_plate_position(n_mid, d)
 
 ## make an anotated schematic of our plate
+'''
 fig, ax = plt.subplots(figsize=(7,6))
 for i, pos in enumerate(positions):
     x = pos[0]
@@ -73,6 +74,7 @@ for i, pos in enumerate(positions):
     ax.scatter(x, y, marker='.')
     ax.text(x, y, '{:d}'.format(i), fontsize=20)
 #plt.show()
+'''
 
 assert n_res == positions.shape[0]
 n_atoms = 4*n_res
