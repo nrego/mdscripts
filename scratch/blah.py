@@ -3,7 +3,7 @@ import os, glob
 dirnames = np.sort(glob.glob('*pattern_sample/*/d_*/trial_0'))
 n_dat = dirnames.size + 2 # for k=0 and k=36
 
-old_ds = np.load('pooled_pattern_sample/sam_pattern_data.dat.npz')
+old_ds = np.load('pooled_pattern_sample/old_sam_pattern_data.dat.npz')
 positions = old_ds['positions']
 
 methyl_base = np.zeros(36, dtype=bool)
@@ -34,3 +34,5 @@ energy = np.loadtxt('pattern_sample/k_36/f_k_all.dat')[-1]
 energies[-1] = energy
 k_vals[-1] = 36
 methyl_pos[-1][:] = True
+
+np.savez_compressed('pooled_pattern_sample/sam_pattern_data.dat', energies=energies, positions=positions, k_vals=k_vals, methyl_pos=methyl_pos)
