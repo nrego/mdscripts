@@ -45,5 +45,6 @@ patch_ch3_indices = np.sort(patch_ch3_indices).squeeze()
 if indices is not None:
     assert np.array_equal(indices, patch_ch3_indices)
 
-
+if patch_ch3_indices.ndim == 0:
+    patch_ch3_indices = patch_ch3_indices.reshape(1,)
 np.savetxt('this_pt.dat', patch_ch3_indices, fmt='%d')
