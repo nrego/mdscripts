@@ -59,10 +59,6 @@ parser.add_argument('--k-ch3', default=1, type=int,
 parser.add_argument('--do-brute', action='store_true',
                     help='If true, get density of states by exhaustively generating each configuration at this \
                           k_ch3 (default: only do brute if k_ch3 <= 6 or k_ch3 >= 30')
-parser.add_argument('--e-min', default=135.0, type=float,
-                    help='Minimum energy, inclusive, in kT (default: %(default)s)')
-parser.add_argument('--e-max', default=286.0, type=float,
-                    help='Maximum energy, inclusive, in kT (default: %(default)s)')
 parser.add_argument('--de', default=0.5, type=float,
                     help='Bin width for energy, in kT (default: %(default)s)')
 parser.add_argument('--eps', type=float, default='1e-10',
