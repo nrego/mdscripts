@@ -124,7 +124,7 @@ reg.intercept_ -= min_val
 
 bins = np.arange(0, np.ceil(reg.intercept_)+args.de, args.de)
 print("Doing k_ch3={:d},  do_brute={}".format(k_ch3, do_brute))
-print("  with {:d} energy bins from {:0.1f} to {:0.1f}".format(bins.size-1, 0, reg.intercept_))
+print("  with {:d} energy bins from {:0.1f} to {:0.1f}".format(bins.size-1, 0, np.ceil(reg.intercept_)))
 
 
 
