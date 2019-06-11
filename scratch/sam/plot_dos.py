@@ -3,6 +3,8 @@ from scipy import special
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
+import cPickle as pickle
+
 mpl.rcParams.update({'axes.labelsize': 40})
 mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
@@ -44,7 +46,7 @@ for fname in fnames:
     #ax.set_xlim(bins.min(), bins.max())
     #plt.tight_layout()
     #plt.savefig('{}/Desktop/s_k_{:d}.png'.format(homedir, k_ch3))
-    assert np.allclose(this_omega.sum(), special.binom(144, k_ch3))
+    assert np.allclose(this_omega.sum(), special.binom(36, k_ch3))
     this_prob = this_omega / this_omega.sum()
 
     avg_e = np.dot(bins[:-1], this_prob)
@@ -67,9 +69,10 @@ avg_es = np.array(avg_es)
 var_es = np.array(var_es)
 
 
-entropy = k*np.log(omega_tot)
+#entropy = k*np.log(omega_tot)
+entropy = np.log(omega_tot)
 mask = ~np.ma.masked_invalid(entropy).mask
-
+'''
 errs = []
 for i in range(10):
     coef = np.polyfit(bins[:-1][mask], entropy[mask], deg=i)
@@ -79,7 +82,7 @@ for i in range(10):
     mse = np.mean(err**2)
     print("i: {} Mse: {:1.2e}".format(i, mse))
     errs.append(np.sqrt(mse))
-
+'''
 
 ## On energy
 coef = np.polyfit(bins[:-1][mask], entropy[mask], deg=5)
@@ -103,6 +106,14 @@ ax.set_ylabel('$S(\hat{f})$')
 plt.tight_layout()
 plt.savefig('{}/Desktop/s_tot.png'.format(homedir), transparent=True)
 
+payload = dict()
+payload['energies'] = evals
+payload['sampled_energies'] = bins[:-1]
+payload['sampled_entropy'] = entropy
+payload['entropy'] = dos_fit
+payload['polynomial'] = p
+with open('entropy_vals.pkl', 'w') as fout:
+    pickle.dump(payload, fout)
 ## 
 plt.close('all')
 fig, ax = plt.subplots(figsize=(7,6))

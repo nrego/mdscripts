@@ -79,12 +79,6 @@ args = parser.parse_args()
 k_ch3 = args.k_ch3
 do_brute =  args.do_brute 
 
-e_min, e_max, de = args.e_min, args.e_max, args.de
-bins = np.arange(e_min, e_max+de, de)
-
-print("Doing k_ch3={:d},  do_brute={}".format(k_ch3, do_brute))
-print("  with {:d} energy bins from {:0.1f} to {:0.1f}".format(bins.size-1, e_min, e_max))
-
 
 ## Load datasets to train model
 ds = np.load('sam_pattern_data.dat.npz')
@@ -126,12 +120,23 @@ k_eff_ext = k_eff_all_shape[:,~int_mask, :].sum(axis=1)
 # n_mm_int, n_mo_int, n_mo_ext
 feat_vec = np.hstack((k_eff_int[:, [0,2]], k_eff_ext[:, 2][:, None]))
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
+pred = reg.predict(feat_vec)
+min_val, max_val = pred[-1], pred[-2]
+# Shift model so min energy is 0
+reg.intercept_ -= min_val
+# get bins
+
+bins = np.arange(0, np.ceil(reg.intercept_)+args.de, args.de)
+print("Doing k_ch3={:d},  do_brute={}".format(k_ch3, do_brute))
+print("  with {:d} energy bins from {:0.1f} to {:0.1f}".format(bins.size-1, 0, reg.intercept_))
+
+
+
 
 ## Get new patch
 positions = gen_pos_grid(args.patch_size)
 do_z_offset = args.patch_size % 4 != 0
 pos_ext = gen_pos_grid(args.patch_size*2, z_offset=do_z_offset, shift_y=-args.patch_size/2, shift_z=-args.patch_size/2)
-#embed()
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 ext_indices = np.setdiff1d(np.arange(pos_ext.shape[0]), patch_indices)
 
