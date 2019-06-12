@@ -49,7 +49,7 @@ def get_energy(pt_idx, m_mask, nn, ext_count, coef1, coef2, coef3, inter):
                 mm += m_mask[n_idx]
             mo_int += ~m_mask[n_idx]
         mo_ext += ext_count[m_idx]
-
+    #embed()
     return inter + coef1*mm + coef2*mo_int + coef3*mo_ext
 
 parser = argparse.ArgumentParser('Find entropy (density of states) of energy for a fixed k_ch3 \
@@ -119,14 +119,15 @@ perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, ene
 pred = reg.predict(feat_vec)
 min_val, max_val = pred[-1], pred[-2]
 # Shift model so min energy is 0
-reg.intercept_ -= min_val
+#reg.intercept_ -= min_val
 # get bins
 
-bins = np.arange(0, np.ceil(reg.intercept_)+args.de, args.de)
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies-min_val, do_ridge=False)
+#embed()
+#bins = np.arange(0, np.ceil(max_val-min_val)+args.de, args.de)
+bins = np.arange(135, 286.5, 0.5) - 135
 print("Doing k_ch3={:d},  do_brute={}".format(k_ch3, do_brute))
 print("  with {:d} energy bins from {:0.1f} to {:0.1f}".format(bins.size-1, 0, np.ceil(reg.intercept_)))
-
-
 
 
 ## Get new patch

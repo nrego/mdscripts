@@ -35,6 +35,29 @@ def get_log_z(temp_vals, energies, entropy, quant=None):
 
     return np.log(np.sum(np.exp(expt), axis=0)) + max_vals
 
+def get_frac_kc(temp_vals, energies, entropy_by_kc):
+
+    max_val = entropy_by_kc.max()
+    total_entropy = np.log(np.exp(entropy_by_kc-max_val).sum(axis=0)) + max_val
+    this_log_z = get_log_z(temp_vals, energies, total_entropy)
+    total_avg_ko = np.zeros_like(temp_vals)
+    for k_c in range(37):
+        k_o = 36-k_c
+        this_kc_entropy = entropy_by_kc[k_c]
+        this_kc_weight = get_log_z(temp_vals, energies, this_kc_entropy, np.ones_like(this_kc_entropy)*k_o) - this_log_z
+        this_weight = np.exp(this_kc_weight)
+        if this_weight.min() < 0:
+            embed()
+
+        total_avg_ko += this_weight
+
+    return total_avg_ko
+
+def get_beta_fe_energy(temp, energies, entropy):
+    beta = 1 / temp
+
+    return beta*energies - entropy
+
 with open('entropy_vals.pkl', 'r') as fin:
     payload = pickle.load(fin)
 
@@ -51,6 +74,7 @@ energies -= energies.min()
 
 sampled_entropy = payload['sampled_entropy']
 sampled_energies = payload['sampled_energies']
+sampled_entropy_by_kc = payload['sampled_entropy_by_kc']
 
 pprime = poly.deriv()
 
@@ -94,7 +118,8 @@ plt.close('all')
 # free energy, energy, entropy, and heat capacity vs (evolutionary, unitless) temperature
 fig, ax = plt.subplots(figsize=(7,6))
 ax.plot(temp_vals, beta_f, 'g--', label=r'$\beta F$')
-ax.plot(temp_vals, avg_e, 'r--', label=r'$U$')
+ax.plot(temp_vals, avg_e, 'r--', label=r'$U=\langle \hat{f} \rangle$')
+#ax.plot(temp_vals, var_e, 'k--', label=r'$\langle \delta \hat{f}^2 \rangle$')
 ax.plot(temp_vals, cv, 'k-', label=r'$C_v$')
 ax.plot(temp_vals, avg_s, 'b--', label=r'$S$')
 

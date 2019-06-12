@@ -15,6 +15,7 @@ fnames = sorted(glob.glob('density_*'))
 
 bins = None
 omega_tot = None
+omega_by_kc = None
 
 homedir = os.environ['HOME']
 
@@ -23,7 +24,7 @@ from constants import k
 avg_es = []
 var_es = []
 k_vals = []
-for fname in fnames:
+for i, fname in enumerate(fnames):
     ds = np.load(fname)
     if bins is None:
         bins = ds['bins']
@@ -36,6 +37,10 @@ for fname in fnames:
         omega_tot = this_omega.copy()
     else:
         omega_tot += this_omega
+    if omega_by_kc is None:
+        omega_by_kc = np.zeros((len(fnames), this_omega.shape[0]))
+    omega_by_kc[i] = this_omega
+
 
     k_ch3 = int(ds['k_ch3'])
 
@@ -71,6 +76,7 @@ var_es = np.array(var_es)
 
 #entropy = k*np.log(omega_tot)
 entropy = np.log(omega_tot)
+entropy_by_kc = np.log(omega_by_kc)
 mask = ~np.ma.masked_invalid(entropy).mask
 '''
 errs = []
@@ -110,6 +116,7 @@ payload = dict()
 payload['energies'] = evals
 payload['sampled_energies'] = bins[:-1]
 payload['sampled_entropy'] = entropy
+payload['sampled_entropy_by_kc'] = entropy_by_kc
 payload['entropy'] = dos_fit
 payload['polynomial'] = p
 with open('entropy_vals.pkl', 'w') as fout:

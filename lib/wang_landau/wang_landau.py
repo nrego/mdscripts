@@ -109,7 +109,7 @@ class WangLandau:
         # Shape: (n_states, k)
         combos = np.array(list(combinations(self.pos_idx, k)))
         rand_idx = np.random.permutation(combos.shape[0])
-        combos = combos[rand_idx]
+        #combos = combos[rand_idx]
         #embed()
         # Indices of the k methyl positions
         for pt_idx in combos:
@@ -139,7 +139,7 @@ class WangLandau:
         ## Normalize density of states histogram ##
         self.entropies = np.log(self.density)
         self.entropies -= np.nanmax(self.entropies)
-        self.density /= np.trapz(self.density, self.bins[:-1])
+        #self.density /= np.trapz(self.density, self.bins[:-1])
 
     ## Wang-Landau ##
     def _gen_states_wl(self, k, hist_flat_tol):
