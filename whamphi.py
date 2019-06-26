@@ -103,7 +103,7 @@ def genPdistBinless(all_data, u_nm, nsample_diag, weights, data_range, nbins):
 
     pdist = numpy.zeros(nbins, dtype=numpy.float64)
 
-    for n_idx in xrange(all_data.shape[0]):
+    for n_idx in range(all_data.shape[0]):
         ntwid = all_data[n_idx]
 
         # which bin does ntwid fall into? A boolean array.
@@ -125,8 +125,8 @@ def genWeights(prob, bias):
 def genU_kln(nsims, nsample, start, end, beta):
     maxnsample = nsample.max()
     u_kln = numpy.zeros((nsims, nsims, maxnsample))
-    for i,ds_i in enumerate(dr.datasets.iteritems()):
-        for j,ds_j in enumerate(dr.datasets.iteritems()):
+    for i,ds_i in enumerate(dr.datasets.items()):
+        for j,ds_j in enumerate(dr.datasets.items()):
             dataframe = numpy.array(ds_j[1].data[start:end]['$\~N$'])
             u_kln[i,j,:] = 0.5*ds_i[1].kappa*(dataframe-ds_i[1].Nstar)**2 + ds_i[1].phi*beta*dataframe
 
@@ -142,7 +142,7 @@ def unpack_data(start, end=None):
     nsample = numpy.array([])
     phivals = numpy.array([])
 
-    for i, ds_item in enumerate(dr.datasets.iteritems()):
+    for i, ds_item in enumerate(dr.datasets.items()):
         ds_name, ds = ds_item
         dataframe = numpy.array(ds.data[start:end]['$\~N$'])
         nsample = numpy.append(nsample, dataframe.shape[0])
@@ -162,7 +162,7 @@ def genU_nm(all_data, nsims, beta, start, end=None):
 
     u_nm = numpy.zeros((n_tot, nsims))
 
-    for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
+    for i, (ds_name, ds) in enumerate(dr.datasets.items()):
         u_nm[:, i] = numpy.exp( -beta*(0.5*ds.kappa*(all_data-ds.Nstar)**2 + ds.phi*all_data) )
 
     return numpy.matrix(u_nm)

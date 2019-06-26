@@ -3,7 +3,7 @@ import _rc
 # global RC object
 rc = _rc.MDTOOLSRC()
 
-from core import Tool, ParallelTool, ToolComponent, Subcommand
+from .core import Tool, ParallelTool, ToolComponent, Subcommand
 
 from datareader import dr
 from system import MDSystem

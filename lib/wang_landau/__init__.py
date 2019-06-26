@@ -1,1 +1,1 @@
-from wang_landau import WangLandau
+from .wang_landau import WangLandau

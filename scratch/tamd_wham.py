@@ -4,12 +4,12 @@ from scipy.integrate import cumtrapz
 
 Ub = lambda n, nstar, beta, kappa: beta*kappa*(n - nstar)**2
 
-gamma = 50
+gamma = 20
 
 # tamd dat
 start = 1000
 dt = 0.1
-dat = np.loadtxt('tamd_gam_{}/phiout_tamd.dat'.format(gamma))[int(start/dt):]
+dat = np.loadtxt('new_tamd_gam_{}/phiout_tamd.dat'.format(gamma))[int(start/dt):]
 kappa = 0.420
 beta = 1 / (k*300)
 

@@ -21,7 +21,7 @@ import logging, sys
 
 log = logging.getLogger(__name__)
 
-from . import WorkManager, WMFuture
+from work_managers import WorkManager, WMFuture
 
 class SerialWorkManager(WorkManager):
     @classmethod

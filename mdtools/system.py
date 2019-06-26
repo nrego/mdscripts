@@ -39,7 +39,7 @@ class MDSystem():
         self.prot.tempfactors = NULL
         self.other = self.univ.select_atoms('not ({})'.format(sel_spec))
         
-        for k,v in kwargs.iteritems():
+        for k,v in kwargs.items():
             self.__dict__[k] = v
         
 

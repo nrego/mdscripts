@@ -33,6 +33,7 @@ def get_negloghist(data, bins, logweights, do_norm=True):
     bin_assign = np.digitize(data, bins) - 1
 
     negloghist = np.zeros(bins.size-1)
+    negloghist[:] = np.inf
 
     for i in range(bins.size-1):
         this_bin_mask = bin_assign == i
@@ -47,8 +48,9 @@ def get_negloghist(data, bins, logweights, do_norm=True):
 
         negloghist[i] = -np.log(this_weights.sum()) - this_logweights_max
     if do_norm:
-        
-        norm = np.trapz(np.exp(-negloghist), bins[:-1])
+        mask = ~ np.ma.masked_invalid(negloghist).mask
+
+        norm = np.trapz(np.exp(-negloghist[mask]), bins[:-1][mask])
         return negloghist + np.log(norm)
 
     else:
@@ -106,7 +108,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals, do_n
     return (neglogpdist, neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_data, var_data)
 
 
-beta_phi_vals = np.arange(0.0,5.04,0.04)
+beta_phi_vals = np.arange(-2.0,5.04,0.04)
 temp = 300
 #k = 8.3144598e-3
 beta = 1./(k*temp)

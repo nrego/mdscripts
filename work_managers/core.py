@@ -325,7 +325,7 @@ class WMFuture:
                             log.error('uncaught exception in remote function\n{}'.format(self._traceback))
                         raise self._exception
                     else:
-                        raise self._exception, None, self._traceback
+                        raise self._exception#, None, self._traceback
             else:
                 self._condition.wait()
                 assert self._done
@@ -334,7 +334,7 @@ class WMFuture:
                         log.error('uncaught exception in remote function\n{}'.format(self._traceback))
                         raise self._exception
                     else:
-                        raise self._exception, None, self._traceback
+                        raise self._exception#, None, self._traceback
                 
             result = self._result
             if discard:

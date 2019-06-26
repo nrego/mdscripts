@@ -38,7 +38,7 @@ fig, axes = plt.subplots(2,3, figsize=(20,11))
 
 order_idx = []
 fnames = np.array([], dtype=str)
-for key, val in name_lup.iteritems():
+for key, val in name_lup.items():
     if val in order:
         order_idx.append(order.index(val))
         fnames = np.append(fnames, '{}/phi_sims/ntwid_out.dat'.format(key))

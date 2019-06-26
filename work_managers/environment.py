@@ -20,7 +20,7 @@
 __metaclass__ = type
 
 import os, re
-from . import _available_work_managers
+from work_managers import _available_work_managers
 
 class WMEnvironment:
     '''A class to encapsulate the environment in which work managers are instantiated;
@@ -42,7 +42,7 @@ class WMEnvironment:
     
     default_work_manager = 'processes'
     default_parallel_work_manager = 'processes'
-    valid_work_managers = list(_available_work_managers.iterkeys())
+    valid_work_managers = list(_available_work_managers.keys())
     
     def __init__(self, use_arg_prefixes=False, valid_work_managers=None):
         self.environ = os.environ

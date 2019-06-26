@@ -78,7 +78,7 @@ if __name__ == "__main__":
     n_boot = 128
     binwidth = 0.05
 
-    for i in xrange(n_windows-1):
+    for i in range(n_windows-1):
         ds0 = datasets[i]
         ds1 = datasets[i+1]
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         ## Bootstrap 
         boot_wts = np.zeros((n_boot, 1))
 
-        for i in xrange(n_boot):
+        for i in range(n_boot):
             indices0 = np.random.choice(n_samples, uncorr_n_sample[0])
             indices1 = np.random.choice(n_samples, uncorr_n_sample[1])
 

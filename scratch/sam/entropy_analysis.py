@@ -68,14 +68,15 @@ mask = ~np.ma.masked_invalid(entropy).mask
 masked_energies = energies[~mask]
 #print("masked energies: {}".format(masked_energies))
 entropy = entropy[mask]
-entropy[0] = 0
+#entropy[0] = 0
 energies = energies[mask]
-energies -= energies.min()
+e_min = energies.min()
+energies -= e_min
 
 sampled_entropy = payload['sampled_entropy']
 sampled_energies = payload['sampled_energies']
 sampled_entropy_by_kc = payload['sampled_entropy_by_kc']
-
+sampled_energies -= e_min
 pprime = poly.deriv()
 
 ds_de = pprime(energies)
@@ -101,6 +102,20 @@ avg_e[0] = 0
 cv[0] = 0
 beta_f[0] = 0
 avg_s[0] = 0
+
+
+plt.close('all')
+# Entropy vs energy
+fig, ax = plt.subplots(figsize=(7,6))
+ax.plot(energies, entropy)
+ax.plot(sampled_energies, sampled_entropy, 'x')
+ax.set_xlabel(r'$\hat{f}$')
+ax.set_ylabel(r'$S(\hat{f}) = \ln g(\hat{f})$')
+ymin, ymax = ax.get_ylim()
+ax.set_ylim(0, ymax)
+fig.tight_layout()
+
+plt.savefig('{}/Desktop/comp_s_of_e'.format(homedir), transparent=True)
 
 plt.close('all')
 # Entropy vs energy
@@ -132,3 +147,4 @@ fig.tight_layout()
 
 plt.savefig('{}/Desktop/thermo_with_temp'.format(homedir), transparent=True)
 
+plt.close('all')
