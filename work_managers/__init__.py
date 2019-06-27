@@ -13,14 +13,14 @@ futures implementation).
 import logging
 log = logging.getLogger(__name__)
 
-from core import WorkManager, WMFuture, FutureWatcher
+from .core import WorkManager, WMFuture, FutureWatcher
 
 
 # Import core work managers, which should run most everywhere that
 # Python does
-import serial, processes
-from serial import SerialWorkManager
-from processes import ProcessWorkManager
+from . import serial, processes
+from .serial import SerialWorkManager
+from .processes import ProcessWorkManager
 
 _available_work_managers = {'serial': SerialWorkManager,
                             'processes': ProcessWorkManager}
@@ -36,5 +36,5 @@ except ImportError:
 else:
     _available_work_managers['mpi'] = MPIWorkManager
 
-import environment    
-from environment import make_work_manager
+from . import environment    
+from .environment import make_work_manager

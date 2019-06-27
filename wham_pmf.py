@@ -79,7 +79,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, bias_mat, n_samples, n_boot_samples,
     neglogpdist_ret = np.zeros((batch_size, binbounds.shape[0]-1))
     
 
-    for batch_num in xrange(batch_size):
+    for batch_num in range(batch_size):
 
         # Will contain bootstrap samples from biasMat
         bias_mat_boot = np.zeros((n_boot_tot, n_windows), dtype=np.float32)
@@ -291,7 +291,7 @@ Command-line options
         else:
             do_autocorr = False
 
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
 
             if self.ts == None:
                 self.ts = ds.ts
@@ -318,7 +318,7 @@ Command-line options
             self.all_data_interpos -= self.dum_pos_z
 
         # Ugh !
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.rstar)**2) 
 
         
@@ -391,11 +391,11 @@ Command-line options
             
             if __debug__:
                 checkset = set()
-            for lb in xrange(0, self.n_bootstrap, batch_size):
+            for lb in range(0, self.n_bootstrap, batch_size):
                 ub = min(self.n_bootstrap, lb+batch_size)
           
                 if __debug__:
-                    checkset.update(set(xrange(lb,ub)))
+                    checkset.update(set(range(lb,ub)))
 
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, bias_mat=self.bias_mat,

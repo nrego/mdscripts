@@ -46,7 +46,7 @@ def _bootstrap(lb, ub, phivals, phidat, autocorr_nsteps, start=0, end=None):
     fin_diff_n = np.zeros_like(ntwid_ret)
 
     # For each bootstrap sample...
-    for batch_num in xrange(batch_size):
+    for batch_num in range(batch_size):
         # For each data set (i.e. INDUS window)
         for i, ds in enumerate(phidat):
             # Full datasets for ntwid, n
@@ -263,11 +263,11 @@ Command-line options
             
             if __debug__:
                 checkset = set()
-            for lb in xrange(0, self.bootstrap, batch_size):
+            for lb in range(0, self.bootstrap, batch_size):
                 ub = min(self.bootstrap, lb+batch_size)
           
                 if __debug__:
-                    checkset.update(set(xrange(lb,ub)))
+                    checkset.update(set(range(lb,ub)))
 
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, phivals=self.phivals, phidat=self.phidat, autocorr_nsteps=autocorr_nsteps, 

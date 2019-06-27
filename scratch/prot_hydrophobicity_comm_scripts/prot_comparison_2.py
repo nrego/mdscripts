@@ -32,7 +32,7 @@ fig, ax = plt.subplots()
 
 order_idx = []
 fnames = np.array([], dtype=str)
-for key, val in name_lup.iteritems():
+for key, val in name_lup.items():
     if val in order:
         order_idx.append(order.index(val))
         fnames = np.append(fnames, '{}/struct_data.dat'.format(key))

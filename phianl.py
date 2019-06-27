@@ -89,7 +89,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
         prev_phi = bphi
         prev_n = n
 
-    for i in xrange(phi_vals.shape[0]):
+    for i in range(phi_vals.shape[0]):
         phi_vals[i, 2] = np.trapz(phi_vals[:i+1, 1], phi_vals[:i+1, 0])
 
     # sort by phi
@@ -244,7 +244,7 @@ if __name__ == "__main__":
         ds = dr.loadPhi(infiles[0], corr_len=1)
         block_vals = ds.blockAvg(start,end=end)
         data_len = np.array(ds.data[start:end]['$\~N$']).shape[0]
-        print "Data length:{}".format(data_len)
+        print("Data length:{}".format(data_len))
         pyplot.plot(block_vals[:,0], np.sqrt(block_vals[:,2]), 'ro')
         pyplot.xlim(0,block_vals.shape[0]/2)
         pyplot.xlabel("Block size")

@@ -273,7 +273,7 @@ Plate             4
     fout.write('\n')
     fout.write('[ pairs ]\n')
     fout.write(';  ai    aj funct            c0            c1            c2            c3\n')
-    for i, neigh in bond_list_second.iteritems():
+    for i, neigh in bond_list_second.items():
         if atoms[i].name == 'HO':
             continue
         for j in neigh:

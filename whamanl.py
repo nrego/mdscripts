@@ -96,7 +96,7 @@ if __name__ == "__main__":
     n_samples = np.array(n_samples)
 
     bias_mat = np.zeros((all_dat.size, n_windows))
-    for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
+    for i, (ds_name, ds) in enumerate(dr.datasets.items()):
         bias_mat[:,i] = beta * (((ds.kappa)/2.0) * (all_dat-ds.Nstar)**2 + (ds.phi*all_dat))
 
 
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     logweights = gen_data_logweights(bias_mat, f_k, n_samples)
 
     outarr = np.zeros((len(args.input), 3))
-    for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
+    for i, (ds_name, ds) in enumerate(dr.datasets.items()):
 
         bias = -beta*(0.5*ds.kappa*(all_dat-ds.Nstar)**2 + ds.phi*all_dat)
         this_logweights = logweights+bias

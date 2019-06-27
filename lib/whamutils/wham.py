@@ -15,12 +15,12 @@ def gen_pdist(all_dat, bias_mat, n_samples, f_k, binbounds):
 
     pdist = np.zeros(binbounds.shape[0]-1, dtype=np.float64)
 
-    for n_idx in xrange(all_dat.shape[0]):
+    for n_idx in range(all_dat.shape[0]):
         denom_arr = f_k - bias_mat[n_idx, :]
         denom_arr = n_samples * np.exp(denom_arr)
         denom = denom_arr.sum()
         if all_dat.ndim == 2:
-            for k in xrange(all_dat.shape[1]):
+            for k in range(all_dat.shape[1]):
                 val = all_dat[n_idx, k]
                 bin_assign = (val >= binbounds[:-1]) * (val < binbounds[1:])
                 #denom = np.dot(weights_prod_nsample, bias_mat[n_idx, :])
@@ -82,7 +82,7 @@ def gen_U_nm(all_dat, nsims, beta, start, end=None):
 
     u_nm = np.zeros((n_tot, nsims))
 
-    for i, (ds_name, ds) in enumerate(dr.datasets.iteritems()):
+    for i, (ds_name, ds) in enumerate(dr.datasets.items()):
         u_nm[:, i] = np.exp( -beta*(0.5*ds.kappa*(all_dat-ds.Nstar)**2 + ds.phi*all_dat) )
 
     return np.matrix(u_nm)

@@ -1,7 +1,7 @@
 import numpy as np
 from MDAnalysis import SelectionError, NoDataError
 from MDAnalysis.analysis.align import alignto
-from utils import pbc, mol_broken, merge_sets, get_minimum_image
+from .utils import pbc, mol_broken, merge_sets, get_minimum_image
 
 MAX_BOND_LEN = 4.0
 DTYPE = np.float32

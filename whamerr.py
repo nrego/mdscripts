@@ -79,7 +79,7 @@ def _bootstrap(lb, ub, ones_m, ones_n, uncorr_ones_n, bias_mat, n_samples, uncor
     logweights_ret = np.zeros((batch_size, uncorr_n_tot))
 
     # for each bootstrap sample in this batch
-    for batch_num in xrange(batch_size):
+    for batch_num in range(batch_size):
 
         ## Fill up the uncorrelated bias matrix
         boot_uncorr_bias_mat = np.zeros((uncorr_n_tot, n_windows), dtype=np.float32)
@@ -322,7 +322,7 @@ Command-line options
         else:
             do_autocorr = False
 
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
 
             if self.ts == None:
                 self.ts = []
@@ -368,7 +368,7 @@ Command-line options
         else:
             do_autocorr = False
 
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
 
             if self.ts == None:
                 self.ts = []
@@ -392,7 +392,7 @@ Command-line options
         
         # Ugh !
         #embed()
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.rstar)**2) 
         
         #if do_autocorr:
@@ -414,7 +414,7 @@ Command-line options
         else:
             do_autocorr = False
 
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
 
             if self.ts == None:
                 self.ts = []
@@ -436,11 +436,12 @@ Command-line options
             self.all_data = np.append(self.all_data, dataframe)
             self.all_data_N = np.append(self.all_data_N, dataframe_N)
 
+
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
         
         # Ugh !
         #embed()
-        for i, (ds_name, ds) in enumerate(self.dr.datasets.iteritems()):
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
         
         #if do_autocorr:
@@ -544,11 +545,11 @@ Command-line options
             
             if __debug__:
                 checkset = set()
-            for lb in xrange(0, self.n_bootstrap, batch_size):
+            for lb in range(0, self.n_bootstrap, batch_size):
                 ub = min(self.n_bootstrap, lb+batch_size)
           
                 if __debug__:
-                    checkset.update(set(xrange(lb,ub)))
+                    checkset.update(set(range(lb,ub)))
 
                 args = ()
                 kwargs = dict(lb=lb, ub=ub, ones_m=ones_m, ones_n=ones_n, uncorr_ones_n=uncorr_ones_n, bias_mat=self.bias_mat,

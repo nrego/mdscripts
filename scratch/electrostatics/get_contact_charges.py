@@ -59,7 +59,7 @@ for contact_atm in contacts_h:
 prot.write('contacts.pdb')
 
 outdata = np.zeros((len(contact_atom_charges.items()), 2))
-for i, (k, v) in enumerate(contact_atom_charges.iteritems()):
+for i, (k, v) in enumerate(contact_atom_charges.items()):
 
     outdata[i,0] = k
     outdata[i,1] = v

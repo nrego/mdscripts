@@ -219,7 +219,7 @@ class TemporalInterfaceSubcommand(Subcommand):
 
         def task_gen():
 
-            for frame_idx in xrange(self.start_frame, self.last_frame):
+            for frame_idx in range(self.start_frame, self.last_frame):
 
                 self.univ.trajectory[frame_idx]
                 #water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.water_dist_cutoff+3, self.mol_sel_spec)).positions

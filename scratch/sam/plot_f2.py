@@ -21,7 +21,7 @@ from sklearn import datasets, linear_model
 
 from scipy.integrate import cumtrapz
 
-from util import *
+from scratch.sam.util import *
 
 import itertools
 

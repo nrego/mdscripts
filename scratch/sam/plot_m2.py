@@ -21,7 +21,7 @@ from sklearn import datasets, linear_model
 
 from scipy.integrate import cumtrapz
 
-from util import *
+from scratch.sam.util import *
 
 import itertools
 
@@ -100,7 +100,7 @@ perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, ene
 np.savetxt('m2_coef.dat', reg.coef_)
 #np.savetxt('m2_int.dat', reg.intercept_)
 norm = plt.Normalize(132, 287)
-cmap = cm.spectral
+cmap = cm.Spectral
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')

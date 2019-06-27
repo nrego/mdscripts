@@ -33,7 +33,7 @@ def normhistnd(hist, binbounds):
     return normfac
 
 def extractFloat(string):
-    return map(float, re.findall(r"[-+]?\d*\.\d+|\d+", string))
+    return list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", string)))
 
 
 class DataSet:
@@ -116,7 +116,7 @@ class PhiDataSet(DataSet):
         n_block = int(n_obs/block)
         obs_prop = np.zeros((n_block, 3), dtype=np.float32)
 
-        for i in xrange(n_block):
+        for i in range(n_block):
             ibeg = i*block
             iend = ibeg + block
             obs_prop[i] = data[ibeg:iend].mean(axis=0)
@@ -136,7 +136,7 @@ class PhiDataSet(DataSet):
         data_var = data.var()
         n_obs = len(data)  # Total number of observations
 
-        #blocks = (np.power(2, xrange(int(np.log2(n_obs))))).astype(int)
+        #blocks = (np.power(2, range(int(np.log2(n_obs))))).astype(int)
         # Block size
         blocks = np.arange(1,len(data)/2+1,1)
 
@@ -151,7 +151,7 @@ class PhiDataSet(DataSet):
             n_block = int(n_obs/block)
             obs_prop = np.zeros(n_block)
 
-            for i in xrange(n_block):
+            for i in range(n_block):
                 ibeg = i*block
                 iend = ibeg + block
                 obs_prop[i] = data[ibeg:iend].mean()
@@ -310,7 +310,7 @@ class XvgDataSet(DataSet):
             data_var = data.var()
 
 
-            #blocks = (np.power(2, xrange(int(np.log2(n_obs))))).astype(int)
+            #blocks = (np.power(2, range(int(np.log2(n_obs))))).astype(int)
             # Block size
 
             block_vals = total_block_vals[i]
@@ -322,7 +322,7 @@ class XvgDataSet(DataSet):
                 n_block = int(n_obs/block)
                 obs_prop = np.zeros(n_block)
 
-                for i in xrange(n_block):
+                for i in range(n_block):
                     ibeg = i*block
                     iend = ibeg + block
                     obs_prop[i] = data[ibeg:iend].mean()
@@ -347,7 +347,7 @@ class XvgDataSet(DataSet):
         n_block = n_obs // block
         obs_prop = np.zeros((n_block, data.shape[1]), dtype=np.float32)
 
-        for i in xrange(n_block):
+        for i in range(n_block):
             ibeg = i*block
             iend = ibeg + block
             obs_prop[i] = data[ibeg:iend].mean(axis=0)
@@ -383,7 +383,7 @@ class SimpleDataSet(DataSet):
         if addl_args is not None:
             for arg in addl_args:
                 if type(arg) != str:
-                    raise TypeError, "additional arguments must be strings"
+                    raise TypeError("additional arguments must be strings")
 
                 self._scan_header_dat(filename, arg)
 
@@ -505,7 +505,7 @@ class DataReader:
     @classmethod
     def plotHistAll(cls, start=0, end=None, nbins=50, idx='N', step=1, min_arr=False):
         total_array = np.array([])
-        for title, dataset in cls.datasets.iteritems():
+        for title, dataset in cls.datasets.items():
             total_array = np.append(total_array, dataset.data[start:end][idx])
 
         if min_arr:

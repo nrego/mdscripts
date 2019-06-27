@@ -3,12 +3,12 @@ from util import assign_and_average
 from scipy.integrate import cumtrapz
 
 homedir = os.environ['HOME']
-gamma = 50
-fnames = sorted(glob.glob('umbr/nstar*'))
+gamma = 20
+fnames = sorted(glob.glob('umbr_new/nstar*'))
 
 nstars = []
 
-f_k = np.loadtxt('umbr/f_k_all.dat')
+f_k = np.loadtxt('umbr_new/f_k_all.dat')
 avg_ns = []
 plt.close('all')
 for fname in fnames:
@@ -33,7 +33,7 @@ start = 1000
 end = 10000
 
 # tamd dat
-dat = np.loadtxt('tamd_gam_{}/phiout_tamd.dat'.format(gamma))[int(start/dt):]
+dat = np.loadtxt('new_tamd_gam_{}/phiout_tamd.dat'.format(gamma))[int(start/dt):]
 kappa = 0.420
 beta = 1 / (k*300)
 
@@ -65,4 +65,4 @@ fig.tight_layout()
 
 plt.savefig('{}/Desktop/gam_{}'.format(homedir, gamma), transparent=True)
 outdat = np.hstack((bins[:-2, None], integ[:, None]))
-np.savetxt('tamd_gam_{}/f_k.dat'.format(gamma), outdat)
+np.savetxt('new_tamd_gam_{}/f_k.dat'.format(gamma), outdat)

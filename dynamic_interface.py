@@ -239,7 +239,7 @@ Command-line options
 
         def task_gen():
 
-            for frame_idx in xrange(self.start_frame, self.last_frame):
+            for frame_idx in range(self.start_frame, self.last_frame):
 
                 self.univ.trajectory[frame_idx]
                 solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
