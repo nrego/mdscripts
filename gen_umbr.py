@@ -13,6 +13,8 @@ from MDAnalysis import Universe
 from constants import SEL_SPEC_HEAVIES
 
 import argparse
+from IPython import embed
+
 
 if __name__ == "__main__":
 
@@ -31,7 +33,7 @@ if __name__ == "__main__":
                               used to determine subvolume atoms")
     parser.add_argument("--subvol-threshold", type=float, default=0.5,
                         help="(Only relevant if option '--subvol' is provided) threshold for which to select\
-                              subvol atoms - all atoms with tempfactors *below* thresh are selected (default: 0.5)")
+                              subvol atoms - all atoms with tempfactors *above* thresh are selected (default: 0.5)")
     parser.add_argument("-b", "--start", default=0, type=float,
                         help="Starting time of trajectory, in ps (default 0 ps)")
     parser.add_argument("-d", "--waterdist", default=5.5, type=float,
@@ -72,7 +74,8 @@ if __name__ == "__main__":
         prot_heavies = u.select_atoms(args.sspec)
         if do_subvol:
             u_subvol_prot = u_subvol.select_atoms(args.sspec)
-            indices = u_subvol_prot.tempfactors < subvol_threshold
+            embed()
+            indices = u_subvol_prot.tempfactors > subvol_threshold
             prot_heavies = prot_heavies[indices]
 
         if args.indices is not None:
