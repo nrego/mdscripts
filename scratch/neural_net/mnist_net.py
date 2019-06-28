@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
@@ -22,7 +23,7 @@ class SAMDataset(data.Dataset):
         if type(transform) is not torchvision.transforms.Compose:
             raise ValueError("Supplied transform with improper type ({})".format(type(transform)))
 
-        self.energies = energies.astype(np.float32)
+        self.energies = energies.astype(np.float32).reshape(-1,1)
         self.feat_vec = feat_vec.astype(np.float32).reshape(-1,1,2)
 
         self.transform = transform
@@ -61,13 +62,13 @@ class TestM2(nn.Module):
         self.fc1 = nn.Linear(2, 1)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
+        x = self.fc1(x)
 
         return x
 
 
 
-def train(net, criterion, train_loader, learning_rate=0.001, epochs=1000, log_interval=10):
+def train(net, criterion, train_loader, learning_rate=0.01, epochs=1000, log_interval=10):
 
     # create a stochastic gradient descent optimizer
     optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=0)
@@ -83,8 +84,9 @@ def train(net, criterion, train_loader, learning_rate=0.001, epochs=1000, log_in
 
     # total number of training steps
     n_steps = epochs * n_rounds
-    losses = np.zeros(n_steps)
+    losses = []
     # Training loop
+    idx = 0
     for epoch in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
 
@@ -99,6 +101,8 @@ def train(net, criterion, train_loader, learning_rate=0.001, epochs=1000, log_in
             loss = criterion(net_out, target)
             loss.backward()
             optimizer.step()
+            idx += 1
+            losses.append(loss)
             if epoch % log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
