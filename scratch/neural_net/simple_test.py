@@ -37,7 +37,7 @@ def load_stuff(filedump='sam_pattern_data.dat.npz', k_eff_dump='k_eff_all.dat.np
 
     return payload
 
-def init_data_and_loaders(feat_vec, energies, batch_size=884, norm_target=True):
+def init_data_and_loaders(feat_vec, energies, batch_size=884, norm_target=False):
     
     dataset = SAMDataset(feat_vec, energies, norm_target=norm_target)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -53,17 +53,24 @@ energies, k_vals, methyl_pos, positions, k_eff_all_shape, edges, ext_indices = l
 
 k_vals_both = np.hstack((k_vals[:,None], 36-k_vals[:,None]))
 
-
 n_edges = edges.shape[0]
 int_indices = np.setdiff1d(np.arange(n_edges), ext_indices)
 
-n_edges = k_eff_all_shape.shape[1]
-assert edges.shape[0] == n_edges
+assert n_edges == k_eff_all_shape.shape[1]
+
 # n_mm, n_oo, n_mo
 k_eff_one_edge = k_eff_all_shape.sum(axis=1)
 
-# k_c, n_mm
-feat_vec = np.dstack((k_vals, k_eff_one_edge[:,0])).squeeze(axis=0)
+k_eff_int_edges_all = k_eff_all_shape[:,int_indices,:]
+k_eff_ext_edges_all = k_eff_all_shape[:,ext_indices,:]
+
+# n_mm, n_oo, n_mo for all internal edges
+k_eff_int_edge = k_eff_int_edges_all.sum(axis=1)
+# ditto for edges to exterior
+k_eff_ext_edge = k_eff_ext_edges_all.sum(axis=1)
+
+# k_c, n_mm_int, n_mo_ext
+feat_vec = np.dstack((k_vals, k_eff_int_edge[:,0], k_eff_ext_edge[:,2])).squeeze(axis=0)
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
 print("average mse, linear fit: {:0.4f}".format(perf_mse.mean()))
 
@@ -71,13 +78,15 @@ print("average mse, linear fit: {:0.4f}".format(perf_mse.mean()))
 e_range = energies.max() - energies.min()
 print('e range: {:.2f}'.format(e_range))
 ### Train ###
-net = TestM2()
+net = TestSAMNet(n_dim=3)
 # minimize MSE of predicted energies
 criterion = nn.MSELoss()
-loader = init_data_and_loaders(feat_vec, energies, norm_target=False)
+loader = init_data_and_loaders(feat_vec, energies, batch_size=400)
 dataset = loader.dataset
 
 data, target = iter(loader).next()
 
-losses = train(net, criterion, loader, learning_rate=0.5, epochs=2000)
-embed()
+losses = train(net, criterion, loader, learning_rate=0.5, epochs=1000)
+
+
+

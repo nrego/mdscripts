@@ -23,8 +23,9 @@ class SAMDataset(data.Dataset):
         if type(transform) is not torchvision.transforms.Compose:
             raise ValueError("Supplied transform with improper type ({})".format(type(transform)))
 
+
         self.energies = energies.astype(np.float32).reshape(-1,1)
-        self.feat_vec = feat_vec.astype(np.float32).reshape(-1,1,2)
+        self.feat_vec = feat_vec.astype(np.float32).reshape(-1,1,feat_vec.shape[1])
 
         self.transform = transform
         if norm_target:
@@ -42,9 +43,13 @@ class SAMDataset(data.Dataset):
 
         return X, y
 
-class BasicNet(nn.Module):
+    @property
+    def n_dim(self):
+        return self.feat_vec.shape[-1]
+
+class MNISTNet(nn.Module):
     def __init__(self):
-        super(BasicNet, self).__init__()
+        super(MNISTNet, self).__init__()
         self.fc1 = nn.Linear(28 * 28, 200)
         self.fc2 = nn.Linear(200, 200)
         self.fc3 = nn.Linear(200, 10)
@@ -56,16 +61,25 @@ class BasicNet(nn.Module):
 
         return F.log_softmax(x)
 
-class TestM2(nn.Module):
-    def __init__(self):
-        super(TestM2, self).__init__()
-        self.fc1 = nn.Linear(2, 1)
+# Runs basic linear regression on our number of edges
+#   For testing 
+class TestSAMNet(nn.Module):
+    def __init__(self, n_dim=2):
+        super(TestSAMNet, self).__init__()
+        self.fc1 = nn.Linear(n_dim, 1)
 
     def forward(self, x):
         x = self.fc1(x)
 
         return x
 
+    @property
+    def coef_(self):
+        return self.fc1.weight.detach().numpy()
+
+    @property
+    def intercept_(self):
+        return self.fc1.bias.item()
 
 
 def train(net, criterion, train_loader, learning_rate=0.01, epochs=1000, log_interval=10):
@@ -76,37 +90,37 @@ def train(net, criterion, train_loader, learning_rate=0.01, epochs=1000, log_int
     n_dim = train_loader.dataset[0][0].shape[1]
     # Total number of data points
     n_data = len(train_loader.dataset)
-    # num training rounds per epoch (number data points / batch size)
-    n_rounds = len(train_loader)
-    batch_size = int(n_data / n_rounds)
-    if n_data % n_rounds:
-        batch_size += 1
+    # num training rounds per epoch 
+    n_batches = len(train_loader)
+    batch_size = train_loader.batch_size
 
     # total number of training steps
-    n_steps = epochs * n_rounds
-    losses = []
+    n_steps = epochs * n_batches
+    losses = np.zeros(n_steps)
     # Training loop
-    idx = 0
+
     for epoch in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
 
             data, target = Variable(data), Variable(target)
-            # resize data from (batch_size, 1, n_input_dim) to (batch_size, n_input_dim)
-            
+            # resize data from (batch_size, 1, n_input_dim) to (batch_size, n_input_dim)  
             data = data.view(-1, n_dim)
-            #embed()
-            optimizer.zero_grad()
+            
             net_out = net(data)
             
             loss = criterion(net_out, target)
+            losses[batch_idx + epoch*n_batches] = loss.item()
+
+            # Back prop
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            idx += 1
-            losses.append(loss)
+            
             if epoch % log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                            100. * batch_idx / len(train_loader), loss.item()))
+
 
     return losses
 

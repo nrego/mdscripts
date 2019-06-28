@@ -4,7 +4,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
-from scratch.neural_net.mnist_net import BasicNet
+from scratch.neural_net.mnist_net import MNISTNet
 from torchvision import datasets, transforms
 
 import matplotlib as mpl
@@ -79,7 +79,7 @@ def validate(net, dataset_test, criterion):
 
 
 
-net = BasicNet()
+net = MNISTNet()
 # Loss function
 criterion = nn.NLLLoss()
 train_loader = init_data_and_loaders()
