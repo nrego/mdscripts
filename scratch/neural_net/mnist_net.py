@@ -14,7 +14,7 @@ class SAMDataset(data.Dataset):
     base_transform = transforms.Compose([transforms.ToTensor()])
     norm_data = lambda y: (y-y.min())/(y.max()-y.min())
 
-    def __init__(self, feat_vec, energies, transform=base_transform, norm_target=True):
+    def __init__(self, feat_vec, energies, transform=base_transform, norm_target=False):
         super(SAMDataset, self).__init__()
 
         if type(feat_vec) is not np.ndarray or type(energies) is not np.ndarray:
@@ -61,6 +61,21 @@ class MNISTNet(nn.Module):
 
         return F.log_softmax(x)
 
+class ConvNet(nn.Module):
+    def __init__(self):
+        super(ConvNet, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        self.drop_out = nn.Dropout()
+        self.fc1 = nn.Linear(7 * 7 * 64, 1000)
+        self.fc2 = nn.Linear(1000, 10)
+
 # Runs basic linear regression on our number of edges
 #   For testing 
 class TestSAMNet(nn.Module):
@@ -81,11 +96,27 @@ class TestSAMNet(nn.Module):
     def intercept_(self):
         return self.fc1.bias.item()
 
+# Simple vanilla NN taking all head group identities as input
+class SAMNet(nn.Module):
+    def __init__(self, n_hidden=50):
+        super(SAMNet, self).__init__()
+        self.fc1 = nn.Linear(12*12, n_hidden)
+        self.fc2 = nn.Linear(n_hidden, 25)
+        self.fc3 = nn.Linear(25, 1)
 
-def train(net, criterion, train_loader, learning_rate=0.01, epochs=1000, log_interval=10):
+        self.drop_out = nn.Dropout()
+
+    def forward(self, x):
+        out = F.relu(self.fc1(x))
+        out = F.relu(self.fc2(out))
+        out = self.fc3(out)
+
+        return out
+
+def train(net, criterion, train_loader, test_loader, learning_rate=0.01, weight_decay=0, epochs=1000, log_interval=100):
 
     # create a stochastic gradient descent optimizer
-    optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=0)
+    optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     n_dim = train_loader.dataset[0][0].shape[1]
     # Total number of data points
@@ -117,9 +148,15 @@ def train(net, criterion, train_loader, learning_rate=0.01, epochs=1000, log_int
             optimizer.step()
             
             if epoch % log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                data_test, target_test = iter(test_loader).next()
+                data_test = data_test.view(-1, n_dim)
+                test_out = net(data_test).detach()
+
+                test_loss = criterion(test_out, target_test).item()
+
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f})'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
-                           100. * batch_idx / len(train_loader), loss.item()))
+                           100. * batch_idx / len(train_loader), loss.item(), test_loss))
 
 
     return losses

@@ -1,4 +1,4 @@
-## TEST NUMBER OF EDGE TYPES (MODEL 2) AGAINST NN ##
+## Basic two layer NN for sam surface (input vec is all positions)
 
 import numpy as np
 
@@ -11,39 +11,47 @@ import torch.nn.functional as F
 from torch import optim
 
 
-def load_stuff(filedump='sam_pattern_data.dat.npz', k_eff_dump='k_eff_all.dat.npy'):
-    ds = np.load(filedump)
-
+# Load in data (energies and methyl positions)
+def load_and_prep(fname='sam_pattern_data.dat.npz'):
+    ds = np.load(fname)
     energies = ds['energies']
     k_vals = ds['k_vals']
-    
-    methyl_pos = ds['methyl_pos']
-    positions = ds['positions']
 
+    # (y,z) positions of each of the 36 hexagonal points on the 6x6 grid, flattened
+    # shape: (36, 2)
+    positions = ds['positions']
+    # details the methyl positions of each config
+    # Shape: (n_data, 6x6)
+    methyl_pos = ds['methyl_pos']
+
+    n_data = energies.size
+
+    # Total 12x12 hexagonal grid
     pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
-    k_eff_all_shape = np.load(k_eff_dump)
 
     # patch_idx is list of patch indices in pos_ext 
     #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
     d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
-    # nn_ext is dictionary of (global) nearest neighbor's to each patch point
-    #   nn_ext[i]  global idxs of neighbor to local patch i 
-    nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
-    edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
+    # shape: (n_data_points, 12*12)
+    feat_vec = np.zeros((n_data, 144), dtype=int) # might as well keep this shit small
 
-    payload = (energies, k_vals, methyl_pos, positions, k_eff_all_shape, edges, ext_indices)
+    for i_dat, methyl_mask in enumerate(methyl_pos):
+        feat_vec[i_dat][patch_indices] = methyl_mask
+        #feat_vec[i_dat] = methyl_mask
 
-
-    return payload
+    f_mean = feat_vec.mean()
+    f_std = feat_vec.std()
+    return ((feat_vec-f_mean)/f_std, energies)
 
 def init_data_and_loaders(feat_vec, energies, batch_size=884, norm_target=False):
-    
     dataset = SAMDataset(feat_vec, energies, norm_target=norm_target)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     return loader
 
+# Split data into N groups - N-1 will be used as training, and remaining as validation
+#   In the case of a remainder (likely), the last group will be smaller
 def partition_data(X, y, n_groups=5, batch_size=100):
     n_dat = energies.size
     n_cohort = n_dat // n_groups
@@ -71,49 +79,15 @@ def partition_data(X, y, n_groups=5, batch_size=100):
 
         yield (train_loader, test_loader)
 
-## k_eff_all_shape is an exhaustive list of the connection type of every
-# edge for every pattern
-## n_mm n_oo  n_mo ##
-# Conn types:   mm  oo  mo
-# shape: (n_samples, n_edges, n_conn_type)
-energies, k_vals, methyl_pos, positions, k_eff_all_shape, edges, ext_indices = load_stuff()
-
-k_vals_both = np.hstack((k_vals[:,None], 36-k_vals[:,None]))
-
-n_edges = edges.shape[0]
-int_indices = np.setdiff1d(np.arange(n_edges), ext_indices)
-
-assert n_edges == k_eff_all_shape.shape[1]
-
-# n_mm, n_oo, n_mo
-k_eff_one_edge = k_eff_all_shape.sum(axis=1)
-
-k_eff_int_edges_all = k_eff_all_shape[:,int_indices,:]
-k_eff_ext_edges_all = k_eff_all_shape[:,ext_indices,:]
-
-# n_mm, n_oo, n_mo for all internal edges
-k_eff_int_edge = k_eff_int_edges_all.sum(axis=1)
-# ditto for edges to exterior
-k_eff_ext_edge = k_eff_ext_edges_all.sum(axis=1)
-
-# k_c, n_mm_int, n_mo_ext
-feat_vec = np.dstack((k_vals, k_eff_int_edge[:,0], k_eff_ext_edge[:,2])).squeeze(axis=0)
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
-print("average mse, linear fit: {:0.4f}".format(perf_mse.mean()))
+feat_vec, energies = load_and_prep()
 
 
-e_range = energies.max() - energies.min()
-print('e range: {:.2f}'.format(e_range))
-data_partition_gen = partition_data(feat_vec, energies, n_groups=5, batch_size=400)
-
-
-
-### Train ###
+data_partition_gen = partition_data(feat_vec, energies, n_groups=7, batch_size=600)
 
 mses = []
 for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
-    net = TestSAMNet(n_dim=3)
+    net = SAMNet(n_hidden=50)
     # minimize MSE of predicted energies
     criterion = nn.MSELoss()    
 
@@ -122,13 +96,13 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     print("\n")
 
     print("...Training")
-    losses = train(net, criterion, train_loader, test_loader, learning_rate=0.5,  epochs=2000)
+    losses = train(net, criterion, train_loader, test_loader, learning_rate=0.001, weight_decay=0.0, epochs=3000)
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))
     test_X, test_y = iter(test_loader).next()
     # So there are no shenanigans with MSE
-    test_X = test_X.view(-1, 3)
+    test_X = test_X.view(-1, 12*12)
 
     pred = net(test_X).detach()
     mse = criterion(pred, test_y).item()
@@ -137,4 +111,3 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     mses.append(mse)
 
     del net, criterion
-
