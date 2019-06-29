@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 
-
+do_cnn = True
 # Load in data (energies and methyl positions)
 def load_and_prep(fname='sam_pattern_data.dat.npz'):
     ds = np.load(fname)
@@ -27,32 +27,37 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     n_data = energies.size
 
     # Total 12x12 hexagonal grid
-    pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
+    pos_ext = gen_pos_grid(8, z_offset=True, shift_y=-1, shift_z=-1)
 
     # patch_idx is list of patch indices in pos_ext 
     #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
     d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
+
     # shape: (n_data_points, 12*12)
-    feat_vec = np.zeros((n_data, 144), dtype=int) # might as well keep this shit small
+    feat_vec = np.zeros((n_data, 64), dtype=np.uint8) # might as well keep this shit small
 
     for i_dat, methyl_mask in enumerate(methyl_pos):
         feat_vec[i_dat][patch_indices] = methyl_mask
-        #feat_vec[i_dat] = methyl_mask
 
     f_mean = feat_vec.mean()
     f_std = feat_vec.std()
-    return ((feat_vec-f_mean)/f_std, energies)
+    return feat_vec, energies
+    #return ((feat_vec-f_mean)/f_std, energies)
 
-def init_data_and_loaders(feat_vec, energies, batch_size=884, norm_target=False):
-    dataset = SAMDataset(feat_vec, energies, norm_target=norm_target)
+def init_data_and_loaders(feat_vec, energies, batch_size, norm_target=False, do_cnn=False):
+    if do_cnn:
+        feat_vec = feat_vec.reshape(-1, 8, 8)
+        dataset = SAMConvDataset(feat_vec, energies, norm_target=norm_target)
+    else:
+        dataset = SAMDataset(feat_vec, energies, norm_target=norm_target)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     return loader
 
 # Split data into N groups - N-1 will be used as training, and remaining as validation
 #   In the case of a remainder (likely), the last group will be smaller
-def partition_data(X, y, n_groups=5, batch_size=100):
+def partition_data(X, y, n_groups=1, batch_size=200, do_cnn=do_cnn):
     n_dat = energies.size
     n_cohort = n_dat // n_groups
 
@@ -73,8 +78,8 @@ def partition_data(X, y, n_groups=5, batch_size=100):
         y_train = np.delete(y_rand, slc)
         X_train = np.delete(X_rand, slc, axis=0)
 
-        train_loader = init_data_and_loaders(X_train, y_train, batch_size)
-        test_loader = init_data_and_loaders(X_validate, y_validate, batch_size=n_validate)
+        train_loader = init_data_and_loaders(X_train, y_train, batch_size=batch_size, do_cnn=do_cnn)
+        test_loader = init_data_and_loaders(X_validate, y_validate, batch_size=n_validate, do_cnn=do_cnn)
 
 
         yield (train_loader, test_loader)
@@ -82,12 +87,16 @@ def partition_data(X, y, n_groups=5, batch_size=100):
 feat_vec, energies = load_and_prep()
 
 
-data_partition_gen = partition_data(feat_vec, energies, n_groups=7, batch_size=600)
-
+data_partition_gen = partition_data(feat_vec, energies, n_groups=7, batch_size=200, do_cnn=do_cnn)
+loader = init_data_and_loaders(feat_vec, energies, 200, False, do_cnn)
+dataset = loader.dataset
 mses = []
 for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
-    net = SAMNet(n_hidden=50)
+    if do_cnn:
+        net = SAMConvNet(kernel_size=2, n_hidden=100)
+    else:
+        net = SAMNet(n_hidden=50)
     # minimize MSE of predicted energies
     criterion = nn.MSELoss()    
 
@@ -96,13 +105,14 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     print("\n")
 
     print("...Training")
-    losses = train(net, criterion, train_loader, test_loader, learning_rate=0.001, weight_decay=0.0, epochs=3000)
+    losses = train(net, criterion, train_loader, test_loader,do_cnn, learning_rate=0.001, weight_decay=0.0, epochs=3000)
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))
     test_X, test_y = iter(test_loader).next()
     # So there are no shenanigans with MSE
-    test_X = test_X.view(-1, 12*12)
+    if not do_cnn:
+        test_X = test_X.view(-1, 8*8)
 
     pred = net(test_X).detach()
     mse = criterion(pred, test_y).item()

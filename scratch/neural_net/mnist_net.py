@@ -23,9 +23,11 @@ class SAMDataset(data.Dataset):
         if type(transform) is not torchvision.transforms.Compose:
             raise ValueError("Supplied transform with improper type ({})".format(type(transform)))
 
-
+        n_pts = energies.shape[0]
         self.energies = energies.astype(np.float32).reshape(-1,1)
-        self.feat_vec = feat_vec.astype(np.float32).reshape(-1,1,feat_vec.shape[1])
+
+        assert feat_vec.ndim == 2
+        self.feat_vec = feat_vec.astype(np.float32).reshape(n_pts, 1, -1)
 
         self.transform = transform
         if norm_target:
@@ -39,6 +41,45 @@ class SAMDataset(data.Dataset):
         y = self.energies[index]
 
         X = self.transform(X).view(1,-1)
+
+
+        return X, y
+
+    @property
+    def n_dim(self):
+        return self.feat_vec.shape[-1]
+
+class SAMConvDataset(data.Dataset):
+    base_transform = transforms.Compose([transforms.ToTensor()])
+    norm_data = lambda y: (y-y.min())/(y.max()-y.min())
+
+    def __init__(self, feat_vec, energies, transform=base_transform, norm_target=False):
+        super(SAMConvDataset, self).__init__()
+
+        if type(feat_vec) is not np.ndarray or type(energies) is not np.ndarray:
+            raise ValueError("Error: Input feat vec and energies must be type numpy.ndarray") 
+
+        if type(transform) is not torchvision.transforms.Compose:
+            raise ValueError("Supplied transform with improper type ({})".format(type(transform)))
+
+        n_pts = energies.shape[0]
+        self.energies = energies.astype(np.float32).reshape(-1,1)
+
+        assert feat_vec.ndim == 3
+        self.feat_vec = feat_vec.astype(np.float32)
+
+        self.transform = transform
+        if norm_target:
+            self.energies = SAMDataset.norm_data(self.energies)
+
+    def __len__(self):
+        return len(self.feat_vec)
+
+    def __getitem__(self, index):
+        X = self.feat_vec[index]
+        y = self.energies[index]
+
+        X = torch.tensor(X).view(1, *self.feat_vec.shape[1:])
 
 
         return X, y
@@ -76,6 +117,15 @@ class ConvNet(nn.Module):
         self.fc1 = nn.Linear(7 * 7 * 64, 1000)
         self.fc2 = nn.Linear(1000, 10)
 
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = out.reshape(out.size(0), -1)
+        out = self.drop_out(out)
+        out = self.fc1(out)
+        out = self.fc2(out)
+        return out
+
 # Runs basic linear regression on our number of edges
 #   For testing 
 class TestSAMNet(nn.Module):
@@ -98,9 +148,9 @@ class TestSAMNet(nn.Module):
 
 # Simple vanilla NN taking all head group identities as input
 class SAMNet(nn.Module):
-    def __init__(self, n_hidden=50):
+    def __init__(self, n_hidden=50, n_patch_dim=8):
         super(SAMNet, self).__init__()
-        self.fc1 = nn.Linear(12*12, n_hidden)
+        self.fc1 = nn.Linear(n_patch_dim**2, n_hidden)
         self.fc2 = nn.Linear(n_hidden, 25)
         self.fc3 = nn.Linear(25, 1)
 
@@ -113,7 +163,33 @@ class SAMNet(nn.Module):
 
         return out
 
-def train(net, criterion, train_loader, test_loader, learning_rate=0.01, weight_decay=0, epochs=1000, log_interval=100):
+# Sam cnn
+class SAMConvNet(nn.Module):
+    def __init__(self, n_channels=12, kernel_size=4, n_patch_dim=8, n_hidden=100):
+        super(SAMConvNet, self).__init__()
+        l1_outdim = (n_patch_dim - kernel_size) + 1
+        l1_outdim_pool = (l1_outdim - 2)/2 + 1
+        assert l1_outdim == int(l1_outdim)
+        #assert l1_outdim_pool == int(l1_outdim_pool)
+        self.l1_outdim = int(l1_outdim)
+        self.l1_outdim_pool = int(l1_outdim_pool)
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(1, n_channels, kernel_size, stride=1, padding=0),
+            nn.ReLU())
+        self.drop_out = nn.Dropout()
+        self.fc1 = nn.Linear(self.l1_outdim * self.l1_outdim * n_channels, n_hidden)
+        self.fc2 = nn.Linear(n_hidden, 1)
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = out.reshape(out.size(0), -1)
+        out = self.drop_out(out)
+        out = self.fc1(out)
+        out = self.fc2(out)
+
+        return out
+
+def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate=0.01, weight_decay=0, epochs=1000, log_interval=100):
 
     # create a stochastic gradient descent optimizer
     optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -134,8 +210,10 @@ def train(net, criterion, train_loader, test_loader, learning_rate=0.01, weight_
         for batch_idx, (data, target) in enumerate(train_loader):
 
             data, target = Variable(data), Variable(target)
-            # resize data from (batch_size, 1, n_input_dim) to (batch_size, n_input_dim)  
-            data = data.view(-1, n_dim)
+            
+            if not do_cnn:
+                # resize data from (batch_size, 1, n_input_dim) to (batch_size, n_input_dim)  
+                data = data.view(-1, n_dim)
             
             net_out = net(data)
             
@@ -149,7 +227,8 @@ def train(net, criterion, train_loader, test_loader, learning_rate=0.01, weight_
             
             if epoch % log_interval == 0:
                 data_test, target_test = iter(test_loader).next()
-                data_test = data_test.view(-1, n_dim)
+                if not do_cnn:
+                    data_test = data_test.view(-1, n_dim)
                 test_out = net(data_test).detach()
 
                 test_loss = criterion(test_out, target_test).item()
