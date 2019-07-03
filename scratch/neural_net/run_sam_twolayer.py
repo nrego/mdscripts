@@ -10,7 +10,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 
-do_cnn = True
+do_cnn = False
+no_run = False
+
+def plot_pattern(pos_ext, patch_indices, methyl_mask):
+    pos = pos_ext[patch_indices]
+    plt.plot(pos_ext[:,0], pos_ext[:,1], 'bo')
+    plt.plot(pos[methyl_mask, 0], pos[methyl_mask, 1], 'ko')
+
+    plt.show()
+
 # Load in data (energies and methyl positions)
 def load_and_prep(fname='sam_pattern_data.dat.npz'):
     ds = np.load(fname)
@@ -33,6 +42,13 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
     d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
+    tree = cKDTree(pos_ext)
+    neighbors = tree.query_ball_tree(tree, r=0.51)
+
+    adj_mat = np.zeros((pos_ext.shape[0], pos_ext.shape[0]), dtype=np.uint8)
+    for i in range(pos_ext.shape[0]):
+        indices = np.array(neighbors[i])
+        adj_mat[i, indices] = 1
 
     # shape: (n_data_points, 12*12)
     feat_vec = np.zeros((n_data, 64), dtype=np.uint8) # might as well keep this shit small
@@ -42,7 +58,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
 
     f_mean = feat_vec.mean()
     f_std = feat_vec.std()
-    return feat_vec, energies
+    return feat_vec, energies, pos_ext, patch_indices, methyl_pos, adj_mat
     #return ((feat_vec-f_mean)/f_std, energies)
 
 def init_data_and_loaders(feat_vec, energies, batch_size, norm_target=False, do_cnn=False):
@@ -84,19 +100,23 @@ def partition_data(X, y, n_groups=1, batch_size=200, do_cnn=do_cnn):
 
         yield (train_loader, test_loader)
 
-feat_vec, energies = load_and_prep()
+feat_vec, energies, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
+pos = pos_ext[patch_indices]
 
-
-data_partition_gen = partition_data(feat_vec, energies, n_groups=7, batch_size=200, do_cnn=do_cnn)
+data_partition_gen = partition_data(feat_vec, energies, n_groups=7, batch_size=120, do_cnn=do_cnn)
 loader = init_data_and_loaders(feat_vec, energies, 200, False, do_cnn)
 dataset = loader.dataset
 mses = []
+
 for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
+    if no_run:
+        break
+
     if do_cnn:
-        net = SAMConvNet(kernel_size=2, n_hidden=100)
+        net = SAMConvNet(n_channels=12, kernel_size=5, n_hidden=32)
     else:
-        net = SAMNet(n_hidden=50)
+        net = SAM2LNet(n_hidden1=12, n_hidden2=12)
     # minimize MSE of predicted energies
     criterion = nn.MSELoss()    
 
@@ -120,4 +140,6 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
     mses.append(mse)
 
+    if i_round == 0:
+        break
     del net, criterion

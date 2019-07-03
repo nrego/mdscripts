@@ -148,11 +148,26 @@ class TestSAMNet(nn.Module):
 
 # Simple vanilla NN taking all head group identities as input
 class SAMNet(nn.Module):
-    def __init__(self, n_hidden=50, n_patch_dim=8):
+    def __init__(self, n_hidden=18, n_patch_dim=8):
         super(SAMNet, self).__init__()
         self.fc1 = nn.Linear(n_patch_dim**2, n_hidden)
-        self.fc2 = nn.Linear(n_hidden, 25)
-        self.fc3 = nn.Linear(25, 1)
+        self.fc2 = nn.Linear(n_hidden, 1)
+
+        self.drop_out = nn.Dropout()
+
+    def forward(self, x):
+        out = F.relu(self.fc1(x))
+        out = self.fc2(out)
+
+        return out
+
+# two layer net
+class SAM2LNet(nn.Module):
+    def __init__(self, n_hidden1=9, n_hidden2=18, n_patch_dim=8):
+        super(SAM2LNet, self).__init__()
+        self.fc1 = nn.Linear(n_patch_dim**2, n_hidden1)
+        self.fc2 = nn.Linear(n_hidden1, n_hidden2)
+        self.fc3 = nn.Linear(n_hidden2, 1)
 
         self.drop_out = nn.Dropout()
 
@@ -165,25 +180,26 @@ class SAMNet(nn.Module):
 
 # Sam cnn
 class SAMConvNet(nn.Module):
-    def __init__(self, n_channels=12, kernel_size=4, n_patch_dim=8, n_hidden=100):
+    def __init__(self, n_channels=4, kernel_size=3, n_patch_dim=8, n_hidden=18):
         super(SAMConvNet, self).__init__()
         l1_outdim = (n_patch_dim - kernel_size) + 1
         l1_outdim_pool = (l1_outdim - 2)/2 + 1
         assert l1_outdim == int(l1_outdim)
-        #assert l1_outdim_pool == int(l1_outdim_pool)
+        assert l1_outdim_pool == int(l1_outdim_pool)
         self.l1_outdim = int(l1_outdim)
         self.l1_outdim_pool = int(l1_outdim_pool)
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, n_channels, kernel_size, stride=1, padding=0),
-            nn.ReLU())
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2))
         self.drop_out = nn.Dropout()
-        self.fc1 = nn.Linear(self.l1_outdim * self.l1_outdim * n_channels, n_hidden)
+        self.fc1 = nn.Linear(self.l1_outdim_pool * self.l1_outdim_pool * n_channels, n_hidden)
         self.fc2 = nn.Linear(n_hidden, 1)
 
     def forward(self, x):
         out = self.layer1(x)
         out = out.reshape(out.size(0), -1)
-        out = self.drop_out(out)
+        #out = self.drop_out(out)
         out = self.fc1(out)
         out = self.fc2(out)
 

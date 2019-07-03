@@ -21,7 +21,7 @@ from sklearn import datasets, linear_model
 
 from scipy.integrate import cumtrapz
 
-from util import *
+from scratch.sam.util import *
 
 import itertools
 
@@ -100,7 +100,7 @@ feat_vec = np.dstack((k_eff_int_edge[:,0], k_eff_int_edge[:,2], k_eff_ext_edge[:
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
 
 norm = plt.Normalize(132, 287)
-cmap = cm.spectral
+cmap = cm.Spectral
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')
