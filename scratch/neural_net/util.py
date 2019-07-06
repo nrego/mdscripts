@@ -60,7 +60,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     for i in range(pos_ext.shape[0]):
         indices = np.array(neighbors[i])
         adj_mat[i, indices] = 1
-        #adj_mat[i,i] = 0
+        adj_mat[i,i] = 0
 
     # shape: (n_data_points, 12*12)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small

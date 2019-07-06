@@ -180,7 +180,7 @@ class SAM2LNet(nn.Module):
 
 # Sam gcn
 class SAMGraphNet(nn.Module):
-    def __init__(self, adj_mat, n_hidden1=64, n_hidden2=64):
+    def __init__(self, adj_mat, n_hidden1=64, n_hidden2=64, n_out=1):
         super(SAMGraphNet, self).__init__()
 
         n_patch_dim = adj_mat.shape[0]
@@ -197,7 +197,9 @@ class SAMGraphNet(nn.Module):
 
         self.l1 = nn.Linear(n_patch_dim, n_hidden1)
         self.l2 = nn.Linear(n_hidden1, n_hidden2)
-        self.o = nn.Linear(n_hidden1, 1)
+        self.o = nn.Linear(n_hidden1, n_out)
+
+        self.drop_out = nn.Dropout(p=0.1)
 
     def forward(self, x):
         # number of methyl neighbors for each position
@@ -207,6 +209,7 @@ class SAMGraphNet(nn.Module):
         out = F.relu(self.l1(neigh))
         #neigh = torch.matmul(out, self.norm_adj)
         #out = F.relu(self.l2(out))
+        #self.drop_out(out)
         out = self.o(out)
 
         return out
@@ -238,7 +241,7 @@ class SAMConvNet(nn.Module):
 
         return out
 
-def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate=0.01, weight_decay=0, epochs=1000, log_interval=100):
+def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate=0.01, weight_decay=0, epochs=1000, break_out=None, log_interval=100):
 
     # create a stochastic gradient descent optimizer
     optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -285,7 +288,7 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f})'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                            100. * batch_idx / len(train_loader), loss.item(), test_loss))
-                if test_loss < 10:
+                if break_out is not None and test_loss < break_out:
                     return losses
 
     return losses
