@@ -9,6 +9,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
+import pickle
+
+from matplotlib.colors import LinearSegmentedColormap
+
+colors = [(0,0,1), (0,0,0)]
+mymap = LinearSegmentedColormap.from_list('mymap', colors, N=100)
 
 do_cnn = False
 no_run = False
@@ -18,6 +24,10 @@ def plot_pattern(pos_ext, patch_indices, methyl_mask):
     plt.plot(pos_ext[:,0], pos_ext[:,1], 'bo')
     plt.plot(pos[methyl_mask, 0], pos[methyl_mask, 1], 'ko')
 
+    plt.show()
+
+def plot_from_feat(pos_ext, feat):
+    plt.scatter(pos_ext[:,0], pos_ext[:,1], c=feat, cmap=mymap, s=100)
     plt.show()
 
 # Load in data (energies and methyl positions)
@@ -37,7 +47,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
 
     # Total 12x12 hexagonal grid
     pos_ext = gen_pos_grid(8, z_offset=True, shift_y=-1, shift_z=-1)
-    pos_ext = positions.copy()
+    #pos_ext = positions.copy()
 
     # patch_idx is list of patch indices in pos_ext 
     #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
@@ -101,3 +111,11 @@ def partition_data(X, y, n_groups=1, batch_size=200, do_cnn=do_cnn):
 
 
         yield (train_loader, test_loader)
+
+def save_net(net, foutname='net.pkl'):
+    with open(foutname, 'wb') as fout:
+        pickle.dump(net, fout)
+
+def load_net(fname='net.pkl'):
+    with open(fname, 'rb') as fin:
+        return pickle.load(fin)

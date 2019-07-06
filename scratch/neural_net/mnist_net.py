@@ -206,7 +206,7 @@ class SAMGraphNet(nn.Module):
 
         out = F.relu(self.l1(neigh))
         #neigh = torch.matmul(out, self.norm_adj)
-        #out = F.relu(self.l2(neigh))
+        #out = F.relu(self.l2(out))
         out = self.o(out)
 
         return out
