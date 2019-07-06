@@ -11,13 +11,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 
-do_cnn = True
+
 no_run = False
 
 feat_vec, energies, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
 pos = pos_ext[patch_indices]
+adj_mat = adj_mat.astype(np.float32)
+node_deg = np.diag(adj_mat.sum(axis=0))
+mask = node_deg > 0
+d_inv = node_deg.copy()
+d_inv[mask] = node_deg[mask]**-1
 
-data_partition_gen = partition_data(feat_vec, energies, n_groups=7, batch_size=120, do_cnn=do_cnn)
+data_partition_gen = partition_data(feat_vec, energies, n_groups=5, batch_size=200, do_cnn=do_cnn)
 loader = init_data_and_loaders(feat_vec, energies, 200, False, do_cnn)
 dataset = loader.dataset
 mses = []
@@ -27,10 +32,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     if no_run:
         break
 
-    if do_cnn:
-        net = SAMConvNet(n_channels=12, kernel_size=5, n_hidden=32)
-    else:
-        net = SAM2LNet(n_hidden1=12, n_hidden2=12)
+    net = SAMGraphNet(adj_mat, n_hidden1=36)
     # minimize MSE of predicted energies
     criterion = nn.MSELoss()    
 
@@ -39,14 +41,13 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     print("\n")
 
     print("...Training")
-    losses = train(net, criterion, train_loader, test_loader,do_cnn, learning_rate=0.001, weight_decay=0.0, epochs=3000)
+    losses = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.005, weight_decay=0.0, epochs=5000)
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))
     test_X, test_y = iter(test_loader).next()
     # So there are no shenanigans with MSE
-    if not do_cnn:
-        test_X = test_X.view(-1, 8*8)
+    test_X = test_X.view(-1, test_X.shape[-1])
 
     pred = net(test_X).detach()
     mse = criterion(pred, test_y).item()

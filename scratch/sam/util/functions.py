@@ -231,8 +231,8 @@ def plot_annotate(positions, annotations, ax=None):
     ax.plot(positions[:,0], positions[:,1], 'o', markeredgecolor='k', markeredgewidth=2, markerfacecolor='w', markersize=24)
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    for idx in range(36):
-        ax.annotate(annotations[idx], xy=positions[idx]-0.025)
+    for idx, note in enumerate(annotations):
+        ax.annotate(note, xy=positions[idx]-0.025)
 
 def gen_w_graph(positions, methyl_mask, wt_mm=1, wt_oo=-1, wt_mo=-0.5):
     indices_all = np.arange(positions.shape[0])

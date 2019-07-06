@@ -178,6 +178,39 @@ class SAM2LNet(nn.Module):
 
         return out
 
+# Sam gcn
+class SAMGraphNet(nn.Module):
+    def __init__(self, adj_mat, n_hidden1=64, n_hidden2=64):
+        super(SAMGraphNet, self).__init__()
+
+        n_patch_dim = adj_mat.shape[0]
+        self.adj_mat = torch.tensor(adj_mat.astype(np.float32))
+        node_deg = np.diag(adj_mat.sum(axis=0)).astype(np.float32)
+        mask = node_deg > 0
+        d_inv = node_deg.copy()
+        d_inv[mask] = node_deg[mask]**-1
+        self.node_deg = torch.tensor(node_deg)
+        self.d_inv = torch.tensor(d_inv)
+
+        # Normalized adj mat
+        self.norm_adj = torch.matmul(self.adj_mat, self.d_inv)
+
+        self.l1 = nn.Linear(n_patch_dim, n_hidden1)
+        self.l2 = nn.Linear(n_hidden1, n_hidden2)
+        self.o = nn.Linear(n_hidden1, 1)
+
+    def forward(self, x):
+        # number of methyl neighbors for each position
+        # Shape: (n_data, 64)
+        neigh = torch.matmul(x, self.norm_adj)
+
+        out = F.relu(self.l1(neigh))
+        #neigh = torch.matmul(out, self.norm_adj)
+        #out = F.relu(self.l2(neigh))
+        out = self.o(out)
+
+        return out
+
 # Sam cnn
 class SAMConvNet(nn.Module):
     def __init__(self, n_channels=4, kernel_size=3, n_patch_dim=8, n_hidden=18):
@@ -252,7 +285,8 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f})'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                            100. * batch_idx / len(train_loader), loss.item(), test_loss))
-
+                if test_loss < 10:
+                    return losses
 
     return losses
 

@@ -46,7 +46,7 @@ def phiAnalyze(infiles, show, start, end, outfile, conv, S, myrange, nbins):
             var = ds.getVar(start=start, end=end, bphi=bphi)
             txtstr = "$\mu={:.3f}$\n$\sigma^2={:.3f}$\n$F={:.2f}$".format(mu, var, var/mu)
             #print(txtstr)
-            hist, bounds = np.histogram(np.array(ds.data[start:end]['$\~N$']), bins=50, normed=1)
+            hist, bounds = np.histogram(np.array(ds.data[start:end]['$\tilde{N}$']), bins=50, normed=1)
             ctrs = np.diff(bounds)/2.0 + bounds[:-1]
             pyplot.bar(ctrs, hist, width=np.diff(ctrs)[0])
             #pyplot.annotate(txtstr, xy=(0.2,0.75), xytext=(0.2, 0.75),
