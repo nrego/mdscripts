@@ -14,7 +14,7 @@ from torch import optim
 
 no_run = False
 
-feat_vec, energies, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
+feat_vec, energies, poly_5, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
 pos = pos_ext[patch_indices]
 adj_mat = adj_mat.astype(np.float32)
 node_deg = np.diag(adj_mat.sum(axis=0))
@@ -48,6 +48,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     test_X, test_y = iter(test_loader).next()
     # So there are no shenanigans with MSE
     test_X = test_X.view(-1, test_X.shape[-1])
+    test_y = test_y.view(-1, test_y.shape[-1])
 
     pred = net(test_X).detach()
     mse = criterion(pred, test_y).item()

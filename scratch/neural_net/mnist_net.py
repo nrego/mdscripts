@@ -14,32 +14,33 @@ class SAMDataset(data.Dataset):
     base_transform = transforms.Compose([transforms.ToTensor()])
     norm_data = lambda y: (y-y.min())/(y.max()-y.min())
 
-    def __init__(self, feat_vec, energies, transform=base_transform, norm_target=False):
+    def __init__(self, feat_vec, y, transform=base_transform, norm_target=False):
         super(SAMDataset, self).__init__()
 
-        if type(feat_vec) is not np.ndarray or type(energies) is not np.ndarray:
+        if type(feat_vec) is not np.ndarray or type(y) is not np.ndarray:
             raise ValueError("Error: Input feat vec and energies must be type numpy.ndarray") 
 
         if type(transform) is not torchvision.transforms.Compose:
             raise ValueError("Supplied transform with improper type ({})".format(type(transform)))
 
-        n_pts = energies.shape[0]
-        self.energies = energies.astype(np.float32).reshape(-1,1)
+        self.ydim = y.ndim
+        n_pts = y.shape[0]
+        
+        self.y = y.astype(np.float32).reshape(-1,1)
 
         assert feat_vec.ndim == 2
         self.feat_vec = feat_vec.astype(np.float32).reshape(n_pts, 1, -1)
 
         self.transform = transform
         if norm_target:
-            self.energies = SAMDataset.norm_data(self.energies)
+            self.y = SAMDataset.norm_data(self.y)
 
     def __len__(self):
         return len(self.feat_vec)
 
     def __getitem__(self, index):
         X = self.feat_vec[index]
-        y = self.energies[index]
-
+        y = self.y[index]
         X = self.transform(X).view(1,-1)
 
 
@@ -261,12 +262,9 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
     for epoch in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
 
-            data, target = Variable(data), Variable(target)
-            
             if not do_cnn:
                 # resize data from (batch_size, 1, n_input_dim) to (batch_size, n_input_dim)  
                 data = data.view(-1, n_dim)
-            
             net_out = net(data)
             
             loss = criterion(net_out, target)

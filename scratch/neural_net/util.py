@@ -42,6 +42,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     # details the methyl positions of each config
     # Shape: (n_data, 6x6)
     methyl_pos = ds['methyl_pos']
+    poly_5 = ds['poly_5']
 
     n_data = energies.size
 
@@ -70,15 +71,15 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
 
     f_mean = feat_vec.mean()
     f_std = feat_vec.std()
-    return feat_vec, energies, pos_ext, patch_indices, methyl_pos, adj_mat
+    return feat_vec, energies, poly_5, pos_ext, patch_indices, methyl_pos, adj_mat
     #return ((feat_vec-f_mean)/f_std, energies)
 
-def init_data_and_loaders(feat_vec, energies, batch_size, norm_target=False, do_cnn=False):
+def init_data_and_loaders(X, y, batch_size, norm_target=False, do_cnn=False):
     if do_cnn:
         feat_vec = feat_vec.reshape(-1, 8, 8)
-        dataset = SAMConvDataset(feat_vec, energies, norm_target=norm_target)
+        dataset = SAMConvDataset(X, y, norm_target=norm_target)
     else:
-        dataset = SAMDataset(feat_vec, energies, norm_target=norm_target)
+        dataset = SAMDataset(X, y, norm_target=norm_target)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     return loader
@@ -86,7 +87,7 @@ def init_data_and_loaders(feat_vec, energies, batch_size, norm_target=False, do_
 # Split data into N groups - N-1 will be used as training, and remaining as validation
 #   In the case of a remainder (likely), the last group will be smaller
 def partition_data(X, y, n_groups=1, batch_size=200, do_cnn=do_cnn):
-    n_dat = y.size
+    n_dat = y.shape[0]
     n_cohort = n_dat // n_groups
 
     # Randomize our data, and therefore our groups
@@ -100,10 +101,13 @@ def partition_data(X, y, n_groups=1, batch_size=200, do_cnn=do_cnn):
 
         y_validate = y_rand[slc]
         X_validate = X_rand[slc]
-        n_validate = y_validate.size
+        n_validate = y_validate.shape[0]
 
         # Get training samples. np.delete makes a copy and **does not** act on array in-place
-        y_train = np.delete(y_rand, slc)
+        if y_rand.ndim == 1:
+            y_train = np.delete(y_rand, slc, axis=0)
+        elif y_rand.ndim == 2:
+            y_train = np.delete(y_rand, slc, axis=0)
         X_train = np.delete(X_rand, slc, axis=0)
 
         train_loader = init_data_and_loaders(X_train, y_train, batch_size=batch_size, do_cnn=do_cnn)
