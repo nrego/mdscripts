@@ -26,7 +26,7 @@ class SAMDataset(data.Dataset):
         self.ydim = y.ndim
         n_pts = y.shape[0]
         
-        self.y = y.astype(np.float32).reshape(-1,1)
+        self.y = y.astype(np.float32).reshape(n_pts, -1)
 
         assert feat_vec.ndim == 2
         self.feat_vec = feat_vec.astype(np.float32).reshape(n_pts, 1, -1)
@@ -178,7 +178,6 @@ class SAM2LNet(nn.Module):
         out = self.fc3(out)
 
         return out
-
 # Sam gcn
 class SAMGraphNet(nn.Module):
     def __init__(self, adj_mat, n_hidden1=64, n_hidden2=64, n_out=1):
@@ -215,6 +214,44 @@ class SAMGraphNet(nn.Module):
 
         return out
 
+class SAMGraphNet3L(nn.Module):
+    def __init__(self, adj_mat, n_hidden=64, n_out=1):
+        super(SAMGraphNet3L, self).__init__()
+
+        n_patch_dim = adj_mat.shape[0]
+        self.adj_mat = torch.tensor(adj_mat.astype(np.float32))
+        node_deg = np.diag(adj_mat.sum(axis=0)).astype(np.float32)
+        mask = node_deg > 0
+        d_inv = node_deg.copy()
+        d_inv[mask] = node_deg[mask]**-1
+        self.node_deg = torch.tensor(node_deg)
+        self.d_inv = torch.tensor(d_inv)
+
+        # Normalized adj mat
+        self.norm_adj = torch.matmul(self.adj_mat, self.d_inv)
+
+        self.l1 = nn.Linear(n_patch_dim, n_hidden)
+        self.l2 = nn.Linear(n_hidden, n_hidden)
+        self.l3 = nn.Linear(n_hidden, n_hidden)
+        self.o = nn.Linear(n_hidden, n_out)
+
+        self.drop_out = nn.Dropout(p=0.1)
+
+    def forward(self, x):
+        # number of methyl neighbors for each position
+        # Shape: (n_data, 64)
+        neigh = torch.matmul(x, self.norm_adj)
+
+        out = F.relu(self.l1(neigh))
+        neigh = torch.matmul(out, self.norm_adj)
+        out = F.relu(self.l2(out))
+
+        out = F.relu(self.l3(out))
+        #self.drop_out(out)
+        out = self.o(out)
+
+        return out
+
 # Sam cnn
 class SAMConvNet(nn.Module):
     def __init__(self, n_channels=4, kernel_size=3, n_patch_dim=8, n_hidden=18):
@@ -242,7 +279,7 @@ class SAMConvNet(nn.Module):
 
         return out
 
-def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate=0.01, weight_decay=0, epochs=1000, break_out=None, log_interval=100):
+def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate=0.01, weight_decay=0, epochs=1000, break_out=None, log_interval=100, loss_fn=None, loss_fn_args=None):
 
     # create a stochastic gradient descent optimizer
     optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
@@ -267,7 +304,10 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
                 data = data.view(-1, n_dim)
             net_out = net(data)
             
-            loss = criterion(net_out, target)
+            if loss_fn is None:
+                loss = criterion(net_out, target)
+            else:
+                loss = loss_fn(net_out, target, criterion, *loss_fn_args)
             losses[batch_idx + epoch*n_batches] = loss.item()
 
             # Back prop

@@ -42,7 +42,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     # details the methyl positions of each config
     # Shape: (n_data, 6x6)
     methyl_pos = ds['methyl_pos']
-    poly_5 = ds['poly_5']
+    poly_4 = ds['poly_4']
 
     n_data = energies.size
 
@@ -71,7 +71,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
 
     f_mean = feat_vec.mean()
     f_std = feat_vec.std()
-    return feat_vec, energies, poly_5, pos_ext, patch_indices, methyl_pos, adj_mat
+    return feat_vec, energies, poly_4, pos_ext, patch_indices, methyl_pos, adj_mat
     #return ((feat_vec-f_mean)/f_std, energies)
 
 def init_data_and_loaders(X, y, batch_size, norm_target=False, do_cnn=False):
