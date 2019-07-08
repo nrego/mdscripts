@@ -43,12 +43,13 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     # Shape: (n_data, 6x6)
     methyl_pos = ds['methyl_pos']
     poly_4 = ds['poly_4']
+    poly_5 = ds['poly_5']
 
     n_data = energies.size
 
     # Total 12x12 hexagonal grid
     pos_ext = gen_pos_grid(8, z_offset=True, shift_y=-1, shift_z=-1)
-    #pos_ext = positions.copy()
+    pos_ext = positions.copy()
 
     # patch_idx is list of patch indices in pos_ext 
     #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)

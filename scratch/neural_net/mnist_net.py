@@ -180,7 +180,7 @@ class SAM2LNet(nn.Module):
         return out
 # Sam gcn
 class SAMGraphNet(nn.Module):
-    def __init__(self, adj_mat, n_hidden1=64, n_hidden2=64, n_out=1):
+    def __init__(self, adj_mat, n_hidden1=36, n_hidden2=36, n_out=1):
         super(SAMGraphNet, self).__init__()
 
         n_patch_dim = adj_mat.shape[0]
@@ -205,11 +205,7 @@ class SAMGraphNet(nn.Module):
         # number of methyl neighbors for each position
         # Shape: (n_data, 64)
         neigh = torch.matmul(x, self.norm_adj)
-
         out = F.relu(self.l1(neigh))
-        #neigh = torch.matmul(out, self.norm_adj)
-        #out = F.relu(self.l2(out))
-        #self.drop_out(out)
         out = self.o(out)
 
         return out
@@ -235,7 +231,7 @@ class SAMGraphNet3L(nn.Module):
         self.l3 = nn.Linear(n_hidden, n_hidden)
         self.o = nn.Linear(n_hidden, n_out)
 
-        self.drop_out = nn.Dropout(p=0.1)
+        self.drop_out = nn.Dropout(p=0.5)
 
     def forward(self, x):
         # number of methyl neighbors for each position
@@ -243,9 +239,10 @@ class SAMGraphNet3L(nn.Module):
         neigh = torch.matmul(x, self.norm_adj)
 
         out = F.relu(self.l1(neigh))
+        #self.drop_out(out)
         neigh = torch.matmul(out, self.norm_adj)
         out = F.relu(self.l2(out))
-
+        self.drop_out(out)
         out = F.relu(self.l3(out))
         #self.drop_out(out)
         out = self.o(out)
@@ -320,8 +317,11 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
                 if not do_cnn:
                     data_test = data_test.view(-1, n_dim)
                 test_out = net(data_test).detach()
+                if loss_fn is None:
+                    test_loss = criterion(test_out, target_test).item()
+                else:
+                    test_loss = loss_fn(test_out, target_test, criterion, *loss_fn_args)
 
-                test_loss = criterion(test_out, target_test).item()
 
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f})'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
