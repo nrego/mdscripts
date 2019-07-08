@@ -27,7 +27,10 @@ def plot_pattern(pos_ext, patch_indices, methyl_mask):
     plt.show()
 
 def plot_from_feat(pos_ext, feat):
-    plt.scatter(pos_ext[:,0], pos_ext[:,1], c=feat, cmap=mymap, s=100)
+    fig, ax = plt.subplots(figsize=(6,6))
+    ax.scatter(pos_ext[:,0], pos_ext[:,1], c=feat, cmap=mymap, s=400)
+    ax.set_xticks([])
+    ax.set_yticks([])
     plt.show()
 
 # Load in data (energies and methyl positions)
@@ -62,7 +65,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     for i in range(pos_ext.shape[0]):
         indices = np.array(neighbors[i])
         adj_mat[i, indices] = 1
-        adj_mat[i,i] = 0
+        #adj_mat[i,i] = 0
 
     # shape: (n_data_points, 12*12)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small

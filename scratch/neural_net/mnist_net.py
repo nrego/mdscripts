@@ -180,7 +180,7 @@ class SAM2LNet(nn.Module):
         return out
 # Sam gcn
 class SAMGraphNet(nn.Module):
-    def __init__(self, adj_mat, n_hidden1=36, n_hidden2=36, n_out=1):
+    def __init__(self, adj_mat, n_hidden=36, n_out=1):
         super(SAMGraphNet, self).__init__()
 
         n_patch_dim = adj_mat.shape[0]
@@ -194,24 +194,29 @@ class SAMGraphNet(nn.Module):
 
         # Normalized adj mat
         self.norm_adj = torch.matmul(self.adj_mat, self.d_inv)
+        self.l1 = nn.Linear(n_patch_dim, n_hidden)
+        self.l2 = nn.Linear(n_hidden, n_hidden)
+        self.o = nn.Linear(n_hidden, n_out)
 
-        self.l1 = nn.Linear(n_patch_dim, n_hidden1)
-        self.l2 = nn.Linear(n_hidden1, n_hidden2)
-        self.o = nn.Linear(n_hidden1, n_out)
+        self.weight = torch.rand(36)
 
-        self.drop_out = nn.Dropout(p=0.1)
+        self.drop_out = nn.Dropout(p=0.5)
 
     def forward(self, x):
         # number of methyl neighbors for each position
-        # Shape: (n_data, 64)
-        neigh = torch.matmul(x, self.norm_adj)
-        out = F.relu(self.l1(neigh))
+        # Shape: (n_data, 36)
+
+        #neigh = torch.matmul(x, self.norm_adj)
+        out = F.relu(self.l1(x))
+        self.drop_out(out)
+        #out = F.relu(self.l2(out))
+        #self.drop_out(out)
         out = self.o(out)
 
         return out
 
 class SAMGraphNet3L(nn.Module):
-    def __init__(self, adj_mat, n_hidden=64, n_out=1):
+    def __init__(self, adj_mat, n_hidden=36, n_out=1):
         super(SAMGraphNet3L, self).__init__()
 
         n_patch_dim = adj_mat.shape[0]
@@ -236,15 +241,15 @@ class SAMGraphNet3L(nn.Module):
     def forward(self, x):
         # number of methyl neighbors for each position
         # Shape: (n_data, 64)
-        neigh = torch.matmul(x, self.norm_adj)
+        #neigh = torch.matmul(x, self.norm_adj)
 
-        out = F.relu(self.l1(neigh))
-        #self.drop_out(out)
-        neigh = torch.matmul(out, self.norm_adj)
+        out = F.relu(self.l1(x))
+        self.drop_out(out)
+        #neigh = torch.matmul(out, self.norm_adj)
         out = F.relu(self.l2(out))
         self.drop_out(out)
         out = F.relu(self.l3(out))
-        #self.drop_out(out)
+        self.drop_out(out)
         out = self.o(out)
 
         return out
@@ -290,8 +295,11 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
 
     # total number of training steps
     n_steps = epochs * n_batches
-    losses = np.zeros(n_steps)
+    n_out_steps = epochs // log_interval
+    losses_train = np.zeros(n_steps)
+    losses_test = np.zeros_like(losses_train)
     # Training loop
+    idx = 0
 
     for epoch in range(epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
@@ -305,7 +313,7 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
                 loss = criterion(net_out, target)
             else:
                 loss = loss_fn(net_out, target, criterion, *loss_fn_args)
-            losses[batch_idx + epoch*n_batches] = loss.item()
+            #losses[batch_idx + epoch*n_batches] = loss.item()
 
             # Back prop
             optimizer.zero_grad()
@@ -322,13 +330,17 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
                 else:
                     test_loss = loss_fn(test_out, target_test, criterion, *loss_fn_args)
 
+                losses_train[idx] = loss.item()
+                losses_test[idx] = test_loss
+
+                idx += 1
 
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f})'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                            100. * batch_idx / len(train_loader), loss.item(), test_loss))
                 if break_out is not None and test_loss < break_out:
-                    return losses
+                    return losses_train, losses_test
 
-    return losses
+    return losses_train, losses_test
 
 

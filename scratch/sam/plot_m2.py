@@ -130,10 +130,10 @@ ax.plot(positions[~methyl_mask, 0], positions[~methyl_mask, 1], 'bo', markersize
 ax.plot(positions[methyl_mask, 0], positions[methyl_mask, 1], 'ko', markersize=20)
 
 for idx_i, idx_j in edges:
-    if idx_i in methyl_indices and idx_j in methyl_indices:
+    if idx_i in range(36) and idx_j in range(36):
         pos_i = positions[idx_i]
         pos_j = positions[idx_j]
-        ax.plot([pos_i[0], pos_j[0]], [pos_i[1], pos_j[1]], 'k-', linewidth=4)
+        ax.plot([pos_i[0], pos_j[0]], [pos_i[1], pos_j[1]], 'k-', linewidth=4, zorder=0)
 ax.set_xticks([])
 ax.set_yticks([])
 

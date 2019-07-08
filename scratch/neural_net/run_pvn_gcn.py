@@ -85,6 +85,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     outdim = 1 if y_vec.ndim == 1 else y_vec.shape[1]
 
     net = SAMGraphNet3L(adj_mat, n_hidden=36, n_out=outdim)
+    #net = SAMGraphNet(adj_mat, n_hidden=36, n_out=outdim)
     # minimize MSE of predicted energies
     criterion = nn.MSELoss()    
     #criterion = nn.NLLLoss()

@@ -32,7 +32,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     if no_run:
         break
 
-    net = SAMGraphNet(adj_mat, n_hidden1=36, n_hidden2=36)
+    net = SAMGraphNet(adj_mat, n_hidden=36)
     #net = SAMGraphNet3L(adj_mat, n_hidden=64)
     # minimize MSE of predicted energies
     criterion = nn.MSELoss()    
@@ -42,7 +42,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     print("\n")
 
     print("...Training")
-    losses = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.01, weight_decay=0.0, break_out=10, epochs=3000)
+    losses1 = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.01, weight_decay=0.0, break_out=15, epochs=3000)
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))
@@ -77,7 +77,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     print("\n")
 
     print("...Training")
-    losses = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.001, weight_decay=0.0, break_out=10, epochs=3000)
+    losses2 = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.001, weight_decay=0.0, break_out=8, epochs=4000)
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))
