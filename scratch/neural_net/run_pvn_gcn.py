@@ -84,7 +84,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
     outdim = 1 if y_vec.ndim == 1 else y_vec.shape[1]
 
-    net = SAMGraphNet3L(adj_mat, n_hidden=36, n_out=outdim)
+    net = SAMGraphNet3L(adj_mat, n_hidden=18, n_out=outdim)
     #net = SAMGraphNet(adj_mat, n_hidden=36, n_out=outdim)
     # minimize MSE of predicted energies
     criterion = nn.MSELoss()    
@@ -135,7 +135,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     print("\n")
 
     print("...Training")
-    losses = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.0001, weight_decay=0.0, epochs=3000, break_out=2.5, loss_fn=loss_poly, loss_fn_args=(p_min, p_range_mat))
+    losses = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.001, weight_decay=0.0, epochs=6000, break_out=3, loss_fn=loss_poly, loss_fn_args=(p_min, p_range_mat))
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))
@@ -150,8 +150,8 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
     mses.append(mse)
 
-    #if i_round == 0:
-    #    break
+    if i_round == len(data_partition_gen) - 1:
+        break
     del net, criterion
 
 #pred = net(torch.tensor(feat_vec)).detach()

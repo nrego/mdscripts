@@ -246,8 +246,8 @@ class SAMGraphNet3L(nn.Module):
         self.drop_out(out)
         out = F.relu(self.l2(out))
         self.drop_out(out)
-        #out = F.relu(self.l3(out))
-        #self.drop_out(out)
+        out = F.relu(self.l3(out))
+        self.drop_out(out)
         out = self.o(out)
 
         return out
@@ -278,12 +278,56 @@ class SAMConvNet(nn.Module):
         out = self.fc2(out)
 
         return out
+import numpy as np
+import torch
+
+class EarlyStopping:
+    """Early stops the training if validation loss doesn't improve after a given patience."""
+    def __init__(self, patience=300, verbose=False):
+        """
+        Args:
+            patience (int): How long to wait after last time validation loss improved.
+                            Default: 7
+            verbose (bool): If True, prints a message for each validation loss improvement. 
+                            Default: False
+        """
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+
+    def __call__(self, val_loss, model):
+
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score < self.best_score:
+            self.counter += 1
+            if self.verbose:
+                print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model):
+        '''Saves model when validation loss decrease.'''
+
+        print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), 'checkpoint.pt')
+        self.val_loss_min = val_loss
 
 def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate=0.01, weight_decay=0, epochs=1000, break_out=None, log_interval=100, loss_fn=None, loss_fn_args=None):
 
     # create a stochastic gradient descent optimizer
     optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
-
+    
     n_dim = train_loader.dataset[0][0].shape[1]
     # Total number of data points
     n_data = len(train_loader.dataset)
@@ -295,10 +339,13 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
     n_out_steps = epochs // log_interval
     losses_train = np.zeros(n_out_steps*n_batches)
     losses_test = np.zeros_like(losses_train)
+    
+    stopper = EarlyStopping(patience=200*n_batches)
     # Training loop
     idx = 0
 
     for epoch in range(epochs):
+
         for batch_idx, (data, target) in enumerate(train_loader):
 
             if not do_cnn:
@@ -316,27 +363,38 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            
+
+            ### VALIDATION ###
+            data_test, target_test = iter(test_loader).next()
+            if not do_cnn:
+                data_test = data_test.view(-1, n_dim)
+            test_out = net(data_test).detach()
+            if loss_fn is None:
+                test_loss = criterion(test_out, target_test).item()
+            else:
+                test_loss = loss_fn(test_out, target_test, criterion, *loss_fn_args)
+
+            stopper(test_loss, net)
+            if stopper.early_stop:
+                print("Breaking out of training loop")
+                return losses_train, losses_test
+
             if epoch % log_interval == 0:
-                data_test, target_test = iter(test_loader).next()
-                if not do_cnn:
-                    data_test = data_test.view(-1, n_dim)
-                test_out = net(data_test).detach()
-                if loss_fn is None:
-                    test_loss = criterion(test_out, target_test).item()
-                else:
-                    test_loss = loss_fn(test_out, target_test, criterion, *loss_fn_args)
 
                 losses_train[idx] = loss.item()
                 losses_test[idx] = test_loss
 
                 idx += 1
 
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f})'.format(
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f}) (diff: {:.6f})'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
-                           100. * batch_idx / len(train_loader), loss.item(), test_loss))
+                           100. * batch_idx / len(train_loader), loss.item(), test_loss, test_loss-loss.item()))
                 if break_out is not None and test_loss < break_out:
+                    print("test loss is lower than break out; breaking out of loop")
                     return losses_train, losses_test
+
+
+
 
     return losses_train, losses_test
 
