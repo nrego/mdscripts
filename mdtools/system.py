@@ -27,7 +27,6 @@ class MDSystem():
         heavy atom
     """
     def __init__(self, top, struct, sel_spec='segid targ', **kwargs):
-
         self.univ = MDAnalysis.Universe(top, struct)
         self.univ.add_TopologyAttr('tempfactor')
         for seg in self.univ.segments:

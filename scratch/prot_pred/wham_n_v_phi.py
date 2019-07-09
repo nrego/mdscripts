@@ -207,12 +207,14 @@ n_files = len(n_i_dat_fnames)
 phiout_0 = np.loadtxt('phi_000/phiout.dat')
 
 start_idx = 0
-
+# number of points in each window
+shift = all_data.shape[0] // n_files
+assert all_data.shape[0] % n_files == 0
 ## Gather n_i data from each umbrella window (phi value)
 for i in range(n_files):
     ## Need to grab every 10th data point (N_v, and weight)
-    this_slice =slice(start_idx, start_idx+25001, 10)
-    start_idx += 25001
+    this_slice = slice(start_idx, start_idx+shift, 10)
+    start_idx += shift
     new_data_subslice = all_data[this_slice]
     new_weight_subslice = all_logweights[this_slice]
 

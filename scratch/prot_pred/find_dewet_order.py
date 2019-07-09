@@ -33,7 +33,7 @@ mpl.rcParams.update({'legend.fontsize':20})
 
 ## Analyze composition of classified predictions
 
-parser = argparse.ArgumentParser('Find order of surface atom dewetting from predited contacts')
+parser = argparse.ArgumentParser('Find order of surface atom dewetting from predicted contacts')
 parser.add_argument('input', metavar='INPUT', type=str, nargs='+',
                     help='Input file names (list of pred_contact_mask.dat)')
 parser.add_argument('--buried-mask', required=True, type=str,

@@ -30,7 +30,8 @@ parser.add_argument('-nb', '--nburied', type=float, default=5,
                          'this many average water molecules')
 parser.add_argument('--sel-spec', type=str, default='segid targ',
                     help='selection spec for finding protein (all) atoms')
-
+parser.add_argument('--do-static', action='store_true', 
+                    help='Create static probe volume')
 
 args = parser.parse_args()
 
@@ -62,16 +63,29 @@ surf_atoms = sys.prot_h[surf_mask]
 
 print("Writing umbr.conf...")
 
-header_string = "; Umbrella potential for a spherical shell cavity\n"\
-"; Name    Type          Group  Kappa   Nstar    mu    width  cutoff  outfile    nstout\n"\
-"hydshell dyn_union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
+if args.do_static:
+    header_string = "; Umbrella potential for a spherical shell cavity\n"\
+    "; Name    Type          Group  Kappa   Nstar    mu    width  cutoff  outfile    nstout\n"\
+    "hydshell union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
 
-with open('umbr.conf', 'w') as fout:
-    fout = open('umbr.conf', 'w')
-    fout.write(header_string)
+    with open('umbr.conf', 'w') as fout:
+        fout = open('umbr.conf', 'w')
+        fout.write(header_string)
 
-    for atm in surf_atoms:
-        fout.write("{:<10.1f} {:<10.1f} {:d} \\\n".format(-0.5, 0.6, atm.index+1))
+        for atm in surf_atoms:
+            fout.write("{:<10.1f} {:<10.1f} {:<10.3f} {:<10.3f} {:<10.3f}\\\n".format(-0.5, 0.6, atm.position[0]/10.0, atm.position[1]/10.0, atm.position[2]/10.0))
+
+else:
+    header_string = "; Umbrella potential for a spherical shell cavity\n"\
+    "; Name    Type          Group  Kappa   Nstar    mu    width  cutoff  outfile    nstout\n"\
+    "hydshell dyn_union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
+
+    with open('umbr.conf', 'w') as fout:
+        fout = open('umbr.conf', 'w')
+        fout.write(header_string)
+
+        for atm in surf_atoms:
+            fout.write("{:<10.1f} {:<10.1f} {:d} \\\n".format(-0.5, 0.6, atm.index+1))
 
 print("...Done.")
 

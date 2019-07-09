@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 
 from IPython import embed
 from mdtools import MDSystem
-import cPickle as pickle
+import pickle
 import argparse
 
 parser = argparse.ArgumentParser('Find buried atoms, surface atoms (and mask), and dewetted atoms')
