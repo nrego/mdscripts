@@ -59,14 +59,15 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
     if i_round == 0:
         break
-    del net, criterion
+    #del net, criterion
 
+save_net(net)
 ## Round 2 - more refined
 for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
 
     if no_run:
         break
-
+    net = load_net()
     #net = SAMGraphNet(adj_mat, n_hidden1=36, n_hidden2=36)
     #net = SAMGraphNet3L(adj_mat, n_hidden=64)
     # minimize MSE of predicted energies
@@ -77,7 +78,7 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     print("\n")
 
     print("...Training")
-    losses2 = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.001, weight_decay=0.0, break_out=8, epochs=4000)
+    losses2 = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.001, weight_decay=0.0, break_out=8, epochs=3000)
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))

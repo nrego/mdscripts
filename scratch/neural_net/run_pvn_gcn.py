@@ -71,7 +71,7 @@ d_inv = node_deg.copy()
 d_inv[mask] = node_deg[mask]**-1
 
 
-data_partition_gen = partition_data(feat_vec, y_vec, n_groups=5, batch_size=200, do_cnn=do_cnn)
+data_partition_gen = list(partition_data(feat_vec, y_vec, n_groups=5, batch_size=200, do_cnn=do_cnn))
 loader = init_data_and_loaders(feat_vec, y_vec, 200, False, do_cnn)
 dataset = loader.dataset
 mses = []
@@ -108,17 +108,18 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     mse = criterion(pred, test_y).item()
     print("Validation MSE: {:.2f}".format(mse))
 
-    mses.append(mse)
+    #mses.append(mse)
 
     if i_round == 0:
         break
-    del net, criterion
 
+save_net(net)
 
+#data_partition_gen = partition_data(feat_vec, y_vec, n_groups=5, batch_size=200, do_cnn=do_cnn)
 ## Round 2 - train on mse between energies
 
 for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
-
+    net = load_net()
     if no_run:
         break
 
@@ -129,12 +130,12 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     criterion = nn.MSELoss()    
     #criterion = nn.NLLLoss()
 
-    print("Training/validation round {}".format(2))
+    print("Training/validation round {} of {}".format(i_round+1, len(data_partition_gen)))
     print("============================")
     print("\n")
 
     print("...Training")
-    losses = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.0001, weight_decay=0.0, epochs=5000, break_out=2.5, loss_fn=loss_poly, loss_fn_args=(p_min, p_range_mat))
+    losses = train(net, criterion, train_loader, test_loader, do_cnn, learning_rate=0.0001, weight_decay=0.0, epochs=3000, break_out=2.5, loss_fn=loss_poly, loss_fn_args=(p_min, p_range_mat))
     print("    DONE...")
     print("\n")
     print("...Testing round {}".format(i_round))
@@ -144,13 +145,13 @@ for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
     test_y = test_y.view(-1, test_y.shape[-1])
 
     pred = net(test_X).detach()
-    mse = criterion(pred, test_y).item()
+    mse = loss_poly(pred, test_y, criterion, p_min, p_range_mat).item()
     print("Validation MSE: {:.2f}".format(mse))
 
     mses.append(mse)
 
-    if i_round == 0:
-        break
+    #if i_round == 0:
+    #    break
     del net, criterion
 
 #pred = net(torch.tensor(feat_vec)).detach()

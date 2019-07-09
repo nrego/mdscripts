@@ -241,15 +241,13 @@ class SAMGraphNet3L(nn.Module):
     def forward(self, x):
         # number of methyl neighbors for each position
         # Shape: (n_data, 64)
-        #neigh = torch.matmul(x, self.norm_adj)
 
         out = F.relu(self.l1(x))
         self.drop_out(out)
-        #neigh = torch.matmul(out, self.norm_adj)
         out = F.relu(self.l2(out))
         self.drop_out(out)
-        out = F.relu(self.l3(out))
-        self.drop_out(out)
+        #out = F.relu(self.l3(out))
+        #self.drop_out(out)
         out = self.o(out)
 
         return out
@@ -292,11 +290,10 @@ def train(net, criterion, train_loader, test_loader, do_cnn=False, learning_rate
     # num training rounds per epoch 
     n_batches = len(train_loader)
     batch_size = train_loader.batch_size
-
     # total number of training steps
     n_steps = epochs * n_batches
     n_out_steps = epochs // log_interval
-    losses_train = np.zeros(n_steps)
+    losses_train = np.zeros(n_out_steps*n_batches)
     losses_test = np.zeros_like(losses_train)
     # Training loop
     idx = 0
