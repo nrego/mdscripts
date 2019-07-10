@@ -89,43 +89,6 @@ class SAMConvDataset(data.Dataset):
     def n_dim(self):
         return self.feat_vec.shape[-1]
 
-class MNISTNet(nn.Module):
-    def __init__(self):
-        super(MNISTNet, self).__init__()
-        self.fc1 = nn.Linear(28 * 28, 200)
-        self.fc2 = nn.Linear(200, 200)
-        self.fc3 = nn.Linear(200, 10)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-
-        return F.log_softmax(x)
-
-class ConvNet(nn.Module):
-    def __init__(self):
-        super(ConvNet, self).__init__()
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=5, stride=1, padding=2),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2))
-        self.layer2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2))
-        self.drop_out = nn.Dropout()
-        self.fc1 = nn.Linear(7 * 7 * 64, 1000)
-        self.fc2 = nn.Linear(1000, 10)
-
-    def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = out.reshape(out.size(0), -1)
-        out = self.drop_out(out)
-        out = self.fc1(out)
-        out = self.fc2(out)
-        return out
 
 # Runs basic linear regression on our number of edges
 #   For testing 
@@ -147,40 +110,9 @@ class TestSAMNet(nn.Module):
     def intercept_(self):
         return self.fc1.bias.item()
 
-# Simple vanilla NN taking all head group identities as input
-class SAMNet(nn.Module):
-    def __init__(self, n_hidden=18, n_patch_dim=8):
-        super(SAMNet, self).__init__()
-        self.fc1 = nn.Linear(n_patch_dim**2, n_hidden)
-        self.fc2 = nn.Linear(n_hidden, 1)
-
-        self.drop_out = nn.Dropout()
-
-    def forward(self, x):
-        out = F.relu(self.fc1(x))
-        out = self.fc2(out)
-
-        return out
-
-# two layer net
-class SAM2LNet(nn.Module):
-    def __init__(self, n_hidden1=9, n_hidden2=18, n_patch_dim=8):
-        super(SAM2LNet, self).__init__()
-        self.fc1 = nn.Linear(n_patch_dim**2, n_hidden1)
-        self.fc2 = nn.Linear(n_hidden1, n_hidden2)
-        self.fc3 = nn.Linear(n_hidden2, 1)
-
-        self.drop_out = nn.Dropout()
-
-    def forward(self, x):
-        out = F.relu(self.fc1(x))
-        out = F.relu(self.fc2(out))
-        out = self.fc3(out)
-
-        return out
-# Sam gcn
-class SAMGraphNet(nn.Module):
-    def __init__(self, adj_mat, n_hidden=36, n_out=1):
+# One hidden layer net
+class SAMNet1L(nn.Module):
+    def __init__(self, n_hidden=36, n_out=1):
         super(SAMGraphNet, self).__init__()
 
         n_patch_dim = adj_mat.shape[0]
@@ -307,7 +239,7 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
         elif score < self.best_score:
             self.counter += 1
-            if self.verbose:
+            if self.counter % 200 == 0:
                 print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
             if self.counter >= self.patience:
                 self.early_stop = True
@@ -318,8 +250,8 @@ class EarlyStopping:
 
     def save_checkpoint(self, val_loss, model):
         '''Saves model when validation loss decrease.'''
-
-        print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        if self.verbose:
+            print(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), 'checkpoint.pt')
         self.val_loss_min = val_loss
 
