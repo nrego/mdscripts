@@ -2,7 +2,7 @@ from __future__ import print_function, division; __metaclass__ = type
 
 import numpy as np
 import MDAnalysis
-from mdtools import dr
+from mdtools.datareader import dr
 
 from IPython import embed
 
