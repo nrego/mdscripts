@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
-from torch.utils import data
+from torch.utils.data import DataLoader
 import torchvision
 from torchvision import transforms
 from torch.autograd import Variable
@@ -56,12 +56,15 @@ class EarlyStopping:
 
 
 class Trainer:
-    def __init__(self, train_loader, test_loader, Optimizertype=optim.Adam, optim_kwargs=None, learning_rate=0.01, epochs=1000, n_patience=None, break_out=None, log_interval=100)
 
-        self.train_loader = train_loader
-        self.test_loader = test_loader
+    def __init__(self, train_dataset, test_dataset, batch_size=200, shuffle=True,
+                 Optimizertype=optim.Adam, optim_kwargs={}, learning_rate=0.001, 
+                 epochs=1000, n_patience=None, break_out=None, log_interval=100):
+
+        self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+        test_loader = DataLoader(test_dataset, batch_size=len(test_dataset))
+        self.test_X, self.test_y = iter(test_loader).next()
         self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
         self.epochs = epochs
         self.break_out = break_out
         self.log_interval = log_interval
@@ -69,9 +72,9 @@ class Trainer:
         self.stopper = None
         # n_patience is number of epochs to go over where test CV increases before breaking out to avoid overfitting
         if n_patience is not None:
-            self.stopper = EarlyStopping(patience=n_patience*len(train_loader))
+            self.stopper = EarlyStopping(patience=n_patience*len(self.train_loader))
 
-        if not issubclass(optimizertype, optim.Optimizer):
+        if not issubclass(Optimizertype, optim.Optimizer):
             raise ValueError("Supplied optimizer type ({}) is incorrect".format(optimizertype))
 
         self.Optimizertype = Optimizertype
@@ -107,69 +110,64 @@ class Trainer:
         return self.epochs * self.n_batches
 
 
-    
     # Train net based on some loss criterion
     #   Optionally supply function to transform net output before calculating loss
-    def train(self, net, criterion, loss_fn=None, loss_fn_args=None):
+    def __call__(self, net, criterion, loss_fn=None, loss_fn_kwargs={}):
 
         optimizer = self.Optimizertype(net.parameters(), lr=self.learning_rate, **self.optim_kwargs)
         
         # Initialize losses - save loss after each training batch
         self.losses_train = np.zeros(self.n_steps)
-        self.losses_test = np.zeros_like(losses_train)
+        self.losses_train[:] = np.inf
+        self.losses_test = np.zeros_like(self.losses_train)
+        self.losses_test[:] = np.inf
         
-        idx = 0
+        for epoch in range(self.epochs):
 
-        for epoch in range(epochs):
-
-            for batch_idx, (data, target) in enumerate(train_loader):
-
-                if not do_cnn:
-                    # resize data from (batch_size, 1, n_input_dim) to (batch_size, n_input_dim)  
-                    data = data.view(-1, n_dim)
-                net_out = net(data)
+            for batch_idx, (train_X, train_y) in enumerate(self.train_loader):
+                idx = epoch*self.n_batches + batch_idx
+                ### TRAIN THIS BATCH ###
+                net_out = net(train_X)
                 
                 if loss_fn is None:
-                    loss = criterion(net_out, target)
+                    train_loss = criterion(net_out, train_y)
                 else:
-                    loss = loss_fn(net_out, target, criterion, *loss_fn_args)
-                #losses[batch_idx + epoch*n_batches] = loss.item()
+                    train_loss = loss_fn(net_out, train_y, criterion, **loss_fn_kwargs)
+                self.losses_train[idx] = train_loss.item()
 
                 # Back prop
                 optimizer.zero_grad()
-                loss.backward()
+                train_loss.backward()
                 optimizer.step()
 
                 ### VALIDATION ###
-                data_test, target_test = iter(test_loader).next()
-                if not do_cnn:
-                    data_test = data_test.view(-1, n_dim)
-                test_out = net(data_test).detach()
+                test_out = net(self.test_X).detach()
                 if loss_fn is None:
-                    test_loss = criterion(test_out, target_test).item()
+                    test_loss = criterion(test_out, self.test_y).item()
                 else:
-                    test_loss = loss_fn(test_out, target_test, criterion, *loss_fn_args)
+                    test_loss = loss_fn(test_out, self.test_y, criterion, **loss_fn_kwargs)
 
-                stopper(test_loss, net)
-                if stopper.early_stop:
-                    print("Breaking out of training loop")
-                    return losses_train, losses_test
+                self.losses_test[idx] = test_loss
 
-                if epoch % log_interval == 0:
+                if self.stopper is not None:
+                    self.stopper(test_loss, net)
 
-                    losses_train[idx] = loss.item()
-                    losses_test[idx] = test_loss
+                    if self.stopper.early_stop:
+                        print("Breaking out of training loop")
+                        return 
 
-                    idx += 1
-
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f} (valid: {:.6f}) (diff: {:.6f})'.format(
-                        epoch, batch_idx * len(data), len(train_loader.dataset),
-                               100. * batch_idx / len(train_loader), loss.item(), test_loss, test_loss-loss.item()))
-                    if break_out is not None and test_loss < break_out:
+                if epoch % self.log_interval == 0:
+                    outstr = 'Train Epoch: {} '\
+                             '[{}/{} ({:0.0f}%)]'\
+                             '    Loss: {:0.6f}'\
+                             '  (valid: {:0.6f})'.format(epoch, batch_idx * len(train_y), self.n_data, 
+                                                         100*batch_idx/self.n_batches, train_loss.item(), test_loss)
+                    print(outstr)
+                    if self.break_out is not None and test_loss < self.break_out:
                         print("test loss is lower than break out; breaking out of loop")
-                        return losses_train, losses_test
+                        return 
 
 
-        return losses_train, losses_test
+        return 
 
 

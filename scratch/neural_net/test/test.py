@@ -106,4 +106,18 @@ def test_SAMdatasetND():
     np.testing.assert_array_almost_equal(norm_poly.astype(np.float32), y)
 
 
+def test_Trainer():
+    partition = partition_data(feat_vec, energies, n_groups=5)
+    X_train, y_train, X_test, y_test = next(partition)
+
+    train_dataset = SAMDataset(X_train, y_train)
+    test_dataset = SAMDataset(X_test, y_test)
+
+    trainer = Trainer(train_dataset, test_dataset, batch_size=200, epochs=10, learning_rate=0.01, n_patience=100)
+
+    net = SAMNet(n_hidden=18, n_layers=2, dropout=0)
+    criterion = torch.nn.MSELoss()
+
+    trainer(net, criterion)
+
 

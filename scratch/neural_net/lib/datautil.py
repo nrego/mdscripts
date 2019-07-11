@@ -103,7 +103,7 @@ class SAMConvDataset(data.Dataset):
 
 # Split SAM dataset into N random, equally sized groups - N-1 will be used as training, and remaining as validation
 #   In the case of a remainder, the remainder is cut off.
-def partition_data(X, y, n_groups=1, batch_size=200):
+def partition_data(X, y, n_groups=1):
     n_dat = y.shape[0]
     # Number of samples in each group
     n_cohort = n_dat // n_groups
