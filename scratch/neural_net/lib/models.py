@@ -46,16 +46,13 @@ class SAMNet(nn.Module):
                 L = nn.Linear(n_hidden, n_hidden)
             layers.append(L)
             layers.append(nn.ReLU())
-            #layers.append(nn.Dropout(p=dropout))
 
         self.layers = nn.Sequential(*layers)
         self.o = nn.Linear(n_hidden, n_out)
-        self.drop_out = nn.Dropout(p=dropout)
 
     def forward(self, x):
 
         out = self.layers(x)
-        out = self.drop_out(out)
         out = self.o(out)
 
         return out
@@ -63,5 +60,6 @@ class SAMNet(nn.Module):
     @property
     def n_layers(self):
         return len(self.layers)
+
 
 
