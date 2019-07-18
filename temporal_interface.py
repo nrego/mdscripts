@@ -123,15 +123,15 @@ class TemporalInterfaceSubcommand(Subcommand):
 
     @property
     def x_len(self):
-        return self.x_bounds.size
+        return self.x_bounds.size - 1
 
     @property
     def y_len(self):
-        return self.y_bounds.size
+        return self.y_bounds.size - 1
 
     @property
     def z_len(self):
-        return self.z_bounds.size
+        return self.z_bounds.size - 1
     
     @property
     def n_pts_total(self):
@@ -279,7 +279,7 @@ class TemporalInterfaceSubcommand(Subcommand):
             log.warning('No voxels included! Skipping PDB output.')
             return
         # Do we want to store this in memory instead?
-        xx, yy, zz = np.meshgrid(self.x_bounds, self.y_bounds, self.z_bounds, indexing='ij')
+        xx, yy, zz = np.meshgrid(self.x_bounds[:-1], self.y_bounds[:-1], self.z_bounds[:-1], indexing='ij')
         gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T
         gridpts += 0.5*self.gridpt_resolution
         gridpts = gridpts[self.gridpt_mask]
@@ -408,10 +408,12 @@ command
         self.y_bounds = np.arange(self.origin[1], box[1]+self.gridpt_resolution, self.gridpt_resolution)
         self.z_bounds = np.arange(self.origin[2], box[2]+self.gridpt_resolution, self.gridpt_resolution)
 
+        assert self.x_len == self.y_len == self.z_len == n_grids
+
         # gridpts array shape: (n_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
-        xx, yy, zz = np.meshgrid(self.x_bounds, self.y_bounds, self.z_bounds, indexing='ij')
+        xx, yy, zz = np.meshgrid(self.x_bounds[:-1], self.y_bounds[:-1], self.z_bounds[:-1], indexing='ij')
         gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T
         gridpts += 0.5*self.gridpt_resolution
         tree = cKDTree(gridpts)

@@ -12,7 +12,7 @@ from skimage import measure
 #from IPython import embed
 
 def extractInt(string):
-    return map(int, re.findall(r"[-+]?\d*\.\d+|\d+", string))
+    return list(map(int, re.findall(r"[-+]?\d*\.\d+|\d+", string)))
 
 # Attempt to intialize from .dx file
 def from_dx(infile):
@@ -21,27 +21,33 @@ def from_dx(infile):
 
         # ngrids
         lines = fin.readlines()
-        ngrids = np.array(extractInt(lines[0])[-3:])
+
+        origin = np.array(lines[2].split()[1:]).astype(float)
+
+        ngrids = np.zeros(3, dtype=int)
+        dgrid = np.zeros(3)
+
+        ngrids[0] = int(lines[3].split()[0])
+        dgrid[0] = float(lines[3].split()[1])
+        ngrids[1] = int(lines[4].split()[0])
+        dgrid[1] = float(lines[4].split()[2])
+        ngrids[2] = float(lines[5].split()[0])
+        dgrid[2] = float(lines[5].split()[3])
+
         npts = ngrids.prod()
 
-        origin = np.array(lines[1].split()[1:]).astype(float)
-        dgrid = np.zeros(3)
-        dgrid[0] = float(lines[2].split()[1])
-        dgrid[1] = float(lines[3].split()[2])
-        dgrid[2] = float(lines[4].split()[3])
+        box = ((ngrids) * dgrid) + origin + dgrid
 
-        xpts = np.arange(origin[0], ngrids[0], dgrid[0])
-        ypts = np.arange(origin[1], ngrids[1], dgrid[1])
-        zpts = np.arange(origin[2], ngrids[2], dgrid[2])
+        xpts = np.arange(origin[0], box[0], dgrid[0]) 
+        ypts = np.arange(origin[1], box[1], dgrid[1])
+        zpts = np.arange(origin[2], box[2], dgrid[2])
 
-        box = (ngrids * dgrid) - 1
+        xx, yy, zz = np.meshgrid(xpts[:-1], ypts[:-1], zpts[:-1], indexing='ij')
+        gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T + 0.5*dgrid
 
-        gridpts = cartesian([xpts,ypts,zpts])
-
-        lines = lines[7:]
         rho = np.zeros((npts), dtype=np.float32)
         curr_idx = 0
-        for line in lines:
+        for line in lines[7:]:
             parts = line.split()
             rho[curr_idx:curr_idx+len(parts)] = parts
             curr_idx += len(parts)
