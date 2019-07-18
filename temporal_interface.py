@@ -9,7 +9,7 @@ import argparse
 from argparse import ArgumentTypeError
 import logging
 
-import cPickle as pickle
+import pickle
 
 
 import MDAnalysis
@@ -26,7 +26,7 @@ from mdtools import ParallelTool, Subcommand
 
 from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 
-from fieldwriter import RhoField
+from mdtools.fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.temporal_interface')
 
@@ -103,6 +103,7 @@ class TemporalInterfaceSubcommand(Subcommand):
         #                i += 1
         self.gridpt_mask = None
         self._gridpt_mask_assign = None
+        self.gridpt_resolution = None
 
         # shape (n_included_gridpts, ) of floats. Average reference water 'densities' for each voxel
         #    Initialized as array of 1's for Init, or from reference vals for Anal
@@ -184,7 +185,7 @@ class TemporalInterfaceSubcommand(Subcommand):
         try:
             self.univ = u = MDAnalysis.Universe(args.grofile, args.trajfile)
         except:
-            print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
+            print("Error processing input files: {} and {}".format(args.grofile, args.trajfile))
             sys.exit()
 
         assert np.array_equal(self.univ.dimensions[3:], np.array([90.,90.,90.])), "not a cubic box!"
@@ -244,7 +245,7 @@ class TemporalInterfaceSubcommand(Subcommand):
         self._get_rho_avg()
 
     def _get_rho_avg(self):
-
+        
         self.rho_avg = self.rho.mean(axis=0)
         log.info("total : {}".format(self.rho_avg.sum()))
 
@@ -278,7 +279,9 @@ class TemporalInterfaceSubcommand(Subcommand):
             log.warning('No voxels included! Skipping PDB output.')
             return
         # Do we want to store this in memory instead?
-        gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds]) + 0.5
+        xx, yy, zz = np.meshgrid(self.x_bounds, self.y_bounds, self.z_bounds, indexing='ij')
+        gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T
+        gridpts += 0.5*self.gridpt_resolution
         gridpts = gridpts[self.gridpt_mask]
 
         log.info("outputing data for {} voxels".format(self.n_pts_included))
@@ -300,7 +303,7 @@ class TemporalInterfaceSubcommand(Subcommand):
             f.write(gridpts, top, bfactors=tempfactors)
 
         # Do it again with the absolute rho values (rho_avg instead of rho_avg_norm)
-        tempfactors = self.rho_avg * 100
+        tempfactors = self.rho_avg 
         with mdtraj.formats.PDBTrajectoryFile('{}_avg.pdb'.format(self.outpdb), 'w') as f:
             f.write(gridpts, top, bfactors=tempfactors)
 
@@ -344,8 +347,9 @@ command
     def __init__(self, parent):
         super(TemporalInterfaceInitSubcommand,self).__init__(parent)
 
-        self.grid_resolution = None
         self.init_out = None
+        self.n_grid_init = None
+        self.origin = None
 
     def add_args(self, parser):
         group = parser.add_argument_group('Grid initialization options')
@@ -355,27 +359,41 @@ command
                             help='minimum distance (in A), from solute, for which to select voxels to calculate density for. Default 0 A. Sets normalized density to 1.0 for any voxels closer than this distance to the solute')
         group.add_argument('--grid-resolution', type=float, default=1.0,
                             help='Grid resolution (in A). Will construct initial grid in order to completely fill first frame box with an integral number of voxels')
+        group.add_argument('--origin', type=str,
+                            help='if specified, shift origin (format should be a string of three floats, separated by spaces)')
+        group.add_argument('--ngrids', type=int,
+                            help='If specified, set up this many grid points')
         ogroup = parser.add_argument_group('Initialization-specific output')
         ogroup.add_argument('--init-data-out', type=str, default='init_data.pkl',
                             help='Location to output initialized results for use by \'anal\'')
 
     def process_args(self, args):
-        self.grid_resolution = args.grid_resolution
+        self.gridpt_resolution = args.grid_resolution
         self.min_water_dist = args.min_water_dist
         self.max_water_dist = args.max_water_dist
         self.init_out = args.init_data_out
+        self.n_grid_init = args.ngrids
+        if args.origin is not None:
+            self.origin = np.array([float(coord) for coord in args.origin.split()])
+        else:
+            self.origin = np.array([0.,0.,0.])
+
 
     def setup_grid(self):
         
         n_atoms = self.univ.coord.n_atoms
-        box = np.ceil(self.univ.dimensions[:3])
 
-        # Set up marching cube stuff - grids in Angstroms
-        #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
-        n_grids = (box / self.grid_resolution).astype(int)+1
+        if self.n_grid_init is not None:
+            n_grids = self.n_grid_init
+            box = n_grids * self.gridpt_resolution + self.origin
+        else:
+            # Set up marching cube stuff - grids in Angstroms
+            #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
+            n_grids = (box / self.gridpt_resolution).astype(int)+1
+            box = np.ceil(self.univ.dimensions[:3])
+            log.info("Initializing grid from initial frame")
+            log.info("Box: {}".format(box))
 
-        log.info("Initializing grid from initial frame")
-        log.info("Box: {}".format(box))
         log.info("Ngrids: {}".format(n_grids))
 
         # Construct 'gridpts' array, over which we will perform
@@ -386,15 +404,16 @@ command
         #    within a distance (opp edge +- cutoff)
         #  I use an index mapping array to (a many-to-one mapping of gridpoint to actual box point)
         #     to retrieve appropriate real point indices
-        self.x_bounds = np.linspace(0,box[0],n_grids[0])
-        self.y_bounds = np.linspace(0,box[1],n_grids[1])
-        self.z_bounds = np.linspace(0,box[2],n_grids[2])
+        self.x_bounds = np.arange(self.origin[0], box[0]+self.gridpt_resolution, self.gridpt_resolution)
+        self.y_bounds = np.arange(self.origin[1], box[1]+self.gridpt_resolution, self.gridpt_resolution)
+        self.z_bounds = np.arange(self.origin[2], box[2]+self.gridpt_resolution, self.gridpt_resolution)
 
         # gridpts array shape: (n_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
-        gridpts = cartesian([self.x_bounds, self.y_bounds, self.z_bounds])
-        gridpts += 0.5
+        xx, yy, zz = np.meshgrid(self.x_bounds, self.y_bounds, self.z_bounds, indexing='ij')
+        gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T
+        gridpts += 0.5*self.gridpt_resolution
         tree = cKDTree(gridpts)
 
         # Exclude all gridpoints less than min_dist to protein and more than max dist from prot
@@ -454,9 +473,8 @@ command
 
 
         ## output some pickling stuff ##
-        output_payload = (self.x_bounds, self.y_bounds, self.z_bounds, self.gridpt_mask, self.rho_avg, self.water_dist_cutoff)
-        with open(self.init_out, 'w') as pickle_outfile:
-            pickle.dump(output_payload, pickle_outfile)
+        
+        np.savez_compressed(self.init_out, x_bounds=self.x_bounds, y_bounds=self.y_bounds, z_bounds=self.z_bounds, gridpt_mask=self.gridpt_mask, gridpt_resolution=self.gridpt_resolution)
 
         self.do_pdb_output()
 
@@ -465,7 +483,7 @@ class TemporalInterfaceAnalSubcommand(TemporalInterfaceSubcommand):
     subcommand='anal'
     help_text=''
     description = '''\
-'Anal' is for analysis, not anal sex. Run time-averaged interace analysis on trajectory. Load pre-initialized voxel grid definitions and reference rho values for each voxel,
+Run time-averaged interace analysis on trajectory. Load pre-initialized voxel grid definitions and reference rho values for each voxel,
 And then calculates average rho and normalized rho values for input data trajectory
     '''
 
@@ -474,24 +492,32 @@ And then calculates average rho and normalized rho values for input data traject
 
         # pickled file output by 'Init'
         self.init_data = None
+        self.rho_not = None
 
     def add_args(self, parser):
         igroup = parser.add_argument_group('Anal-specific input options')
         igroup.add_argument('--init-data', type=str, default='init_data.pkl',
                             help='Filename of grid information outputted by \'init\'')
+        igroup.add_argument('--rho-data', type=str, default='rho_avg.dat',
+                            help='Value with which to normalize each voxel')
 
     def process_args(self, args):
         self.init_data = args.init_data
+        self.rho_water_ref = np.loadtxt(args.rho_data)
 
     def setup_grid(self):
 
         log.info('Loading data from initfile {}...'.format(self.init_data))
         
         try:
-            with open(self.init_data, 'r') as init_datafile:
-                init_dump = pickle.load(init_datafile)
-
-                self.x_bounds, self.y_bounds, self.z_bounds, self.gridpt_mask, self.rho_water_ref, self.max_water_dist = init_dump
+            init_dump = np.load(self.init_data)
+                
+            self.x_bounds = init_dump['x_bounds']
+            self.y_bounds = init_dump['y_bounds']
+            self.z_bounds = init_dump['z_bounds']
+            self.gridpt_mask = init_dump['gridpt_mask']
+            self.gridpt_resolution = init_dump['gridpt_resolution']
+            self.max_water_dist = init_dump
 
         except:
             log.error('Could not load input file')
@@ -519,7 +545,7 @@ iteration in the trajectory)
     def add_args(self, parser):
         subparsers = parser.add_subparsers(title=self.subparsers_title)
 
-        for instance in self._avail_subcommand.itervalues():
+        for instance in self._avail_subcommand.values():
             instance.add_subparser(subparsers)
 
     def process_args(self, args):
