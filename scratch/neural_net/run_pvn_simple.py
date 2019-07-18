@@ -83,49 +83,51 @@ Parameters:
     # Position of patch indices (only different if we're using an extended grid)
     pos = pos_ext[patch_indices]
 
-
-    net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=5)
-
-    train_dataset = SAMDataset(feat_vec, poly, norm_target=True, y_min=p_min, y_max=p_max)
-    test_dataset = SAMDataset(feat_vec, poly, norm_target=True, y_min=p_min, y_max=p_max)
-    
-    ## Round 1 - train on normalized coefficients
-    trainer = Trainer(train_dataset, test_dataset, batch_size=args.batch_size, 
-                      learning_rate=args.learning_rate, epochs=args.n_epochs_first)
-    
-    criterion = torch.nn.MSELoss()
-    trainer(net, criterion)
-    del trainer
-
-    print('''\nDone with initial training
-               ==========================\n''')
-
-    ## Round 2 - refinement
-    data_partitions = partition_data(feat_vec, poly, n_groups=args.n_valid)
     mses = np.zeros(args.n_valid)
+    criterion = nn.MSELoss()
+    data_partitions = partition_data(feat_vec, poly, n_groups=args.n_valid)
+
     for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
+        
         print("\nCV ROUND {} of {}\n".format(i_round+1, args.n_valid))
+        
+        net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=5, drop_out=args.drop_out)
+
 
         train_dataset = SAMDataset(train_X, train_y, norm_target=True, y_min=p_min, y_max=p_max)
         test_dataset = SAMDataset(test_X, test_y, norm_target=True, y_min=p_min, y_max=p_max)
 
+        ## Round 1 - just on coefficients
+        trainer = Trainer(train_dataset, test_dataset, batch_size=args.batch_size,
+                          learning_rate=args.learning_rate, epochs=args.n_epochs_first)
+        trainer(net, criterion)
+        
+        del trainer
+
+        print("\nFinished initial\n")
+        print("\nBegin training\n")
+
+        ## Round 2 - On full F_v(N) 
         trainer = Trainer(train_dataset, test_dataset, batch_size=args.batch_size, 
                           learning_rate=args.learning_rate, epochs=args.n_epochs_refinement,
-                          n_patience=args.n_patience)
+                          n_patience=args.n_patience, break_out=args.break_out)
 
         loss_fn_kwargs = {'p_min': p_min,
                           'p_range_mat': p_range_mat,
                           'xvals': xvals}
 
         trainer(net, criterion, loss_fn=loss_poly, loss_fn_kwargs=loss_fn_kwargs)
-
+        net.eval()
         pred = net(trainer.test_X).detach()
+        net.train()
+        
         test_loss = loss_poly(pred, trainer.test_y, criterion, **loss_fn_kwargs)
         print("\n")
         print("Final CV: {:.2f}\n".format(test_loss))
         mses[i_round] = test_loss
 
     print("\n\nFinal average MSE: {:.2f}".format(mses.mean()))
+    embed()
 
 if __name__ == "__main__":
 
@@ -139,16 +141,21 @@ if __name__ == "__main__":
                         help="Number of partitions for cross-validation (Default: split data into %(default)s groups")
     parser.add_argument("--learning-rate", type=float, default=0.001,
                         help="Learning rate for training (Default: %(default)s)")
-    parser.add_argument("--n-epochs-first", type=int, default=1000,
+    parser.add_argument("--drop-out", type=float, default=0.0,
+                        help="Drop-out rate for each layer (Default: %(default)s)")
+    parser.add_argument("--n-epochs-first", type=int, default=500,
                         help="Number of epochs for initial training to coefficients (Default: %(default)s)")
     parser.add_argument("--n-epochs-refinement", type=int, default=3000,
                         help="Maximum number of epochs for refinement training to F_v (Default: %(default)s)")
     parser.add_argument("--n-patience", type=int, default=None,
                         help="Maximum number of epochs to tolerate where CV performance decreases before breaking out of training."\
                              "Default: No break-out.")
-    parser.add_argument('--n-layers', type=int, default=3,
+    parser.add_argument("--break-out", type=float, default=None,
+                        help="Break out of training if CV MSE falls below this value."\
+                             "Default: No break-out.")
+    parser.add_argument("--n-layers", type=int, default=3,
                         help="Number of hidden layers. (Default: %(default)s)")
-    parser.add_argument('--n-hidden', type=int, default=18,
+    parser.add_argument("--n-hidden", type=int, default=18,
                         help="Number of nodes in each hidden layer. (Default: %(default)s)")
 
     args = parser.parse_args()

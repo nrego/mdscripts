@@ -127,6 +127,7 @@ class Trainer:
             for batch_idx, (train_X, train_y) in enumerate(self.train_loader):
                 idx = epoch*self.n_batches + batch_idx
                 ### TRAIN THIS BATCH ###
+
                 net_out = net(train_X)
                 
                 if loss_fn is None:
@@ -139,6 +140,7 @@ class Trainer:
                 optimizer.zero_grad()
                 train_loss.backward()
                 optimizer.step()
+                optimizer.zero_grad()
 
                 ### VALIDATION ###
                 test_out = net(self.test_X).detach()
@@ -148,6 +150,12 @@ class Trainer:
                     test_loss = loss_fn(test_out, self.test_y, criterion, **loss_fn_kwargs)
 
                 self.losses_test[idx] = test_loss
+                
+                ## Optionally break out of training
+                if self.break_out is not None and test_loss < self.break_out:
+                    blah = net(self.test_X).detach()
+                    print("test loss ({:.2f}) is lower than break out ({:.2f}); breaking out of loop".format(test_loss, self.break_out))
+                    return 
 
                 if self.stopper is not None:
                     self.stopper(test_loss, net)
@@ -163,9 +171,6 @@ class Trainer:
                              '  (valid: {:0.6f})'.format(epoch, batch_idx * len(train_y), self.n_data, 
                                                          100*batch_idx/self.n_batches, train_loss.item(), test_loss)
                     print(outstr)
-                    if self.break_out is not None and test_loss < self.break_out:
-                        print("test loss is lower than break out; breaking out of loop")
-                        return 
 
 
         return 

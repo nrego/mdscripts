@@ -60,44 +60,47 @@ class SAMDataset(data.Dataset):
     def y_dim(self):
         return self.y.shape[-1]
 
-class SAMConvDataset(data.Dataset):
-    base_transform = transforms.Compose([transforms.ToTensor()])
-    norm_data = lambda y: (y-y.min())/(y.max()-y.min())
-
-    def __init__(self, feat_vec, energies, transform=base_transform, norm_target=False):
+class SAMConvDataset(nn.Module):
+    
+    def __init__(self, X, y, norm_target=False, y_min=None, y_max=None):
         super(SAMConvDataset, self).__init__()
 
-        if type(feat_vec) is not np.ndarray or type(energies) is not np.ndarray:
+        if type(X) is not np.ndarray or type(y) is not np.ndarray:
             raise ValueError("Error: Input feat vec and energies must be type numpy.ndarray") 
 
-        if type(transform) is not torchvision.transforms.Compose:
-            raise ValueError("Supplied transform with improper type ({})".format(type(transform)))
+        if X.shape[0] != y.shape[0]:
+            raise ValueError("Error: Different number of input features and targets ({} and {})".format(X.shape[0], y.shape[0]))
+        n_pts = X.shape[0]
+        
+        self.X = X.astype(np.float32)
+        self.y = y.astype(np.float32).reshape(n_pts, -1)
 
-        n_pts = energies.shape[0]
-        self.energies = energies.astype(np.float32).reshape(-1,1)
-
-        assert feat_vec.ndim == 3
-        self.feat_vec = feat_vec.astype(np.float32)
-
-        self.transform = transform
         if norm_target:
-            self.energies = SAMDataset.norm_data(self.energies)
+            if y_min is None or y_max is None:
+                raise ValueError("Must supply minimum and maximum value for y vector if normalizing")
+            if self.y_dim > 1:
+                assert y_min.size == y_max.size == self.y_dim
+                assert ((y_max - y_min) > 0).all()
+            else:
+                assert y_max > y_min
+            self.y = SAMDataset.norm_data(self.y, y_min, y_max)
 
     def __len__(self):
-        return len(self.feat_vec)
+        return self.X.shape[0]
 
     def __getitem__(self, index):
-        X = self.feat_vec[index]
-        y = self.energies[index]
-
-        X = torch.tensor(X).view(1, *self.feat_vec.shape[1:])
-
+        X = self.X[index]
+        y = self.y[index]
 
         return X, y
 
     @property
-    def n_dim(self):
-        return self.feat_vec.shape[-1]
+    def X_dim(self):
+        return self.X.shape[-1]
+
+    @property
+    def y_dim(self):
+        return self.y.shape[-1]
 
 
 

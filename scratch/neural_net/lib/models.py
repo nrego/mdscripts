@@ -10,8 +10,6 @@ from torch.autograd import Variable
 from IPython import embed
 
 
-
-
 # Runs basic linear regression on our number of edges
 #   For testing 
 class TestSAMNet(nn.Module):
@@ -34,7 +32,7 @@ class TestSAMNet(nn.Module):
 
 # One hidden layer net
 class SAMNet(nn.Module):
-    def __init__(self, n_patch_dim=36, n_hidden=36, n_layers=1, n_out=1, dropout=0.1):
+    def __init__(self, n_patch_dim=36, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0):
         super(SAMNet, self).__init__()
 
         layers = []
@@ -44,8 +42,12 @@ class SAMNet(nn.Module):
                 L = nn.Linear(n_patch_dim, n_hidden)
             else:
                 L = nn.Linear(n_hidden, n_hidden)
+            
             layers.append(L)
             layers.append(nn.ReLU())
+            
+            if drop_out > 0:
+                layers.append(nn.Dropout(drop_out))
 
         self.layers = nn.Sequential(*layers)
         self.o = nn.Linear(n_hidden, n_out)
@@ -60,6 +62,3 @@ class SAMNet(nn.Module):
     @property
     def n_layers(self):
         return len(self.layers)
-
-
-

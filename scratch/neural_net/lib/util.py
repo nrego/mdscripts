@@ -30,7 +30,7 @@ def plot_pattern(pos_ext, patch_indices, methyl_mask):
 # Plot a feature from a feature vector corresponding to a list of points
 #   Plots each point colored according its feature
 def plot_from_feat(pos_ext, feat):
-    fig, ax = plt.subplots(figsize=(6,6))
+    fig, ax = plt.subplots(figsize=(6,10))
     ax.scatter(pos_ext[:,0], pos_ext[:,1], c=feat, cmap=mymap, s=400)
     ax.set_xticks([])
     ax.set_yticks([])
