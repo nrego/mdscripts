@@ -5,7 +5,6 @@ import numpy as np
 import argparse
 import logging
 
-
 import os, glob
 
 from matplotlib import pyplot
@@ -183,3 +182,74 @@ err_dg_N = masked_dg_N.std(axis=0, ddof=1)
 
 dat = np.vstack((bins[:-1], all_neglogpdist_N, err_dg_N)).T
 np.savetxt('PvN.dat', dat, header='bins   beta F_v(N)  err(beta F_v(N))   ')
+
+### Now input all <n_i>_\phi's for a given i ###
+print('')
+print('Extracting all n_i\'s...')
+phi_vals = np.linspace(0,4,101)
+
+
+n_voxels = None
+
+
+n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_voxel.dat.npy'))
+#n_i_dat_fnames[0] = 'equil/rho_data_dump_rad_6.0.dat.npz'
+
+# Ntwid vals, only taken every 0.5 ps from each window
+all_data_reduced = np.array([])
+all_logweights_reduced = np.array([])
+# Will have shape (n_voxels, n_tot)
+all_data_n_i = None
+n_files = len(n_i_dat_fnames)
+
+phiout_0 = np.loadtxt('phi_000/phiout.dat')
+
+start_idx = 0
+# number of points in each window
+shift = all_data.shape[0] // n_files
+assert all_data.shape[0] % n_files == 0
+## Gather n_i data from each umbrella window (phi value)
+for i in range(n_files):
+    ## Need to grab every 10th data point (N_v, and weight)
+    this_slice = slice(start_idx, start_idx+shift, 10)
+    start_idx += shift
+    new_data_subslice = all_data[this_slice]
+    new_weight_subslice = all_logweights[this_slice]
+
+    all_data_reduced = np.append(all_data_reduced, new_data_subslice)
+    all_logweights_reduced = np.append(all_logweights_reduced, new_weight_subslice)
+    
+    fname = n_i_dat_fnames[i]
+
+    ## Shape: (n_voxels, n_frames) ##
+    n_i = np.load(fname).T
+    if n_voxels is None:
+        n_voxels = n_i.shape[0]
+    else:
+        assert n_i.shape[0] == n_voxels
+
+    if all_data_n_i is None:
+        all_data_n_i = n_i.copy()
+    else:
+        all_data_n_i = np.append(all_data_n_i, n_i, axis=1)
+
+print('...Done.')
+print('')
+
+print('WHAMing each n_i...')
+
+# Shape: (n_voxels, phi_vals.shape)
+avg_nis = np.zeros((n_voxels, phi_vals.size))
+chi_nis = np.zeros((n_voxels, phi_vals.size))
+for i_atm in range(n_voxels):
+
+    if i_atm % 100 == 0:
+        print('  i: {}'.format(i_atm))
+    neglogpdist, neglogpdist_ni, beta_phi_vals, _, _, avg_ni, chi_ni = extract_and_reweight_data(all_logweights_reduced, all_data_reduced, all_data_n_i[i_atm], bins, phi_vals)
+
+    avg_nis[i_atm, :] = avg_ni
+    chi_nis[i_atm, :] = chi_ni
+
+np.savez_compressed('ni_weighted.dat', avg=avg_nis, var=chi_nis, beta_phi=phi_vals)
+
+
