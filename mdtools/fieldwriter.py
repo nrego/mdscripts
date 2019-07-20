@@ -9,14 +9,16 @@ import pandas
 import mdtraj as md
 
 from skimage import measure
-#from IPython import embed
+from IPython import embed
 
 def extractInt(string):
     return list(map(int, re.findall(r"[-+]?\d*\.\d+|\d+", string)))
 
 # Attempt to intialize from .dx file
-def from_dx(infile):
-
+def from_cube(infile):
+    # Cube files are in atomic units for god knows what reason
+    #  A per AU
+    au = 0.5292
     with open(infile, 'r') as fin:
 
         # ngrids
@@ -37,6 +39,11 @@ def from_dx(infile):
         npts = ngrids.prod()
 
         box = ((ngrids) * dgrid) + origin + dgrid
+
+        ## Now change units before rounding errors get us
+        origin = np.round(origin*au, 4)
+        dgrid = np.round(dgrid*au, 4)
+        box = np.round(box*au, 4)
 
         xpts = np.arange(origin[0], box[0], dgrid[0]) 
         ypts = np.arange(origin[1], box[1], dgrid[1])
@@ -93,9 +100,9 @@ class RhoField:
         assert gridpts.shape == (self.n_pts, 3)
 
         # Check that grid is uniformly spaced in each dimension
-        assert np.unique(np.diff(np.unique(gridpts[:,0]))).size == 1
-        assert np.unique(np.diff(np.unique(gridpts[:,1]))).size == 1
-        assert np.unique(np.diff(np.unique(gridpts[:,1]))).size == 1
+        #assert np.unique(np.diff(np.unique(gridpts[:,0]))).size == 1
+        #assert np.unique(np.diff(np.unique(gridpts[:,1]))).size == 1
+        #assert np.unique(np.diff(np.unique(gridpts[:,1]))).size == 1
 
         self.gridpts = gridpts
 
@@ -167,7 +174,7 @@ class RhoField:
         for i_frame in range(self.n_frames):
             try:
                 #embed()
-                verts, faces, normals, values = measure.marching_cubes(self.rho[i_frame], isoval, spacing=tuple(self.d_grid))
+                verts, faces, normals, values = measure.marching_cubes_lewiner(self.rho[i_frame], isoval, spacing=tuple(self.d_grid))
                 mesh = verts
             except ValueError:
                 mesh = np.zeros((1,3))
@@ -225,22 +232,22 @@ class RhoField:
                 f.write(mesh/10, time=curr_time, box=self.box/10)
 
     def do_DX(self, fileout, origin=(0,0,0)):
-        cntr = 0
-
-        rho_shape = self.rho_avg.reshape(self.n_pts)
+        
         with open(fileout, 'w') as f:
-            f.write("object 1 class gridpositions counts {} {} {}\n".format(self.n_grids[0], self.n_grids[1], self.n_grids[2]))
-            f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(*origin))
-            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(self.d_grid[0], 0, 0))
-            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, self.d_grid[1], 0))
-            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, 0, self.d_grid[2]))
-            f.write("object 2 class gridconnections counts {} {} {}\n".format(self.n_grids[0], self.n_grids[1], self.n_grids[2]))
-            f.write("object 3 class array type double rank 0 items {} data follows\n".format(self.n_pts))
+            f.write("My cube output from RhoField\n")
+            f.write("extra comments here\n")
+            f.write("{:>5d}{:>12.6f}{:>12.6f}{:12.6f}\n".format(1, *origin))
+            f.write("{:>5d}{:>12.6f}{:>12.6f}{:12.6f}\n".format(self.n_grids[0], self.d_grid[0], 0, 0))
+            f.write("{:>5d}{:>12.6f}{:>12.6f}{:12.6f}\n".format(self.n_grids[1], 0, self.d_grid[0], 0))
+            f.write("{:>5d}{:>12.6f}{:>12.6f}{:12.6f}\n".format(self.n_grids[2], 0, 0, self.d_grid[2]))
+            f.write("8    0.000000    0.000000    0.000000    0.000000\n")
+            
+            for i in range(self.n_grids[0]):
+                for j in range(self.n_grids[1]):
+                    for k in range(self.n_grids[2]):
+                        f.write('{:1.6e} '.format(self.rho_avg[i,j,k]))
+                        if k % 6 == 5:
+                            f.write('\n')
 
-            for pt_idx, grid_pt in enumerate(self.gridpts):
-
-                f.write("{:1.8e} ".format(rho_shape[pt_idx]))
-                cntr += 1
-                if (cntr % 3 == 0):
-                    f.write("\n")
+                    f.write('\n')
 

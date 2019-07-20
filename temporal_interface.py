@@ -35,7 +35,7 @@ from IPython import embed
 rho_dtype = np.float32
 
 
-def _calc_rho(frame_idx, water_ow, n_pts_included, gridpt_mask, gridpt_mask_assign, x_bounds, y_bounds, z_bounds):
+def _calc_rho(frame_idx, water_ow, n_pts_total, n_pts_included, gridpt_mask, gridpt_mask_assign, x_bounds, y_bounds, z_bounds):
 
     rho_slice = np.zeros(n_pts_included, dtype=rho_dtype)
     
@@ -43,14 +43,19 @@ def _calc_rho(frame_idx, water_ow, n_pts_included, gridpt_mask, gridpt_mask_assi
     y_assign = np.digitize(water_ow[:,1], y_bounds) - 1
     z_assign = np.digitize(water_ow[:,2], z_bounds) - 1
 
-    y_len = y_bounds.size
-    z_len = z_bounds.size
+    x_len = x_bounds.size - 1
+    y_len = y_bounds.size - 1
+    z_len = z_bounds.size - 1
 
     ## assignment of each water (indices in n_pts_total)
     assign_all = z_assign + (y_assign*z_len) + (x_assign*y_len*z_len)
+    in_bounds = assign_all < n_pts_total
+    assign_all = assign_all[in_bounds]
     # assignments of only waters within included voxels (indices in n_pts_total)
+
     assign_included = assign_all[gridpt_mask[assign_all]]
     # assignments of only waters within included voxels (indices in n_pts_included)
+
     assign_included_indices = gridpt_mask_assign[assign_included]
 
     rho_slice[assign_included_indices] = 1.0
@@ -104,6 +109,11 @@ class TemporalInterfaceSubcommand(Subcommand):
         self.gridpt_mask = None
         self._gridpt_mask_assign = None
         self.gridpt_resolution = None
+
+        # gridpts is total gridpts shape (n_pts_total, 3)
+        # gridpts_included is only voxels within min_water_dist and max_water_dist of solute
+        #    shape: (n_pts_included, 3)
+        self.gridpts_included = None
 
         # shape (n_included_gridpts, ) of floats. Average reference water 'densities' for each voxel
         #    Initialized as array of 1's for Init, or from reference vals for Anal
@@ -194,9 +204,9 @@ class TemporalInterfaceSubcommand(Subcommand):
             raise ValueError("Error: provided start time ({} ps) is greater than total time ({} ps)"
                              .format(args.start, (u.trajectory.n_frames * u.trajectory.dt)))
 
-        self.start_frame = int(args.start * u.trajectory.dt)
+        self.start_frame = int(args.start / u.trajectory.dt)
         if args.end is not None:
-            self.last_frame = int(args.end * u.trajectory.dt)
+            self.last_frame = int(args.end / u.trajectory.dt)
         else:
             self.last_frame = u.trajectory.n_frames
 
@@ -226,7 +236,7 @@ class TemporalInterfaceSubcommand(Subcommand):
                 #water_ow = self.univ.select_atoms("name OW and around {} ({})".format(self.water_dist_cutoff+3, self.mol_sel_spec)).positions
                 water_ow = self.univ.select_atoms('name OW').positions
                 args = ()
-                kwargs = dict(frame_idx=frame_idx,  water_ow=water_ow, n_pts_included=self.n_pts_included, 
+                kwargs = dict(frame_idx=frame_idx,  water_ow=water_ow, n_pts_total=self.n_pts_total, n_pts_included=self.n_pts_included, 
                               gridpt_mask=self.gridpt_mask, gridpt_mask_assign=self.gridpt_mask_assign,
                               x_bounds=self.x_bounds, y_bounds=self.y_bounds, z_bounds=self.z_bounds)
                 #log.info("Sending job (frame {})".format(frame_idx))
@@ -245,7 +255,7 @@ class TemporalInterfaceSubcommand(Subcommand):
         self._get_rho_avg()
 
     def _get_rho_avg(self):
-        
+        #embed()
         self.rho_avg = self.rho.mean(axis=0)
         log.info("total : {}".format(self.rho_avg.sum()))
 
@@ -286,26 +296,20 @@ class TemporalInterfaceSubcommand(Subcommand):
 
         log.info("outputing data for {} voxels".format(self.n_pts_included))
 
-        # How often voxel is filled w.r.t. voxel under unbiased ensemble
-        tempfactors = np.clip(self.rho_avg_norm, 0, 100)
-        #tempfactors = np.clip(tempfactors, 0, 100)
+        # average number of waters per voxel (in waters per A^3 * 1000)
+        tempfactors = np.clip(self.rho_avg*1000, 0, 100)
+        tempfactors = np.clip(tempfactors, 0, 99.9)
         
-        top = mdtraj.Topology()
-        c = top.add_chain()
+        univ = MDAnalysis.Universe.empty(self.n_pts_included, self.n_pts_included, atom_resindex=np.arange(self.n_pts_included), trajectory=True)
+        
+        univ.add_TopologyAttr('name')
+        univ.add_TopologyAttr('resname')
+        univ.add_TopologyAttr('id')
+        univ.add_TopologyAttr('tempfactors')
 
-        cnt = 0
-        for i in range(self.n_pts_included):
-            cnt += 1
-            r = top.add_residue('II', c)
-            a = top.add_atom('II', mdtraj.element.get_by_symbol('VS'), r, i)
-
-        with mdtraj.formats.PDBTrajectoryFile('{}_norm.pdb'.format(self.outpdb), 'w') as f:
-            f.write(gridpts, top, bfactors=tempfactors)
-
-        # Do it again with the absolute rho values (rho_avg instead of rho_avg_norm)
-        tempfactors = self.rho_avg 
-        with mdtraj.formats.PDBTrajectoryFile('{}_avg.pdb'.format(self.outpdb), 'w') as f:
-            f.write(gridpts, top, bfactors=tempfactors)
+        univ.atoms.positions = gridpts
+        univ.atoms.tempfactors = tempfactors
+        univ.atoms.write("voxel_avg_n.pdb")
 
     def setup_grid(self):
         ''' Derived classes must figure out how to appropriately initialize voxel grid'''
@@ -389,8 +393,8 @@ command
         else:
             # Set up marching cube stuff - grids in Angstroms
             #  ngrids are grid dimensions of discretized space at resolution ngrids[i] in each dimension
-            n_grids = (box / self.gridpt_resolution).astype(int)+1
             box = np.ceil(self.univ.dimensions[:3])
+            n_grids = (box / self.gridpt_resolution).astype(int)+1
             log.info("Initializing grid from initial frame")
             log.info("Box: {}".format(box))
 
@@ -417,6 +421,8 @@ command
         gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T
         gridpts += 0.5*self.gridpt_resolution
         tree = cKDTree(gridpts)
+
+        
 
         # Exclude all gridpoints less than min_dist to protein and more than max dist from prot
         prot_heavies = self.univ.select_atoms(self.mol_sel_spec)
@@ -445,11 +451,16 @@ command
         self.gridpt_mask = np.ones(self.n_pts_total, dtype=bool)
         self.gridpt_mask[excluded_indices] = False
 
+        self.gridpts_included = gridpts[self.gridpt_mask]
+
         self.rho_water_ref = np.ones(self.n_pts_included, dtype=rho_dtype)
         self.max_water_dist_cutoff = self.max_water_dist
 
-        log.info("Point grid set up")   
-
+        log.info("Point grid set up")
+        log.info("  Total grid points: {:d} in each dimension ({} total voxels)".format(n_grids, self.n_pts_total))
+        log.info("  Excluded voxels (Further than {:0.2f} A or closer than {:0.2f} A to solute): {}"
+                 .format(self.min_water_dist, self.max_water_dist, self.n_pts_included))
+        
     def do_output(self):
         ''' Need to remove any voxels that are always empty'''
 
