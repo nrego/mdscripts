@@ -281,7 +281,7 @@ class TemporalInterfaceSubcommand(Subcommand):
 
     #TODO: move this elsewhere
     def do_pdb_output(self):
-
+        np.save('rho_data_dump_voxel.dat', self.rho)
         np.savetxt('rho_avg.dat', self.rho_avg)
         np.savetxt('rho_avg_norm.dat', self.rho_avg_norm)
 
