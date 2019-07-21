@@ -142,7 +142,7 @@ maxval = exp_phi.max()
 avg_exp_phi = -np.log(np.dot(weights, exp_phi))
 
 
-dat = np.load('boot_fn_payload.dat.npy')
+dat = np.load('boot_fn_payload.dat.npy', encoding='bytes')
 
 n_iter = len(dat)
 neglog_pdist = np.zeros((n_iter, bins.size-1))
