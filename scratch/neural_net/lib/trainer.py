@@ -54,7 +54,9 @@ class EarlyStopping:
         torch.save(model.state_dict(), 'checkpoint.pt')
         self.val_loss_min = val_loss
 
-
+## wrapper to handle all training shenanigans
+#    Given the training and testing datasets, and all training parameters
+#      Will run for specified number of epochs and keep track of training and validation performance
 class Trainer:
 
     def __init__(self, train_dataset, test_dataset, batch_size=200, shuffle=True,

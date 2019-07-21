@@ -25,34 +25,8 @@ grid2 += 0.5
 
 assert np.array_equal(gridpts, grid2)
 
-univ = MDAnalysis.Universe('prot_shifted.pdb')
-prot = univ.atoms
-prot_h = univ.select_atoms('protein and not name H*')
 
-tree = cKDTree(gridpts)
-prot_tree = cKDTree(prot_h.positions)
-
-# Indicies of all grid points within 6 A of prot_h
-neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=6)
-neighbor_list = itertools.chain(*neighbor_list_by_point)
-neighbor_idx = np.unique( np.fromiter(neighbor_list, dtype=int) )
-
-# Indices of points that are further (to be excluded)
-far_pt_idx = np.setdiff1d(np.arange(n_pts_total), neighbor_idx)
-
-# Indices of points that are closer than 3 A to protein (to be excluded)
-neighbor_list_by_point = prot_tree.query_ball_tree(tree, r=3)
-neighbor_list = itertools.chain(*neighbor_list_by_point)
-
-close_pt_idx = np.unique( np.fromiter(neighbor_list, dtype=int) ) 
-
-excluded_indices = np.append(far_pt_idx, close_pt_idx)
-assert excluded_indices.shape[0] == far_pt_idx.shape[0] + close_pt_idx.shape[0]
-
-gridpt_mask = np.ones(n_pts_total, dtype=bool)
-gridpt_mask[excluded_indices] = False
-
-assert np.array_equal(ds['gridpt_mask'], gridpt_mask)
+gridpt_mask = ds['gridpt_mask']
 
 new_mask = rho>48
 
@@ -71,6 +45,9 @@ univ.residues.resnames = 'V'
 univ.atoms.names = 'V'
 univ.atoms.tempfactors = dg[mask] 
 univ.atoms.positions = gridpts[mask] 
+
+np.savetxt('dg_voxel.dat', dg[mask])
+np.savetxt('dg_vol_voxel.dat', dg[mask] * rho[mask])
 
 univ.atoms.write('out.pdb')  ## For testing we are converting correctly...
 

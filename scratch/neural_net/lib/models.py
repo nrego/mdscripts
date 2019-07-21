@@ -7,6 +7,8 @@ from torch.utils import data
 import torchvision
 from torchvision import transforms
 from torch.autograd import Variable
+import hexagdly
+
 from IPython import embed
 
 
@@ -62,3 +64,28 @@ class SAMNet(nn.Module):
     @property
     def n_layers(self):
         return len(self.layers)
+
+
+class SAMConvNet(nn.Module):
+    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0):
+        super(SAMConvNet, self).__init__()
+
+        self.n_out_channels = n_out_channels
+        # INPUT: (1 x 6 x 6)
+        # Conv Output: (1 x 6 x 6)
+        # Pool Output: (1 x 3 x 3)
+        self.layer1 = nn.Sequential(
+            hexagdly.Conv2d(1, n_out_channels, kernel_size=1, stride=1, bias=True),
+            nn.ReLU(),
+            hexagdly.MaxPool2d(kernel_size=1, stride=2))
+
+
+        self.fc = SAMNet(n_out_channels*9, n_hidden, n_layers, n_out, drop_out)
+
+    def forward(self, x):
+
+        out = self.layer1(x)
+        out = out.reshape(-1, self.n_out_channels*9)
+        out = self.fc(out)
+
+        return out

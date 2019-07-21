@@ -54,3 +54,8 @@ for i_vox in range(rho_with_phi.shape[0]):
             beta_phi_star[i_vox] = this_phi_star
             break
 
+np.savetxt("beta_phi_star.dat", beta_phi_star)
+
+univ = MDAnalysis.Universe("phi_sims/phi_000/voxel_avg_n.pdb")
+univ.atoms.tempfactors = beta_phi_star
+univ.atoms.write("order.pdb")
