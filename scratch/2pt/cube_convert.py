@@ -28,8 +28,6 @@ assert np.array_equal(gridpts, grid2)
 
 gridpt_mask = ds['gridpt_mask']
 
-new_mask = rho>48
-
 mask = gridpt_mask
 
 incl_voxels = gridpts[mask]

@@ -15,6 +15,11 @@ from IPython import embed
 
 from constants import k
 
+import work_managers
+
+#work_manager = work_managers.environment.make_work_manager()
+#work_manager = work_managers.SerialWorkManager()
+work_manager = work_managers.ProcessWorkManager()
 ## Construct P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 
 
@@ -241,15 +246,32 @@ print('WHAMing each n_i...')
 # Shape: (n_voxels, phi_vals.shape)
 avg_nis = np.zeros((n_voxels, phi_vals.size))
 chi_nis = np.zeros((n_voxels, phi_vals.size))
-for i_atm in range(n_voxels):
 
-    if i_atm % 100 == 0:
-        print('  i: {}'.format(i_atm))
-    neglogpdist, neglogpdist_ni, beta_phi_vals, _, _, avg_ni, chi_ni = extract_and_reweight_data(all_logweights_reduced, all_data_reduced, all_data_n_i[i_atm], bins, phi_vals)
+def task_wrapper(i_atm, fn, all_logweights_reduced, all_data_reduced, data_n_i, bins, phi_vals):
+    neglogpdist, neglogpdist_ni, beta_phi_vals, _, _, avg_ni, chi_ni = fn(all_logweights_reduced, all_data_reduced, data_n_i, bins, phi_vals)
 
-    avg_nis[i_atm, :] = avg_ni
-    chi_nis[i_atm, :] = chi_ni
+    return i_atm, avg_ni, chi_ni
 
-np.savez_compressed('ni_weighted.dat', avg=avg_nis, var=chi_nis, beta_phi=phi_vals)
+def task_gen():
+    for i_atm in range(n_voxels):
 
+        args = (i_atm, extract_and_reweight_data, all_logweights_reduced, all_data_reduced, all_data_n_i[i_atm], bins, phi_vals)
+        kwargs = dict()
+        if i_atm % 100 == 0:
+            print('  i: {}'.format(i_atm))
+
+        yield (task_wrapper, args, kwargs)
+
+cntr = 0
+with work_manager:
+    for future in work_manager.submit_as_completed(task_gen()):
+        i_atm, avg_ni, chi_ni = future.get_result(discard=True)
+        cntr += 1
+        if cntr % 100 == 0:
+            print('received {} results'.format(cntr))
+
+        avg_nis[i_atm, :] = avg_ni
+        chi_nis[i_atm, :] = chi_ni
+
+np.savez_compressed('ni_weighted_2.dat', avg=avg_nis, var=chi_nis, beta_phi=phi_vals)
 
