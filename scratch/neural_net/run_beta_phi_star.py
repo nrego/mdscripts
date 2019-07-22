@@ -12,54 +12,6 @@ from torch import optim
 
 import argparse
 
-xvals = np.arange(0,124)
-xvals = np.array([xvals**4,
-                  xvals**3,
-                  xvals**2,
-                  xvals**1,
-                  xvals**0])
-xvals = torch.tensor(xvals.astype(np.float32))
-
-
-## Acts on torch tensors
-#    Transform output vectors (normalized polynomial coefs)
-#      To 
-def loss_poly(net_out, target, criterion, p_min, p_range_mat, xvals):
-
-    # Depends on number of datapoints (batch size), so has to be setup here
-    p_min_mat = np.ones((net_out.shape[0], p_min.size), dtype=np.float32)
-    p_min_mat *= p_min
-    p_min_mat = torch.tensor(p_min_mat)
-
-    pred = torch.matmul(net_out, p_range_mat) + p_min_mat
-    pred = torch.matmul(pred, xvals)
-
-    act = torch.matmul(target, p_range_mat) + p_min_mat
-    act = torch.matmul(act, xvals)
-
-    loss = criterion(pred, act)
-
-    return loss
-
-# Gets fit from normalized coefficients
-#   coef is array or torch tensor and shape: (N_data, 5)
-def get_fit(norm_coef, p_min, p_range_mat, xvals):
-
-    norm_coef = np.array(norm_coef)
-    xvals = np.array(xvals)
-
-    fit = np.dot(norm_coef, p_range_mat) + p_min
-    fit = np.dot(fit, xvals)
-    embed()
-    return xvals[-2], fit
-
-
-def normalize(poly, y_min, y_max):
-    return (poly - y_min) / (y_max - y_min)
-
-def unnormalize(normed_poly, y_min, y_max):
-    return (normed_poly) * (y_max-y_min) + y_min
-
 
 def run(args):
 
@@ -92,20 +44,15 @@ Parameters:
 
     # Load input features
     feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
-    if args.no_run:
-        return None, None
-    p_min = poly.min(axis=0).astype(np.float32)
-    p_max = poly.max(axis=0).astype(np.float32)
-    p_range = p_max - p_min
-    p_range_mat = torch.tensor(np.diag(p_range))
-
+    #shuffle = np.random.permutation(beta_phi_stars.shape[0])
+    #beta_phi_stars = beta_phi_stars[shuffle]
     # Position of patch indices (only different if we're using an extended grid)
     pos = pos_ext[patch_indices]
 
     ## Split up input data into training and validation sets
     mses = np.zeros(args.n_valid)
     criterion = nn.MSELoss()
-    data_partitions = partition_data(feat_vec, poly, n_groups=args.n_valid)
+    data_partitions = partition_data(feat_vec, beta_phi_stars, n_groups=args.n_valid)
 
     ## Train and validate for each round (n_valid rounds)
     for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
@@ -114,38 +61,24 @@ Parameters:
         
         if args.do_conv:
             net = SAMConvNet(n_out_channels=args.n_out_channels, n_layers=args.n_layers, 
-                             n_hidden=args.n_hidden, n_out=5, drop_out=args.drop_out)
+                             n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
         else:
-            net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=5, drop_out=args.drop_out)
+            net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
 
-        train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=p_min, y_max=p_max)
-        test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=p_min, y_max=p_max)
+        train_dataset = DatasetType(train_X, train_y)
+        test_dataset = DatasetType(test_X, test_y)
 
-        ## Round 1 - just on coefficients
-        trainer = Trainer(train_dataset, test_dataset, batch_size=args.batch_size,
-                          learning_rate=args.learning_rate, epochs=args.n_epochs_first)
-        trainer(net, criterion)
-        
-        del trainer
-
-        print("\nFinished initial\n")
-        print("\nBegin training\n")
-
-        ## Round 2 - On full F_v(N) 
         trainer = Trainer(train_dataset, test_dataset, batch_size=args.batch_size, 
                           learning_rate=args.learning_rate, epochs=args.n_epochs_refinement,
                           n_patience=args.n_patience, break_out=args.break_out)
 
-        loss_fn_kwargs = {'p_min': p_min,
-                          'p_range_mat': p_range_mat,
-                          'xvals': xvals}
 
-        trainer(net, criterion, loss_fn=loss_poly, loss_fn_kwargs=loss_fn_kwargs)
+        trainer(net, criterion)
         net.eval()
         pred = net(trainer.test_X).detach()
         net.train()
         
-        test_loss = loss_poly(pred, trainer.test_y, criterion, **loss_fn_kwargs)
+        test_loss = criterion(pred, trainer.test_y)
         print("\n")
         print("Final CV: {:.2f}\n".format(test_loss))
         mses[i_round] = test_loss
@@ -159,47 +92,32 @@ Parameters:
     
     if args.do_conv:
         net = SAMConvNet(n_out_channels=args.n_out_channels, n_layers=args.n_layers, 
-                         n_hidden=args.n_hidden, n_out=5, drop_out=args.drop_out)
+                         n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
     else:
-        net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=5, drop_out=args.drop_out)
+        net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
 
-    dataset = DatasetType(feat_vec, poly, norm_target=True, y_min=p_min, y_max=p_max)
+    dataset = DatasetType(feat_vec, beta_phi_stars)
 
 
-    ## Round 1 - just on coefficients
-    trainer = Trainer(dataset, dataset, batch_size=args.batch_size,
-                      learning_rate=args.learning_rate, epochs=args.n_epochs_first)
-    trainer(net, criterion)
-    
-    del trainer
-
-    print("\nFinished initial\n")
-    print("\nBegin training\n")
-
-    ## Round 2 - On full F_v(N) 
+ 
     trainer = Trainer(dataset, dataset, batch_size=args.batch_size, 
                       learning_rate=args.learning_rate, epochs=args.n_epochs_refinement,
                       n_patience=args.n_patience, break_out=args.break_out)
 
-    loss_fn_kwargs = {'p_min': p_min,
-                      'p_range_mat': p_range_mat,
-                      'xvals': xvals}
 
-    trainer(net, criterion, loss_fn=loss_poly, loss_fn_kwargs=loss_fn_kwargs)
+    trainer(net, criterion)
     net.eval()
     pred = net(trainer.test_X).detach()
     
-    test_loss = loss_poly(pred, trainer.test_y, criterion, **loss_fn_kwargs)
+    test_loss = criterion(pred, trainer.test_y)
     print("\n")
     print("ALL DATA Final CV: {:.2f}\n".format(test_loss))
-    
-    embed()
 
     return trainer, net
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser("Run Simple Neural Net on polynomial coefficients")
+    parser = argparse.ArgumentParser("Run Neural Net on beta phi stars for each subvolume")
     parser.add_argument("--infile", "-f", type=str, default="sam_pattern_data.dat.npz",
                         help="Input file name (Default: %(default)s)")
     parser.add_argument("--batch-size", type=int, default=200,
@@ -229,10 +147,7 @@ if __name__ == "__main__":
                         help="Do a convolutional neural net (default: false)")
     parser.add_argument("--n-out-channels", type=int, default=4,
                         help="Number of convolutional filters to apply; ignored if not doing CNN (Default: %(default)s)")
-    parser.add_argument("--no-run", action="store_true",
-                        help="Don't run CV if true")
 
     args = parser.parse_args()
-    feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
     trainer, net = run(args)
 

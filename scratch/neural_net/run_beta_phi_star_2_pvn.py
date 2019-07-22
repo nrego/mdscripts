@@ -41,18 +41,6 @@ def loss_poly(net_out, target, criterion, p_min, p_range_mat, xvals):
 
     return loss
 
-# Gets fit from normalized coefficients
-#   coef is array or torch tensor and shape: (N_data, 5)
-def get_fit(norm_coef, p_min, p_range_mat, xvals):
-
-    norm_coef = np.array(norm_coef)
-    xvals = np.array(xvals)
-
-    fit = np.dot(norm_coef, p_range_mat) + p_min
-    fit = np.dot(fit, xvals)
-    embed()
-    return xvals[-2], fit
-
 
 def normalize(poly, y_min, y_max):
     return (poly - y_min) / (y_max - y_min)
@@ -86,14 +74,15 @@ Parameters:
                 "\n"
 
     print(param_str)
+    if args.no_run:
+        return None, None
 
     DatasetType = SAMConvDataset if args.do_conv else SAMDataset
     NetType = SAMConvNet if args.do_conv else SAMNet
 
     # Load input features
     feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
-    if args.no_run:
-        return None, None
+
     p_min = poly.min(axis=0).astype(np.float32)
     p_max = poly.max(axis=0).astype(np.float32)
     p_range = p_max - p_min
@@ -105,7 +94,7 @@ Parameters:
     ## Split up input data into training and validation sets
     mses = np.zeros(args.n_valid)
     criterion = nn.MSELoss()
-    data_partitions = partition_data(feat_vec, poly, n_groups=args.n_valid)
+    data_partitions = partition_data(beta_phi_stars, poly, n_groups=args.n_valid)
 
     ## Train and validate for each round (n_valid rounds)
     for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
@@ -163,7 +152,7 @@ Parameters:
     else:
         net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=5, drop_out=args.drop_out)
 
-    dataset = DatasetType(feat_vec, poly, norm_target=True, y_min=p_min, y_max=p_max)
+    dataset = DatasetType(beta_phi_stars, poly, norm_target=True, y_min=p_min, y_max=p_max)
 
 
     ## Round 1 - just on coefficients
@@ -199,7 +188,7 @@ Parameters:
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser("Run Simple Neural Net on polynomial coefficients")
+    parser = argparse.ArgumentParser("Run Simple Neural Net: Beta phi star => polynomial coefficients")
     parser.add_argument("--infile", "-f", type=str, default="sam_pattern_data.dat.npz",
                         help="Input file name (Default: %(default)s)")
     parser.add_argument("--batch-size", type=int, default=200,
@@ -233,6 +222,5 @@ if __name__ == "__main__":
                         help="Don't run CV if true")
 
     args = parser.parse_args()
-    feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
     trainer, net = run(args)
 

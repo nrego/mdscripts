@@ -1,140 +1,127 @@
-## TEST NUMBER OF EDGE TYPES (MODEL 2) AGAINST NN ##
+## Basic two layer NN for sam surface (input vec is all positions)
 
 import numpy as np
 
-from scratch.sam.util import *
-from scratch.neural_net.mnist_net import *
+from scratch.neural_net.lib import *
+from scratch.neural_net.run_pvn_simple import get_fit, xvals
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 
+import argparse
+import os
 
-def load_stuff(filedump='sam_pattern_data.dat.npz', k_eff_dump='k_eff_all.dat.npy'):
-    ds = np.load(filedump)
+home = os.environ['HOME']
 
-    energies = ds['energies']
-    k_vals = ds['k_vals']
+from matplotlib.colors import Normalize
+bphi_norm = Normalize(0.75, 2.0)
+
+feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
+
+p_min = poly.min(axis=0).astype(np.float32)
+p_max = poly.max(axis=0).astype(np.float32)
+p_range = p_max - p_min
+p_range_mat = np.diag(p_range)
+
+def view_colormap(cmap):
+    """Plot a colormap with its grayscale equivalent"""
+    cmap = plt.cm.get_cmap(cmap)
+    colors = cmap(np.arange(cmap.N))
+
+    fig, ax = plt.subplots(figsize=(6, 1), subplot_kw=dict(xticks=[], yticks=[]))
+    ax.imshow([colors], extent=[0, 10, 0, 1], alpha=0.9)
+
+
+# Reshape an (n x 36) array to a (N, 1, 6, 6) using hexagdly's addressing scheme
+def reshape_to_pic(arr):
+
+    arr = np.array(arr)
+    n_pts = arr.shape[0]
+    img_shape = np.zeros((n_pts, 6, 6))
+
+    for i in range(n_pts):
+        this_feat = arr[i]
+        this_feat = this_feat.reshape(6,6).T[::-1, ::-1]
+
+        img_shape[i] = this_feat
+
+    return torch.tensor(img_shape.astype(np.float32))
+
+# Given a pattern, save its dewetting order as well as 
+#   its predicted. Then, save CNN filters for pattern
+def construct_beta_phi_images(idx, net, x_pattern, x_beta_phi_star, path='{}/Desktop'.format(home)):
     
-    methyl_pos = ds['methyl_pos']
-    positions = ds['positions']
+    c, r, p = net.layer1.children()
+    this_pattern = x_pattern[idx][None,:]
 
-    pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
-    k_eff_all_shape = np.load(k_eff_dump)
-
-    # patch_idx is list of patch indices in pos_ext 
-    #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
-    d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
-
-    # nn_ext is dictionary of (global) nearest neighbor's to each patch point
-    #   nn_ext[i]  global idxs of neighbor to local patch i 
-    nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
-    edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
-
-    payload = (energies, k_vals, methyl_pos, positions, k_eff_all_shape, edges, ext_indices)
+    out_all = r(c(x_pattern).detach())
+    max0 = out_all[:,0].max()
+    max1 = out_all[:,1].max()
+    max2 = out_all[:,2].max()
+    max3 = out_all[:,3].max()
+    filter_norm = [Normalize(0,max0), Normalize(0,max1), Normalize(0,max2), Normalize(0,max3)]
 
 
-    return payload
+    this_dewet = x_beta_phi_star[idx][None,:]
+    this_pred = reshape_to_pic(net(this_pattern).detach())[None,:]
 
-def init_data_and_loaders(feat_vec, energies, batch_size=884, norm_target=False):
+    act_pred = torch.cat((this_dewet, this_pred, this_pattern), dim=1)
+
+    conv = r(c(this_pattern).detach())
+    pool = p(conv)
+
+    plot_hextensor(act_pred, norm=[bphi_norm, bphi_norm, Normalize(0,1)],
+                   cmap=['bwr_r', 'bwr_r', mymap])
+    plt.savefig('{}/bphi_{:03d}_pattern'.format(path, idx))
+
+    plot_hextensor(conv, cmap='Greys', norm=filter_norm)
+    plt.savefig('{}/bphi_{:03d}_filter_conv'.format(path, idx))
+
+    plot_hextensor(pool, cmap='Greys', norm=filter_norm)
+    plt.savefig('{}/bphi_{:03d}_filter_pool'.format(path, idx))
+
+# Given a pattern, save its PvN as well as predicted
+#  Save CNN filters for pattern
+def construct_pvn_images(idx, net, x_pattern, y_pattern, path='{}/Desktop'.format(home)):
     
-    dataset = SAMDataset(feat_vec, energies, norm_target=norm_target)
-    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    c, r, p = net.layer1.children()
+    this_pattern = x_pattern[idx][None,:]
+    this_act = y_pattern[idx]
 
-    return loader
+    this_pred = net(this_pattern).detach()[0]
 
-def partition_data(X, y, n_groups=5, batch_size=100):
-    n_dat = energies.size
-    n_cohort = n_dat // n_groups
+    nvals, act = get_fit(this_act, p_min, p_range_mat, xvals)
+    _, pred = get_fit(this_pred, p_min, p_range_mat, xvals)
 
-    # Randomize our data, and therefore our groups
-    rand_idx = np.random.permutation(n_dat)
-    X_rand = X[rand_idx]
-    y_rand = y[rand_idx]
+    conv = r(c(this_pattern).detach())
+    pool = p(conv)
 
-    for k in range(n_groups):
-        # slc is indices of validation (excluded from training) data set
-        slc = slice(k*n_cohort, (k+1)*n_cohort)
+    plot_hextensor(this_pattern)
+    plt.savefig('{}/pvn_{:03}_pattern'.format(path, idx))
+    plt.plot(nvals, act)
+    plt.plot(nvals, pred, 'k--')
+    plt.savefig('{}/pvn_{:03}_pred_act'.format(path, idx))
 
-        y_validate = y_rand[slc]
-        X_validate = X_rand[slc]
-        n_validate = y_validate.size
+    plot_hextensor(conv, cmap='Greys', norm=filter_norm)
+    plt.savefig('{}/pvn_{:03d}_filter_conv'.format(path, idx))
 
-        # Get training samples. np.delete makes a copy and **does not** act on array in-place
-        y_train = np.delete(y_rand, slc)
-        X_train = np.delete(X_rand, slc, axis=0)
-
-        train_loader = init_data_and_loaders(X_train, y_train, batch_size)
-        test_loader = init_data_and_loaders(X_validate, y_validate, batch_size=n_validate)
+    plot_hextensor(pool, cmap='Greys', norm=filter_norm)
+    plt.savefig('{}/pvn_{:03d}_filter_pool'.format(path, idx))
 
 
-        yield (train_loader, test_loader)
+dataset_pattern = SAMConvDataset(feat_vec, poly, norm_target=True, y_min=p_min, y_max=p_max)
 
-## k_eff_all_shape is an exhaustive list of the connection type of every
-# edge for every pattern
-## n_mm n_oo  n_mo ##
-# Conn types:   mm  oo  mo
-# shape: (n_samples, n_edges, n_conn_type)
-energies, k_vals, methyl_pos, positions, k_eff_all_shape, edges, ext_indices = load_stuff()
+pvn_dict = torch.load("pvn_net.pkl")
+net_pvn = SAMConvNet(n_hidden=18, n_out=5)
+net_pvn.load_state_dict(pvn_dict)
 
-k_vals_both = np.hstack((k_vals[:,None], 36-k_vals[:,None]))
+beta_phi_dict = torch.load("beta_phi_net.pkl")
+net_beta_phi = SAMConvNet(n_hidden=18, n_out=36)
+net_beta_phi.load_state_dict(beta_phi_dict)
 
-n_edges = edges.shape[0]
-int_indices = np.setdiff1d(np.arange(n_edges), ext_indices)
+dataset_beta_phi_star = SAMConvDataset(beta_phi_stars, poly)
 
-assert n_edges == k_eff_all_shape.shape[1]
-
-# n_mm, n_oo, n_mo
-k_eff_one_edge = k_eff_all_shape.sum(axis=1)
-
-k_eff_int_edges_all = k_eff_all_shape[:,int_indices,:]
-k_eff_ext_edges_all = k_eff_all_shape[:,ext_indices,:]
-
-# n_mm, n_oo, n_mo for all internal edges
-k_eff_int_edge = k_eff_int_edges_all.sum(axis=1)
-# ditto for edges to exterior
-k_eff_ext_edge = k_eff_ext_edges_all.sum(axis=1)
-
-# k_c, n_mm_int, n_mo_ext
-feat_vec = np.dstack((k_vals, k_eff_int_edge[:,0], k_eff_ext_edge[:,2])).squeeze(axis=0)
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
-print("average mse, linear fit: {:0.4f}".format(perf_mse.mean()))
-
-
-e_range = energies.max() - energies.min()
-print('e range: {:.2f}'.format(e_range))
-data_partition_gen = partition_data(feat_vec, energies, n_groups=5, batch_size=400)
-
-
-
-### Train ###
-
-mses = []
-for i_round, (train_loader, test_loader) in enumerate(data_partition_gen):
-
-    net = TestSAMNet(n_dim=3)
-    # minimize MSE of predicted energies
-    criterion = nn.MSELoss()    
-
-    print("Training/validation round {}".format(i_round))
-    print("============================")
-    print("\n")
-
-    print("...Training")
-    losses = train(net, criterion, train_loader, test_loader, learning_rate=0.5,  epochs=2000)
-    print("    DONE...")
-    print("\n")
-    print("...Testing round {}".format(i_round))
-    test_X, test_y = iter(test_loader).next()
-    # So there are no shenanigans with MSE
-    test_X = test_X.view(-1, 3)
-
-    pred = net(test_X).detach()
-    mse = criterion(pred, test_y).item()
-    print("Validation MSE: {:.2f}".format(mse))
-
-    mses.append(mse)
-
-    del net, criterion
-
+x_pattern, y_pattern = dataset_pattern[:]
+x_beta_phi_star, y_beta_phi_star = dataset_beta_phi_star[:]

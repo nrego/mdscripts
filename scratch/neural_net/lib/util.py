@@ -29,9 +29,9 @@ def plot_pattern(pos_ext, patch_indices, methyl_mask):
 
 # Plot a feature from a feature vector corresponding to a list of points
 #   Plots each point colored according its feature
-def plot_from_feat(pos_ext, feat):
+def plot_from_feat(pos_ext, feat, this_map=mymap):
     fig, ax = plt.subplots(figsize=(6,7))
-    ax.scatter(pos_ext[:,0], pos_ext[:,1], c=feat, cmap=mymap, s=400)
+    ax.scatter(pos_ext[:,0], pos_ext[:,1], c=feat, cmap=this_map, s=400)
     ax.set_xticks([])
     ax.set_yticks([])
 
@@ -51,6 +51,8 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     methyl_pos = ds['methyl_pos']
     poly_4 = ds['poly_4']
     poly_5 = ds['poly_5']
+
+    beta_phi_stars = ds['beta_phi_stars']
 
     n_data = energies.size
 
@@ -81,7 +83,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     f_std = feat_vec.std()
 
 
-    return feat_vec, energies, poly_4, pos_ext, patch_indices, methyl_pos, adj_mat
+    return feat_vec, energies, poly_4, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat
 
 
 def save_net(net, foutname='net.pkl'):

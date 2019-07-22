@@ -21,7 +21,7 @@ def do_fit(pvn, deg):
 
 
 dirnames = np.sort(glob.glob('../*pattern_sample/*/d_*/trial_0'))
-n_dat = dirnames.size + 2 # for k=0 and k=36
+n_dat = dirnames.size + 2 # for k=0 and k=36 
 
 old_ds = np.load('old_sam_pattern_data.dat.npz')
 positions = old_ds['positions']
@@ -32,14 +32,20 @@ methyl_pos = np.zeros((n_dat, 36), dtype=bool)
 k_vals = np.zeros(n_dat)
 energies = np.zeros(n_dat)
 
+beta_phi_stars = np.zeros((n_dat, 36), dtype=np.float32)
+
 poly_4 = np.zeros((n_dat, 5))
 poly_5 = np.zeros((n_dat, 6))
+
+pathnames = np.empty(n_dat, dtype=object)
 
 fit_degs = np.arange(2,7)
 errs_mse = np.zeros((n_dat, fit_degs.size))
 errs_mse_d = np.zeros_like(errs_mse)
 
 for i, dirname in enumerate(dirnames):
+    #if dirname == '../pattern_sample/k_27/d_105/trial_0' or dirname == '../pattern_sample/k_29/d_105/trial_0':
+    #    continue
     methyl_mask = methyl_base.copy()
     pt_pos = np.loadtxt('{}/this_pt.dat'.format(dirname), dtype=int)
     methyl_mask[pt_pos] = True
@@ -47,13 +53,17 @@ for i, dirname in enumerate(dirnames):
 
     energy = np.loadtxt('{}/PvN.dat'.format(dirname))[0,1]
     pvn = np.loadtxt('{}/PvN.dat'.format(dirname))
+    mask = ~np.ma.masked_invalid(pvn[:,1]).mask
+    beta_phi_star = np.loadtxt('{}/beta_phi_i_star.dat'.format(dirname))
 
+    pathnames[i] = dirname
     methyl_pos[i] = methyl_mask
     k_vals[i] = k_ch3
     energies[i] = energy
+    beta_phi_stars[i] = beta_phi_star
 
     for i_deg, deg in enumerate(fit_degs):
-        z, mse, mse_d = do_fit(pvn, deg)
+        z, mse, mse_d = do_fit(pvn[mask], deg)
         errs_mse[i, i_deg] = mse
         errs_mse_d[i, i_deg] = mse_d
         if deg == 4:
@@ -62,13 +72,17 @@ for i, dirname in enumerate(dirnames):
             poly_5[i, ...] = z
 
 # k_00
+pathnames[-2] = '../pattern_sample/k_00'
 energy = np.loadtxt('../pattern_sample/k_00/PvN.dat')[0,1]
+beta_phi_star = np.loadtxt('../pattern_sample/k_00/beta_phi_i_star.dat')
+beta_phi_stars[-2] = beta_phi_star
 energies[-2] = energy
 k_vals[-2] = 0
 pvn = np.loadtxt('../pattern_sample/k_00/PvN.dat')
+mask = ~np.ma.masked_invalid(pvn[:,1]).mask
 
 for i_deg, deg in enumerate(fit_degs):
-    z, mse, mse_d = do_fit(pvn, deg)
+    z, mse, mse_d = do_fit(pvn[mask], deg)
     errs_mse[-2, i_deg] = mse
     errs_mse_d[-2, i_deg] = mse_d
     if deg == 4:
@@ -77,14 +91,18 @@ for i_deg, deg in enumerate(fit_degs):
         poly_5[-2, ...] = z
 
 # k_36
+pathnames[-1]= '../pattern_sample/k_36'
 energy = np.loadtxt('../pattern_sample/k_36/PvN.dat')[0,1]
+beta_phi_star = np.loadtxt('../pattern_sample/k_36/beta_phi_i_star.dat')
+beta_phi_stars[-1] = beta_phi_star
 energies[-1] = energy
 k_vals[-1] = 36
 methyl_pos[-1][:] = True
 pvn = np.loadtxt('../pattern_sample/k_36/PvN.dat')
+mask = ~np.ma.masked_invalid(pvn[:,1]).mask
 
 for i_deg, deg in enumerate(fit_degs):
-    z, mse, mse_d = do_fit(pvn, deg)
+    z, mse, mse_d = do_fit(pvn[mask], deg)
     errs_mse[-1, i_deg] = mse
     errs_mse_d[-1, i_deg] = mse_d
     if deg == 4:
@@ -92,8 +110,17 @@ for i_deg, deg in enumerate(fit_degs):
     elif deg == 5:
         poly_5[-1, ...] = z
 
-np.savez_compressed('sam_pattern_data.dat', energies=energies, positions=positions, k_vals=k_vals, 
-                    methyl_pos=methyl_pos, poly_4=poly_4, poly_5=poly_5)
+### TMP ####
+indices_to_delete = np.arange(n_dat)[energies == 0]
+methyl_pos = np.delete(methyl_pos, indices_to_delete, axis=0)
+energies = np.delete(energies, indices_to_delete)
+feat_vec = np.delete(methyl_pos, indices_to_delete, axis=0)
+poly_4 = np.delete(poly_4, indices_to_delete, axis=0)
+beta_phi_stars = np.delete(beta_phi_stars, indices_to_delete, axis=0)
+### END TMP ###
+
+np.savez_compressed('sam_pattern_data.dat', pathnames=pathnames, energies=energies, positions=positions, 
+                    k_vals=k_vals, methyl_pos=methyl_pos, poly_4=poly_4, poly_5=poly_5, beta_phi_stars=beta_phi_stars)
 
 ## Find k_eff_all - enumerate all edge types
 pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
