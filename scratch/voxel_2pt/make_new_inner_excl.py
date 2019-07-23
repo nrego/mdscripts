@@ -65,7 +65,12 @@ red_mask = np.ones(n_pts_red, dtype=bool)
 red_mask[far_pt_idx] = False
 red_mask[low_n_mask] = False
 
-
 n_pts_final = global_mask.sum()
 print('\nFinal number of points: {} ({} removed from reduced points)'.format(n_pts_final, n_pts_red-n_pts_final))
+
+
+
+np.savetxt('red_mask.dat', red_mask, fmt='%1d')
+
+save_gridpts('gridpts_final.pdb', gridpts_red[red_mask], tempfactors=n_0[red_mask])
 

@@ -48,9 +48,9 @@ def get_fit(norm_coef, p_min, p_range_mat, xvals):
     norm_coef = np.array(norm_coef)
     xvals = np.array(xvals)
 
-    fit = np.dot(norm_coef, p_range_mat) + p_min
-    fit = np.dot(fit, xvals)
-    embed()
+    coef = np.dot(norm_coef, p_range_mat) + p_min
+    fit = np.dot(coef, xvals).squeeze()
+
     return xvals[-2], fit
 
 

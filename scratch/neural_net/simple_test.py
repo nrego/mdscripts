@@ -49,6 +49,30 @@ def reshape_to_pic(arr):
 
     return torch.tensor(img_shape.astype(np.float32))
 
+def kernel_rep(k0, k1, norm=None, cmap=None):
+    k0 = k0.detach()[:,0,...]
+    k1 = k1.detach()[:,0,...]
+
+    n_filters = k0.shape[0]
+    assert n_filters == k1.shape[0]
+
+    arr = np.zeros((n_filters, 3, 3))
+
+    for i_filter in range(n_filters):
+        this_k0 = k0[i_filter]
+        this_k1 = k1[i_filter]
+
+        arr[i_filter][1:, 0] = this_k1[:,0]
+        arr[i_filter][1:, 2] = this_k1[:,1]
+        arr[i_filter][:, 1] = this_k0[:,0]
+
+    arr = arr.reshape(1, n_filters, 3, 3)
+
+    plot_hextensor(arr, norm=norm, cmap=cmap, mask=[0,6])
+
+    return arr
+
+
 # Given a pattern, save its dewetting order as well as 
 #   its predicted. Then, save CNN filters for pattern
 def construct_beta_phi_images(idx, net, x_pattern, x_beta_phi_star, path='{}/Desktop'.format(home)):
@@ -88,18 +112,29 @@ def construct_pvn_images(idx, net, x_pattern, y_pattern, path='{}/Desktop'.forma
     
     c, r, p = net.layer1.children()
     this_pattern = x_pattern[idx][None,:]
+
+    out_all = r(c(x_pattern).detach())
+    max0 = out_all[:,0].max()
+    max1 = out_all[:,1].max()
+    max2 = out_all[:,2].max()
+    max3 = out_all[:,3].max()
+    filter_norm = [Normalize(0,max0), Normalize(0,max1), Normalize(0,max2), Normalize(0,max3)]
+
     this_act = y_pattern[idx]
 
     this_pred = net(this_pattern).detach()[0]
 
     nvals, act = get_fit(this_act, p_min, p_range_mat, xvals)
     _, pred = get_fit(this_pred, p_min, p_range_mat, xvals)
+    
 
     conv = r(c(this_pattern).detach())
     pool = p(conv)
 
-    plot_hextensor(this_pattern)
+    plot_hextensor(this_pattern, norm=Normalize(0,1))
     plt.savefig('{}/pvn_{:03}_pattern'.format(path, idx))
+    plt.close('all')
+
     plt.plot(nvals, act)
     plt.plot(nvals, pred, 'k--')
     plt.savefig('{}/pvn_{:03}_pred_act'.format(path, idx))

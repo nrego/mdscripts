@@ -15,35 +15,25 @@ from constants import k
 from IPython import embed
 
 # Find rho_i, phi for each voxel i at each value phi from directory 'reweight_data'
+dat = np.load("phi_sims/ni_rad_weighted.dat.npz")
 
-beta_phis = np.load("phi_sims/ni_weighted.dat.npz")['beta_phi']
+beta_phis = dat['beta_phi']
+n_with_phi = dat['avg']
+n_0 = n_with_phi[:,0]
 
-n_0 = np.load("reweight_data/beta_phi_000/ni_reweighted.dat.npz")['rho_water'][0]
+buried_mask = n_0 < 5
 
-rho_with_phi = np.empty((n_0.size, beta_phis.size))
-rho_with_phi[:] = np.inf
-
-for i, phi in enumerate(beta_phis):
-    phival = int(np.round(phi*100))
-    fname = "reweight_data/beta_phi_{:03d}/ni_reweighted.dat.npz".format(phival)
-
-    n_phi = np.load(fname)['rho_water'][0]
-
-    rho_phi = n_phi / n_0
-    rho_with_phi[:, i] = rho_phi
-
-mask = np.ma.masked_invalid(rho_with_phi).mask
-rho_with_phi[mask] = np.inf
-np.save('rho_with_phi.dat', rho_with_phi)
+rho_with_phi = n_with_phi / n_0[:, None]
 
 
 ## Find when each voxel's beta phi_i^*
 beta_phi_star = np.zeros(rho_with_phi.shape[0])
+n_phi_vals = beta_phis.size
 
 for i_vox in range(rho_with_phi.shape[0]):
     this_rho = rho_with_phi[i_vox]
 
-    for i_phi in range(100,0,-1):
+    for i_phi in range(n_phi_vals-1,0,-1):
         if this_rho[i_phi] < 0.5:
             continue
         else:
@@ -54,8 +44,5 @@ for i_vox in range(rho_with_phi.shape[0]):
             beta_phi_star[i_vox] = this_phi_star
             break
 
-np.savetxt("beta_phi_star.dat", beta_phi_star)
+np.savetxt("beta_phi_star_prot.dat", beta_phi_star)
 
-univ = MDAnalysis.Universe("phi_sims/phi_000/voxel_avg_n.pdb")
-univ.atoms.tempfactors = beta_phi_star
-univ.atoms.write("order.pdb")

@@ -18,7 +18,7 @@ def plot_hextensor(
     tensor,
     image_range=(0, None),
     channel_range=(0, None),
-    cmap=mymap,
+    cmap=None,
     norm=None,
     figname="figure",
     mask=[],
@@ -42,6 +42,8 @@ def plot_hextensor(
         pass
     if norm is None:
         norm = Normalize(tensor.min(), tensor.max())
+    if cmap is None:
+        cmap = mymap
     inshape = np.shape(
         tensor[image_range[0] : image_range[1], channel_range[0] : channel_range[1]]
     )
