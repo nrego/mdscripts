@@ -200,27 +200,10 @@ Parameters:
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser("Run Simple Neural Net on polynomial coefficients")
-    parser.add_argument("--infile", "-f", type=str, default="sam_pattern_data.dat.npz",
-                        help="Input file name (Default: %(default)s)")
-    parser.add_argument("--batch-size", type=int, default=200,
-                        help="Size of training batches. There will be (N_data/batch_size) batches in each "\
-                             "training epoch.  (Default: %(default)s)")
-    parser.add_argument("--n-valid", type=int, default=5,
-                        help="Number of partitions for cross-validation (Default: split data into %(default)s groups")
-    parser.add_argument("--learning-rate", type=float, default=0.001,
-                        help="Learning rate for training (Default: %(default)s)")
-    parser.add_argument("--drop-out", type=float, default=0.0,
-                        help="Drop-out rate for each layer (Default: %(default)s)")
     parser.add_argument("--n-epochs-first", type=int, default=500,
-                        help="Number of epochs for initial training to coefficients (Default: %(default)s)")
+                       help="Number of epochs for initial training to coefficients (Default: %(default)s)")
     parser.add_argument("--n-epochs-refinement", type=int, default=3000,
-                        help="Maximum number of epochs for refinement training to F_v (Default: %(default)s)")
-    parser.add_argument("--n-patience", type=int, default=None,
-                        help="Maximum number of epochs to tolerate where CV performance decreases before breaking out of training."\
-                             "Default: No break-out.")
-    parser.add_argument("--break-out", type=float, default=None,
-                        help="Break out of training if CV MSE falls below this value."\
-                             "Default: No break-out.")
+                       help="Maximum number of epochs for refinement training to F_v (Default: %(default)s)")
     parser.add_argument("--n-layers", type=int, default=3,
                         help="Number of hidden layers. (Default: %(default)s)")
     parser.add_argument("--n-hidden", type=int, default=18,

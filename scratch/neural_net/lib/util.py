@@ -37,6 +37,34 @@ def plot_from_feat(pos_ext, feat, this_map=mymap):
 
     #plt.show()
 
+# Flip every dataset to get a 'new' feature (except for k=0, k=36)
+def augment_data(feat_vec, y):
+    n_feat = feat_vec.shape[0]
+
+    n_aug = n_feat*2 - 2 # no aug for k=0, k=36
+
+    aug_feat_vec = np.zeros((n_aug, feat_vec.shape[1]))
+    aug_feat_vec[:n_feat, :] = feat_vec
+
+    if y.ndim == 1:
+        aug_y = np.zeros(n_aug)
+    else:
+        aug_y = np.zeros((n_aug, y.shape[1]))
+    aug_y[:n_feat] = y
+
+    for i in range(n_feat, n_aug):
+        orig_feat = feat_vec[i - n_feat]
+        orig_y = y[i - n_feat]
+
+        # Rasterize, flip axes, and re-ravel
+        new_feat = orig_feat.reshape(6,6)[::-1, ::-1].ravel()
+
+        aug_feat_vec[i] = new_feat
+        aug_y[i] = orig_y
+
+
+    return (aug_feat_vec, aug_y)
+
 # Load in data (energies and methyl positions)
 def load_and_prep(fname='sam_pattern_data.dat.npz'):
     ds = np.load(fname)
