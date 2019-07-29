@@ -72,14 +72,7 @@ Command-line options
 '''
 
     def __init__(self):
-        self.super(PvNModel, self).__init__()
-
-        self.feat_vec = None
-        self.coefs = None
-
-        self.n_epoch_init = None
-        self.n_epoch_refinement = None
-
+        super(PvNModel, self).__init__()
 
     def add_args(self, parser):
         tgroup = parser.add_argument_group("Training Options")
@@ -87,17 +80,20 @@ Command-line options
                            help="Number of epochs for initial training to coefficients (Default: %(default)s)")
         tgroup.add_argument("--n-epochs-refinement", type=int, default=3000,
                            help="Maximum number of epochs for refinement training to F_v (Default: %(default)s)")
-
+        tgroup.add_argument("--break-out", type=float, 
+                           help="Stop training if CV MSE goes below this (Default: No break-out)")
     def process_args(self, args):
         # 5 polynomial coefficients for 4th degree polynomial
-        self.n_hidden = 5
-        self.n_epoch_init = args.n_epochs_first
-        self.n_epoch_refinement = args.n_epochs_refinement
+        self.n_epochs_init = args.n_epochs_first
+        self.n_epochs_refinement = args.n_epochs_refinement
+        self.break_out = args.break_out
 
         feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
         
         self.feat_vec = feat_vec
-        self.coefs = args.poly
+        self.poly = poly
+        self.pos_ext = pos_ext
+        self.patch_indices = patch_indices
 
     def run(self):
         print(
@@ -127,7 +123,6 @@ Command-line options
         DatasetType = SAMConvDataset if self.do_conv else SAMDataset
         NetType = SAMConvNet if self.do_conv else SAMNet
 
-        
         if self.no_run:
             return
 
@@ -137,7 +132,7 @@ Command-line options
         p_range_mat = torch.tensor(np.diag(p_range))
 
         # Position of patch indices (only different if we're using an extended grid)
-        pos = pos_ext[patch_indices]
+        pos = self.pos_ext[self.patch_indices]
 
         ## Split up input data into training and validation sets
         mses = np.zeros(self.n_valid)
@@ -151,16 +146,16 @@ Command-line options
             
             if self.do_conv:
                 net = SAMConvNet(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
-                                 n_hidden=self.n_hidden, n_out=self.n_out_channels, drop_out=self.drop_out)
+                                 n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
             else:
-                net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=self.n_out_channels, drop_out=self.drop_out)
+                net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
 
             train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=p_min, y_max=p_max)
             test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=p_min, y_max=p_max)
 
             ## Round 1 - just on coefficients
             trainer = Trainer(train_dataset, test_dataset, batch_size=self.batch_size,
-                              learning_rate=self.learning_rate, epochs=self.n_epochs_first)
+                              learning_rate=self.learning_rate, epochs=self.n_epochs_init)
             trainer(net, criterion)
             
             del trainer
@@ -175,7 +170,7 @@ Command-line options
 
             loss_fn_kwargs = {'p_min': p_min,
                               'p_range_mat': p_range_mat,
-                              'xvals': xvals}
+                              'xvals': self.xvals}
 
             trainer(net, criterion, loss_fn=loss_poly, loss_fn_kwargs=loss_fn_kwargs)
             net.eval()
@@ -196,16 +191,16 @@ Command-line options
         
         if self.do_conv:
             net = SAMConvNet(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
-                             n_hidden=self.n_hidden, n_out=5, drop_out=self.drop_out)
+                             n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
         else:
-            net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=5, drop_out=self.drop_out)
+            net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
 
-        dataset = DatasetType(feat_vec, poly, norm_target=True, y_min=p_min, y_max=p_max)
+        dataset = DatasetType(self.feat_vec, self.poly, norm_target=True, y_min=p_min, y_max=p_max)
 
 
         ## Round 1 - just on coefficients
         trainer = Trainer(dataset, dataset, batch_size=self.batch_size,
-                          learning_rate=self.learning_rate, epochs=self.n_epochs_first)
+                          learning_rate=self.learning_rate, epochs=self.n_epochs_init)
         trainer(net, criterion)
         
         del trainer
@@ -232,8 +227,6 @@ Command-line options
         
         
 
-        
+if __name__ == "__main__":
 
-
-
-
+    PvNModel().main()

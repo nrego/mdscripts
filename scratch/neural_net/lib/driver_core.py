@@ -81,8 +81,6 @@ class Core:
                            help="Number of partitions for cross-validation (Default: split data into %(default)s groups")
         group.add_argument("--learning-rate", type=float, default=0.001,
                            help="Learning rate for training (Default: %(default)s)")
-        group.add_argument("--drop-out", type=float, default=0.0,
-                           help="Drop-out rate for each layer (Default: %(default)s)")
         group.add_argument("--n-patience", type=int, default=None,
                            help="Maximum number of epochs to tolerate where CV performance decreases before breaking out of training."\
                                 "Default: No break-out.")
@@ -94,13 +92,12 @@ class Core:
         self.cmdlineargs = args # Keep a record of all input arguments for posterity
 
         self.infile = args.infile
+        self.n_patience = args.n_patience
         self.batch_size = args.batch_size
         self.n_valid = args.n_valid
         self.learning_rate = args.learning_rate
-        self.drop_out = args.drop_out
-        self.n_epo
 
-    def make_parser(self):
+    def make_parser(self, prog=None, usage=None, description=None, epilog=None):
         prog = prog or self.prog
         usage = usage or self.usage
         description = description or self.description
@@ -140,14 +137,6 @@ class NNModel(Core):
     def __init__(self):
         super(NNModel, self).__init__()
 
-        # number of fully connected layers
-        self.n_layers = None
-        # Nodes per layer
-        self.n_hidden = None
-        self.n_out_channels = None
-
-        self.no_run = None
-
         self.net_train = []
         self.trainers = []
         self.net_final = []
@@ -156,19 +145,24 @@ class NNModel(Core):
     def add_args(self, parser):
         group = parser.add_argument_group("NN Architecture options")
         group.add_argument("--n-layers", type=int, default=3,
-                            help="Number of hidden layers. (Default: %(default)s)")
+                           help="Number of hidden layers. (Default: %(default)s)")
+        group.add_argument("--n-hidden", type=int, default=18,
+                           help="Number of nodes per hidden layey. (Default: %(default)s)")
+        group.add_argument("--drop-out", type=float, default=0.0,
+                           help="Dropout probability per node during training. (Default %(default)s)")
         group.add_argument("--do-conv", action="store_true",
-                            help="Do a convolutional neural net (default: false)")
+                           help="Do a convolutional neural net (default: false)")
         group.add_argument("--n-out-channels", type=int, default=4,
-                            help="Number of convolutional filters to apply; ignored if not doing CNN (Default: %(default)s)")
+                           help="Number of convolutional filters to apply; ignored if not doing CNN (Default: %(default)s)")
         group.add_argument("--no-run", action="store_true",
-                            help="Don't run CV if true")
+                           help="Don't run CV if true")
 
-    def parser_args(self, args):
+    def process_args(self, args):
         self.n_layers = args.n_layers
+        self.n_hidden = args.n_hidden
+        self.drop_out = args.drop_out
+
+        self.do_conv = args.do_conv
         self.n_out_channels = args.n_out_channels
 
         self.no_run = args.no_run
-
-
-
