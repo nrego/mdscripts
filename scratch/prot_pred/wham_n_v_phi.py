@@ -70,9 +70,12 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
 
     avg_data = np.zeros_like(avg_ntwid)
     var_data = np.zeros_like(avg_ntwid)
+    cov_data = np.zeros_like(avg_ntwid)
 
     ntwid_sq = ntwid**2
     data_sq = data**2
+
+    cov = ntwid * data
 
     for i, beta_phi_val in enumerate(beta_phi_vals):
         bias_logweights = logweights - beta_phi_val*ntwid
@@ -89,12 +92,16 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
         this_avg_data_sq = np.dot(bias_weights, data_sq)
         this_var_data = this_avg_data_sq - this_avg_data**2
 
+        this_cov_data = np.dot(bias_weights, cov)
+        this_cov_data = this_cov_data - this_avg_ntwid*this_avg_data
+
         avg_ntwid[i] = this_avg_ntwid
         var_ntwid[i] = this_var_ntwid
         avg_data[i] = this_avg_data
         var_data[i] = this_var_data
+        cov_data[i] = this_cov_data
 
-    return (neglogpdist, neglogpdist_N, avg_data, var_data)
+    return (neglogpdist, neglogpdist_N, avg_data, var_data, cov_data)
 
 
 print('Constructing Nv v phi, chi v phi...')
@@ -133,14 +140,14 @@ neglog_pdist_N = np.zeros((n_iter, bins.size-1))
 
 
 ## Get PvN, <Nv>, chi_v from all data
-all_neglogpdist, all_neglogpdist_N, all_avg_N, all_chi = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, phi_vals)
+all_neglogpdist, all_neglogpdist_N, all_avg_N, all_chi, _ = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, phi_vals)
 
 
 ## Extract errorbars from bootstrap samples
 peak_sus = np.zeros(n_iter)
 for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
 
-    boot_neglogpdist, boot_neglogpdist_N, boot_avg_N, boot_chi = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins, phi_vals)
+    boot_neglogpdist, boot_neglogpdist_N, boot_avg_N, boot_chi, _ = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins, phi_vals)
 
     neglog_pdist[i] = boot_neglogpdist
     neglog_pdist_N[i] = boot_neglogpdist_N
@@ -243,15 +250,17 @@ print('WHAMing each n_i...')
 # Shape: (n_atoms, phi_vals.shape)
 avg_nis = np.zeros((n_heavies, phi_vals.size))
 chi_nis = np.zeros((n_heavies, phi_vals.size))
+cov_nis = np.zeros((n_heavies, phi_vals.size))
 for i_atm in range(n_heavies):
 
     if i_atm % 100 == 0:
         print('  i: {}'.format(i_atm))
-    neglogpdist, neglogpdist_ni, avg_ni, chi_ni = extract_and_reweight_data(all_logweights_reduced, all_data_reduced, all_data_n_i[i_atm], bins, phi_vals)
+    neglogpdist, neglogpdist_ni, avg_ni, chi_ni, cov_ni = extract_and_reweight_data(all_logweights_reduced, all_data_reduced, all_data_n_i[i_atm], bins, phi_vals)
 
     avg_nis[i_atm, :] = avg_ni
     chi_nis[i_atm, :] = chi_ni
+    cov_nis[i_atm, :] = cov_ni
 
-np.savez_compressed('ni_rad_weighted.dat', avg=avg_nis, var=chi_nis, beta_phi=phi_vals)
+np.savez_compressed('ni_rad_weighted.dat', avg=avg_nis, var=chi_nis, cov=cov_nis, beta_phi=phi_vals)
 
 

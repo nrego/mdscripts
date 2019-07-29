@@ -43,7 +43,7 @@ bb = np.arange(0, max_val, 1)
 hist, bb = np.histogram(rho_dat, bins=bb)
 #plt.bar(bb[:-1], hist)
 #plt.show()
-embed()
+
 sys.find_buried(rho_dat, args.nburied)
 
 print("N Heavy Atoms: {}".format(sys.n_prot_h_tot))

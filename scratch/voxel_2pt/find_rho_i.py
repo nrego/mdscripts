@@ -19,6 +19,7 @@ dat = np.load("phi_sims/ni_rad_weighted.dat.npz")
 
 beta_phis = dat['beta_phi']
 n_with_phi = dat['avg']
+cov_with_phi = dat['cov']
 n_0 = n_with_phi[:,0]
 
 buried_mask = n_0 < 5
@@ -40,7 +41,7 @@ for i_vox in range(rho_with_phi.shape[0]):
             try:
                 this_phi_star = beta_phis[i_phi+1]
             except IndexError:
-                this_phi_star = np.inf
+                this_phi_star = 4
             beta_phi_star[i_vox] = this_phi_star
             break
 

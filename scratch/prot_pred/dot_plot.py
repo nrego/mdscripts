@@ -34,16 +34,24 @@ if __name__ == '__main__':
                         help='mask for buried atoms (default: %(default)s')
     parser.add_argument('--no-beta', action='store_true', default=False,
                         help='If provided, assume input files are in kJ/mol, not kT')
+    parser.add_argument('--beta-phi-star', type=str, 
+                        help='If provided, order atoms by their beta phi i star values (most phobic to least phobic)')
     args = parser.parse_args()
 
 
     buried_mask = np.loadtxt(args.buried_mask, dtype=bool)
     surf_mask = ~buried_mask
+
+    if args.beta_phi_star:
+        sort_idx = np.argsort(np.loadtxt(args.beta_phi_star)[surf_mask])
+    else:
+        sort_idx = np.arange(surf_mask.sum())
+
     contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
     pred_contacts = np.sort(glob.glob(args.pred_contact))
 
     assert contact_mask[surf_mask].sum() == contact_mask.sum()
-    contact_mask = contact_mask[surf_mask] # Only considering surface atoms
+    contact_mask = contact_mask[surf_mask][sort_idx] # Only considering surface atoms
 
     print('Number of surface atoms: {}'.format(surf_mask.sum()))
     print('Number contacts: {}'.format(contact_mask.sum()))
@@ -65,7 +73,7 @@ if __name__ == '__main__':
         else:
             this_phi[:] = phi /10.0
 
-        pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
+        pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask][sort_idx]
 
         tp_mask = pred_contact_mask & contact_mask
         fp_mask = pred_contact_mask & ~contact_mask
@@ -83,8 +91,8 @@ if __name__ == '__main__':
         ax.plot(indices[fn_mask], this_phi[fn_mask], 's', color='#7F00FF', markersize=2)
 
     #plt.savefig('/home/nick/Desktop/dot_plot.svg')
-    ax.set_xlim(-10,1400)
-    ax.set_xticks(np.arange(0,1410,5))
+    ax.set_xlim(-10,450)
+    ax.set_xticks(np.arange(0,450,5))
     #ax.set_ylim(0,4)
 
     fig.tight_layout()

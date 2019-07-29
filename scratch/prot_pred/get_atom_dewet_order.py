@@ -7,7 +7,7 @@ import os, glob
 from mdtools import dr
 from IPython import embed
 
-from system import MDSystem
+from mdtools.system import MDSystem
 
 import argparse
 
@@ -27,11 +27,12 @@ parser.add_argument('--infiles', type=str, nargs='+',
 args = parser.parse_args()
 
 
-embed()
+
 
 fnames = np.sort(args.infiles)
 ref_rho = np.load(args.ref_rho)['rho_water'].mean(axis=0)
 sys = MDSystem(args.ref_top, args.ref_struct, sel_spec=args.sel_spec)
+
 sys.find_buried(ref_rho, nb=5)
 #embed()
 surf_mask = sys.surf_mask_h
