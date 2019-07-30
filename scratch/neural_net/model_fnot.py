@@ -107,6 +107,9 @@ Command-line options
             else:
                 net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
 
+            if torch.cuda.is_available():
+                net = net.cuda()
+
             train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=emin, y_max=emax)
             test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=emin, y_max=emax)
 
