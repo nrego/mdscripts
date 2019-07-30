@@ -127,6 +127,11 @@ class Trainer:
         for epoch in range(self.epochs):
 
             for batch_idx, (train_X, train_y) in enumerate(self.train_loader):
+
+                if torch.cuda.is_available():
+                    train_X = train_X.cuda()
+                    train_y = train_y.cuda()
+                    
                 idx = epoch*self.n_batches + batch_idx
                 ### TRAIN THIS BATCH ###
 

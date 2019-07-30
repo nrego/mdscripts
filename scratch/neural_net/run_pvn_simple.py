@@ -118,6 +118,9 @@ Parameters:
         else:
             net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=5, drop_out=args.drop_out)
 
+        if torch.cuda.is_available():
+            net = net.cuda()
+
         train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=p_min, y_max=p_max)
         test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=p_min, y_max=p_max)
 
