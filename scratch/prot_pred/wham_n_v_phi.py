@@ -211,7 +211,6 @@ all_logweights_reduced = np.array([])
 all_data_n_i = None
 n_files = len(n_i_dat_fnames)
 
-phiout_0 = np.loadtxt('phi_000/phiout.dat')
 
 start_idx = 0
 # number of points in each window

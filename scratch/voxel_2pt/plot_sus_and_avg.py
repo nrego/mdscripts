@@ -86,6 +86,7 @@ gray = '#3F3F3F'
 purple = '#7F00FF'
 
 for i, idx in enumerate(sort_idx): 
+    print("doing {} out of {}".format(i, len(sort_idx)))
     is_contact = surf_contact[idx]
    
 
@@ -111,7 +112,9 @@ for i, idx in enumerate(sort_idx):
     atm_color = '#D7D7D7' if hyd == 1 else '#0560AD' 
     ax.plot(beta_phis, surf_cov_with_phi[idx]/surf_rho_with_phi[idx,0]) 
     #ax.hlines(0.5, 0, 4) 
-    ax.text(0.5, 0.1, r'ATM: {}  RES: {} {}; $\beta \phi_i^*$: {:0.2f}'.format(atm.name, atm.resname, atm.resid, bphi), color=atm_color) 
+    ax.text(0.5, 0.1, 
+            r'ATM: {}  RES: {} {}; $\beta \phi_i^*$: {:0.2f}'.format(atm.name, atm.resname, atm.resid, bphi), 
+            color=atm_color) 
     ax.set_xlim(0,4) 
     ax.set_ylim(0,20) 
     ax.set_xlabel(r'$\beta \phi$') 
@@ -120,16 +123,18 @@ for i, idx in enumerate(sort_idx):
     fig.savefig('sus_{:03d}.pdf'.format(i))
 
     plt.close('all')
-    fig, ax = plt.subplots(figsize=(5.5, 5)) 
+    fig, ax = plt.subplots(figsize=(7, 6)) 
 
     ax.plot(beta_phis, surf_rho_with_phi[idx]) 
     plot_multicolored_lines(beta_phis, surf_rho_with_phi[idx,:], colors)
     ax.hlines(0.5, 0, 4) 
-    ax.text(0.5, 0.1, r'ATM: {}  RES: {} {};  $\beta \phi_i^*$: {:0.2f}'.format(atm.name, atm.resname, atm.resid, bphi), color=atm_color) 
+    ax.text(0.5, 0.1, 
+            r'ATM: {}  RES: {} {};  $\beta \phi_i^*$: {:0.2f}'.format(atm.name, atm.resname, atm.resid, bphi), 
+            color=atm_color, fontsize=20) 
     ax.set_xlim(0,4) 
     ax.set_ylim(0,1) 
     ax.set_xlabel(r'$\beta \phi$') 
-    ax.set_ylabel(r'$\langle n_i \rangle_\phi$') 
+    ax.set_ylabel(r'$\langle \rho_i \rangle_\phi$') 
     fig.tight_layout() 
     fig.savefig('fig_{:03d}.pdf'.format(i))
 

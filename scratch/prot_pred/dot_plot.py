@@ -91,6 +91,7 @@ if __name__ == '__main__':
         ax.plot(indices[fn_mask], this_phi[fn_mask], 's', color='#7F00FF', markersize=2)
 
     #plt.savefig('/home/nick/Desktop/dot_plot.svg')
+    ax.plot([-10,450], [2.24, 2.24], 'k-')
     ax.set_xlim(-10,450)
     ax.set_xticks(np.arange(0,450,5))
     #ax.set_ylim(0,4)

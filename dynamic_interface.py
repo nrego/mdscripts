@@ -31,7 +31,7 @@ from mdtools import ParallelTool
 
 from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 
-from fieldwriter import RhoField
+from mdtools.fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
 from IPython import embed
