@@ -160,7 +160,8 @@ Command-line options
         test_loss = loss_fnot(pred, trainer.test_y, criterion, **loss_fn_kwargs)
         print("\n")
         print("ALL DATA Final CV: {:.2f}\n".format(test_loss))
-        embed()
+        
+        torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{}_n_channel_{}'.format(self.n_layers, self.n_hidden, self.n_out_channels))
         
 
 if __name__ == "__main__":
