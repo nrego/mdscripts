@@ -74,6 +74,8 @@ class Core:
         group = parser.add_argument_group('general training options')
         group.add_argument("--infile", "-f", type=str, default="sam_pattern_data.dat.npz",
                            help="Input file name (Default: %(default)s)")
+        group.add_argument("--augment-data", action="store_true",
+                           help="Augment data by flipping every input pattern (Default: Do not augment data)")
         group.add_argument("--batch-size", type=int, default=200,
                            help="Size of training batches. There will be (N_data/batch_size) batches in each "\
                                 "training epoch.  (Default: %(default)s)")
@@ -92,6 +94,9 @@ class Core:
         self.cmdlineargs = args # Keep a record of all input arguments for posterity
 
         self.infile = args.infile
+        self.augment_data = args.augment_data
+        self.cv_nets = []
+
         self.n_patience = args.n_patience
         self.batch_size = args.batch_size
         self.n_valid = args.n_valid

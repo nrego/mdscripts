@@ -47,6 +47,9 @@ Command-line options
 
         feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
         
+        if self.augment_data:
+            feat_vec, energies = augment_data(feat_vec, energies)
+
         self.feat_vec = feat_vec
         self.energies = energies
         self.pos_ext = pos_ext
@@ -124,6 +127,7 @@ Command-line options
             
             net.eval()
             pred = net(trainer.test_X).detach()
+            self.cv_nets.append(net)
             net.train()
             
             test_loss = loss_fnot(pred, trainer.test_y, criterion, **loss_fn_kwargs)
@@ -161,8 +165,9 @@ Command-line options
         print("\n")
         print("ALL DATA Final CV: {:.2f}\n".format(test_loss))
         
-        torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{}_n_channel_{}'.format(self.n_layers, self.n_hidden, self.n_out_channels))
-        
+        torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(self.n_layers, self.n_hidden, self.n_out_channels))
+        for i, cv_net in enumerate(self.cv_nets):
+            torch.save(cv_net.state_dict(), 'model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}_rd_{}.pkl'.format(self.n_layers, self.n_hidden, self.n_out_channels, i))
 
 if __name__ == "__main__":
 
