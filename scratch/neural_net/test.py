@@ -9,129 +9,103 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 
-# One hidden layer net
-class MyNet(nn.Module):
-    def __init__(self):
-        super(MyNet, self).__init__()
+import os, glob
+
+def extract_info(fname):
+    with open(fname, 'r') as fin:
+        lines = fin.readlines()
+
+    for line in lines:
+        splits = line.split(':')
+
+        if splits[0] == 'Convolutional filters':
+            n_conv_channel = int(splits[1])
+
+        if splits[0] == 'N hidden layers':
+            assert int(splits[1]) == 1
+
+        if splits[0] == 'Nodes per hidden layer':
+            n_hidden = int(splits[1])
+
+        if splits[0] == 'Final average MSE':
+            mse_cv = float(splits[1])
+
+        if splits[0] == 'ALL DATA Final CV':
+            mse_tot = float(splits[1])
+
+    return (n_conv_channel, n_hidden, mse_cv, mse_tot)
+
+def fill_from_dir(pathname, trial_channels, trial_hidden):
+    fnames = glob.glob('{}/log_*out*'.format(pathname))
+
+    out_mse_cv = np.zeros((trial_channels.size, trial_hidden.size))
+    out_mse_cv[:] = np.inf
+
+    out_mse_tot = np.zeros_like(out_mse_cv)
+    out_mse_tot[:] = np.inf
+
+    for fname in fnames:
+        n_conv_channel, n_hidden, mse_cv, mse_tot = extract_info(fname)
+
+        bin_channel = np.digitize(n_conv_channel, trial_channels) - 1
+        bin_hidden = np.digitize(n_hidden, trial_hidden) - 1
+
+        out_mse_cv[bin_channel, bin_hidden] = mse_cv
+        out_mse_tot[bin_channel, bin_hidden] = mse_tot
 
 
-        self.l1 = nn.Linear(36, 12)
-        self.o = nn.Linear(12, 5)
-        self.r = nn.ReLU()
-
-    def forward(self, x):
-
-        out = self.r(self.l1(x))
-        out = self.o(out)
-
-        return out
-
-def loss_poly(net_out, target, criterion, p_min, p_range_mat, xvals):
-
-    # Depends on number of datapoints (batch size), so has to be setup here
-    p_min_mat = np.ones((net_out.shape[0], p_min.size), dtype=np.float32)
-    p_min_mat *= p_min
-    p_min_mat = torch.tensor(p_min_mat)
-
-    pred = torch.matmul(net_out, p_range_mat) + p_min_mat
-    pred = torch.matmul(pred, xvals)
-
-    act = torch.matmul(target, p_range_mat) + p_min_mat
-    act = torch.matmul(act, xvals)
-
-    loss = criterion(pred, act)
-
-    return loss
+    return (out_mse_cv, out_mse_tot)
 
 
-feat_vec, energies, poly, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
+n_trials = 4
 
-new_feat = np.zeros((feat_vec.shape[0], 6, 6))
+trial_channels = np.array([1, 2, 3, 4, 5, 6])
+trial_hidden = np.array([4, 8, 12, 16, 20])
 
-for i_feat, feat in enumerate(feat_vec):
-    new_feat[i_feat] = feat.reshape(6,6).T[::-1, :]
+xx, yy = np.meshgrid(trial_channels, trial_hidden, indexing='ij')
+n_params = 7*xx + (9*xx+1)*yy + (yy+1) 
+n_sample = 2*884 - 2
+
+all_perf_cv = np.zeros((n_trials, xx.shape[0], xx.shape[1]))
+all_perf_tot = np.zeros_like(all_perf_cv)
+
+for i in range(n_trials):
+    pathname = 'trial_{}/logs'.format(i)
+
+    out_mse_cv, out_mse_tot = fill_from_dir(pathname, trial_channels, trial_hidden)
+
+    all_perf_cv[i, ...] = out_mse_cv
+    all_perf_tot[i, ...] = out_mse_tot
 
 
-p_min = poly.min(axis=0).astype(np.float32)
-p_max = poly.max(axis=0).astype(np.float32)
-p_range = p_max - p_min
-p_range_mat = torch.tensor(np.diag(p_range))
-xvals = np.arange(0,124)
-xvals = np.array([xvals**4,
-                  xvals**3,
-                  xvals**2,
-                  xvals**1,
-                  xvals**0])
-xvals = torch.tensor(xvals.astype(np.float32))
+aic = n_sample * np.log(all_perf_tot[0]) + 2 * n_params
+aic -= aic.min()
+fig, ax = plt.subplots()
+avg_perf = all_perf_cv.mean(axis=0)
+extent = [0.5, avg_perf.shape[1]+0.5, 0.5, avg_perf.shape[0]+0.5]
+pc = ax.imshow(all_perf_cv[0], origin='lower', extent=extent, cmap='hot_r', norm=plt.Normalize(10,30))
 
-net = MyNet()
-criterion = nn.MSELoss()
-optimizer = optim.Adam(net.parameters(), lr=0.001)
+plt.colorbar(pc)
 
-train_X, train_y, test_X, test_y = next(partition_data(feat_vec, poly, n_groups=5))
+ax.set_xticks(np.arange(avg_perf.shape[1])+1)
+ax.set_yticks(np.arange(avg_perf.shape[0])+1)
+ax.set_xticklabels(['4', '8', '12', '16', '20'])
+ax.set_yticklabels(['1', '2', '3', '4', '5', '6'])
 
-train_dataset = SAMDataset(train_X, train_y, norm_target=True, y_min=p_min, y_max=p_max)
-test_dataset = SAMDataset(test_X, test_y, norm_target=True, y_min=p_min, y_max=p_max)
+plt.show()
 
-del train_X, train_y, test_X, test_y
+fig, ax = plt.subplots()
+pc = ax.imshow(aic, origin='lower', extent=extent, cmap='hot_r')
 
-train_loader = DataLoader(train_dataset, batch_size=200, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=len(test_dataset))
+plt.colorbar(pc)
 
-test_X, test_y = iter(test_loader).next()
+ax.set_xticks(np.arange(avg_perf.shape[1])+1)
+ax.set_yticks(np.arange(avg_perf.shape[0])+1)
+ax.set_xticklabels(['4', '8', '12', '16', '20'])
+ax.set_yticklabels(['1', '2', '3', '4', '5', '6'])
 
-for epoch in range(1000):
-    for batch_idx, (train_X, train_y) in enumerate(train_loader):
-        optimizer.zero_grad()
-        net_out = net(train_X)
-        loss = criterion(net_out, train_y)
-        loss.backward()
-        optimizer.step()
+plt.show()
 
-        if epoch % 100 == 0:
-            print("loss: {:.2f}".format(loss.item()))
 
-del test_X, test_y
-print("\nTraining\n")
 
-data_partitions = partition_data(feat_vec, poly, n_groups=5)
 
-for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
-
-    print("round : {}\n".format(i_round+1))
-
-    train_dataset = SAMDataset(train_X, train_y, norm_target=True, y_min=p_min, y_max=p_max)
-    test_dataset = SAMDataset(test_X, test_y, norm_target=True, y_min=p_min, y_max=p_max)
-
-    train_loader = DataLoader(train_dataset, batch_size=200, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=len(test_dataset))
-
-    test_X, test_y = iter(test_loader).next()
-
-    for epoch in range(4000):
-        for batch_idx, (train_X, train_y) in enumerate(train_loader):
-            optimizer.zero_grad()
-            net_out = net(train_X)
-            loss = loss_poly(net_out, train_y, criterion, p_min, p_range_mat, xvals)
-            loss.backward()
-            optimizer.step()
-
-            test_out = net(test_X).detach()
-            test_loss = loss_poly(test_out, test_y, criterion, p_min, p_range_mat, xvals)
-            if epoch % 100 == 0:
-                print("train loss: {:.2f}  test loss: {:.2f}".format(loss.item(), test_loss))
-
-    del test_X, test_y, train_X, train_y
-
-test_X, test_y = iter(test_loader).next()
-
-pred = net(test_X).detach().numpy()
-act = test_y.numpy()
-
-pred = pred * p_range + p_min
-act = act * p_range + p_min
-
-e_pred = np.dot(pred, xvals)
-e_act = np.dot(act, xvals)
-
-mse = np.mean((e_pred - e_act)**2, axis=0)
