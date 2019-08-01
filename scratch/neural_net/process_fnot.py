@@ -16,7 +16,7 @@ import argparse
 import os, glob
 from matplotlib.colors import Normalize
 
-
+home = os.environ['HOME']
 ## Hyper params
 
 n_out_channels = 4

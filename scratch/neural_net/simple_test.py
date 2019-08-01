@@ -160,3 +160,5 @@ dataset_beta_phi_star = SAMConvDataset(beta_phi_stars, poly)
 
 x_pattern, y_pattern = dataset_pattern[:]
 x_beta_phi_star, y_beta_phi_star = dataset_beta_phi_star[:]
+
+
