@@ -165,7 +165,7 @@ Command-line options
         print("\n")
         print("ALL DATA Final CV: {:.2f}\n".format(test_loss))
         
-        np.save('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_out_channels),
+        np.save('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
                 mses_cv=mses, mse_tot=test_loss)
         torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(self.n_layers, self.n_hidden, self.n_out_channels))
         for i, cv_net in enumerate(self.cv_nets):
