@@ -106,12 +106,11 @@ if __name__ == '__main__':
     # Part 2 - more complex model - N_m, n_mm, and n_mo_int
     feat_vec = np.vstack((k_vals, k_eff_all[:,0], k_eff_all[:,2])).T
     perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies)
-    min_val = reg.coef_[0] * 36 + reg.coef_[1] * 85 + reg.coef_[0] * 0
+    min_val = reg.coef_[0] * 36 + reg.coef_[1] * 85 + reg.coef_[2] * 0
 
-    #bins = np.arange(0, 155, 0.5)
-    bins = np.arange(135, 286.5, 0.5)
+    bins = np.arange(0, 155, 0.5)
 
-    fn_kwargs = dict(nn=nn, coef1=reg.coef_[0], coef2=reg.coef_[1], coef3=reg.coef_[2], inter=reg.intercept_)
+    fn_kwargs = dict(nn=nn, coef1=reg.coef_[0], coef2=reg.coef_[1], coef3=reg.coef_[2], inter=-min_val)
 
     wl = WangLandau(positions, bins, complex_ising_energy, fn_kwargs=fn_kwargs, eps=args.eps, max_iter=args.max_wl_iter)
     wl.gen_states(args.k_ch3, args.do_brute, hist_flat_tol=args.hist_flat_tol)
