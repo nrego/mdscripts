@@ -80,12 +80,12 @@ class SAMConvNet(nn.Module):
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
 
-        self.fc = SAMNet(n_out_channels*9, n_hidden, n_layers, n_out, drop_out)
+        self.fc = SAMNet(n_out_channels*5*4, n_hidden, n_layers, n_out, drop_out)
 
     def forward(self, x):
 
         out = self.layer1(x)
-        out = out.reshape(-1, self.n_out_channels*9)
+        out = out.reshape(-1, self.n_out_channels*5*4)
         out = self.fc(out)
 
         return out

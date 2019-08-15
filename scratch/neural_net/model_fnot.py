@@ -48,7 +48,7 @@ Command-line options
         feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
         
         if self.augment_data:
-            feat_vec, energies = augment_data(feat_vec, energies)
+            feat_vec, energies = hex_augment_data(feat_vec, energies)
 
         self.feat_vec = feat_vec
         self.energies = energies

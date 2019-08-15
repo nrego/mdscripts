@@ -198,6 +198,7 @@ n_voxels = None
 
 
 n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_voxel.dat.npy'))
+n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz'))
 #n_i_dat_fnames[0] = 'equil/rho_data_dump_rad_6.0.dat.npz'
 
 # Ntwid vals, only taken every 0.5 ps from each window
@@ -227,7 +228,8 @@ for i in range(n_files):
     fname = n_i_dat_fnames[i]
 
     ## Shape: (n_voxels, n_frames) ##
-    n_i = np.load(fname).T
+    #n_i = np.load(fname).T
+    n_i = np.load(fname)['rho_water'].T
     if n_voxels is None:
         n_voxels = n_i.shape[0]
     else:

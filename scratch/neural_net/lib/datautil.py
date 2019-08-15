@@ -61,7 +61,7 @@ class SAMDataset(data.Dataset):
         return self.y.shape[-1]
 
 ## SAM Conv dataset - transforms X to 1 x 6 x 6 image
-class SAMConvDataset(SAMDataset):
+class OLDSAMConvDataset(SAMDataset):
     
 
     def __init__(self, X, y, norm_target=False, y_min=None, y_max=None):
@@ -78,6 +78,23 @@ class SAMConvDataset(SAMDataset):
 
         self.X = torch.from_numpy(self.X)
 
+
+class SAMConvDataset(SAMDataset):
+    
+
+    def __init__(self, X, y, norm_target=False, y_min=None, y_max=None):
+        super(SAMConvDataset, self).__init__(X, y, norm_target, y_min, y_max)
+
+        old_X = self.X.copy()
+
+        self.X = np.zeros((old_X.shape[0], 1, 8, 9), dtype=np.float32)
+
+        for i in range(old_X.shape[0]):
+            x = old_X[i]
+            x = np.ascontiguousarray(x.reshape(9,8).T[::-1,...])
+            self.X[i,0] = x
+
+        self.X = torch.from_numpy(self.X)
 
 # Split SAM dataset into N random, equally sized groups - N-1 will be used as training, and remaining as validation
 #   In the case of a remainder, the remainder is cut off.

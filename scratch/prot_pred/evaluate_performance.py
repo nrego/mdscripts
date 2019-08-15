@@ -43,7 +43,9 @@ if __name__ == '__main__':
     contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
     pred_contacts = glob.glob(args.pred_contact)
 
-    assert contact_mask[surf_mask].sum() == contact_mask.sum()
+    if contact_mask[surf_mask].sum() != contact_mask.sum():
+        diff_contact = contact_mask.sum() - contact_mask[surf_mask].sum()
+        print("WARNING: {:1d} Contacts are buried by buried_mask".format(diff_contact))
     contact_mask = contact_mask[surf_mask] # Only considering surface atoms
 
     print('Number of surface atoms: {}'.format(surf_mask.sum()))

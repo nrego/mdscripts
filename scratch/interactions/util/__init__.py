@@ -1,1 +1,1 @@
-from util import *
+from scratch.interactions.util.util import *

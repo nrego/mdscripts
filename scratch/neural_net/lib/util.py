@@ -37,6 +37,85 @@ def plot_from_feat(pos_ext, feat, this_map=mymap):
 
     #plt.show()
 
+# Generate 6 rotated patch patterns on extended grid
+#   non-patch hydroxyl: 0
+#   patch hydroxyl: -1
+#   patch methyl: +1
+def hex_rotate(methyl_mask):
+
+    positions = gen_pos_grid(6)
+    theta_60 = (60*np.pi)/180.
+    rot_60 = np.array([[np.cos(theta_60), -np.sin(theta_60)], [np.sin(theta_60), np.cos(theta_60)]])
+
+    z_space = 0.5
+    y_space = np.sqrt(3)*0.5 * z_space
+
+    pos_ext = gen_pos_grid(ny=9, nz=8, z_offset=True)
+
+    for i in range(6):
+        rot_mat = np.array( np.matrix(rot_60)**i )
+
+        # Rotate 6x6 grid and find mapping to pos_ext
+        this_pos = np.dot(positions, rot_mat)
+
+        y_min, z_min = this_pos.min(axis=0)
+        y_max, z_max = this_pos.max(axis=0)
+
+        # Shift onto pos_ext grid, then shift up, and possibly right, to make it look nice
+        min_vec = np.array([y_min, z_min])
+        this_pos -= min_vec
+        this_pos += np.array([0, z_space])
+        if (i*60) % 180 == 0:
+            this_pos += np.array([y_space, 0])
+
+        # patch_indices: shape: (36,): patch_indices[i] gives global index (on pos_ext)
+        #   of local patch point i
+        d, patch_indices = cKDTree(pos_ext).query(this_pos, k=1)
+        assert np.unique(patch_indices).size == patch_indices.size == 36
+
+        #plt.plot(pos_ext[:,0], pos_ext[:,1], 'x')
+        #plt.plot(this_pos[:,0], this_pos[:,1], 'o')
+        
+        #plt.show()
+
+        patch_methyl_indices = patch_indices[methyl_mask]
+        patch_hydroxyl_indices = patch_indices[~methyl_mask]
+        #plt.plot(pos_ext[patch_methyl_indices, 0], pos_ext[patch_methyl_indices, 1], 'ko')
+        #plt.plot(pos_ext[patch_hydroxyl_indices, 0], pos_ext[patch_hydroxyl_indices, 1], 'bo')
+
+        augmented_feature = np.zeros(pos_ext.shape[0])
+        augmented_feature[patch_methyl_indices] = 1
+        augmented_feature[patch_hydroxyl_indices] = -1
+
+
+        yield augmented_feature
+
+def hex_augment_data(feat_vec, y):
+    n_feat = feat_vec.shape[0]
+    n_aug = n_feat*6
+
+    aug_feat_vec = np.zeros((n_aug, 9*8))
+
+    if y.ndim == 1:
+        aug_y = np.zeros(n_aug)
+    else:
+        aug_y = np.zeros((n_aug, y.shape[1]))
+
+    for i_feat in range(n_feat):
+        feat = feat_vec[i_feat]
+        this_y = y[i_feat]
+        methyl_mask = feat.astype(bool)
+        gen_hex = hex_rotate(methyl_mask)
+
+        for i, aug_feat in enumerate(gen_hex):
+            idx = i_feat + i*n_feat
+
+            aug_feat_vec[idx] = aug_feat
+            aug_y[idx] = this_y
+
+
+    return (aug_feat_vec, aug_y)
+
 # Flip every dataset to get a 'new' feature (except for k=0, k=36)
 def augment_data(feat_vec, y):
     n_feat = feat_vec.shape[0]
@@ -84,8 +163,6 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
 
     n_data = energies.size
 
-    # Total 12x12 hexagonal grid
-    pos_ext = gen_pos_grid(8, z_offset=True, shift_y=-1, shift_z=-1)
     pos_ext = positions.copy()
 
     # patch_idx is list of patch indices in pos_ext 
@@ -111,7 +188,7 @@ def load_and_prep(fname='sam_pattern_data.dat.npz'):
     f_std = feat_vec.std()
 
 
-    return feat_vec, energies, poly_4, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat
+    return feat_vec, energies, poly_4, beta_phi_stars, pos_ext, patch_indices, methyl_pos, positions
 
 
 def save_net(net, foutname='net.pkl'):

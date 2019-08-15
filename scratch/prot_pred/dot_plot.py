@@ -50,7 +50,7 @@ if __name__ == '__main__':
     contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
     pred_contacts = np.sort(glob.glob(args.pred_contact))
 
-    assert contact_mask[surf_mask].sum() == contact_mask.sum()
+    #assert contact_mask[surf_mask].sum() == contact_mask.sum()
     contact_mask = contact_mask[surf_mask][sort_idx] # Only considering surface atoms
 
     print('Number of surface atoms: {}'.format(surf_mask.sum()))
