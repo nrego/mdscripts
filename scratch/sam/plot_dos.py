@@ -3,7 +3,7 @@ from scipy import special
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
-import cPickle as pickle
+import pickle
 
 mpl.rcParams.update({'axes.labelsize': 40})
 mpl.rcParams.update({'xtick.labelsize': 30})

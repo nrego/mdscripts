@@ -85,7 +85,7 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1):
     pred = reg.predict(X)
     err = y - pred
 
-    return(perf_r2, perf_mse, err, xvals, fit, reg)
+    return (perf_r2, perf_mse, err, xvals, fit, reg)
 
 def plot_3d(x, y, z, norm=None, cmap=None):
     fig = plt.figure()
@@ -469,8 +469,40 @@ def find_keff_kernel(methyl_mask, dd, dd_ext, sig_sq, rcut):
     return deg
 
 
+def extract_data(fname="sam_pattern_data.dat.npz"):
+    ds = np.load('sam_pattern_data.dat.npz')
+
+    energies = ds['energies']
+    k_vals = ds['k_vals']
+    methyl_pos = ds['methyl_pos']
+    positions = ds['positions']
+
+    # All methyl patterns
+    methyl_pos = ds['methyl_pos']
+    n_configs = methyl_pos.shape[0]
+
+    # extended grid so we can find patch indices on edge of patch
+    pos_ext = gen_pos_grid(8, z_offset=True, shift_y=-1, shift_z=-1)
+
+    # patch_indices is a list of the (global) indices of points on pos_ext corresponding
+    #   to the patch points on positions
+    #
+    #   (pos_ext[patch_indices[i]] will give position[i], ith patch point)
+    d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
+
+    # nn_ext is dictionary of (global) nearest neighbors to each (local) patch point
+    #   nn_ext: [local position i] => [list of global pos_ext nearest neighbors]
+    #   nn_ext[i]  global idxs of neighbor to local patch i 
+    nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
+
+    # edges is a list of (i,j) tuples of (global) indices
+    #   only contains nn edges between either patch-patch or patch-external
+    # ext_indices contains indices of all patch-external edges
+    edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
+    n_edges = edges.shape[0]
+
+    int_indices = np.setdiff1d(np.arange(n_edges), ext_indices)
 
 
-
-
+    return (energies, methyl_pos, k_vals, positions, pos_ext, patch_indices, nn, nn_ext, edges, ext_indices, int_indices)
 

@@ -2,7 +2,7 @@ import os, glob
 from scipy import special
 import matplotlib as mpl
 from matplotlib import pyplot as plt
-import cPickle as pickle
+import pickle
 
 mpl.rcParams.update({'axes.labelsize': 40})
 mpl.rcParams.update({'xtick.labelsize': 30})
@@ -58,8 +58,8 @@ def get_beta_fe_energy(temp, energies, entropy):
 
     return beta*energies - entropy
 
-with open('entropy_vals.pkl', 'r') as fin:
-    payload = pickle.load(fin)
+with open('entropy_vals.pkl', 'rb') as fin:
+    payload = pickle.load(fin, encoding='iso-8859-1')
 
 energies = payload['energies']
 poly = payload['polynomial']

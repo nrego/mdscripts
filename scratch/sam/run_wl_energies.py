@@ -122,10 +122,9 @@ min_val, max_val = pred[-1], pred[-2]
 #reg.intercept_ -= min_val
 # get bins
 
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies-min_val, do_ridge=False)
 #embed()
 #bins = np.arange(0, np.ceil(max_val-min_val)+args.de, args.de)
-bins = np.arange(135, 286.5, 0.5) - 135
+bins = np.arange(135, 286.5, 0.5) #- 135
 print("Doing k_ch3={:d},  do_brute={}".format(k_ch3, do_brute))
 print("  with {:d} energy bins from {:0.1f} to {:0.1f}".format(bins.size-1, 0, np.ceil(reg.intercept_)))
 

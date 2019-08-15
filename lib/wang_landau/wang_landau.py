@@ -10,7 +10,6 @@ import matplotlib as mpl
 
 from IPython import embed
 
-import cPickle as pickle
 import os
 
 import time
@@ -112,6 +111,7 @@ class WangLandau:
         #combos = combos[rand_idx]
         #embed()
         # Indices of the k methyl positions
+        embed()
         for pt_idx in combos:
             m_mask = np.zeros(self.N, dtype=bool)
             try:
