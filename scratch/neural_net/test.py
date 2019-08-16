@@ -36,8 +36,8 @@ n_sample = 6*884
 all_perf_cv = np.zeros((n_trials, xx.shape[0], xx.shape[1]))
 all_perf_tot = np.zeros((xx.shape[0], xx.shape[1]))
 
-all_perf_cv[:] = 50
-all_perf_tot[:] = 100000
+all_perf_cv[:] = np.inf
+all_perf_tot[:] = np.nan
 
 fnames = sorted(glob.glob("perf_*"))
 
@@ -54,12 +54,14 @@ for fname in fnames:
 
 avg_perf_cv = all_perf_cv.mean(axis=0)
 
-aic = n_sample * np.log(avg_perf_cv) + 2 * n_params
-aic -= aic.min()
+aic = n_sample * np.log(all_perf_tot) + 2 * n_params
+aic -= np.nanmin(aic)
 fig, ax = plt.subplots()
 
 extent = [0.5, avg_perf_cv.shape[1]+0.5, 0.5, avg_perf_cv.shape[0]+0.5]
-pc = ax.imshow(avg_perf_cv, origin='lower', extent=extent, cmap='hot_r', norm=plt.Normalize(8,30))
+norm = plt.Normalize(9,15)
+
+pc = ax.imshow(avg_perf_cv, origin='lower', extent=extent, cmap='plasma_r', norm=plt.Normalize(9,15))
 
 plt.colorbar(pc)
 
@@ -72,7 +74,7 @@ plt.show()
 
 
 fig, ax = plt.subplots()
-pc = ax.imshow(aic, origin='lower', extent=extent, cmap='hot_r', norm=plt.Normalize(0,10000))
+pc = ax.imshow(aic, origin='lower', extent=extent, cmap='plasma_r', norm=plt.Normalize(0,10000))
 
 plt.colorbar(pc)
 

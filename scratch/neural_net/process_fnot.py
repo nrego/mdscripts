@@ -19,8 +19,8 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
-n_out_channels = 4
-n_hidden = 2
+n_out_channels = 3
+n_hidden = 6
 n_layers = 1
 
 
@@ -84,13 +84,15 @@ from matplotlib.colors import Normalize
 feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
 emin, emax = energies.min(), energies.max()
 
+n_dat = feat_vec.shape[0]
+
 aug_feat_vec, aug_y = hex_augment_data(feat_vec, energies)
 dataset = SAMConvDataset(aug_feat_vec, aug_y, norm_target=True, y_min=emin, y_max=emax)
 
 k_c = (aug_feat_vec == 1).sum(axis=1)
 pos_ext = gen_pos_grid(ny=9, nz=8, z_offset=True)
 
-fnames = glob.glob('model_*')
+fnames = sorted(glob.glob('model_*'))
 
 net = SAMConvNet(n_out_channels=n_out_channels, n_layers=n_layers, n_hidden=n_hidden, n_out=1)
 
@@ -118,17 +120,18 @@ for fname in fnames:
     #for i in range(n_out_channels):
     #    norms.append(plt.Normalize(-rng_pt[i], rng_pt[i]))
     norm = plt.Normalize(-rng_pt.max(), rng_pt.max())
+    print(rng_pt.max())
     kernel_rep(k0, k1, norm=norm, cmap='RdBu')
     ax = plt.gca()
     #ax.set_title(title)
+    plt.savefig('{}/Desktop/filter_{}.png'.format(home, title))
 
     plt.show()
 
 x, y = dataset[:]
-fname = fnames[-1]
+fname = fnames[0]
 state_dict = torch.load(fname)
 net.load_state_dict(state_dict)
 
-construct_pvn_images(100, net, x)
-
-
+for i in range(6):
+    construct_pvn_images(100+i*n_dat, net, x)

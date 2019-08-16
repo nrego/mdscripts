@@ -41,7 +41,7 @@ def plot_from_feat(pos_ext, feat, this_map=mymap):
 #   non-patch hydroxyl: 0
 #   patch hydroxyl: -1
 #   patch methyl: +1
-def hex_rotate(methyl_mask):
+def hex_rotate(methyl_mask, ny=13, nz=11):
 
     positions = gen_pos_grid(6)
     theta_60 = (60*np.pi)/180.
@@ -50,7 +50,12 @@ def hex_rotate(methyl_mask):
     z_space = 0.5
     y_space = np.sqrt(3)*0.5 * z_space
 
-    pos_ext = gen_pos_grid(ny=9, nz=8, z_offset=True)
+    pos_ext = gen_pos_grid(ny, nz, z_offset=True)
+    ext_y_min, ext_z_min = pos_ext.min(axis=0)
+    ext_y_max, ext_z_max = pos_ext.max(axis=0)
+
+    ext_y_len = ext_y_max - ext_y_min
+    ext_z_len = ext_z_max - ext_z_min - 0.5*z_space
 
     for i in range(6):
         rot_mat = np.array( np.matrix(rot_60)**i )
@@ -61,22 +66,33 @@ def hex_rotate(methyl_mask):
         y_min, z_min = this_pos.min(axis=0)
         y_max, z_max = this_pos.max(axis=0)
 
-        # Shift onto pos_ext grid, then shift up, and possibly right, to make it look nice
-        min_vec = np.array([y_min, z_min])
-        this_pos -= min_vec
-        this_pos += np.array([0, z_space])
-        if (i*60) % 180 == 0:
-            this_pos += np.array([y_space, 0])
+        y_len = y_max - y_min
+        z_len = z_max - z_min
 
-        # patch_indices: shape: (36,): patch_indices[i] gives global index (on pos_ext)
-        #   of local patch point i
-        d, patch_indices = cKDTree(pos_ext).query(this_pos, k=1)
-        assert np.unique(patch_indices).size == patch_indices.size == 36
+        # Shift onto pos_ext grid, and center as best as we can
+        shift_y = y_space * np.round(0.5*(ext_y_len - y_len) / y_space)
+        shift_z = z_space * np.round(0.5*(ext_z_len - z_len) / z_space) #+ 0.25
+        shift = np.array([ext_y_min-y_min + shift_y, ext_z_min-z_min + shift_z])
+
+        this_pos += shift
+
+        # Check if we're on-register with the z-shift
+        py = this_pos[0,0]
+        idx = np.argmin(np.abs(pos_ext[:,0] - py))
+        on_register = np.abs(this_pos[0,1] - pos_ext[idx, 1]) % z_space < 0.4*z_space
+        if not on_register:
+            this_pos += np.array([0, 0.5*z_space])
+        #print("On register? {}".format(on_register))
 
         #plt.plot(pos_ext[:,0], pos_ext[:,1], 'x')
         #plt.plot(this_pos[:,0], this_pos[:,1], 'o')
         
         #plt.show()
+
+        # patch_indices: shape: (36,): patch_indices[i] gives global index (on pos_ext)
+        #   of local patch point i
+        d, patch_indices = cKDTree(pos_ext).query(this_pos, k=1)
+        assert np.unique(patch_indices).size == patch_indices.size == 36
 
         patch_methyl_indices = patch_indices[methyl_mask]
         patch_hydroxyl_indices = patch_indices[~methyl_mask]
@@ -90,11 +106,12 @@ def hex_rotate(methyl_mask):
 
         yield augmented_feature
 
-def hex_augment_data(feat_vec, y):
+
+def hex_augment_data(feat_vec, y, ny=13, nz=11):
     n_feat = feat_vec.shape[0]
     n_aug = n_feat*6
 
-    aug_feat_vec = np.zeros((n_aug, 9*8))
+    aug_feat_vec = np.zeros((n_aug, ny*nz))
 
     if y.ndim == 1:
         aug_y = np.zeros(n_aug)
@@ -105,7 +122,7 @@ def hex_augment_data(feat_vec, y):
         feat = feat_vec[i_feat]
         this_y = y[i_feat]
         methyl_mask = feat.astype(bool)
-        gen_hex = hex_rotate(methyl_mask)
+        gen_hex = hex_rotate(methyl_mask, ny, nz)
 
         for i, aug_feat in enumerate(gen_hex):
             idx = i_feat + i*n_feat

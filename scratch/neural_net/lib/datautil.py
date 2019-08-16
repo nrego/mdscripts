@@ -80,18 +80,17 @@ class OLDSAMConvDataset(SAMDataset):
 
 
 class SAMConvDataset(SAMDataset):
-    
 
-    def __init__(self, X, y, norm_target=False, y_min=None, y_max=None):
+    def __init__(self, X, y, norm_target=False, y_min=None, y_max=None, ny=13, nz=11):
         super(SAMConvDataset, self).__init__(X, y, norm_target, y_min, y_max)
 
         old_X = self.X.copy()
 
-        self.X = np.zeros((old_X.shape[0], 1, 8, 9), dtype=np.float32)
+        self.X = np.zeros((old_X.shape[0], 1, nz, ny), dtype=np.float32)
 
         for i in range(old_X.shape[0]):
             x = old_X[i]
-            x = np.ascontiguousarray(x.reshape(9,8).T[::-1,...])
+            x = np.ascontiguousarray(x.reshape(ny, nz).T[::-1,...])
             self.X[i,0] = x
 
         self.X = torch.from_numpy(self.X)

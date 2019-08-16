@@ -67,7 +67,8 @@ class SAMNet(nn.Module):
 
 
 class SAMConvNet(nn.Module):
-    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0):
+
+    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=11):
         super(SAMConvNet, self).__init__()
 
         self.n_out_channels = n_out_channels
@@ -79,13 +80,18 @@ class SAMConvNet(nn.Module):
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
+        # Determine pooling output size (ugh, hackish)
+        dummy = torch.rand((1,1,nz,ny))
+        p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
+        self.n_pool_out = np.prod(p(dummy).shape) * n_out_channels
 
-        self.fc = SAMNet(n_out_channels*5*4, n_hidden, n_layers, n_out, drop_out)
+        # Fully-connected layer(s)
+        self.fc = SAMNet(self.n_pool_out, n_hidden, n_layers, n_out, drop_out)
 
     def forward(self, x):
 
         out = self.layer1(x)
-        out = out.reshape(-1, self.n_out_channels*5*4)
+        out = out.reshape(-1, self.n_pool_out)
         out = self.fc(out)
 
         return out
