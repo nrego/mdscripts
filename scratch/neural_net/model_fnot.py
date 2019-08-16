@@ -112,7 +112,7 @@ Command-line options
 
             if torch.cuda.is_available():
                 net = net.cuda()
-            embed()
+            
             train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=emin, y_max=emax)
             test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=emin, y_max=emax)
 
