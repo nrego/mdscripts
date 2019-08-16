@@ -20,25 +20,9 @@ home = os.environ['HOME']
 ## Hyper params
 
 n_out_channels = 4
-n_hidden = 4
+n_hidden = 2
 n_layers = 1
 
-def count_n_mm(feat_vec, pos_ext):
-    tree = cKDTree(pos_ext)
-    pairs = tree.query_pairs(r=0.51)
-
-    n_mm_tot = np.zeros(feat_vec.shape[0])
-
-    for i_feat, feat in enumerate(feat_vec):
-        n_mm = 0
-        for i,j in pairs:
-            if feat[i] == 1 and feat[j] == 1:
-                n_mm += 1
-
-        n_mm_tot[i_feat] = n_mm
-
-
-    return n_mm_tot
 
 def kernel_rep(k0, k1, norm=None, cmap=None):
     k0 = k0.detach()[:,0,...]
@@ -78,11 +62,10 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home)):
     max3 = out_all[:,3].max()
     filter_norm = [Normalize(0,max0), Normalize(0,max1), Normalize(0,max2), Normalize(0,max3)]
 
-
     conv = r(c(this_pattern).detach())
     pool = p(conv)
 
-    plot_hextensor(this_pattern, norm=Normalize(0,1))
+    plot_hextensor(this_pattern, norm=Normalize(-1,1))
     plt.savefig('{}/fnot_{:03}_pattern'.format(path, idx))
     plt.close('all')
 
@@ -96,16 +79,16 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home)):
 home = os.environ['HOME']
 
 from matplotlib.colors import Normalize
-bphi_norm = Normalize(0.75, 2.0)
+
 
 feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
 emin, emax = energies.min(), energies.max()
 
-aug_feat_vec, aug_energies = augment_data(feat_vec, energies)
-dataset = SAMConvDataset(aug_feat_vec, aug_energies, norm_target=True, y_min=emin, y_max=emax)
+aug_feat_vec, aug_y = hex_augment_data(feat_vec, energies)
+dataset = SAMConvDataset(aug_feat_vec, aug_y, norm_target=True, y_min=emin, y_max=emax)
 
-k_c = aug_feat_vec.sum(axis=1)
-n_mm = count_n_mm(aug_feat_vec, pos_ext)
+k_c = (aug_feat_vec == 1).sum(axis=1)
+pos_ext = gen_pos_grid(ny=9, nz=8, z_offset=True)
 
 fnames = glob.glob('model_*')
 
@@ -117,6 +100,7 @@ for fname in fnames:
     net.load_state_dict(state_dict)
 
     title = fname.split('.')[0].split('_')[-1]
+    print("Filters: {}".format(title))
     # Contains the conv layer, relu, and max pool
     l1 = net.layer1
     c, r, p = l1.children()
@@ -127,6 +111,7 @@ for fname in fnames:
     arr = kernel_rep(k0, k1)
     plt.close('all')
 
+    # Get largest weight for each of the filters (channels)
     rng_pt = np.abs(arr[0].reshape(n_out_channels,9)).max(axis=1)
 
     norms = []
@@ -140,7 +125,7 @@ for fname in fnames:
     plt.show()
 
 x, y = dataset[:]
-fname = fnames[0]
+fname = fnames[-1]
 state_dict = torch.load(fname)
 net.load_state_dict(state_dict)
 

@@ -159,7 +159,7 @@ Command-line options
 
 
         trainer = Trainer(dataset, dataset, batch_size=self.batch_size,
-                          learning_rate=self.learning_rate, epochs=self.n_epochs)
+                          learning_rate=self.learning_rate, epochs=self.n_epochs, break_out=mses.mean())
         
         trainer(net, criterion, loss_fn=loss_fnot, loss_fn_kwargs=loss_fn_kwargs)
 

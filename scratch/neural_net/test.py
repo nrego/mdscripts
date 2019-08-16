@@ -12,100 +12,74 @@ from torch import optim
 import os, glob
 
 def extract_info(fname):
-    with open(fname, 'r') as fin:
-        lines = fin.readlines()
+    splits = fname.split('_')
 
-    for line in lines:
-        splits = line.split(':')
+    n_layer = int(splits[4])
+    n_hidden = int(splits[7])
+    n_conv_channel = int(splits[10].split('.')[0])
 
-        if splits[0] == 'Convolutional filters':
-            n_conv_channel = int(splits[1])
-
-        if splits[0] == 'N hidden layers':
-            assert int(splits[1]) == 1
-
-        if splits[0] == 'Nodes per hidden layer':
-            n_hidden = int(splits[1])
-
-        if splits[0] == 'Final average MSE':
-            mse_cv = float(splits[1])
-
-        if splits[0] == 'ALL DATA Final CV':
-            mse_tot = float(splits[1])
-
-    return (n_conv_channel, n_hidden, mse_cv, mse_tot)
-
-def fill_from_dir(pathname, trial_channels, trial_hidden):
-    fnames = glob.glob('{}/log_*out*'.format(pathname))
-
-    out_mse_cv = np.zeros((trial_channels.size, trial_hidden.size))
-    out_mse_cv[:] = np.inf
-
-    out_mse_tot = np.zeros_like(out_mse_cv)
-    out_mse_tot[:] = np.inf
-
-    for fname in fnames:
-        n_conv_channel, n_hidden, mse_cv, mse_tot = extract_info(fname)
-
-        bin_channel = np.digitize(n_conv_channel, trial_channels) - 1
-        bin_hidden = np.digitize(n_hidden, trial_hidden) - 1
-
-        out_mse_cv[bin_channel, bin_hidden] = mse_cv
-        out_mse_tot[bin_channel, bin_hidden] = mse_tot
+    return (n_layer, n_hidden, n_conv_channel)
 
 
-    return (out_mse_cv, out_mse_tot)
-
-
-n_trials = 4
-
+# conv channels
 trial_channels = np.array([1, 2, 3, 4, 5, 6])
-trial_hidden = np.array([4, 8, 12, 16, 20])
+# number hidden nodes
+trial_hidden = np.array([2, 4, 6, 8, 12, 16, 18, 20])
 
+# number of CV trials
+n_trials = 5
 xx, yy = np.meshgrid(trial_channels, trial_hidden, indexing='ij')
+# Number of trained parameters (for AIC)
 n_params = 7*xx + (9*xx+1)*yy + (yy+1) 
-n_sample = 2*884 - 2
+n_sample = 6*884 
 
 all_perf_cv = np.zeros((n_trials, xx.shape[0], xx.shape[1]))
-all_perf_tot = np.zeros_like(all_perf_cv)
+all_perf_tot = np.zeros((xx.shape[0], xx.shape[1]))
 
-for i in range(n_trials):
-    pathname = 'trial_{}/logs'.format(i)
+all_perf_cv[:] = 50
+all_perf_tot[:] = 100000
 
-    out_mse_cv, out_mse_tot = fill_from_dir(pathname, trial_channels, trial_hidden)
+fnames = sorted(glob.glob("perf_*"))
 
-    all_perf_cv[i, ...] = out_mse_cv
-    all_perf_tot[i, ...] = out_mse_tot
+for fname in fnames:
+    n_layer, n_hidden, n_conv_channel = extract_info(fname)
 
+    x_idx = np.digitize(n_conv_channel, trial_channels) - 1
+    y_idx = np.digitize(n_hidden, trial_hidden) - 1
 
-aic = n_sample * np.log(all_perf_tot[0]) + 2 * n_params
+    ds = np.load(fname)
+
+    all_perf_cv[:, x_idx, y_idx] = ds['mses_cv']
+    all_perf_tot[x_idx, y_idx] = ds['mse_tot'].item()
+
+avg_perf_cv = all_perf_cv.mean(axis=0)
+
+aic = n_sample * np.log(avg_perf_cv) + 2 * n_params
 aic -= aic.min()
 fig, ax = plt.subplots()
-avg_perf = all_perf_cv.mean(axis=0)
-extent = [0.5, avg_perf.shape[1]+0.5, 0.5, avg_perf.shape[0]+0.5]
-pc = ax.imshow(all_perf_cv[0], origin='lower', extent=extent, cmap='hot_r', norm=plt.Normalize(10,30))
+
+extent = [0.5, avg_perf_cv.shape[1]+0.5, 0.5, avg_perf_cv.shape[0]+0.5]
+pc = ax.imshow(avg_perf_cv, origin='lower', extent=extent, cmap='hot_r', norm=plt.Normalize(8,30))
 
 plt.colorbar(pc)
 
-ax.set_xticks(np.arange(avg_perf.shape[1])+1)
-ax.set_yticks(np.arange(avg_perf.shape[0])+1)
-ax.set_xticklabels(['4', '8', '12', '16', '20'])
+ax.set_xticks(np.arange(avg_perf_cv.shape[1])+1)
+ax.set_yticks(np.arange(avg_perf_cv.shape[0])+1)
+ax.set_xticklabels(['2', '4', '6', '8', '12', '16', '18', '20'])
 ax.set_yticklabels(['1', '2', '3', '4', '5', '6'])
 
 plt.show()
+
 
 fig, ax = plt.subplots()
-pc = ax.imshow(aic, origin='lower', extent=extent, cmap='hot_r')
+pc = ax.imshow(aic, origin='lower', extent=extent, cmap='hot_r', norm=plt.Normalize(0,10000))
 
 plt.colorbar(pc)
 
-ax.set_xticks(np.arange(avg_perf.shape[1])+1)
-ax.set_yticks(np.arange(avg_perf.shape[0])+1)
-ax.set_xticklabels(['4', '8', '12', '16', '20'])
+ax.set_xticks(np.arange(avg_perf_cv.shape[1])+1)
+ax.set_yticks(np.arange(avg_perf_cv.shape[0])+1)
+ax.set_xticklabels(['2', '4', '6', '8', '12', '16', '18', '20'])
 ax.set_yticklabels(['1', '2', '3', '4', '5', '6'])
 
 plt.show()
-
-
-
 
