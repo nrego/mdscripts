@@ -112,7 +112,7 @@ Command-line options
 
             if torch.cuda.is_available():
                 net = net.cuda()
-            
+
             train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=emin, y_max=emax)
             test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=emin, y_max=emax)
 
@@ -142,7 +142,8 @@ Command-line options
 
         print("\n\nFinal average MSE: {:.2f}".format(mses.mean()))
 
-
+        np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
+                mses_cv=mses)
         ## Final Model: Train on all ##
         print("\n\nFinal Training on Entire Dataset\n")
         print("================================\n")
@@ -158,7 +159,7 @@ Command-line options
         dataset = DatasetType(self.feat_vec, self.energies, norm_target=True, y_min=emin, y_max=emax)
 
 
-        trainer = Trainer(dataset, dataset, batch_size=self.batch_size,
+        trainer = Trainer(dataset, dataset, batch_size=len(dataset),
                           learning_rate=self.learning_rate, epochs=self.n_epochs, break_out=mses.mean())
         
         trainer(net, criterion, loss_fn=loss_fnot, loss_fn_kwargs=loss_fn_kwargs)
@@ -169,7 +170,6 @@ Command-line options
         test_loss = loss_fnot(pred, trainer.test_y, criterion, **loss_fn_kwargs)
         print("\n")
         print("ALL DATA Final CV: {:.2f}\n".format(test_loss))
-        
         np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
                 mses_cv=mses, mse_tot=test_loss)
         torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(self.n_layers, self.n_hidden, self.n_out_channels))
