@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import matplotlib as mpl
+import MDAnalysis
 
 def find_contiguous_colors(colors):
     # finds the continuous segments of colors and returns those segments
@@ -33,7 +34,7 @@ mpl.rcParams.update({'ytick.labelsize': 15})
 mpl.rcParams.update({'axes.titlesize':20})
 mpl.rcParams.update({'legend.fontsize':10})
 
-dat = np.load("../../phi_sims/ni_rad_weighted.dat.npz")
+dat = np.load("../phi_sims/ni_rad_weighted.dat.npz")
 beta_phis = dat['beta_phi']
 n_with_phi = dat['avg']
 cov_with_phi = dat['cov']

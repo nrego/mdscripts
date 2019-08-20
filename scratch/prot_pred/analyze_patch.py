@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 from IPython import embed
 from mdtools import MDSystem
-import cPickle as pickle
+import pickle
 import argparse
 
 import os
@@ -185,6 +185,7 @@ contact_mask = np.loadtxt(args.actual_contact, dtype=bool)[surf_mask]
 pred_mask = np.loadtxt(args.pred_contact, dtype=bool)[surf_mask]
 hydropathy = np.loadtxt(args.hydropathy, dtype=bool)[surf_mask]
 
+curv = None
 if args.curv is not None:
     curv = np.loadtxt(args.curv)
 

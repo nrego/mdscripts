@@ -105,7 +105,7 @@ np.savez_compressed('ni_weighted.dat', avg=avg_nis, var=chi_nis, beta_phi=beta_p
 # Shape: (36, n_frames)
 rho_nis = avg_nis / avg_nis[:, 0][:,None]
 
-beta_phi_stars = np.zeros(36)
+beta_phi_stars = np.zeros(rho_nis.shape[0])
 beta_phi_stars[:] = beta_phis[-1]
 
 for i_vol in range(rho_nis.shape[0]):

@@ -2,7 +2,7 @@ import os, glob
 import numpy as np
 from scratch.sam.util import *
 
-fnames = sorted(glob.glob('pattern_sample/k_*/d_*/trial_0/PvN.dat'))
+fnames = sorted(glob.glob('inv_pattern_sample/*/d_*/trial_0/PvN.dat')) + sorted(glob.glob('pattern_sample/*/d_*/trial_0/PvN.dat'))
 
 n_dat = len(fnames)
 

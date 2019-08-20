@@ -32,7 +32,7 @@ from constants import k
 '''
 
 beta = 1/(k * 300)
-beta_phi_vals, avg_N, err_avg_N, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('../prod/phi_sims/Nvphi.dat'), 5, 1)]
+beta_phi_vals, avg_N, err_avg_N, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('../phi_sims/Nvphi.dat'), 5, 1)]
 ## Figure 4 d ##  
 ## Plot roc curve and susceptiblity w/ f_h
 
