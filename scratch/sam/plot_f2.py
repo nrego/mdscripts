@@ -96,13 +96,13 @@ n_conn_type = k_eff_all_shape.shape[2]
 ###############
 
 # k_ch3 #
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_vals, energies, do_ridge=False)
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(36-k_vals, energies, do_ridge=False)
 
 fig, ax = plt.subplots(figsize=(7,6))
-ax.scatter(k_vals, energies, s=12, color='b')
+ax.scatter(36-k_vals, energies, s=12, color='b')
 ax.plot(xvals, fit, 'k-', linewidth=3)
-ax.set_xlabel(r'$k_C$')
-ax.set_ylabel(r'$f$')
+#ax.set_xlabel(r'$k_C$')
+#ax.set_ylabel(r'$f$')
 fig.tight_layout()
 
 ax.set_xticks(np.arange(0,42,6))
@@ -110,10 +110,10 @@ ax.set_xticks(np.arange(0,42,6))
 fig.savefig('{}/Desktop/fit_one.png'.format(homedir), transparent=True)
 plt.close('all')
 fig, ax = plt.subplots(figsize=(7,6))
-ax.scatter(k_vals, err, s=12, color='b')
+ax.scatter(36-k_vals, err, s=12, color='b')
 #ax.plot(xvals, fit, 'k-', linewidth=3)
-ax.set_xlabel(r'$k_C$')
-ax.set_ylabel(r'$\hat{f} - f$')
+#ax.set_xlabel(r'$k_C$')
+#ax.set_ylabel(r'$\hat{f} - f$')
 fig.tight_layout()
 
 ax.set_xticks(np.arange(0,42,6))

@@ -1,5 +1,5 @@
 
-proc draw_box {xmin xmax ymin ymax zmin zmax} {
+proc draw_box {xmin ymin zmin xmax ymax zmax} {
     draw delete all
 
     draw line "$xmin $ymin $zmin" "$xmin $ymin $zmax"
