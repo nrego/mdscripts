@@ -10,8 +10,8 @@ from constants import k
 homedir = os.environ['HOME']
 
 mpl.rcParams.update({'axes.labelsize': 30})
-mpl.rcParams.update({'xtick.labelsize': 20})
-mpl.rcParams.update({'ytick.labelsize': 20})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':15})
 

@@ -72,12 +72,13 @@ with open('charge_assign.pkl', 'rb') as fin:
 
 surf_mask = ~buried_mask
 
-univ = MDAnalysis.Universe("../order.pdb")
+univ = MDAnalysis.Universe("npt.pdb")
 surf_atoms = univ.atoms[surf_mask]
 surf_rho_with_phi = rho_with_phi[surf_mask]
 surf_cov_with_phi = cov_with_phi[surf_mask]
 surf_beta_phi_star = beta_phi_star[surf_mask]
 surf_contact = contact_mask[surf_mask]
+surf_hydropathy = np.loadtxt("hydropathy_mask.dat")[surf_mask]
 
 sort_idx = np.argsort(surf_beta_phi_star)
 
@@ -137,7 +138,31 @@ for i, idx in enumerate(sort_idx):
     ax.set_xlabel(r'$\beta \phi$') 
     ax.set_ylabel(r'$\langle \rho_i \rangle_\phi$') 
     fig.tight_layout() 
-    fig.savefig('fig_{:03d}.pdf'.format(i))
+    fig.savefig('fig_{:03d}.png'.format(i))
 
 
+bphinorm = plt.Normalize(1.5,4)
+cmap = plt.cm.bwr_r
+plt.close('all')
+fig, ax = plt.subplots(figsize=(7, 6)) 
+prev_idx = -1
+for i, idx in enumerate(sort_idx):
+    print("doing {} out of {}".format(i, len(sort_idx)))
+    #fig, ax = plt.subplots(figsize=(7, 6)) 
+    hyd = surf_hydropathy[idx]
+    atm = surf_atoms[idx] 
+    atm_color = '#D7D7D7' if hyd == 1 else '#0560AD'
+    #if prev_idx > -1:
+    #    ax.plot(beta_phis, surf_rho_with_phi[prev_idx], 'k-', alpha=0.5) 
+    
 
+    bphi_istar = surf_beta_phi_star[idx]
+    ax.plot(beta_phis, surf_rho_with_phi[idx], color=cmap(bphinorm(bphi_istar))) 
+
+    fig.savefig("/home/nick/Desktop/fig_{:03d}.png".format(i), transparent=True)
+    prev_idx = idx
+
+max_sus = surf_cov_with_phi.max(axis=1)
+chi_not = surf_cov_with_phi[:,0]
+
+norm_max_sus = max_sus / chi_not

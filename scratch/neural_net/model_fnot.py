@@ -1,6 +1,7 @@
 import numpy as np
 
 from scratch.neural_net.lib import *
+from scratch.sam.util import *
 
 import numpy as np
 import torch
@@ -17,6 +18,32 @@ def loss_fnot(net_out, target, criterion, emin, erange):
     loss = criterion(pred, act)
 
     return loss
+
+def get_err_m1(feat_vec, energies):
+    k = feat_vec.sum(axis=1).reshape(-1,1)
+    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k, energies)
+
+    return err
+
+def get_err_m2(methyl_pos, energies, positions):
+    k = methyl_pos.sum(axis=1)
+    nn, nn_ext, _, _ = construct_neighbor_dist_lists(positions, positions)
+
+    n_mm = np.zeros_like(k)
+    for i_pos, methyl_mask in enumerate(methyl_pos):
+        this_n_mm = 0
+        for i in range(36):
+            for j in nn[i]:
+                if j <= i:
+                    continue
+                if methyl_mask[i] and methyl_mask[j]:
+                    this_n_mm += 1
+
+        n_mm[i_pos] = this_n_mm
+
+    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(np.vstack((k, n_mm)).T, energies)
+
+    return err
 
 class FnotModel(NNModel):
 
@@ -40,19 +67,39 @@ Command-line options
                            help="Number of training epochs (Default: %(default)s)")
         tgroup.add_argument("--break-out", type=float, 
                            help="Stop training if CV MSE goes below this (Default: No break-out)")
+        tgroup.add_argument("--eps-m1", action="store_true",
+                           help="If true, perform epsilon training on errors from linear regression on k_ch3, rather than actual energies (default: False)")
+        tgroup.add_argument("--eps-m2", action="store_true",
+                           help="If true, perform epsilon training on errors from linear regression on (k_ch3, n_mm) rather than actual energies (default: False)")
+
     def process_args(self, args):
         # 5 polynomial coefficients for 4th degree polynomial
         self.n_epochs = args.n_epochs
         self.break_out = args.break_out
 
-        feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
+        feat_vec, energies, poly, beta_phi_stars, positions, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
         
-        if self.augment_data:
-            feat_vec, energies = hex_augment_data(feat_vec, energies)
+        y = energies
 
+        if args.eps_m1:
+            err = get_err_m1(feat_vec, energies)
+            mse = np.mean(err**2)
+            print("Doing epsilon on M1 with MSE: {:.2f}".format(mse))
+            y = err
+
+        if args.eps_m2:
+            err = get_err_m2(methyl_pos, energies, positions)
+            mse = np.mean(err**2)
+            print("Doing epsilon on M2 with MSE: {:.2f}".format(mse))
+            y = err
+
+        if self.augment_data:
+            feat_vec, y = hex_augment_data(feat_vec, y)
+
+        self.y = y
         self.feat_vec = feat_vec
-        self.energies = energies
-        self.pos_ext = pos_ext
+        
+        self.pos_ext = positions
         self.patch_indices = patch_indices
 
     def run(self):
@@ -86,8 +133,8 @@ Command-line options
         if self.no_run:
             return
 
-        emin = self.energies.min()
-        emax = self.energies.max()
+        emin = self.y.min()
+        emax = self.y.max()
         erange = emax - emin
 
         # Position of patch indices (only different if we're using an extended grid)
@@ -96,7 +143,7 @@ Command-line options
         ## Split up input data into training and validation sets
         mses = np.zeros(self.n_valid)
         criterion = nn.MSELoss()
-        data_partitions = partition_data(self.feat_vec, self.energies, n_groups=self.n_valid)
+        data_partitions = partition_data(self.feat_vec, self.y, n_groups=self.n_valid)
 
         ## Train and validate for each round (n_valid rounds)
         for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
@@ -156,7 +203,7 @@ Command-line options
         else:
             net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
 
-        dataset = DatasetType(self.feat_vec, self.energies, norm_target=True, y_min=emin, y_max=emax)
+        dataset = DatasetType(self.feat_vec, self.y, norm_target=True, y_min=emin, y_max=emax)
 
 
         trainer = Trainer(dataset, dataset, batch_size=len(dataset)*0.25,

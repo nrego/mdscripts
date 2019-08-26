@@ -11,7 +11,7 @@ from IPython import embed
 
 def plt_errorbars(bb, vals, errs, **kwargs):
     ax = plt.gca()
-    ax.fill_between(bb, vals-errs, vals+errs, alpha=0.5, facecolor='k', **kwargs)
+    ax.fill_between(bb, vals-errs, vals+errs, alpha=0.5, **kwargs)
 
 homedir = os.environ['HOME']
 savedir = '{}/Desktop'.format(homedir)

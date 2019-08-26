@@ -17,7 +17,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import MDAnalysis
 
 import os, glob
-import cPickle as pickle
+import pickle
 from scipy.integrate import cumtrapz
 
 import math
@@ -117,23 +117,21 @@ res = 0.5
 sig = 1
 rcut = 5
 
-pos = np.loadtxt('pos.dat')
+#pos = np.loadtxt('pos.dat')
+univ = MDAnalysis.Universe("npt.pdb")
+pos = univ.atoms.positions
 min_pt = pos.min()-buff
 max_pt = pos.max()+buff
 
 grid_pts = np.arange(min_pt, max_pt+res, res)
 
-phi_vals = phi(grid_pts, sig, sig**2, rcut, rcut**2)
-
-#ax = plt.gca()
-#ax.plot(grid_pts, phi_vals)
-#ax.set_xlim(min_pt, max_pt)
-#plt.show()
 
 XX, YY, ZZ = np.meshgrid(grid_pts, grid_pts, grid_pts, indexing='ij')
 
+## First find coarse-grained protein density so we can construct an isosurface
+#     over the protein
+
 # atoms per A^3
-vol = (4/3.)*np.pi*(1.6)**3
 density = 0.040
 
 rho = np.zeros_like(XX)
@@ -147,14 +145,18 @@ for i, pt in enumerate(pos):
 
 rho /= density
 
+# Save rho as dx file
+print("...saving protein density field...")
+dump_dx('prot_isosurf.dx', rho.ravel(), res, min_pt)
+
 # surface threshold
 s = 0.5
 verts, faces, normals, values = measure.marching_cubes_lewiner(rho, s, spacing=(1,1,1))
 verts = verts*res + min_pt
 
-ax = plt.gca(projection='3d')
-ax.scatter(verts[:,0], verts[:,1], verts[:,2])
-plt.show()
+#ax = plt.gca(projection='3d')
+#ax.scatter(verts[:,0], verts[:,1], verts[:,2])
+#plt.show()
 
 
 ## Calculate local curvature ##
@@ -177,6 +179,9 @@ k_mean_rho -= trH*del_rho_sq
 k_mean_rho /= 2*del_rho_sq**1.5
 
 k_mean_rho /= res
+
+# Now save the curvature as a 'density' field
+dump_dx('prot_curv.dx', k_mean_rho.ravel(), res, min_pt)
 
 ## Plot slice where z = (z_max-z_min)/2
 ax = plt.gca()
@@ -214,10 +219,10 @@ plt.show()
 write_pdb('surf.pdb', pts_all, isosurf_curv_vals)
 
 ## Color atoms by nearby curvature ##
-univ = MDAnalysis.Universe('actual_contact.pdb')
+#univ = MDAnalysis.Universe('actual_contact.pdb')
 univ.atoms.tempfactors = 0
 ax = plt.gca(projection='3d')
-rcut = 3
+rcut = 5
 sig = 1
 for i, pt in enumerate(pos):
     phix = phi(pt[0]-XX, sig, sig**2, rcut, rcut**2)
