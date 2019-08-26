@@ -140,16 +140,17 @@ class Trainer:
                 ### TRAIN THIS BATCH ###
 
                 net_out = net(train_X)
-                
+                loss = criterion(net_out, train_y)
                 if loss_fn is None:
-                    train_loss = criterion(net_out, train_y)
+                    train_loss = loss.detach()
                 else:
-                    train_loss = loss_fn(net_out, train_y, criterion, **loss_fn_kwargs)
+                    train_loss = loss_fn(net_out.detach(), train_y, criterion, **loss_fn_kwargs)
+
                 self.losses_train[idx] = train_loss.item()
 
                 # Back prop
                 optimizer.zero_grad()
-                train_loss.backward()
+                loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
@@ -160,7 +161,7 @@ class Trainer:
                 else:
                     test_loss = loss_fn(test_out, self.test_y, criterion, **loss_fn_kwargs)
 
-                self.losses_test[idx] = test_loss
+                self.losses_test[idx] = test_loss.item()
                 
                 ## Optionally break out of training
                 if self.break_out is not None and test_loss < self.break_out:

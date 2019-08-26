@@ -63,7 +63,7 @@ Command-line options
 
     def add_args(self, parser):
         tgroup = parser.add_argument_group("Training Options")
-        tgroup.add_argument("--n-epochs", type=int, default=3000,
+        tgroup.add_argument("--n-epochs", type=int, default=2000,
                            help="Number of training epochs (Default: %(default)s)")
         tgroup.add_argument("--break-out", type=float, 
                            help="Stop training if CV MSE goes below this (Default: No break-out)")
