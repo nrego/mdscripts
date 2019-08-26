@@ -206,8 +206,8 @@ Command-line options
         dataset = DatasetType(self.feat_vec, self.y, norm_target=True, y_min=emin, y_max=emax)
 
 
-        trainer = Trainer(dataset, dataset, batch_size=len(dataset)*0.25,
-                          learning_rate=self.learning_rate, epochs=self.n_epochs*0.5)
+        trainer = Trainer(dataset, dataset, batch_size=int(len(dataset)*0.25),
+                          learning_rate=self.learning_rate, epochs=int(self.n_epochs*0.5))
         
         trainer(net, criterion, loss_fn=loss_fnot, loss_fn_kwargs=loss_fn_kwargs)
 
