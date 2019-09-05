@@ -125,7 +125,7 @@ else:
 
     assert args.hydropathy is not None
 
-    with open(args.hydropathy, 'r') as fin:
+    with open(args.hydropathy, 'rb') as fin:
         charge_assign = pickle.load(fin)
     sys.assign_hydropathy(charge_assign)
 

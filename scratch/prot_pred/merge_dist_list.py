@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 
 from IPython import embed
 from mdtools import MDSystem
-import cPickle as pickle
+import pickle
 import argparse
 
 

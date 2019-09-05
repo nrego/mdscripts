@@ -19,8 +19,8 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
-n_out_channels = 3
-n_hidden = 18
+n_out_channels = 2
+n_hidden = 8
 n_layers = 1
 
 
@@ -58,9 +58,9 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home)):
     out_all = r(c(x_pattern).detach())
     max0 = out_all[:,0].max()
     max1 = out_all[:,1].max()
-    max2 = out_all[:,2].max()
+    #max2 = out_all[:,2].max()
     #max3 = out_all[:,3].max()
-    filter_norm = [Normalize(0,max0), Normalize(0,max1), Normalize(0,max2)]
+    filter_norm = [Normalize(0,max0), Normalize(0,max1)]
 
     conv = r(c(this_pattern).detach())
     pool = p(conv)

@@ -23,8 +23,11 @@ parser.add_argument('-s', '--top', type=str, required=True,
                     help='Topology input file (tpr or gro file; need tpr to color buried hydrogens)')
 parser.add_argument('-c', '--struct', type=str,
                     help='Structure file (gro, pdb, etc) - output will have same positions')
-parser.add_argument('--rhodata', type=str,
-                    help='Optionally supply rho data file, for determining buried atoms')
+parser.add_argument('--rhodata', type=str, required=True,
+                    help='Rho data file, for determining buried atoms')
+parser.add_argument('--max', action='store_true',
+                    help='If true, exclude all atoms that have a maximum (not average) number of waters ' \
+                         'less than nburied (default: False, do average)')
 parser.add_argument('-nb', '--nburied', type=float, default=5,
                     help='If rhodata supplied, atoms are considered buried if they have fewer than '
                          'this many average water molecules')
@@ -37,7 +40,10 @@ args = parser.parse_args()
 
 sys = MDSystem(args.top, args.struct, sel_spec=args.sel_spec)
 
-rho_dat = np.load(args.rhodata)['rho_water'].mean(axis=0)
+if args.max:
+    rho_dat = np.load(args.rhodata)['rho_water'].max(axis=0)
+else:
+    rho_dat = np.load(args.rhodata)['rho_water'].mean(axis=0)
 max_val = np.ceil(rho_dat.max()) + 1
 bb = np.arange(0, max_val, 1)
 hist, bb = np.histogram(rho_dat, bins=bb)
