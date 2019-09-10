@@ -2,7 +2,7 @@
 Quick script to construct dyn_union_sph_sh umbrella file around .gro file's heavy atoms
 '''
 
-from itertools import izip
+
 import sys
 
 import numpy as np
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
 
         for frame_idx in range(startframe, lastframe):
-            print "Frame: {}\r".format(frame_idx),
+            print("Frame: {}\r".format(frame_idx))
             sys.stdout.flush()
 
             u.trajectory[frame_idx]
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                 n_waters[prot_idx] += len(water_neighbors)
 
         n_waters /= n_frames
-        print "\n"
+        print ("\n")
 
         with open(args.outfile, 'w') as fout:
             fout.write(header_string)

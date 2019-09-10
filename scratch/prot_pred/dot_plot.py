@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(figsize=(100,10))
     for i,fname in enumerate(pred_contacts):
-        
+        print(fname)
         phi = float(os.path.dirname(fname).split('_')[-1]) / 10.0
 
         this_phi = np.ones_like(indices).astype(float)
@@ -91,9 +91,10 @@ if __name__ == '__main__':
         ax.plot(indices[fn_mask], this_phi[fn_mask], 's', color='#7F00FF', markersize=2)
 
     #plt.savefig('/home/nick/Desktop/dot_plot.svg')
-    ax.plot([-10,450], [2.24, 2.24], 'k-')
-    ax.set_xlim(-10,450)
-    ax.set_xticks(np.arange(0,450,5))
+    xmax = buried_mask.size
+    ax.plot([-10,xmax], [2.32, 2.32], 'k-')
+    ax.set_xlim(-10,xmax)
+    ax.set_xticks(np.arange(0,xmax,5))
     #ax.set_ylim(0,4)
 
     fig.tight_layout()

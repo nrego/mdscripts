@@ -49,7 +49,7 @@ if __name__ == '__main__':
     contact_mask = contact_mask[surf_mask] # Only considering surface atoms
 
     print('Number of surface atoms: {}'.format(surf_mask.sum()))
-    print('Number contacts: {}'.format(contact_mask.sum()))
+    print('Number of contacts: {}'.format(contact_mask.sum()))
 
 
     header = 'beta*phi  tp   fp   tn   fn   tpr   fpr   prec   f_h   f_1   mcc'   
@@ -82,9 +82,9 @@ if __name__ == '__main__':
         # harmonic average of tpr and (1-fpr), or the tnr (aka specificity)
         f_h = harmonic_avg(tpr,tnr)
         
-
         # harmonic average of tpr and prec
         f_1 = harmonic_avg(tpr,ppv)
+
         # matthews correlation coef
         mcc = ((tp*tn) - (fp*fn)) / np.sqrt((tp+fp)*(tp+fn)*(fp+tn)*(tn+fn))
 

@@ -118,7 +118,7 @@ sig = 1
 rcut = 5
 
 #pos = np.loadtxt('pos.dat')
-univ = MDAnalysis.Universe("npt.pdb")
+univ = MDAnalysis.Universe("bphi.pdb")
 pos = univ.atoms.positions
 min_pt = pos.min()-buff
 max_pt = pos.max()+buff

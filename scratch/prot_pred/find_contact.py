@@ -135,7 +135,7 @@ else:
     hydrophilicity_mask = sys.philic_mask_h
     prot.write('hydropathy.pdb', bonds=None)
     np.savetxt('hydropathy_mask.dat', hydropathy_mask, fmt='%1d')
-
+    
     # All surface atoms that are within cutoff of partner
     contact_mask = (min_dist < args.r_dist) & surf_mask
     contact_mask_dewet = contact_mask & (rho_i < args.thresh)

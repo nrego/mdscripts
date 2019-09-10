@@ -61,7 +61,7 @@ plt.savefig("{}/Desktop/k_36.png".format(homedir), transparent=True)
 
 
 feat = reshape_feat(feat_vec[700])
-plot_hextensor()
+#plot_hextensor()
 
 plt.close("all")
 
