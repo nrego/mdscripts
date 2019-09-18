@@ -440,7 +440,6 @@ Command-line options
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
         
         # Ugh !
-        #embed()
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
         
@@ -486,30 +485,6 @@ Command-line options
         uncorr_ones_n = np.matrix(np.ones(uncorr_n_tot,), dtype=np.float32).T
         ones_n = np.matrix(np.ones(self.n_tot,), dtype=np.float32).T
 
-
-        ## Fill up the uncorrelated bias matrix
-        uncorr_bias_mat = np.zeros((uncorr_n_tot, self.n_windows), dtype=np.float32)
-        start_idx = 0
-        uncorr_start_idx = 0
-
-
-        # Now gather the effective reduced bias_mat by accounting for autocorrelation -
-        #   for each window i, average those rows into continuous blocks of size autocorr_nstep
-        for i, block_size in enumerate(autocorr_blocks):
-            this_uncorr_n_sample = uncorr_n_samples[i] # number of rows
-            this_n_sample = self.n_samples[i]
-
-            # Start offset so the number of uncorrelated data points lines up
-            remainder = remainders[i]
-
-            # average by slices of block_size for this window's data - results in this_uncorr_n_sample number of data points for each window
-            bias_mat_data_slice = self.bias_mat[start_idx+remainder:start_idx+this_n_sample, :].reshape((this_uncorr_n_sample, block_size, self.n_windows)).mean(axis=1)
-            #uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = self.bias_mat[start_idx+remainder:start_idx+this_n_sample:block_size]
-            uncorr_bias_mat[uncorr_start_idx:uncorr_start_idx+this_uncorr_n_sample] = bias_mat_data_slice
-
-            uncorr_start_idx += this_uncorr_n_sample
-            start_idx += this_n_sample
-
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
             xweights = self.start_weights
@@ -518,13 +493,15 @@ Command-line options
 
         assert xweights[0] == 0
 
+        embed()
+
         #myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
         log.info("Running MBAR on entire dataset")
-        #embed()
+
         # fmin_bfgs spits out a tuple with some extra info, so we only take the first item (the weights)
         f_k_actual = minimize(kappa, xweights[1:], method='L-BFGS-B', jac=grad_kappa, args=myargs).x
-        f_k_actual = -np.append(0, f_k_actual)
+        f_k_actual = np.append(0, f_k_actual)
         log.info("MBAR results on entire dataset: {}".format(f_k_actual))
 
         np.savetxt('f_k_all.dat', f_k_actual, fmt='%3.6f')

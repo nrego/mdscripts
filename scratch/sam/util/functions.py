@@ -470,7 +470,7 @@ def find_keff_kernel(methyl_mask, dd, dd_ext, sig_sq, rcut):
 
 
 def extract_data(fname="sam_pattern_data.dat.npz"):
-    ds = np.load('sam_pattern_data.dat.npz')
+    ds = np.load(fname)
 
     energies = ds['energies']
     k_vals = ds['k_vals']

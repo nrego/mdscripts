@@ -4,6 +4,7 @@ import numpy as np
 
 from scratch.neural_net.lib import *
 from scratch.neural_net.run_pvn_simple import get_fit, xvals
+from scratch.sam.util import *
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,7 +21,7 @@ home = os.environ['HOME']
 ## Hyper params
 
 n_out_channels = 2
-n_hidden = 8
+n_hidden = 12
 n_layers = 1
 
 
@@ -82,6 +83,8 @@ from matplotlib.colors import Normalize
 
 
 feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec.sum(axis=1)[:,None], energies)
+
 emin, emax = energies.min(), energies.max()
 
 n_dat = feat_vec.shape[0]

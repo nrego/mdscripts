@@ -89,61 +89,52 @@ def gen_U_nm(all_dat, nsims, beta, start, end=None):
 
 # Log likelihood
 def kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
-    #embed()
-    #u_nm = np.exp(-bias_mat)
-    f = np.append(0, xweights)
-    #z = np.exp(-f)
-
-    #Q = np.dot(u_nm, np.diag(z))
     
-    Q = bias_mat + f
+    f = np.append(0, xweights)
+    
+    # n_tot x n_w
+    Q = f - bias_mat
 
-    Q = -Q + np.log(nsample_diag.diagonal())
-    c = Q.max(axis=1)
-    Q -= c
+    # n_w x 1
+    diag = np.array(np.log(np.dot(nsample_diag, ones_m))).squeeze()
+    P = Q + diag
+    c = P.max(axis=1)
+    P -= c[:,None]
 
-    logLikelihood = (ones_N.transpose()/n_tot)*(c+np.log(np.exp(Q).sum(axis=1))) + \
-                    np.dot(np.diag(nsample_diag), f)
+    ln_sum_exp = np.log(np.exp(P).sum(axis=1)) + c
 
-    return float(logLikelihood)
+    logLikelihood = (ones_N.T/n_tot)*ln_sum_exp[:,None] - \
+                    ones_m.T * nsample_diag * f[:,None]
+
+    return logLikelihood.item()
 
 def grad_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
 
     #u_nm = np.exp(-bias_mat)
     f = np.append(0, xweights)
-    
-    #z = np.exp(-f) # Partition functions relative to first window
 
-    #Q = np.dot(u_nm, np.diag(z))
+    # n_tot x n_w
+    Q = f - bias_mat
 
-    Q = np.matrix(bias_mat + f)
-    c = Q.min(axis=1)
-    Q -= c
+    # n_w x 1
+    diag = np.array(np.log(np.dot(nsample_diag, ones_m))).squeeze()
+    P = Q + diag
+    c = P.max(axis=1)
+    P -= c[:,None]
 
-    denom = ( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1) 
+    ln_sum_exp = np.log(np.exp(P).sum(axis=1)) + c
 
-    W = np.exp(-Q)/denom
+    denom = np.exp(ln_sum_exp[:,None])
 
-    grad = -nsample_diag*W.transpose()*(ones_N/n_tot) + nsample_diag*ones_m
+    W = np.exp(Q)/denom
 
-    return ( np.array(grad[1:]) ).reshape(len(grad)-1 )
+    grad = nsample_diag*W.T*(ones_N/n_tot) - nsample_diag*ones_m
+
+    return ( np.array(grad[1:]) ).squeeze()
 
 def hess_kappa(xweights, bias_mat, nsample_diag, ones_m, ones_N, n_tot):
     
-    f = np.append(0, xweights)
-
-    Q = np.matrix(bias_mat + f)
-    c = Q.min(axis=1)
-    Q -= c
-
-    denom = ( np.exp(-Q + np.log(nsample_diag.diagonal())) ).sum(axis=1) 
-
-    W = np.exp(-Q)/denom
-
-    hess = -(1./n_tot)*(nsample_diag*W.transpose()*W*nsample_diag) \
-            + np.diag(np.array(nsample_diag*W.transpose()*(ones_N/n_tot)).squeeze())
-
-    return np.array(hess[1:,1:])
+    raise NotImplementedError
 
 def callbackF(xweights):
     global Nfeval
