@@ -21,8 +21,8 @@ from rhoutils import rho, cartesian
 from mdtools import ParallelTool
 
 from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
+from mdtools.fieldwriter import RhoField
 
-from fieldwriter import RhoField
 
 log = logging.getLogger('mdtools.interface')
 
@@ -224,7 +224,7 @@ Command-line options
         try:
             self.univ = u = MDAnalysis.Universe(args.grofile, args.trajfile)
         except:
-            print "Error processing input files: {} and {}".format(args.grofile, args.trajfile)
+            print("Error processing input files: {} and {}".format(args.grofile, args.trajfile))
             sys.exit()
 
         self.cutoff = args.cutoff
@@ -291,6 +291,7 @@ Command-line options
                     water_ow = self.univ.select_atoms('name OW')
                     water_dist_cutoff = np.inf
                 else:
+                    water_dist_cutoff = 14
                     water_ow = self.univ.select_atoms("(name OW and around {} ({}))".format(water_dist_cutoff, self.mol_sel_spec))
 
                 prot_heavies_pos = prot_heavies.positions
@@ -366,11 +367,12 @@ Command-line options
         coord_x = np.linspace(0,box[0],ngrids[0])
         coord_y = np.linspace(0,box[1],ngrids[1])
         coord_z = np.linspace(0,box[2],ngrids[2])
-
+        
         # gridpts array shape: (n_pseudo_pts, 3)
         #   gridpts npseudo unique points - i.e. all points
         #      on an enlarged grid
-        self.gridpts = gridpts = cartesian([coord_x, coord_y, coord_z])
+        xx, yy, zz = np.meshgrid(coord_x, coord_y, coord_z, indexing='ij')
+        self.gridpts = gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T
         
         self.tree = cKDTree(self.gridpts)
 

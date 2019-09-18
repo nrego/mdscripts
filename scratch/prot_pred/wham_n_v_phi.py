@@ -201,7 +201,7 @@ phi_vals = np.linspace(0,4,101)
 n_heavies = None
 
 
-n_i_dat_fnames = sorted(glob.glob('phi_*/rho_data_dump_rad_6.0.dat.npz'))
+n_i_dat_fnames = sorted(glob.glob('*/rho_data_dump_rad_6.0.dat.npz'))
 #n_i_dat_fnames[0] = 'equil/rho_data_dump_rad_6.0.dat.npz'
 
 # Ntwid vals, only taken every 1 ps from each window
