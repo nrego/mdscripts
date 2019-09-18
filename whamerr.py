@@ -493,7 +493,7 @@ Command-line options
 
         assert xweights[0] == 0
 
-        embed()
+
 
         #myargs = (uncorr_bias_mat, uncorr_n_sample_diag, uncorr_ones_m, uncorr_ones_n, uncorr_n_tot)
         myargs = (self.bias_mat, n_sample_diag, ones_m, ones_n, self.n_tot)
