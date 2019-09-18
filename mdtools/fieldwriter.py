@@ -216,9 +216,10 @@ class RhoField:
                 r = top.add_residue('II', c)
                 a = top.add_atom('II', md.element.get_by_symbol('VS'), r, i)
 
-        with md.formats.PDBTrajectoryFile(fileout, 'w') as f:
+        with md.formats.GroTrajectoryFile(fileout, 'w') as f:
             # Mesh pts have to be in nm
-            f.write(mesh/10, top, unitcell_vectors=self.box.reshape(1,3,3)/10)
+            
+            f.write(mesh/10, top)
 
     # time : array shape (n_frames); sim time for each frame, in ps
     def do_XTC(self, fileout):
