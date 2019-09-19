@@ -45,6 +45,38 @@ def get_err_m2(methyl_pos, energies, positions):
 
     return err
 
+def get_err_m3(methyl_pos, energies, positions):
+    k = methyl_pos.sum(axis=1)
+    pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
+    nn, nn_ext, _, _ = construct_neighbor_dist_lists(positions, pos_ext)
+
+    n_mm = np.zeros_like(k)
+    n_mo_int = np.zeros_like(k)
+    n_mo_ext = np.zeros_like(k)
+    for i_pos, methyl_mask in enumerate(methyl_pos):
+        this_n_mm = 0
+        this_n_mo_int = 0
+        this_n_mo_ext = 0
+        for i in range(36):
+            for j in nn[i]:
+                if j <= i:
+                    continue
+                if methyl_mask[i] and methyl_mask[j]:
+                    this_n_mm += 1
+                elif methyl_mask[i] or methyl_mask[j]:
+                    this_n_mo_int += 1
+            for j in nn_ext[i]:
+                if methyl_mask[i]:
+                    this_n_mo_ext += 1
+
+            n_mm[i_pos] = this_n_mm
+            n_mo_int[i_pos] = this_n_mo_int
+            n_mo_ext[i_pos] = this_n_mo_ext
+
+    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(np.vstack((k, n_mm, n_mo_int)).T, energies)
+
+    return err
+
 class FnotModel(NNModel):
 
 
@@ -71,6 +103,8 @@ Command-line options
                            help="If true, perform epsilon training on errors from linear regression on k_ch3, rather than actual energies (default: False)")
         tgroup.add_argument("--eps-m2", action="store_true",
                            help="If true, perform epsilon training on errors from linear regression on (k_ch3, n_mm) rather than actual energies (default: False)")
+        tgroup.add_argument("--eps-m3", action="store_true",
+                           help="If true, perform epsilon training on errors from linear regression on (k_ch3, n_mm, n_mo_int) rather than actual energies (default: False)")
 
     def process_args(self, args):
         # 5 polynomial coefficients for 4th degree polynomial
@@ -91,6 +125,12 @@ Command-line options
             err = get_err_m2(methyl_pos, energies, positions)
             mse = np.mean(err**2)
             print("Doing epsilon on M2 with MSE: {:.2f}".format(mse))
+            y = err
+
+        if args.eps_m3:
+            err = get_err_m3(methyl_pos, energies, positions)
+            mse = np.mean(err**2)
+            print("Doing epsilon on M3 with MSE: {:.2f}".format(mse))
             y = err
 
         if self.augment_data:
