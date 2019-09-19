@@ -12,13 +12,14 @@ proc make_rotation_animated_gif {} {
 
 proc make_mov {} {
     set start 0
-    set end 101
+    set end [molinfo top get numframes]
     set inc 1
     for {set i $start} {$i <= $end} {incr i $inc} {
         
-        set filename [format "/Users/nickrego/Desktop/mov%04d.jpeg" [expr $i]]
+        set outfile [format "/Users/nickrego/Desktop/mov%04d.rgb" [expr $i]]
         
-        set outfile mov.[format "%04d" $i].jpg
+        animate goto $i
+        display update
         render TachyonInternal $outfile
         
     }
