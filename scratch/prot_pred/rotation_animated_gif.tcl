@@ -11,7 +11,7 @@ proc make_rotation_animated_gif {} {
 }
 
 proc make_mov {} {
-    set start 0
+    set start 39
     set end [molinfo top get numframes]
     set inc 1
     for {set i $start} {$i <= $end} {incr i $inc} {

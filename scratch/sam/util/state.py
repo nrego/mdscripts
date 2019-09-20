@@ -31,6 +31,17 @@ for i in range(36):
     ext_count[i] = np.intersect1d(non_patch_indices, nn_ext[i]).size
 norm = plt.Normalize(-1,1)
 
+def make_feat(methyl_mask):
+    feat = np.zeros(pos_ext.shape[0])
+    feat[patch_indices[methyl_mask]] = 1
+    feat[patch_indices[~methyl_mask]] = -1
+
+    return feat
+
+def plot_feat(feat, ny=8, nz=8):
+    this_feat = feat.reshape(ny, nz).T[::-1, :]
+
+    return this_feat.reshape(1,1,ny,nz)
 
 def get_energy(pt_idx, m_mask, nn, ext_count, reg):
     coef1, coef2, coef3 = reg.coef_
@@ -106,10 +117,8 @@ class State:
 
 
     def plot(self):
-        feat = np.zeros(64)
-        feat[self.patch_indices] = -1
-        idx = self.patch_indices[self.methyl_mask]
-        feat[idx] = 1
-        feat = feat.reshape(8,8).T[::-1, ...]
+        feat = make_feat(self.methyl_mask)
+        feat = plot_feat(feat)
 
-        plot_hextensor(feat[None,None,...], norm=norm)
+        plot_hextensor(feat, norm=norm)
+

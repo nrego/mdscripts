@@ -9,7 +9,7 @@ import numpy as np
 import glob, os
 
 homedir = os.environ['HOME']
-
+kt = 300 * k
 # Some shennanigans to import when running from IPython terminal
 try:
     from utils import plt_errorbars
@@ -57,10 +57,11 @@ for idir, fname in enumerate(fnames):
     dat = np.loadtxt(fname)
     err = np.loadtxt('{}/ntwid_var_err.dat'.format(dirname))
 
-    ax.errorbar(dat[:,0], dat[:,2], yerr=err, fmt='k-o', linewidth=6, elinewidth=4, capsize=5, capthick=2, markersize=12, barsabove=True)
+    #ax.errorbar(dat[:,0]*kt, dat[:,1], yerr=err, fmt='k-o', linewidth=6, elinewidth=4, capsize=5, capthick=2, markersize=12, barsabove=True)
+    ax.plot(dat[:,0]*kt, dat[:,1], 'k-o', linewidth=6, markersize=12)
     xmin, xmax = ax.get_xlim()
-    ax.set_xlim(0, 4.1)
-    ax.set_xticks([0,2,4])
+    ax.set_xlim(0, 10)
+    ax.set_xticks([0,5,10])
     ymin, ymax = ax.get_ylim()
     ax.set_yticks([0,500,1000,1500,2000])
     
@@ -69,8 +70,8 @@ for idir, fname in enumerate(fnames):
 
     ax.set_ylim(0, ymax)
     #ax.set_title("{}".format(order[idir]))
-    ax.set_xlabel(r'$\beta \phi$')
-    ax.set_ylabel(r'$\chi_v$')
+    #ax.set_xlabel(r'$\beta \phi$')
+    #ax.set_ylabel(r'$\chi_v$')
 
 plt.tight_layout()
 plt.savefig('/Users/nickrego/Desktop/prot_comparison.pdf', transparent=True)
