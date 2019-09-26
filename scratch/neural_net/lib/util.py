@@ -14,7 +14,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 ## Miscellaneous helper functions ##
 
-colors = [(0,0,1), (0,0,0)]
+colors = [(0,0,1), (0.85,0.85,0.85)]
 mymap = LinearSegmentedColormap.from_list('mymap', colors, N=100)
 
 do_cnn = False

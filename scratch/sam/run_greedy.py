@@ -88,5 +88,5 @@ def make_traj(state):
     state.add_child(new_state)
     make_traj(new_state)
 
-make_traj(state_0)
-make_traj_mov(state_0)
+make_traj(state_1)
+make_traj_mov(state_1)
