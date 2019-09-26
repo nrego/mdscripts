@@ -13,6 +13,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from constants import k
 from IPython import embed
+import math
 
 ## Construct -ln P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 ## also get <N> v phi, and suscept
@@ -22,7 +23,7 @@ def plot_errorbar(bb, dat, err):
     plt.fill_between(bb[:-1], dat-err, dat+err, alpha=0.5)
 
 def get_negloghist(data, bins, logweights):
-
+    import math
     weights = np.exp(logweights)
     norm = weights.sum()
     logweights -= np.log(norm)
@@ -30,6 +31,7 @@ def get_negloghist(data, bins, logweights):
     bin_assign = np.digitize(data, bins) - 1
 
     negloghist = np.zeros(bins.size-1)
+    negloghist[:] = np.inf
 
     for i in range(bins.size-1):
         this_bin_mask = bin_assign == i
@@ -42,7 +44,7 @@ def get_negloghist(data, bins, logweights):
 
         this_weights = np.exp(this_logweights)
 
-        negloghist[i] = -np.log(this_weights.sum()) - this_logweights_max
+        negloghist[i] = -np.log(math.fsum(this_weights)) - this_logweights_max
 
     return negloghist
 
