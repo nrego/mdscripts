@@ -234,3 +234,18 @@ class WHAMDataExtractor:
     # Put all data points into N dim vector
     def _unpack_rama_data(self, start, end=None):
         raise NotImplementedError
+
+    # Generator to produce observed data points for each window, 
+    #   along with their biases, for comparing consensus histogram
+    #   generated from uwham
+    def gen_obs_data(self):
+
+        cum_n_samples = np.append(0, np.cumsum(self.n_samples))
+
+        for i in range(self.n_windows):
+            start_idx = cum_n_samples[i]
+            end_idx = cum_n_samples[i+1]
+
+            yield (self.all_data[start_idx:end_idx], self.bias_mat[start_idx:end_idx, i])
+
+    

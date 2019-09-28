@@ -281,9 +281,28 @@ Command-line options
         np.savetxt('f_k_all.dat', f_k_actual)
         np.savez_compressed('all_data.dat', logweights=all_logweights, data=self.all_data, data_aux=self.all_data_aux, bias_mat=self.bias_mat, n_samples=self.n_samples)
 
-
         if self.boot_fn is not None:
             np.save('boot_fn_payload.dat', boot_res)
+
+        log.info("Performing cross-entropy post-analysis")
+
+        bins = np.arange(np.floor(self.all_data.min()), np.ceil(self.all_data.max())+1, 1)
+        bin_assign = np.digitize(self.all_data, bins) - 1
+        hist, bb = np.histogram(self.all_data, bins=bins, weights=np.exp(all_logweights))
+        hist /= hist.sum()
+
+        for i, (data_slice, bias_slice) in enumerate(self.data_extractor.gen_obs_data()):
+            obs_hist, bb = np.histogram(data_slice, bins, density=True)
+            obs_hist /= obs_hist.sum()
+
+            this_logweights = all_logweights + f_k_actual[i] - self.bias_mat[:,i]
+            this_logweights -= this_logweights.max()
+            cons_hist, bb = np.histogram(self.all_data, bins=bins, weights=np.exp(this_logweights))
+            cons_hist /= cons_hist.sum()
+
+            this_occ = obs_hist > 0
+            this_eta = obs_hist[this_occ] * np.log(obs_hist[this_occ]/cons_hist[this_occ])
+            print("{}th window consensus: {:.2e}".format(i, this_eta.sum()))
 
 if __name__=='__main__':
     WHAMmer().main()

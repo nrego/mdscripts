@@ -24,6 +24,7 @@ def plot_errorbar(bb, dat, err):
 
 def get_negloghist(data, bins, logweights):
     import math
+    logweights -= logweights.max()
     weights = np.exp(logweights)
     norm = weights.sum()
     logweights -= np.log(norm)
@@ -126,12 +127,12 @@ n_iter = len(dat)
 all_data_ds = np.load('all_data.dat.npz')
 all_logweights = all_data_ds['logweights']
 all_data = all_data_ds['data']
-all_data_N = all_data_ds['data_N']
+all_data_N = all_data_ds['data_aux']
 
 max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 
 ## In kT!
-phi_vals = np.linspace(0,4,21)
+phi_vals = np.linspace(0,4,101)
 
 avg_N_phi = np.zeros((n_iter,phi_vals.size))
 chi_phi = np.zeros((n_iter,phi_vals.size))
