@@ -152,3 +152,91 @@ def callbackF(xweights):
     #log.info('.')
 
     Nfeval += 1
+
+
+## Convenience methods to deal constructing prob distributions
+
+# Get the (negative log) of the probability distribution
+#   over a binned set of data with associated log weights
+def get_negloghist(data, bins, logweights):
+
+    logweights -= logweights.max()
+    #norm = math.fsum(np.exp(logweights))
+    norm = np.sum(np.exp(logweights))
+    logweights -= np.log(norm)
+
+    bin_assign = np.digitize(data, bins) - 1
+
+    negloghist = np.zeros(bins.size-1)
+    negloghist[:] = np.inf
+
+    for i in range(bins.size-1):
+
+        this_bin_mask = bin_assign == i
+        if this_bin_mask.sum() == 0:
+            continue
+
+        this_logweights = logweights[this_bin_mask]
+        this_data = data[this_bin_mask]
+
+        this_logweights_max = this_logweights.max()
+        this_logweights -= this_logweights.max()
+
+        this_weights = np.exp(this_logweights)
+
+        #negloghist[i] = -np.log(math.fsum(this_weights)) - this_logweights_max
+        negloghist[i] = -np.log(np.sum(this_weights)) - this_logweights_max
+
+
+    return negloghist
+
+
+# Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
+#  Note avg n v phi is *not* reweighted (i.e. it's under the phi*ntwid ensemble)
+def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
+    
+    neglogpdist = get_negloghist(ntwid, bins, logweights)
+    neglogpdist_data = get_negloghist(data, bins, logweights)
+
+    # Average Ntwid and var for each beta_phi
+    avg_ntwid = np.zeros_like(beta_phi_vals)
+    var_ntwid = np.zeros_like(avg_ntwid)
+
+    # Same for data - also include covariance w/ ntwid
+    avg_data = np.zeros_like(avg_ntwid)
+    var_data = np.zeros_like(avg_ntwid)
+    cov_data = np.zeros_like(avg_ntwid)
+
+    ntwid_sq = ntwid**2
+    data_sq = data**2
+
+    cov = ntwid * data
+
+    for i, beta_phi_val in enumerate(beta_phi_vals):
+
+        bias_logweights = logweights - beta_phi_val*ntwid
+        bias_logweights -= bias_logweights.max()
+        #norm = np.log(math.fsum(np.exp(bias_logweights)))
+        norm = np.log(np.sum(np.exp(bias_logweights)))
+        bias_logweights -= norm
+
+        bias_weights = np.exp(bias_logweights)
+
+        this_avg_ntwid = np.dot(bias_weights, ntwid)
+        this_avg_ntwid_sq = np.dot(bias_weights, ntwid_sq)
+        this_var_ntwid = this_avg_ntwid_sq - this_avg_ntwid**2
+
+        this_avg_data = np.dot(bias_weights, data)
+        this_avg_data_sq = np.dot(bias_weights, data_sq)
+        this_var_data = this_avg_data_sq - this_avg_data**2
+
+        this_cov_data = np.dot(bias_weights, cov)
+        this_cov_data = this_cov_data - this_avg_ntwid*this_avg_data
+
+        avg_ntwid[i] = this_avg_ntwid
+        var_ntwid[i] = this_var_ntwid
+        avg_data[i] = this_avg_data
+        var_data[i] = this_var_data
+        cov_data[i] = this_cov_data
+
+    return (neglogpdist, neglogpdist_data, avg_ntwid, var_ntwid, avg_data, var_data, cov_data)
