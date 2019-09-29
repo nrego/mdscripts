@@ -64,7 +64,7 @@ def _bootstrap(lb, ub, uncorr_ones_m, uncorr_ones_n, bias_mat, n_samples, uncorr
     # Results for this bootstrap batch
     f_k_ret = np.zeros((batch_size, n_windows), dtype=np.float64)
     boot_fn_ret = np.zeros(batch_size, dtype=object)
-
+    all_boot_indices = np.zeros((batch_size, uncorr_n_tot), dtype=int)
     for batch_num in range(batch_size):
 
         ## Fill up the uncorrelated bias matrix
@@ -74,6 +74,7 @@ def _bootstrap(lb, ub, uncorr_ones_m, uncorr_ones_n, bias_mat, n_samples, uncorr
         boot_f_k = np.append(0, minimize(kappa, xweights, method='L-BFGS-B', jac=grad_kappa, args=myargs).x)
 
         f_k_ret[batch_num,:] = boot_f_k
+        all_boot_indices[batch_num,:] = boot_indices
         
         if boot_fn is not None:
             boot_logweights = gen_data_logweights(boot_uncorr_bias_mat, boot_f_k, uncorr_n_samples, uncorr_ones_m, uncorr_ones_n)
@@ -82,7 +83,7 @@ def _bootstrap(lb, ub, uncorr_ones_m, uncorr_ones_n, bias_mat, n_samples, uncorr
 
         del boot_uncorr_bias_mat
 
-    return (f_k_ret, boot_fn_ret, lb, ub)
+    return (f_k_ret, boot_fn_ret, all_boot_indices, lb, ub)
 
 
 class WHAMmer(ParallelTool):
@@ -238,6 +239,7 @@ Command-line options
 
         # the bootstrap estimates of free energies wrt window i=0
         f_k_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
+        boot_indices = np.zeros((self.n_bootstrap, self.uncorr_n_tot), dtype=int)
         # Results of hook function, if desired
         boot_res = np.zeros(self.n_bootstrap, dtype=object)
 
@@ -263,11 +265,12 @@ Command-line options
         log.info("Beginning {} bootstrap iterations".format(self.n_bootstrap))
         # Splice together results into final array of densities
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=self.max_queue_len):
-            f_k_slice, boot_res_slice, lb, ub = future.get_result(discard=True)
+            f_k_slice, boot_res_slice, this_boot_indices, lb, ub = future.get_result(discard=True)
             log.info("Receiving result")
             f_k_boot[lb:ub, :] = f_k_slice
             log.debug("this boot weights: {}".format(f_k_slice))
             boot_res[lb:ub] = boot_res_slice
+            boot_indices[lb:ub, :] = this_boot_indices
             del f_k_slice
 
         # Get SE from bootstrapped samples
@@ -278,6 +281,7 @@ Command-line options
         print('se: {}'.format(f_k_se))
         np.savetxt('err_f_k.dat', f_k_se, fmt='%3.6f')
         np.savetxt('boot_f_k.dat', f_k_boot)
+        np.save('boot_indices.dat', boot_indices)
         np.savetxt('f_k_all.dat', f_k_actual)
         np.savez_compressed('all_data.dat', logweights=all_logweights, data=self.all_data, data_aux=self.all_data_aux, bias_mat=self.bias_mat, n_samples=self.n_samples)
 

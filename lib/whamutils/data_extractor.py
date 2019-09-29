@@ -150,7 +150,6 @@ class WHAMDataExtractor:
 
             if self.ts == None:
                 self.ts = ds.ts
-                
             # Sanity check - every input should have same timestep
             else:
                 np.testing.assert_almost_equal(self.ts, ds.ts)
@@ -170,7 +169,7 @@ class WHAMDataExtractor:
 
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
-        
+
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
