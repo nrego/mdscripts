@@ -15,6 +15,7 @@ from constants import k
 from IPython import embed
 import math
 
+import sys
 
 from whamutils import get_negloghist, extract_and_reweight_data
 
@@ -27,6 +28,7 @@ def plot_errorbar(bb, dat, err):
 
 
 print('Constructing Nv v phi, chi v phi...')
+sys.stdout.flush()
 temp = 300
 
 beta = 1./(k*temp)
@@ -62,7 +64,7 @@ all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_N, all_chi_N, _ = 
 ### Now input all <n_i>_\phi's for a given i ###
 print('')
 print('Extracting all n_i\'s...')
-
+sys.stdout.flush()
 
 n_heavies = None
 
@@ -89,6 +91,7 @@ print('...Done.')
 print('')
 
 print('WHAMing each n_i...')
+sys.stdout.flush()
 
 # Shape: (n_atoms, beta_phi_vals.shape)
 avg_nis = np.zeros((n_heavies, beta_phi_vals.size))
@@ -126,6 +129,7 @@ for i_atm in range(n_heavies):
 
     if i_atm % 1 == 0:
         print('  i: {}, ({:.2f}s)'.format(i_atm, end-start), end='\r')
-
+        sys.stdout.flush()
+        
 np.savez_compressed('ni_rad_weighted.dat', avg=avg_nis, var=chi_nis, cov=cov_nis, smooth_avg=smooth_avg_nis, smooth_cov=smooth_cov_nis, beta_phi=beta_phi_vals)
 
