@@ -20,6 +20,10 @@ dat = np.load("phi_sims/ni_rad_weighted.dat.npz")
 beta_phis = dat['beta_phi']
 n_with_phi = dat['avg']
 cov_with_phi = dat['cov']
+
+smooth_avg = dat['smooth_avg']
+smooth_cov = dat['smooth_cov']
+
 n_0 = n_with_phi[:,0]
 
 buried_mask = n_0 < 5

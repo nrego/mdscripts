@@ -41,10 +41,11 @@ args = parser.parse_args()
 
 sys = MDSystem(args.topology, args.struct, sel_spec=args.sel_spec)
 
-ref_data = np.load(args.ref)['rho_water'].mean(axis=0)
-targ_data = np.load(args.rhodata)['rho_water'].mean(axis=0)
+ref_data0 = np.load(args.ref)['rho_water'].mean(axis=0)
+ref_data = np.load(args.ref)['smooth_rho_water'].mean(axis=0)
+targ_data = np.load(args.rhodata)['smooth_rho_water'].mean(axis=0)
 
-sys.find_buried(ref_data, nb=args.nb)
+sys.find_buried(ref_data0, nb=args.nb)
 
 # Surface heavy atoms
 surf_mask = sys.surf_mask_h

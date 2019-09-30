@@ -16,7 +16,7 @@ from IPython import embed
 import math
 
 import sys
-
+import pymbar
 from whamutils import get_negloghist, extract_and_reweight_data
 
 ## Construct -ln P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
@@ -26,6 +26,26 @@ def plot_errorbar(bb, dat, err):
     plt.plot(bb, dat)
     plt.fill_between(bb, dat-err, dat+err, alpha=0.5)
 
+def subsample(dat, n_samples, uncorr_n_samples):
+    cum_n_samples = np.append(0, np.cumsum(n_samples))
+    boot_dat = np.zeros(uncorr_n_samples.sum())
+    np.random.seed()
+
+    uncorr_start_idx = 0
+    boot_indices = np.array([], dtype=int)
+    for i, uncorr_n_sample in enumerate(uncorr_n_samples):
+        start = cum_n_samples[i]
+        end = cum_n_samples[i+1]
+        # Indices from dat for this window
+        avail_indices = np.arange(start, end, dtype=int)
+        this_indices = np.random.choice(avail_indices, size=uncorr_n_sample, replace=True)
+
+        boot_dat[uncorr_start_idx:uncorr_start_idx+uncorr_n_sample] = dat[this_indices]
+
+        uncorr_start_idx += uncorr_n_sample
+        boot_indices = np.append(boot_indices, this_indices)
+
+    return boot_dat, boot_indices
 
 print('Constructing Nv v phi, chi v phi...')
 sys.stdout.flush()
@@ -66,16 +86,30 @@ print('')
 print('Extracting all n_i\'s...')
 sys.stdout.flush()
 
-n_heavies = None
 
 n_i_dat_fnames = np.append(sorted(glob.glob('phi*/rho_data_dump_rad_6.0.dat.npz')), sorted(glob.glob('nstar*/rho_data_dump_rad_6.0.dat.npz')))
 all_data_n_i = None
 
-## Gather n_i data from each umbrella window (phi value)
-for fname in n_i_dat_fnames:
+n_heavies = np.load(n_i_dat_fnames[0])['rho_water'].shape[1]
+taus = np.zeros((len(n_i_dat_fnames), n_heavies))
+taus[:] = np.inf
+n_samples = np.zeros((len(n_i_dat_fnames), n_heavies))
+uncorr_n_samples = np.zeros((len(n_i_dat_fnames), n_heavies))
 
+## Gather n_i data from each umbrella window (phi value)
+for i_f, fname in enumerate(n_i_dat_fnames):
+    print("loading fname: {}".format(fname), end='\r')
     ## Shape: (n_heavies, n_frames) ##
     n_i = np.load(fname)['rho_water'].T
+
+    for i_atm in range(n_heavies):
+        n_samples[i_f, i_atm] = n_i[i_atm].size
+        try:
+            this_tau = pymbar.timeseries.integratedAutocorrelationTime(n_i[i_atm])
+            taus[i_f, i_atm] = this_tau
+            uncorr_n_samples[i_f, i_atm] = n_i[i_atm].size // (1 + 2*this_tau)
+        except:
+            pass
 
     if n_heavies is None:
         n_heavies = n_i.shape[0]
@@ -87,6 +121,7 @@ for fname in n_i_dat_fnames:
     else:
         all_data_n_i = np.append(all_data_n_i, n_i, axis=1)
 
+uncorr_n_samples = uncorr_n_samples.astype(int)
 print('...Done.')
 print('')
 
@@ -110,10 +145,12 @@ for i_atm in range(n_heavies):
 
     boot_avg_ni = np.zeros((n_iter, beta_phi_vals.size))
     for i_boot in range(n_iter):
-        this_boot_indices = boot_indices[i_boot]
-        (this_logweights, boot_data, boot_data_N) = dat[i_boot]
+        #this_boot_indices = boot_indices[i_boot]
+        #(this_logweights, boot_data, boot_data_N) = dat[i_boot]
+        boot_data, this_boot_indices = subsample(all_data_n_i[i_atm], n_samples[:,i_atm], uncorr_n_samples[:,i_atm])
 
-        _, _, _, _, this_boot_avg_ni, _, _ = extract_and_reweight_data(this_logweights, boot_data, all_data_n_i[i_atm][boot_indices[i_boot]], bins, beta_phi_vals)
+        #_, _, _, _, this_boot_avg_ni, _, _ = extract_and_reweight_data(all_logweights[boot_indices], boot_data, all_data_n_i[i_atm][boot_indices[i_boot]], bins, beta_phi_vals)
+        _, _, _, _, this_boot_avg_ni, _, _ = extract_and_reweight_data(all_logweights[this_boot_indices], all_data[this_boot_indices], boot_data, bins, beta_phi_vals)
         boot_avg_ni[i_boot] = this_boot_avg_ni
 
     err_avg_ni = np.ma.masked_invalid(boot_avg_ni).std(axis=0, ddof=1)

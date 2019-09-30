@@ -20,6 +20,7 @@ beta_phi_vals = dat['beta_phi']
 
 # shape: (n_heavies, n_phi_vals)
 avg_nis = dat['avg']
+smooth_avg = dat['smooth_avg']
 assert avg_nis.shape[1] == beta_phi_vals.size
 
 os.makedirs('reweight_data')
@@ -30,6 +31,8 @@ for i_phi, beta_phi in enumerate(beta_phi_vals):
     os.makedirs(dirname)
 
     ni_phi = avg_nis[:, i_phi]
+    smooth_ni = smooth_avg[:, i_phi]
 
-    np.savez_compressed('{}/ni_reweighted.dat'.format(dirname), rho_water=ni_phi[None,:])
+    np.savez_compressed('{}/ni_reweighted.dat'.format(dirname), 
+                        rho_water=ni_phi[None,:], smooth_rho_water=smooth_ni[None,:])
 
