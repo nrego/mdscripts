@@ -22,6 +22,8 @@ from whamutils import get_negloghist, extract_and_reweight_data
 ## Construct -ln P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 ## also get <N> v phi, and suscept
 
+do_smooth = False
+
 def plot_errorbar(bb, dat, err):
     plt.plot(bb, dat)
     plt.fill_between(bb, dat-err, dat+err, alpha=0.5)
@@ -108,23 +110,26 @@ for i_atm in range(n_heavies):
 
     neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = extract_and_reweight_data(all_logweights, all_data, all_data_n_i[i_atm], bins, beta_phi_vals)
 
-    boot_avg_ni = np.zeros((n_iter, beta_phi_vals.size))
-    for i_boot in range(n_iter):
-        this_boot_indices = boot_indices[i_boot]
-        (this_logweights, boot_data, boot_data_N) = dat[i_boot]
+    if do_smooth:
+        boot_avg_ni = np.zeros((n_iter, beta_phi_vals.size))
+        for i_boot in range(n_iter):
+            this_boot_indices = boot_indices[i_boot]
+            (this_logweights, boot_data, boot_data_N) = dat[i_boot]
 
-        _, _, _, _, this_boot_avg_ni, _, _ = extract_and_reweight_data(this_logweights, boot_data, all_data_n_i[i_atm][boot_indices[i_boot]], bins, beta_phi_vals)
-        boot_avg_ni[i_boot] = this_boot_avg_ni
+            _, _, _, _, this_boot_avg_ni, _, _ = extract_and_reweight_data(this_logweights, boot_data, all_data_n_i[i_atm][boot_indices[i_boot]], bins, beta_phi_vals)
+            boot_avg_ni[i_boot] = this_boot_avg_ni
 
-    err_avg_ni = np.ma.masked_invalid(boot_avg_ni).std(axis=0, ddof=1)
-    spl = scipy.interpolate.UnivariateSpline(beta_phi_vals, avg_ni, w=1/err_avg_ni)
+        err_avg_ni = np.ma.masked_invalid(boot_avg_ni).std(axis=0, ddof=1)
+        spl = scipy.interpolate.UnivariateSpline(beta_phi_vals, avg_ni, w=1/err_avg_ni)
+        
+        smooth_avg_nis[i_atm, :] = spl(beta_phi_vals)
+        smooth_cov_nis[i_atm, :] = -spl(beta_phi_vals, 1)
 
     avg_nis[i_atm, :] = avg_ni
     chi_nis[i_atm, :] = chi_ni
     cov_nis[i_atm, :] = cov_ni
 
-    smooth_avg_nis[i_atm, :] = spl(beta_phi_vals)
-    smooth_cov_nis[i_atm, :] = -spl(beta_phi_vals, 1)
+
     end = time.time()
 
     if i_atm % 1 == 0:
