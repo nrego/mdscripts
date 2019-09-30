@@ -47,7 +47,10 @@ n_iter = len(dat)
 all_data_ds = np.load('all_data.dat.npz')
 all_logweights = all_data_ds['logweights']
 all_data = all_data_ds['data']
-all_data_N = all_data_ds['data_aux']
+try:
+    all_data_N = all_data_ds['data_aux']
+except KeyError:
+    all_data_N = all_data_ds['data_N']
 
 max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 bins = np.arange(0, max_val+1, 1)

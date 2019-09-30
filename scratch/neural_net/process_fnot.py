@@ -20,8 +20,8 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
-n_out_channels = 2
-n_hidden = 12
+n_out_channels = 1
+n_hidden = 4
 n_layers = 1
 
 
@@ -50,7 +50,7 @@ def kernel_rep(k0, k1, norm=None, cmap=None):
 
 # Given a pattern, save its PvN as well as predicted
 #  Save CNN filters for pattern
-def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home)):
+def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home), title=None):
     
     c, r, p = net.layer1.children()
     this_pattern = x_pattern[idx][None,:]
@@ -58,23 +58,23 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home)):
     # Apply conv filters to pattern
     out_all = r(c(x_pattern).detach())
     max0 = out_all[:,0].max()
-    max1 = out_all[:,1].max()
+    #max1 = out_all[:,1].max()
     #max2 = out_all[:,2].max()
     #max3 = out_all[:,3].max()
-    filter_norm = [Normalize(0,max0), Normalize(0,max1)]
+    filter_norm = [Normalize(0,max0)]
 
     conv = r(c(this_pattern).detach())
     pool = p(conv)
 
     plot_hextensor(this_pattern, norm=Normalize(-1,1))
-    plt.savefig('{}/fnot_{:03}_pattern'.format(path, idx))
+    plt.savefig('{}/fnot_{}_pattern'.format(path, title))
     plt.close('all')
 
     plot_hextensor(conv, cmap='Greys', norm=filter_norm)
-    plt.savefig('{}/fnot_{:03d}_filter_conv'.format(path, idx))
+    plt.savefig('{}/fnot_{}_filter_conv'.format(path, title))
 
     plot_hextensor(pool, cmap='Greys', norm=filter_norm)
-    plt.savefig('{}/fnot_{:03d}_filter_pool'.format(path, idx))
+    plt.savefig('{}/fnot_{}_filter_pool'.format(path, title))
 
 
 home = os.environ['HOME']
@@ -91,11 +91,12 @@ n_dat = feat_vec.shape[0]
 
 aug_feat_vec, aug_y = hex_augment_data(feat_vec, energies)
 dataset = SAMConvDataset(aug_feat_vec, aug_y, norm_target=True, y_min=emin, y_max=emax)
+x, y = dataset[:]
 
 k_c = (aug_feat_vec == 1).sum(axis=1)
 pos_ext = gen_pos_grid(ny=9, nz=8, z_offset=True)
 
-fnames = sorted(glob.glob('model_*'))
+fnames = sorted(glob.glob('trial_*/model_n_layer_1_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(n_hidden, n_out_channels)))
 
 net = SAMConvNet(n_out_channels=n_out_channels, n_layers=n_layers, n_hidden=n_hidden, n_out=1)
 
@@ -104,8 +105,15 @@ for fname in fnames:
     state_dict = torch.load(fname)
     net.load_state_dict(state_dict)
 
-    title = fname.split('.')[0].split('_')[-1]
+
+    #title = fname.split('.')[0].split('_')[-1]
+    title = os.path.dirname(fname)
     print("Filters: {}".format(title))
+    perfname = '{}/perf_model_n_layer_1_n_hidden_{:02d}_n_channel_{:02d}.npz'.format(title, n_hidden, n_out_channels)
+    perf = np.load(perfname)['mses_cv'].mean()
+    tot_perf = np.load(perfname)['mse_tot']
+    print("Mean MSE: {:0.2f}".format(perf))
+    print("Tot MSE: {:0.2f}".format(tot_perf))
     # Contains the conv layer, relu, and max pool
     l1 = net.layer1
     c, r, p = l1.children()
@@ -129,12 +137,7 @@ for fname in fnames:
     #ax.set_title(title)
     plt.savefig('{}/Desktop/filter_{}.png'.format(home, title))
 
-    plt.show()
-
-x, y = dataset[:]
-fname = fnames[0]
-state_dict = torch.load(fname)
-net.load_state_dict(state_dict)
-
-for i in range(6):
-    construct_pvn_images(100+i*n_dat, net, x)
+    #plt.show()
+    construct_pvn_images(700, net, x, title=title)
+#for i in range(6):
+#    construct_pvn_images(100+i*n_dat, net, x)

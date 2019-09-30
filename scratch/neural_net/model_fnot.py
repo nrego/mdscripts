@@ -229,8 +229,8 @@ Command-line options
 
         print("\n\nFinal average MSE: {:.2f}".format(mses.mean()))
 
-        np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
-                mses_cv=mses)
+        #np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
+        #        mses_cv=mses)
         ## Final Model: Train on all ##
         print("\n\nFinal Training on Entire Dataset\n")
         print("================================\n")

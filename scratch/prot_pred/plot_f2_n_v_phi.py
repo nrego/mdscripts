@@ -9,9 +9,11 @@ from constants import k
 
 from IPython import embed
 
-def plt_errorbars(bb, vals, errs, **kwargs):
-    ax = plt.gca()
-    ax.fill_between(bb, vals-errs, vals+errs, alpha=0.5, **kwargs)
+def plot_errorbar(bb, dat, err, ax=None, **kwargs):
+    if ax is None:
+        ax = plt.gca()
+    ax.plot(bb, dat, **kwargs)
+    ax.fill_between(bb, dat-err, dat+err, alpha=0.5)
 
 homedir = os.environ['HOME']
 savedir = '{}/Desktop'.format(homedir)
@@ -25,7 +27,7 @@ mpl.rcParams.update({'legend.fontsize':10})
 beta = 1 /(300*k)
 ## From ppi_analysis/[pdbid]/prod/phi_sims dir, after running whamerr and wham_n_v_phi.py ##
 
-beta_phi_vals, avg_N, err_avg_N, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('Nvphi.dat'), 5, 1)]
+beta_phi_vals, avg_N, err_avg_N, smooth_chi, err_smooth_chi, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('NvPhi.dat'), 7, 1)]
 peak_sus_dat = np.loadtxt('peak_sus.dat')
 
 chi_max_idx = np.argmax(chi)
@@ -40,7 +42,7 @@ beta_phi_plus = beta_phi_vals[chi_plus_idx]
 start_pt = 0
 
 start_idx = np.argmax(beta_phi_vals >= start_pt)
-skip=1
+skip=5
 
 myslice = slice(start_idx, None, skip)
 
@@ -48,7 +50,8 @@ myslice = slice(start_idx, None, skip)
 ## N v phi
 fig, ax = plt.subplots(figsize=(5.5,5))
 
-ax.errorbar(beta_phi_vals[myslice], avg_N[myslice], yerr=err_avg_N[myslice], fmt='k-o', linewidth=3)
+#ax.errorbar(beta_phi_vals[myslice], avg_N[myslice], yerr=err_avg_N[myslice], fmt='k-o', linewidth=3)
+plot_errorbar(beta_phi_vals[myslice], avg_N[myslice], err_avg_N[myslice], ax=ax, color='k')
 ax.set_xlim(0, 4)
 ymin, ymax = ax.get_ylim()
 ax.set_ylim(0, ymax)

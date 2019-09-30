@@ -73,7 +73,7 @@ k_eff = k_eff.sum(axis=1)
 
 mynorm = plt.Normalize(-1,1)
 plt.close('all')
-idx = 700
+idx = 693
 feat = make_feat(methyl_pos[idx], patch_indices)
 feat = plot_feat(feat)
 

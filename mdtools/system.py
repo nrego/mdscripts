@@ -143,7 +143,7 @@ class MDSystem():
             try:
                 hydrophil = charge_assign[atm.resname][atm.name]
             except:
-                hydrophil = float(raw_input('enter hydrophilicity for atom {} of {} (q={:1.2f}) (-1 for hydrophilic, 0 for hydrophobic):  '.format(atm.name, atm.resname, atm.charge)))
+                hydrophil = float(input('enter hydrophilicity for atom {} of {} (q={:1.2f}) (-1 for hydrophilic, 0 for hydrophobic):  '.format(atm.name, atm.resname, atm.charge)))
                 charge_assign[atm.resname][atm.name] = hydrophil
             atm.tempfactor = hydrophil
 

@@ -67,12 +67,20 @@ for fname in fnames:
         all_perf_tot[i_trial, x_idx, y_idx] = ds['mse_tot'].item()
 
 # For each trial, average the CV rounds, then find the minimum over the trials
-avg_perf_cv = all_perf_cv.mean(axis=1).min(axis=0)
+min_idx = np.argmin(all_perf_cv.mean(axis=1), axis=0)
+avg_perf_cv = all_perf_cv.mean(axis=1).mean(axis=0)
+
+best_perf_tot = np.zeros_like(avg_perf_cv)
+for i in range(best_perf_tot.shape[0]):
+    for j in range(best_perf_tot.shape[1]):
+        this_min_idx = min_idx[i,j]
+        best_perf_tot[i,j] = all_perf_tot[this_min_idx, i, j]
+best_perf_tot = all_perf_tot.mean(axis=0)
 
 fig, ax = plt.subplots()
 
 extent = [0.5, avg_perf_cv.shape[1]+0.5, 0.5, avg_perf_cv.shape[0]+0.5]
-norm = plt.Normalize(6,10)
+norm = plt.Normalize(4.9,6)
 
 pc = ax.imshow(avg_perf_cv, origin='lower', extent=extent, cmap='plasma_r', norm=norm)
 
@@ -85,19 +93,19 @@ ax.set_yticklabels([str(n_channel) for n_channel in trial_channels])
 
 plt.show()
 
-best_perf_tot = all_perf_tot.min(axis=0)
+
 aic = n_sample * np.log(best_perf_tot) + 2*n_params 
 aic -= aic.min()
 
 fig, ax = plt.subplots()
-pc = ax.imshow(aic, origin='lower', extent=extent, cmap='plasma_r', norm=plt.Normalize(0,10000))
+pc = ax.imshow(aic, origin='lower', extent=extent, cmap='plasma_r', norm=plt.Normalize(0,5000))
 
 plt.colorbar(pc)
 
 ax.set_xticks(np.arange(avg_perf_cv.shape[1])+1)
 ax.set_yticks(np.arange(avg_perf_cv.shape[0])+1)
-ax.set_xticklabels(['2', '4', '6', '8', '12', '16', '18', '20'])
-ax.set_yticklabels(['1', '2', '3', '4', '5', '6'])
+ax.set_xticklabels([str(n_node) for n_node in trial_hidden])
+ax.set_yticklabels([str(n_channel) for n_channel in trial_channels])
 
 plt.show()
 
