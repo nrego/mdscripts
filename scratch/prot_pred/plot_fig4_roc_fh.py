@@ -17,32 +17,32 @@ mpl.rcParams.update({'legend.fontsize':30})
 from constants import k
 
 
-'''
-\documentclass[10pt]{article}
-\usepackage[usenames]{color} %used for font color
-\usepackage{amssymb} %maths
-\usepackage{amsmath} %maths
-\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
-\usepackage{xcolor}
 
-\definecolor{dkorange}{RGB}{127,63,0}
-\definecolor{pink}{RGB}{255,0,127}
-\definecolor{gray}{RGB}{97,97,97}
-\definecolor{dkpurple}{RGB}{63,0,127}
-'''
+#\documentclass[10pt]{article}
+#\usepackage[usenames]{color} %used for font color
+#\usepackage{amssymb} %maths
+#\usepackage{amsmath} %maths
+#\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
+#\usepackage{xcolor}
+
+#\definecolor{dkorange}{RGB}{127,63,0}
+#\definecolor{pink}{RGB}{255,0,127}
+#\definecolor{gray}{RGB}{97,97,97}
+#\definecolor{dkpurple}{RGB}{63,0,127}
+
 
 beta = 1/(k * 300)
-beta_phi_vals, avg_N, err_avg_N, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('../phi_sims/Nvphi.dat'), 5, 1)]
+beta_phi_vals, avg_N, err_avg_N, smooth_chi, err_smooth_chi, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('../phi_sims/NvPhi.dat'), 7, 1)]
 ## Figure 4 d ##  
 ## Plot roc curve and susceptiblity w/ f_h
 
 # Find values first values of chi that are < chi_max to left and right
 #   to get phi_minus and phi_plus
-chi_max_idx = np.argmax(chi)
-chi_max = np.max(chi)
+chi_max_idx = np.argmax(smooth_chi)
+chi_max = np.max(smooth_chi)
 print('beta phi star: {}'.format(beta_phi_vals[chi_max_idx]))
 
-chi_thresh_mask = chi < (0.5*chi_max)
+chi_thresh_mask = smooth_chi < (0.5*chi_max)
 chi_minus_idx = np.max(np.where(chi_thresh_mask[:chi_max_idx])) 
 chi_plus_idx = np.min(np.where(chi_thresh_mask[chi_max_idx:])) + chi_max_idx 
 beta_phi_minus = beta_phi_vals[chi_minus_idx]
@@ -78,7 +78,7 @@ plt.close('all')
 
 fig, ax1 = plt.subplots(figsize=(7,5))
 ax2 = ax1.twinx()
-ax1.errorbar(beta_phi_vals, chi, yerr=err_chi, fmt='r-', linewidth=4)
+ax1.errorbar(beta_phi_vals, smooth_chi, yerr=err_smooth_chi, fmt='r-', linewidth=4)
 #ax1.plot(beta_phi_vals[[chi_minus_idx, chi_max_idx, chi_plus_idx]], chi[[chi_minus_idx, chi_max_idx, chi_plus_idx]], 'o', markersize=10)
 ax1.set_ylabel(r'$\chi_v$', color='r')
 ax1.set_xlabel(r'$\beta \phi$')

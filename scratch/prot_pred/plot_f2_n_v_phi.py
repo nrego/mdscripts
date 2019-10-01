@@ -9,6 +9,8 @@ from constants import k
 
 from IPython import embed
 
+import scipy
+
 def plot_errorbar(bb, dat, err, ax=None, **kwargs):
     if ax is None:
         ax = plt.gca()
@@ -30,11 +32,15 @@ beta = 1 /(300*k)
 beta_phi_vals, avg_N, err_avg_N, smooth_chi, err_smooth_chi, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('NvPhi.dat'), 7, 1)]
 peak_sus_dat = np.loadtxt('peak_sus.dat')
 
-chi_max_idx = np.argmax(chi)
-chi_max = np.max(chi)
-chi_thresh_mask = chi < (0.5*chi_max)
+spl = scipy.interpolate.UnivariateSpline(beta_phi_vals, avg_N, w=1/err_avg_N)
+smooth_n = spl(beta_phi_vals)
+
+chi_max_idx = np.argmax(smooth_chi)
+chi_max = np.max(smooth_chi)
+chi_thresh_mask = smooth_chi < (0.5*chi_max)
 chi_minus_idx = np.max(np.where(chi_thresh_mask[:chi_max_idx])) 
 chi_plus_idx = np.min(np.where(chi_thresh_mask[chi_max_idx:])) + chi_max_idx 
+beta_phi_star = beta_phi_vals[chi_max_idx]
 beta_phi_minus = beta_phi_vals[chi_minus_idx]
 beta_phi_plus = beta_phi_vals[chi_plus_idx]
 
@@ -42,7 +48,7 @@ beta_phi_plus = beta_phi_vals[chi_plus_idx]
 start_pt = 0
 
 start_idx = np.argmax(beta_phi_vals >= start_pt)
-skip=5
+skip=1
 
 myslice = slice(start_idx, None, skip)
 
@@ -64,16 +70,15 @@ fig.savefig('{}/n_v_phi.pdf'.format(savedir), transparent=True)
 plt.close('all')
 
 
-## chi v phi
+## (smooth) chi v phi
 fig, ax = plt.subplots(figsize=(5.45,5))
 
-ax.errorbar(beta_phi_vals[myslice], chi[myslice], yerr=err_chi[myslice], fmt='k-', linewidth=3)
-#ax.plot(beta_phi_vals, chi, 'k-', linewidth=3)
-#ax.fill_between(beta_phi_vals, chi+err_chi, chi-err_chi, alpha=0.5)
-ax.plot(np.delete(beta_phi_vals[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), np.delete(chi[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), 'ko')
+plot_errorbar(beta_phi_vals[myslice], smooth_chi[myslice], err_smooth_chi[myslice], ax=ax, color='k')
+
+#ax.plot(np.delete(beta_phi_vals[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), np.delete(chi[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), 'ko')
 ax.plot(beta_phi_vals[chi_max_idx], chi_max, 'bD', markersize=16, zorder=3)
-ax.plot(beta_phi_minus, chi[chi_minus_idx], 'b<', markersize=16, zorder=3)
-ax.plot(beta_phi_plus, chi[chi_plus_idx], 'b>', markersize=16, zorder=3)
+ax.plot(beta_phi_minus, smooth_chi[chi_minus_idx], 'b<', markersize=16, zorder=3)
+ax.plot(beta_phi_plus, smooth_chi[chi_plus_idx], 'b>', markersize=16, zorder=3)
 ax.set_xlim(0, 4)
 ymin, ymax = ax.get_ylim()
 ax.set_ylim(0, ymax)
@@ -88,12 +93,12 @@ plt.close('all')
 
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(6,10))
 
-ax1.errorbar(beta_phi_vals[myslice], avg_N[myslice], yerr=err_avg_N[myslice], fmt='k-o', linewidth=3)
-ax2.errorbar(beta_phi_vals[myslice], chi[myslice], fmt='k-', yerr=err_chi[myslice], linewidth=3)
-ax2.plot(np.delete(beta_phi_vals[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), np.delete(chi[myslice], [chi_max_idx, chi_minus_idx, chi_plus_idx]), 'ko')
+#ax1.plot(beta_phi_vals, smooth_n, 'k-')
+plot_errorbar(beta_phi_vals[myslice], avg_N[myslice], err_avg_N[myslice], ax=ax1, color='k')
+plot_errorbar(beta_phi_vals[myslice], smooth_chi[myslice], err_smooth_chi[myslice], ax=ax2, color='k')
 ax2.plot(beta_phi_vals[chi_max_idx], chi_max, 'bD', markersize=16, zorder=3)
-ax2.plot(beta_phi_minus, chi[chi_minus_idx], 'b<', markersize=16, zorder=3)
-ax2.plot(beta_phi_plus, chi[chi_plus_idx], 'b>', markersize=16, zorder=3)
+ax2.plot(beta_phi_minus, smooth_chi[chi_minus_idx], 'b<', markersize=16, zorder=3)
+ax2.plot(beta_phi_plus, smooth_chi[chi_plus_idx], 'b>', markersize=16, zorder=3)
 ax1.set_xticks([])
 ax1.set_xlim(0,4)
 ax2.set_xticks([0,2,4])
