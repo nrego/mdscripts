@@ -233,6 +233,26 @@ class RhoField:
                 f.write(mesh/10, time=curr_time, box=self.box/10)
 
     def do_DX(self, fileout, origin=(0,0,0)):
+        cntr = 0
+
+        rho_shape = self.rho_avg.reshape(self.n_pts)
+        with open(fileout, 'w') as f:
+            f.write("object 1 class gridpositions counts {} {} {}\n".format(self.n_grids[0], self.n_grids[1], self.n_grids[2]))
+            f.write("origin {:1.8e} {:1.8e} {:1.8e}\n".format(*origin))
+            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(self.d_grid[0], 0, 0))
+            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, self.d_grid[1], 0))
+            f.write("delta {:1.8e} {:1.8e} {:1.8e}\n".format(0, 0, self.d_grid[2]))
+            f.write("object 2 class gridconnections counts {} {} {}\n".format(self.n_grids[0], self.n_grids[1], self.n_grids[2]))
+            f.write("object 3 class array type double rank 0 items {} data follows\n".format(self.n_pts))
+
+            for pt_idx, grid_pt in enumerate(self.gridpts):
+
+                f.write("{:1.8e} ".format(rho_shape[pt_idx]))
+                cntr += 1
+                if (cntr % 3 == 0):
+                    f.write("\n")
+                    
+    def do_CUBE(self, fileout, origin=(0,0,0)):
         
         with open(fileout, 'w') as f:
             f.write("My cube output from RhoField\n")
