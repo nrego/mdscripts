@@ -168,7 +168,11 @@ Command-line options
         print(param_str)
 
         DatasetType = SAMConvDataset if self.do_conv else SAMDataset
-        NetType = SAMConvNet if self.do_conv else SAMNet
+        if self.do_conv:
+            NetType = SAMConvNet if self.n_layers > 0 else SAMFixedConvNet
+        else:
+            NetType = SAMNet
+
 
         if self.no_run:
             return
@@ -190,9 +194,9 @@ Command-line options
             
             print("\nCV ROUND {} of {}\n".format(i_round+1, self.n_valid))
             print("\nBegin training\n")
-
+            
             if self.do_conv:
-                net = SAMConvNet(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
+                net = NetType(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
                                  n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
             else:
                 net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)

@@ -152,7 +152,7 @@ class NNModel(Core):
         group.add_argument("--n-layers", type=int, default=3,
                            help="Number of hidden layers. (Default: %(default)s)")
         group.add_argument("--n-hidden", type=int, default=18,
-                           help="Number of nodes per hidden layey. (Default: %(default)s)")
+                           help="Number of nodes per hidden layer. (Default: %(default)s)")
         group.add_argument("--drop-out", type=float, default=0.0,
                            help="Dropout probability per node during training. (Default %(default)s)")
         group.add_argument("--do-conv", action="store_true",
@@ -164,10 +164,15 @@ class NNModel(Core):
 
     def process_args(self, args):
         self.n_layers = args.n_layers
-        self.n_hidden = args.n_hidden
+        self.n_hidden = args.n_hidden if self.n_layers > 0 else 0
         self.drop_out = args.drop_out
 
         self.do_conv = args.do_conv
         self.n_out_channels = args.n_out_channels
 
         self.no_run = args.no_run
+
+        if self.n_layers == 0 and not self.do_conv:
+            raise ValueError("If zero layers, must do CNN")
+
+

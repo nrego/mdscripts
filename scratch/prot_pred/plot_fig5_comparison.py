@@ -10,7 +10,7 @@ mpl.rcParams.update({'ytick.labelsize': 50})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':20})
 
-sys_names = ['2tsc_pred', '1msb_pred', '1pp2', '1stp', '1ycr_mdm2', '2z59_ubiq']
+sys_names = ['2tsc_pred', '1msb_pred', '1pp2', '1ycr_mdm2', '2z59_ubiq']
 
 from constants import k
 
