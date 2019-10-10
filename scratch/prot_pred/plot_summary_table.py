@@ -18,7 +18,7 @@ labels = np.loadtxt('{}/Desktop/protein_prediction_summary_phi_opt.dat'.format(h
 row_labels = np.array([' '.join(label.split('_')) for label in labels])
 dat_star = np.loadtxt('{}/Desktop/protein_prediction_summary_phi_star.dat'.format(homedir), usecols=range(1,9))
 
-col_labels_opt = (r'$\beta \phi_\mathrm{opt}$', 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
+col_labels_opt = (r"$\beta \phi_\mathrm{opt'}$", 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
 col_labels_star = (r'$\beta \phi^*$', 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
 
 row_labels = np.array(['Thymidylate Synthase', 'Mannose-Binding Protein', 'Phospholipase A2', 'MDM2', 'Ubiquitin'])
@@ -37,7 +37,7 @@ def plot_data_table(dat, row_labels, col_labels):
         f_1 = 2/((1/tpr)+(1/prec))
         mcc = ((tp*tn)-(fp*fn))/ np.sqrt((tp+fn)*(tp+fp)*(tn+fp)*(tn+fn))
         this_dat = [beta_phi, tpr, fpr, prec, d_h, f_1, mcc]
-        cell_text.append('{:0.4f}  {:0.4f}  {:0.4f}  {:0.4f}  {:0.4f}  {:0.4f}  {:0.4f}'.format(*this_dat).split())
+        cell_text.append('{:0.2f}  {:0.2f}  {:0.2f}  {:0.2f}  {:0.2f}  {:0.2f}  {:0.2f}'.format(*this_dat).split())
     ax.axis('tight')
     ax.axis('off')
     ax.table(cellText=cell_text,
