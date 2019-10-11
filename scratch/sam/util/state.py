@@ -65,7 +65,7 @@ class State:
     ext_count = ext_count.copy()
     nn = nn.copy()
 
-    def __init__(self, pt_idx, parent, reg, e_func, mode='build_phob'):
+    def __init__(self, pt_idx, parent=None, reg=None, e_func=None, mode='build_phob'):
         self.pt_idx = pt_idx
         self.nn = nn
         self.ext_count = ext_count

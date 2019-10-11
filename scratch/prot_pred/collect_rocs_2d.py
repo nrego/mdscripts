@@ -16,6 +16,9 @@ from constants import k
 import numpy as np
 
 import argparse
+
+homedir = os.environ['HOME']
+
 mpl.rcParams.update({'axes.labelsize': 40})
 mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
@@ -24,7 +27,7 @@ mpl.rcParams.update({'legend.fontsize':10})
 
 beta = 1 /(k*300)
 
-fnames = glob.glob('s_*/beta_phi_*/pred_contact_mask.dat')
+fnames = np.array(sorted(glob.glob('s_*/beta_phi_*/pred_contact_mask.dat')))
 
 buried_mask = np.loadtxt('../bound/buried_mask.dat', dtype=bool)
 surf_mask = ~buried_mask
@@ -66,23 +69,25 @@ for fname in fnames:
     d_h_vals[phi_bin_idx,s_bin_idx] = d_h
     d_vals[phi_bin_idx,s_bin_idx] = d
 
+
 fig, ax = plt.subplots(figsize=(9,7))
 
 vals_to_plot = d_h_vals
+bphi_opt = 2.40
 
 norm = Normalize(0.0,0.8)
 im = ax.imshow(vals_to_plot.T, aspect='auto', origin='bottom', extent=(0,4.04,0,1.1), norm=norm)
 ax.axhline(0.5, 0, 4.04, color='r')
 ax.axhline(0.6, 0, 4.04, color='r')
-ax.axvline(2.24, 0, 1.1, color='r')
-ax.axvline(2.28, 0, 1.1, color='r')
+ax.axvline(bphi_opt, 0, 1.1, color='r')
+ax.axvline(bphi_opt+0.04, 0, 1.1, color='r')
 fig.colorbar(im)
 ax.set_yticks(np.arange(0,1.1,0.1))
 ax.set_xticks(np.arange(0,4.1,1))
 ax.set_xlabel(r'$\beta \phi$')
 ax.set_ylabel(r'$s$')
 fig.tight_layout()
-fig.savefig('/Users/nickrego/Desktop/2droc.pdf', transparent=True)
+fig.savefig('{}/Desktop/2droc.pdf'.format(homedir), transparent=True)
 
 plt.close('all')
 
@@ -91,10 +96,11 @@ mpl.rcParams.update({'xtick.labelsize': 38})
 mpl.rcParams.update({'ytick.labelsize': 38})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
+
 ## Plot d_h v. beta phi at s=0.5
 idx=5
 assert s_vals[idx] == 0.5
-dat = d_h_vals[:,idx]
+dat = vals_to_plot[:,idx]
 
 fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(13,5.75), sharey=True)
 ax1.plot(beta_phi_vals, dat, 'ko', markersize=12)
@@ -104,10 +110,10 @@ ax1.set_ylim(ymin, 0.8)
 ax1.set_xticks([0,2,4])
 
 
-## Plot d_h v. beta phi at s=0.5
+## Plot d_h v. s at beta phi = beta phi opt
 idx = np.argmax(dat)
-assert beta_phi_vals[idx] == 2.24
-dat = d_h_vals[idx, :]
+assert beta_phi_vals[idx] == bphi_opt
+dat = vals_to_plot[idx, :]
 
 ax2.plot(10*s_vals, dat, 'ko', markersize=12)
 ax2.set_xticks([0,5,10])
@@ -116,6 +122,6 @@ ax2.set_xticks([0,5,10])
 #    ax.label_outer()
 ax2.tick_params(left=False)
 fig.subplots_adjust(wspace=.2)
-fig.savefig('/Users/nickrego/Desktop/d_v_phi_and_s.pdf', transparent=True)
+fig.savefig('{}/Desktop/d_v_phi_and_s.pdf'.format(homedir), transparent=True)
 
 
