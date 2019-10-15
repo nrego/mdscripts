@@ -71,10 +71,12 @@ for i, v in nn.items():
     tile_list[i] = new_v
 
 
-idx = np.arange(36)[methyl_pos[146]] 
+idx = np.arange(36)[methyl_pos[267]] 
 state = State(idx)
 tess = Tessalator()
-#tess.is_tessalable(idx, tile_list)
+can_tess = tess.is_tessalable(idx, tile_list)
+
+'''
 
 pos_tessalable = np.zeros(methyl_pos.shape[0], dtype=bool)
 
@@ -84,7 +86,8 @@ for i, methyl_mask in enumerate(methyl_pos):
     idx = np.arange(36)[methyl_mask]
     pos_tessalable[i] = tess.is_tessalable(idx, tile_list)
 
-'''
+
+
 def make_traj(state):
     np.random.seed()
     #print(state.avail_indices.size)
