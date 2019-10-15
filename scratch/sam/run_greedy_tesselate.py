@@ -57,10 +57,7 @@ feat_vec = np.dstack((k_eff_int_edge[:,0], k_eff_int_edge[:,2], k_eff_ext_edge[:
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
 
 
-# Fully hydrophilic state
-state_0 = State([], None, reg, get_energy)
-# Fully hydrophobic state
-state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
+
 
 
 # For each index i, give list of indices {j>i} for which ij is a tile
@@ -77,7 +74,6 @@ tess = Tessalator()
 can_tess = tess.is_tessalable(idx, tile_list)
 
 '''
-
 pos_tessalable = np.zeros(methyl_pos.shape[0], dtype=bool)
 
 for i, methyl_mask in enumerate(methyl_pos):
@@ -87,19 +83,70 @@ for i, methyl_mask in enumerate(methyl_pos):
     pos_tessalable[i] = tess.is_tessalable(idx, tile_list)
 
 
+'''
 
-def make_traj(state):
+
+# Fully hydrophilic state
+state_0 = State([], None, reg, get_energy)
+# Fully hydrophobic state
+state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
+
+def make_traj(state, tile_list):
     np.random.seed()
     #print(state.avail_indices.size)
     # Base case - we're at fully hydrophobic state
     if state.avail_indices.size == 0:
         return
 
+    print("\n#######")
+    print("Doing N={}".format(state.avail_indices.size))
+    print("########\n")
     new_states = np.array([], dtype=object)
     new_energies = np.array([])
-    for new_state in state.gen_next_pattern():
-        new_states = np.append(new_states, new_state)
-        new_energies = np.append(new_energies, new_state.energy)
+    new_avail_indices = []
+
+    for i in state.avail_indices:
+        for j in tile_list[i]:
+            if j < i or j not in state.avail_indices:
+                continue
+
+            # List of methyl indices for this state
+            this_idx = state.pt_idx.copy()
+
+            i_idx = np.where(state.avail_indices==i)[0].item()
+            j_idx = np.where(state.avail_indices==j)[0].item()
+
+            # Check that removing (i,j) results in a tile-able state
+            test_new_idx = np.delete(state.avail_indices, (i_idx, j_idx))
+            #tess.reset()
+            print("  trying tile...{}".format(test_new_idx))
+            can_tess = tess.is_tessalable(test_new_idx, tile_list)
+            if not can_tess:
+                continue
+            print("    ..ok")
+            if state.mode == 'build_phob':
+                # Add hydrophobic tile (i,j) where i is phobic
+                new_idx_i = np.append(this_idx, i).astype(int)
+                # Add tile (i,j) where j is phobic
+                new_idx_j = np.append(this_idx, j).astype(int)
+
+            else:
+                # Add tile (i,j) where i is hydroxyl
+                new_idx_i = np.delete(this_idx, i_idx).astype(int)
+                # Add tile (i,j) where j is hydroxyl
+                new_idx_j = np.delete(this_idx, j_idx).astype(int)
+
+            new_state_i = State(new_idx_i, None, reg, get_energy, mode=state.mode)
+            new_state_i._avail_indices = test_new_idx
+            new_state_j = State(new_idx_j, None, reg, get_energy, mode=state.mode)
+            new_state_j._avail_indices = test_new_idx
+            new_states = np.append(new_states, new_state_i)
+            new_states = np.append(new_states, new_state_j)
+            new_energies = np.append(new_energies, new_state_i.energy)
+            new_energies = np.append(new_energies, new_state_j.energy)
+
+            new_avail_indices.append(test_new_idx)
+            new_avail_indices.append(test_new_idx)
 
     if state.mode == 'build_phob':
         lim_e = new_energies.min()
@@ -108,12 +155,13 @@ def make_traj(state):
 
     cand_idx = new_energies == lim_e
     cand_states = new_states[cand_idx]
+    print("\n#################")
     print("{} candidate states going from {}".format(cand_idx.sum(), state.avail_indices.size))
+    print("##################\n")
     
     new_state = np.random.choice(cand_states)
     state.add_child(new_state)
-    make_traj(new_state)
+    make_traj(new_state, tile_list)
 
-make_traj(state_1)
-make_traj_mov(state_1)
-'''
+make_traj(state_0, tile_list)
+make_traj_mov(state_0)

@@ -30,11 +30,34 @@ class Tessalator:
         self.states = []
         self.non_tileable = []
 
+
+    def is_connected(indices, tile_list, vertices_encountered=None, start_vertex=None):
+        """ determines if the graph is connected """
+        if vertices_encountered is None:
+            vertices_encountered = list()
+        gdict = tile_list  
+        vertices = indices # "list" necessary in Python 3 
+        if not start_vertex:
+            # chosse a vertex from graph as a starting point
+            start_vertex = vertices[0]
+        vertices_encountered.append(start_vertex)
+        for vertex in gdict[start_vertex]:
+            if vertex not in vertices_encountered:
+                vertices_encountered.append(vertex)
+
+        grp = np.unique(vertices_encountered)
+        if len(vertices_encountered) == len(vertices):
+            return True
+        
+        else:
+            grp1 = np.array(vertices_encountered)
+            grp2 = np.setdiff1d(vertices, vertices_encountered)
+            return (grp1, grp2)
+
     # Find if a pattern (given by a list of indices that are still available)
     #   is tile-able
     # Not tile-able if any position does not have a partner
     def is_tessalable(self, indices, tile_list):
-
 
         # Neighbors in this pattern only
         this_tile_list = dict()
@@ -102,7 +125,6 @@ class Tessalator:
                 new_indices = np.delete(indices, (i_idx, j_idx))
                 new_indices.sort()
 
-                # I assume this is a short-circuit and...
                 tessalable = self.is_tessalable(new_indices, this_tile_list)
 
                 if tessalable:
@@ -110,4 +132,7 @@ class Tessalator:
                     return True
                 else:
                     self.non_tileable.append(new_indices)
+
+        return False
+
                 
