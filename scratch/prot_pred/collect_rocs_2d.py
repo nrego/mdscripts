@@ -72,10 +72,10 @@ for fname in fnames:
 
 fig, ax = plt.subplots(figsize=(9,7))
 
-vals_to_plot = d_h_vals
-bphi_opt = 2.40
+vals_to_plot = f1_vals
+bphi_opt = 2.32
 
-norm = Normalize(0.0,0.8)
+norm = Normalize(0.0,0.6)
 im = ax.imshow(vals_to_plot.T, aspect='auto', origin='bottom', extent=(0,4.04,0,1.1), norm=norm)
 ax.axhline(0.5, 0, 4.04, color='r')
 ax.axhline(0.6, 0, 4.04, color='r')
@@ -106,7 +106,7 @@ fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(13,5.75), sharey=True)
 ax1.plot(beta_phi_vals, dat, 'ko', markersize=12)
 ax1.set_yticks(np.arange(0,0.9,0.1))
 ymin, ymax = ax1.get_ylim()
-ax1.set_ylim(ymin, 0.8)
+ax1.set_ylim(ymin, 0.6)
 ax1.set_xticks([0,2,4])
 
 
