@@ -14,12 +14,15 @@ from matplotlib.colors import Normalize
 
 from scratch.neural_net.lib import mymap
 
+from IPython import embed
+
 def plot_hextensor(
     tensor,
     image_range=(0, None),
     channel_range=(0, None),
     cmap=None,
     norm=None,
+    linewidth=None,
     figname="figure",
     mask=[],
 ):
@@ -44,6 +47,8 @@ def plot_hextensor(
         norm = Normalize(tensor.min(), tensor.max())
     if cmap is None:
         cmap = mymap
+    if linewidth is None:
+        linewidth = 1
     inshape = np.shape(
         tensor[image_range[0] : image_range[1], channel_range[0] : channel_range[1]]
     )
@@ -54,10 +59,12 @@ def plot_hextensor(
         sys.exit()
     nimages = max(inexamples, inchannels)
     ## Nrego - allow multiple cmaps, norms
-    if not (isinstance(cmap, list) or isinstance(cmap, np.ndarray)):
-        cmap = [cmap for i in range(nimages)]
-    if not (isinstance(norm, list) or isinstance(norm, np.ndarray)):
-        norm = [norm for i in range(nimages)]
+    #if not (isinstance(cmap, list) or isinstance(cmap, np.ndarray)):
+    #    cmap = [cmap for i in range(nimages)]
+    #if not (isinstance(norm, list) or isinstance(norm, np.ndarray)):
+    #    norm = [norm for i in range(nimages)]
+    #if not (isinstance(linewidth, list) or isinstance(linewidth, np.ndarray)):
+    #    linewidth = [linewidth for i in range(nimages)]
 
     hexagons = [[] for i in range(nimages)]
     intensities = [[] for i in range(nimages)]
@@ -66,6 +73,7 @@ def plot_hextensor(
     nrows = int(np.ceil(np.sqrt(nimages)))
     gs = gridspec.GridSpec(nrows, nrows)
     gs.update(wspace=0, hspace=0)
+
     for i in range(nimages):
         if inexamples >= inchannels:
             a = i
@@ -99,10 +107,12 @@ def plot_hextensor(
             ]
         )
         ax.set_axis_off()
+        
         p = PatchCollection(
-            np.array(hexagons[i]), cmap=cmap[i], norm=norm[i], alpha=0.9, edgecolors="k", linewidth=1
+            np.array(hexagons[i]), cmap=cmap, norm=norm, alpha=0.9, edgecolors="k", linewidth=linewidth
         )
         p.set_array(np.array(np.array(intensities[i])))
+        p.set_linewidth(linewidth)
         ax.add_collection(p)
         ax.set_aspect("equal")
         plt.subplots_adjust(top=0.95, bottom=0.05)

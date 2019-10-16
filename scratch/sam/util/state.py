@@ -116,9 +116,11 @@ class State:
             yield State(new_pt_idx, self, self.reg, self.e_func, mode=self.mode)
 
 
-    def plot(self):
+    def plot(self, linewidth=None):
         feat = make_feat(self.methyl_mask)
         feat = plot_feat(feat)
 
-        plot_hextensor(feat, norm=norm)
+        if linewidth is not None:
+            linewidth = linewidth.reshape(8, 8).T[::-1, :].flatten()
+        plot_hextensor(feat, norm=norm, linewidth=linewidth)
 

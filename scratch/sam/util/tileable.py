@@ -20,44 +20,51 @@ from scratch.sam.util import *
 
 from scratch.neural_net.lib import *
 
+
+# Vis is a LUT of i=>{true, false} depending on whether i has been
+#   visited
+def dfs(idx, indices, this_tile_list, vis):
+
+    vis[idx] = True
+    for j in this_tile_list[idx]:
+        if not vis[j]:
+            dfs(j, indices, this_tile_list, vis)
+
+
+# this_tile_list only includes neighbors that are in indices
+def is_connected(indices, this_tile_list, vis=None, start_vertex=None):
+    """ determines if the graph is connected """
+    if vis is None:
+        vis = {i: False for i in indices}
+    if start_vertex is None:
+        start_vertex = indices[0]
+
+    dfs(start_vertex, indices, this_tile_list, vis)
+
+    grp1 = np.array([i for i in indices if vis[i]])
+    grp2 = np.setdiff1d(indices, grp1)
+
+
+    return (grp1, grp2)
+
+
+
 class Tessalator:
     def __init__(self):
         self.states = []
         self.non_tileable = []
 
-
     def reset(self):
         self.states = []
         self.non_tileable = []
-
-
-    def is_connected(indices, tile_list, vertices_encountered=None, start_vertex=None):
-        """ determines if the graph is connected """
-        if vertices_encountered is None:
-            vertices_encountered = list()
-        gdict = tile_list  
-        vertices = indices # "list" necessary in Python 3 
-        if not start_vertex:
-            # chosse a vertex from graph as a starting point
-            start_vertex = vertices[0]
-        vertices_encountered.append(start_vertex)
-        for vertex in gdict[start_vertex]:
-            if vertex not in vertices_encountered:
-                vertices_encountered.append(vertex)
-
-        grp = np.unique(vertices_encountered)
-        if len(vertices_encountered) == len(vertices):
-            return True
-        
-        else:
-            grp1 = np.array(vertices_encountered)
-            grp2 = np.setdiff1d(vertices, vertices_encountered)
-            return (grp1, grp2)
 
     # Find if a pattern (given by a list of indices that are still available)
     #   is tile-able
     # Not tile-able if any position does not have a partner
     def is_tessalable(self, indices, tile_list):
+
+        if indices.size == 0:
+            return False
 
         # Neighbors in this pattern only
         this_tile_list = dict()
@@ -95,6 +102,11 @@ class Tessalator:
 
         # Now for meat:
         # Tile-able if we can decompose this pattern into a tile and another tileable pattern
+
+        # First, check if we can split the pattern into two separate groups
+        grp1, grp2 = is_connected(indices, this_tile_list)
+        if grp2.size:
+            return self.is_tessalable(grp2, this_tile_list) and self.is_tessalable(grp1, this_tile_list)
 
         # First check for any postion i that has a single neighbor j
         #   Then, (i,j) must be a tile, so we can remove it and ask if the rest is tileable
