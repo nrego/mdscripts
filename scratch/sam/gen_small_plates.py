@@ -21,7 +21,7 @@ from sklearn import datasets, linear_model
 
 from scipy.integrate import cumtrapz
 
-from util import *
+from scratch.sam.util import *
 
 import itertools
 
@@ -49,7 +49,7 @@ def generate_pattern(univ, univ_ch3, ids_res):
 
     return newuniv
 
-N = 1
+N = 5
 univ_oh = MDAnalysis.Universe('whole_oh.gro')
 univ_oh.add_TopologyAttr('tempfactors')
 univ_ch3 = MDAnalysis.Universe('whole_ch3.gro')

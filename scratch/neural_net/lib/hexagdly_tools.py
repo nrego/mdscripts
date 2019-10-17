@@ -20,11 +20,13 @@ def plot_hextensor(
     tensor,
     image_range=(0, None),
     channel_range=(0, None),
-    cmap=None,
+    cmap=mymap,
     norm=None,
-    linewidth=None,
+    linewidth=1,
+    edgecolors='k',
+    zorder=None,
     figname="figure",
-    mask=[],
+    mask=[]
 ):
     r"""Plot the hexagonal representation of a 4D tensor according to the 
         addressing sheme used by HexagDLy.
@@ -45,10 +47,9 @@ def plot_hextensor(
         pass
     if norm is None:
         norm = Normalize(tensor.min(), tensor.max())
-    if cmap is None:
-        cmap = mymap
-    if linewidth is None:
-        linewidth = 1
+    if isinstance(edgecolors, np.ndarray) or isinstance(edgecolors, list):
+        edgecolors[(edgecolors=='') | (edgecolors=='1')] = 'k'
+
     inshape = np.shape(
         tensor[image_range[0] : image_range[1], channel_range[0] : channel_range[1]]
     )
@@ -58,14 +59,6 @@ def plot_hextensor(
         print("Choose one image and n channels or one channel an n images to display!")
         sys.exit()
     nimages = max(inexamples, inchannels)
-    ## Nrego - allow multiple cmaps, norms
-    #if not (isinstance(cmap, list) or isinstance(cmap, np.ndarray)):
-    #    cmap = [cmap for i in range(nimages)]
-    #if not (isinstance(norm, list) or isinstance(norm, np.ndarray)):
-    #    norm = [norm for i in range(nimages)]
-    #if not (isinstance(linewidth, list) or isinstance(linewidth, np.ndarray)):
-    #    linewidth = [linewidth for i in range(nimages)]
-
     hexagons = [[] for i in range(nimages)]
     intensities = [[] for i in range(nimages)]
     fig = plt.figure(figname, (5, 5))
@@ -111,8 +104,13 @@ def plot_hextensor(
         p = PatchCollection(
             np.array(hexagons[i]), cmap=cmap, norm=norm, alpha=0.9, edgecolors="k", linewidth=linewidth
         )
+
         p.set_array(np.array(np.array(intensities[i])))
         p.set_linewidth(linewidth)
+        p.set_cmap(cmap)
+        p.set_norm(norm)
+        p.set_edgecolors(edgecolors)
+        p.set_zorder(zorder)
         ax.add_collection(p)
         ax.set_aspect("equal")
         plt.subplots_adjust(top=0.95, bottom=0.05)

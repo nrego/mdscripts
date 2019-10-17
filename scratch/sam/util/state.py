@@ -116,11 +116,20 @@ class State:
             yield State(new_pt_idx, self, self.reg, self.e_func, mode=self.mode)
 
 
-    def plot(self, linewidth=None):
+    def plot(self, **kwargs):
         feat = make_feat(self.methyl_mask)
         feat = plot_feat(feat)
 
-        if linewidth is not None:
-            linewidth = linewidth.reshape(8, 8).T[::-1, :].flatten()
-        plot_hextensor(feat, norm=norm, linewidth=linewidth)
+        new_kwargs = dict()
+        if kwargs is not None:
+
+            for k, v in kwargs.items():
+                if v is None:
+                    continue
+                tmp = np.ones(64, dtype=v.dtype)
+                tmp[patch_indices] = v
+                tmp = plot_feat(tmp).T.ravel()
+                new_kwargs[k] = tmp
+
+        plot_hextensor(feat, norm=norm, **new_kwargs)
 

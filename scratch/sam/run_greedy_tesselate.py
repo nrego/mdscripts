@@ -35,14 +35,38 @@ norm = plt.Normalize(-1,1)
 
 def make_traj_mov(state):
     i = 0
+    indices_all = np.arange(36)
+    prev_avail_indices = state.avail_indices
+
+    plt.close('all')
+    state.plot()
+    plt.savefig('{}/Desktop/fig_{:02d}.png'.format(homedir, i))
+    
     while True:
-        plt.close('all')
-        state.plot()
-        plt.savefig('{}/Desktop/fig_{:02d}.png'.format(homedir, i))
         if len(state.children) == 0:
             break
         state = state.children[0]
         i += 1
+
+        # Find out which tile was added
+        this_avail_indices = state.avail_indices
+        tile_indices = np.setdiff1d(indices_all, this_avail_indices)
+        new_tile_indices = np.setdiff1d(prev_avail_indices, this_avail_indices)
+        prev_avail_indices = this_avail_indices
+
+        linewidth = np.ones(36)
+        linewidth[tile_indices] = 4
+
+        edgecolors = np.array(['k' for i in range(36)])
+        edgecolors[new_tile_indices] = 'r'
+
+        zorders = np.ones(36)
+        zorders[new_tile_indices] = 3
+
+        plt.close('all')
+        state.plot(linewidth=linewidth, edgecolors=edgecolors)
+        plt.savefig('{}/Desktop/fig_{:02d}.png'.format(homedir, i))
+
 
 
 k_eff_all_shape = np.load('k_eff_all.dat.npy')
@@ -71,14 +95,11 @@ state = State(idx)
 tess = Tessalator()
 can_tess = tess.is_tessalable(idx, tile_list)
 
-linewidth = np.ones(64)
-linewidth[patch_indices[0]] = 4
-linewidth[patch_indices[1]] = 4
-#linewidth[:30] = 10
+linewidth = np.ones(36)
+linewidth[[0,1]] = 4
+
 state.plot(linewidth=linewidth)
 
-
-'''
 pos_tessalable = np.zeros(methyl_pos.shape[0], dtype=bool)
 
 for i, methyl_mask in enumerate(methyl_pos):
@@ -88,16 +109,13 @@ for i, methyl_mask in enumerate(methyl_pos):
     pos_tessalable[i] = tess.is_tessalable(idx, tile_list)
 
 
-# Fully hydrophilic state
-state_0 = State([], None, reg, get_energy)
-# Fully hydrophobic state
-state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
-
+# Pattern is phobic-philic for each domino (i,j)
+#   Note if (i,j) then (j,i) also exists, so we have both patterns
 def make_traj(state, tile_list):
     np.random.seed()
     #print(state.avail_indices.size)
-    # Base case - we're at fully hydrophobic state
-    if state.avail_indices.size == 2:
+    # Base case - we're at fully tiled state
+    if state.avail_indices.size == 0:
         return
 
     print("\n#######")
@@ -107,9 +125,10 @@ def make_traj(state, tile_list):
     new_energies = np.array([])
     new_avail_indices = []
 
+
     for i in state.avail_indices:
         for j in tile_list[i]:
-            if j < i or j not in state.avail_indices:
+            if j not in state.avail_indices:
                 continue
 
             # List of methyl indices for this state
@@ -126,29 +145,21 @@ def make_traj(state, tile_list):
             if not can_tess:
                 continue
             #print("    ..ok")
+            # Converting philic=>phobic
             if state.mode == 'build_phob':
-                # Add hydrophobic tile (i,j) where i is phobic
-                new_idx_i = np.append(this_idx, i).astype(int)
-                # Add tile (i,j) where j is phobic
-                new_idx_j = np.append(this_idx, j).astype(int)
+                new_idx = np.append(this_idx, i).astype(int)
 
+            # Converting phobic=>philic
             else:
-                # Add tile (i,j) where i is hydroxyl
-                new_idx_i = np.delete(this_idx, i_idx).astype(int)
-                # Add tile (i,j) where j is hydroxyl
-                new_idx_j = np.delete(this_idx, j_idx).astype(int)
+                new_idx = np.delete(this_idx, np.where(this_idx==j)[0].item()).astype(int)
 
-            new_state_i = State(new_idx_i, None, reg, get_energy, mode=state.mode)
-            new_state_i._avail_indices = test_new_idx
-            new_state_j = State(new_idx_j, None, reg, get_energy, mode=state.mode)
-            new_state_j._avail_indices = test_new_idx
-            new_states = np.append(new_states, new_state_i)
-            new_states = np.append(new_states, new_state_j)
-            new_energies = np.append(new_energies, new_state_i.energy)
-            new_energies = np.append(new_energies, new_state_j.energy)
+            new_state = State(new_idx, None, reg, get_energy, mode=state.mode)
+            new_state._avail_indices = test_new_idx
+            new_states = np.append(new_states, new_state)
+            new_energies = np.append(new_energies, new_state.energy)
 
             new_avail_indices.append(test_new_idx)
-            new_avail_indices.append(test_new_idx)
+
 
     if state.mode == 'build_phob':
         lim_e = new_energies.min()
@@ -162,9 +173,14 @@ def make_traj(state, tile_list):
     print("##################\n")
     
     new_state = np.random.choice(cand_states)
+    #new_state = new_states[0]
     state.add_child(new_state)
     make_traj(new_state, tile_list)
 
-make_traj(state_1, tile_list)
-make_traj_mov(state_1)
-'''
+# Fully hydrophilic state
+state_0 = State([], None, reg, get_energy)
+# Fully hydrophobic state
+state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
+
+make_traj(state_0, tile_list)
+make_traj_mov(state_0)
