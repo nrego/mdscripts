@@ -31,7 +31,7 @@ def generate_pattern(univ, univ_ch3, ids_res):
 
     return newuniv
 
-parser = argparse.ArgumentParser('Generate pattern from list of indices')
+parser = argparse.ArgumentParser('Generate pattern from list of indices (point data)')
 parser.add_argument('-oh', required=True, type=str,
                     help='Structure of oh SAM')
 parser.add_argument('-ch3', required=True, type=str,
@@ -40,6 +40,8 @@ parser.add_argument('--point-data', default='pt_idx_data.pkl',
                     help='Pickled datafile with pattern indices')
 parser.add_argument('--n-samples', default=4, type=int,
                     help='Number of samples to pull for each rms bin (default: %(default)s)')
+parser.add_argument('--patch-size', default=36, type=int,
+                    help='Size of patch (number of headgroups, default: 36)')
 
 args = parser.parse_args()
 
@@ -52,7 +54,7 @@ assert univ_oh.residues.n_residues == univ_ch3.residues.n_residues
 
 # The last 36 residues are the patch
 n_tot_res = univ_oh.residues.n_residues
-patch_start_idx = n_tot_res - 36
+patch_start_idx = n_tot_res - args.patch_size
 
 with open(args.point_data, 'r') as fin:
     rms_bins, occupied_idx, positions, sampled_pt_idx = pickle.load(fin)
