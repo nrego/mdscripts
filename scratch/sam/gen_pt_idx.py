@@ -22,7 +22,7 @@ parser.add_argument('--patch-size', default=2, type=int,
                     help='Size of patch side (total number of head groups is patch_size**2) (default: %(default)s)')
 parser.add_argument('--k-ch3', default=0, type=int,
                     help='Number of methyls for this patch type (default: %(default)s)')
-
+parser.add_argument('--sam-data', default='')
 args = parser.parse_args()
 
 
