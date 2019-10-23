@@ -10,7 +10,7 @@ import matplotlib as mpl
 
 from IPython import embed
 
-import os
+import sys, os
 
 import time
 
@@ -107,17 +107,19 @@ class WangLandau:
         # Each element is a list of k indices for a unique configuration
         # Shape: (n_states, k)
         combos = np.array(list(combinations(self.pos_idx, k)))
-        rand_idx = np.random.permutation(combos.shape[0])
+        #rand_idx = np.random.permutation(combos.shape[0])
         #combos = combos[rand_idx]
         #embed()
         # Indices of the k methyl positions
         #embed()
         for pt_idx in combos:
+
             m_mask = np.zeros(self.N, dtype=bool)
             try:
                 m_mask[pt_idx] = True
-            except IndexError:
+            except IndexError: # all hydroxyl
                 pass
+
             order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
             bin_assign = np.digitize(order_param, self.bins) - 1
 
@@ -125,16 +127,20 @@ class WangLandau:
                 self.density[bin_assign] += 1
             except IndexError:
                 print("ERROR: Value of order param ({}) is out of range of bins".format(order_param))
-                exit()
+                sys.exit()
 
+            # Add this point to its spot in the binning
             this_arr = self.sampled_pt_idx[bin_assign]
             if this_arr is None:
                 self.sampled_pt_idx[bin_assign] = np.array([pt_idx])
-
-            elif this_arr.shape[0] < 10:
+            else:
                 this_arr = np.vstack((this_arr, pt_idx))
-
                 self.sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
+
+            #elif this_arr.shape[0] < 10:
+            #    this_arr = np.vstack((this_arr, pt_idx))
+
+            #    self.sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
 
         ## Normalize density of states histogram ##
         self.entropies = np.log(self.density)

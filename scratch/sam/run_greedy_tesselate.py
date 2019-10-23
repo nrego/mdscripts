@@ -104,47 +104,55 @@ pos_tessalable = np.zeros(methyl_pos.shape[0], dtype=bool)
 
 for i, methyl_mask in enumerate(methyl_pos):
     print(i)
-    tess.reset()
+    #tess.reset()
     idx = np.arange(36)[methyl_mask]
     pos_tessalable[i] = tess.is_tessalable(idx, tile_list)
 
+tess.reset()
 
 # Pattern is phobic-philic for each domino (i,j)
 #   Note if (i,j) then (j,i) also exists, so we have both patterns
-def make_traj(state, tile_list):
+# If do_dfs, (depth-first search), then exhaustively search all greedy paths
+#   (i.e. don't choose one radomly)
+def make_traj(state, tile_list, do_dfs=False, prefix=None):
+
     np.random.seed()
-    #print(state.avail_indices.size)
+
     # Base case - we're at fully tiled state
     if state.avail_indices.size == 0:
         return
 
-    print("\n#######")
-    print("Doing N={}".format(state.avail_indices.size))
-    print("########\n")
+    if prefix is not None:
+        print("\n{}\n".format(prefix))
+
+    n_tabs = (36 - state.avail_indices.size) // 2
+    pre_tab = ' '.join(['' for i in range(n_tabs)])
+    print("\n{}#######".format(pre_tab))
+    print("{}Doing N={}".format(pre_tab, state.avail_indices.size))
+    print("{}########\n".format(pre_tab))
     new_states = np.array([], dtype=object)
     new_energies = np.array([])
     new_avail_indices = []
 
+    # List of methyl indices for this state
+    this_idx = state.pt_idx.copy()
 
     for i in state.avail_indices:
         for j in tile_list[i]:
             if j not in state.avail_indices:
                 continue
 
-            # List of methyl indices for this state
-            this_idx = state.pt_idx.copy()
-
             i_idx = np.where(state.avail_indices==i)[0].item()
             j_idx = np.where(state.avail_indices==j)[0].item()
 
             # Check that removing (i,j) results in a tile-able state
             test_new_idx = np.delete(state.avail_indices, (i_idx, j_idx))
-            #tess.reset()
             #print("  trying tile...{}".format(test_new_idx))
             can_tess = tess.is_tessalable(test_new_idx, tile_list)
             if not can_tess:
                 continue
             #print("    ..ok")
+            
             # Converting philic=>phobic
             if state.mode == 'build_phob':
                 new_idx = np.append(this_idx, i).astype(int)
@@ -160,7 +168,7 @@ def make_traj(state, tile_list):
 
             new_avail_indices.append(test_new_idx)
 
-
+    # find min/max energy trial move(s)
     if state.mode == 'build_phob':
         lim_e = new_energies.min()
     else:
@@ -168,19 +176,32 @@ def make_traj(state, tile_list):
 
     cand_idx = new_energies == lim_e
     cand_states = new_states[cand_idx]
-    print("\n#################")
-    print("{} candidate states going from {}".format(cand_idx.sum(), state.avail_indices.size))
-    print("##################\n")
+    print("\n{}#################".format(pre_tab))
+    print("{}{} candidate states going from {}".format(pre_tab, cand_idx.sum(), state.avail_indices.size))
+    print("{}##################\n".format(pre_tab))
     
-    new_state = np.random.choice(cand_states)
-    #new_state = new_states[0]
-    state.add_child(new_state)
-    make_traj(new_state, tile_list)
+    if not do_dfs:
+        new_state = np.random.choice(cand_states)
+        #new_state = new_states[0]
+        state.add_child(new_state)
+        make_traj(new_state, tile_list)
+
+    # Trace each candidate state
+    else:
+        n_cand = cand_idx.sum()
+        for i, new_state in enumerate(cand_states):
+            if state.avail_indices.size == 36:
+                prefix = '{} of {} ({})'.format(i+1, n_cand, tess.iter_count)
+            print("{}  Doing candidate {} of {} for N={}".format(pre_tab, i+1, n_cand, state.avail_indices.size))
+            state.add_child(new_state)
+            make_traj(new_state, tile_list, do_dfs, prefix)
 
 # Fully hydrophilic state
 state_0 = State([], None, reg, get_energy)
 # Fully hydrophobic state
 state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
 
-make_traj(state_0, tile_list)
+make_traj(state_0, tile_list, do_dfs=True)
+
+
 make_traj_mov(state_0)

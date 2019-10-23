@@ -320,9 +320,12 @@ def construct_neighbor_dist_lists(positions, pos_ext):
     dd = np.zeros((n_positions,n_positions))
     dd_ext = np.zeros((n_positions,n_pos_ext))
     for i in range(n_positions):
-        assert np.array_equal(np.sort(i_self[i]), np.arange(n_positions))
-        sort_idx_self = np.argsort(i_self[i])
-        dd[i] = d_self[i][sort_idx_self] #- 0.5
+        try:
+            assert np.array_equal(np.sort(i_self[i]), np.arange(n_positions))
+            sort_idx_self = np.argsort(i_self[i])
+            dd[i] = d_self[i][sort_idx_self] #- 0.5
+        except:
+            pass
         dd[i,i] = np.inf
 
         assert np.array_equal(np.sort(i_ext[i]), np.arange(n_pos_ext))

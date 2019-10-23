@@ -6,14 +6,19 @@ import MDAnalysis
 import argparse
 from IPython import embed
 
-import cPickle as pickle
+import pickle
 from matplotlib import pyplot as plt
+
+from scratch.neural_net import *
+from scratch.sam.util import *
 
 import os
 
 def generate_pattern(univ, univ_ch3, ids_res):
     univ.atoms.tempfactors = 1
-
+    #embed()
+    if ids_res.size == 0:
+        return univ
     for idx_res in ids_res:
         res = univ.residues[idx_res]
         ag_ref = res.atoms
@@ -38,9 +43,9 @@ parser.add_argument('-ch3', required=True, type=str,
                     help='Structure of CH3 SAM')
 parser.add_argument('--point-data', default='pt_idx_data.pkl', 
                     help='Pickled datafile with pattern indices')
-parser.add_argument('--n-samples', default=4, type=int,
+parser.add_argument('--n-samples', default=1, type=int,
                     help='Number of samples to pull for each rms bin (default: %(default)s)')
-parser.add_argument('--patch-size', default=36, type=int,
+parser.add_argument('--patch-size', default=6, type=int,
                     help='Size of patch (number of headgroups, default: 36)')
 
 args = parser.parse_args()
@@ -53,52 +58,75 @@ univ_ch3.add_TopologyAttr('tempfactors')
 assert univ_oh.residues.n_residues == univ_ch3.residues.n_residues
 
 # The last 36 residues are the patch
+N = args.patch_size**2
 n_tot_res = univ_oh.residues.n_residues
-patch_start_idx = n_tot_res - args.patch_size
+patch_start_idx = n_tot_res - N
 
-with open(args.point_data, 'r') as fin:
-    rms_bins, occupied_idx, positions, sampled_pt_idx = pickle.load(fin)
+with open(args.point_data, 'rb') as fin:
+    bins, occupied_idx, positions, sampled_pt_idx = pickle.load(fin)
+pos_ext = gen_pos_grid(args.patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
+d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
+
 
 n_bins = occupied_idx.sum()
 n_samples = args.n_samples
 
-print("{} RMS bins occupied, {} samples per bin ({} total structures will be generated)".format(n_bins, n_samples, n_bins*n_samples))
+print("{} bins occupied, {} samples per bin ({} total structures will be generated)".format(n_bins, n_samples, n_bins*n_samples))
 
-for rms_bin, pts in zip(rms_bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx]):
+for bin, pts in zip(bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx]):
     # pts should be shape: (n_pts,k)
     n_pts = pts.shape[0]
 
-    random = np.random.choice(n_pts, n_pts, replace=False)
+    #random = np.random.choice(n_pts, n_pts, replace=False)
+    random=np.arange(n_pts)
 
-    print("{} pts with rms {}".format(n_pts, rms_bin))
+    print("{} pts with bin {}".format(n_pts, bin))
 
-    dirname = 'd_{:03d}'.format(int(rms_bin*100))
+    dirname = 'd_{:03d}'.format(int(bin*100))
     try:
         os.makedirs(dirname)
     except OSError:
         print("directory {} already exits - exiting".format(dirname))
-        exit()
 
     this_n_sample = min(n_pts, args.n_samples)
 
-
     for i_sample in range(this_n_sample):
-        
-        subdir = 'trial_{:d}'.format(i_sample)
-        os.makedirs('{}/{}'.format(dirname,subdir))
+        try:
+            subdir = 'trial_{:d}'.format(i_sample)
+            os.makedirs('{}/{}'.format(dirname,subdir))
+        except:
+            pass
 
-        this_pt = pts[random][i_sample]
-        this_pos = positions[this_pt]
 
         #with open('{}/{}/this_pt.pkl'.format(dirname, subdir), 'w') as fout:
         #    payload = (positions, this_pt)
         #    pickle.dump(payload, fout)
 
+        this_pt = pts[random][i_sample]
+        methyl_mask = np.zeros(N).astype(bool)
+        if this_pt.size > 0:
+            methyl_mask[this_pt] = True
+
+        feat = np.zeros(pos_ext.shape[0])
+        feat[patch_indices[methyl_mask]] = 1
+        feat[patch_indices[~methyl_mask]] = -1
+
+        ny, nz = args.patch_size+2, args.patch_size+2
+        this_feat = feat.reshape(ny,nz).T[::-1, :]
+
+        this_feat = this_feat.reshape(1,1,ny,nz)
+        plot_hextensor(this_feat)
+        plt.savefig('{}/{}/schematic2.pdf'.format(dirname, subdir))
+
+        plt.close('all')
+
         fig, ax = plt.subplots(figsize=(5.5,6))
         ax.set_xticks([])
         ax.set_yticks([])
         ax.plot(positions[:,0], positions[:,1], 'bo', markersize=18)
-        ax.plot(this_pos[:,0], this_pos[:,1], 'ko', markersize=18)
+        if this_pt.size > 0:
+            this_pos = positions[this_pt]
+            ax.plot(this_pos[:,0], this_pos[:,1], 'ko', markersize=18)
         fig.savefig('{}/{}/schematic.pdf'.format(dirname, subdir))
         
         plt.close('all')

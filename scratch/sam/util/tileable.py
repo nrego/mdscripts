@@ -21,6 +21,8 @@ from scratch.sam.util import *
 from scratch.neural_net.lib import *
 
 
+hash_indices = lambda indices: np.sum(2**indices)
+
 # Vis is a LUT of i=>{true, false} depending on whether i has been
 #   visited
 def dfs(idx, indices, this_tile_list, vis):
@@ -52,16 +54,25 @@ def is_connected(indices, this_tile_list, vis=None, start_vertex=None):
 class Tessalator:
     def __init__(self):
         self.states = []
-        self.non_tileable = []
+        self.tileable = dict()
+        self.iter_count = 0
 
     def reset(self):
         self.states = []
-        self.non_tileable = []
+        self.tileable = dict()
+        self.iter_count = 0
 
     # Find if a pattern (given by a list of indices that are still available)
     #   is tile-able
     # Not tile-able if any position does not have a partner
     def is_tessalable(self, indices, tile_list):
+
+        this_hash = hash_indices(indices)
+
+        try:
+            return self.tileable[this_hash]
+        except KeyError:
+            pass
 
         if indices.size == 0:
             return True
@@ -84,21 +95,23 @@ class Tessalator:
         
         # Patterns with odd number of pieces trivially non-tileable
         if indices.size % 2 != 0:
+            self.tileable[this_hash] = False
             return False
         # Anything with an isolated piece is non-tileable
         for i in indices:
             neigh = this_tile_list[i]
             if len(neigh) == 0:
-                return False
-
-        for bad_indices in self.non_tileable:
-            if np.array_equal(indices, bad_indices):
+                self.tileable[this_hash] = False
                 return False
 
         # Base case - two indices remaining; return true if i,j form tile, else False
         if indices.size == 2:
             i, j = indices
-            return (j in this_tile_list[i])
+            self.tileable[this_hash] = j in this_tile_list[i]
+            if self.tileable[this_hash]:
+                self.iter_count += 1
+
+            return (self.tileable[this_hash])
 
         # Now for meat:
         # Tile-able if we can decompose this pattern into a tile and another tileable pattern
@@ -122,9 +135,10 @@ class Tessalator:
                 new_indices = np.delete(indices, (i_idx, j_idx))
                 new_indices.sort()
                 self.states.append(State(new_indices))
-                return self.is_tessalable(new_indices, this_tile_list)
+                tessalable = self.is_tessalable(new_indices, this_tile_list)
+                self.tileable[this_hash] = tessalable
+                return tessalable
                 
-        #return
         # No positions with single neighbor - so we have to do it the hard way
         for i in ordered_indices:
             for j in this_tile_list[i]:
@@ -136,13 +150,13 @@ class Tessalator:
                 new_indices.sort()
 
                 tessalable = self.is_tessalable(new_indices, this_tile_list)
+                self.tileable[this_hash] = tessalable
 
                 if tessalable:
                     self.states.append(State(new_indices))
                     return True
-                else:
-                    self.non_tileable.append(new_indices)
 
+        self.tileable[this_hash] = False
         return False
 
 
