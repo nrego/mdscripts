@@ -122,7 +122,7 @@ mpl.rcParams.update({'axes.titlesize': 50})
 all_data_ds = np.load('all_data.dat.npz')
 all_logweights = all_data_ds['logweights']
 all_data = all_data_ds['data']
-all_data_N = all_data_ds['data_N']
+all_data_N = all_data_ds['data_aux']
 
 max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 

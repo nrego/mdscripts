@@ -66,6 +66,7 @@ np.savetxt('surf_mask.dat', surf_mask, fmt='%1d')
 np.savetxt('buried_mask.dat', buried_mask, fmt='%1d')
 
 surf_atoms = sys.prot_h[surf_mask]
+sys.prot_h.write("buried.pdb")
 
 print("Writing umbr.conf...")
 

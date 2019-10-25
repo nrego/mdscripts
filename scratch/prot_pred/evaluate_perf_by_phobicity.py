@@ -41,7 +41,7 @@ if __name__ == '__main__':
     hydropathy_mask = np.loadtxt(args.hydropathy_mask, dtype=bool)
     pred_contacts = glob.glob(args.pred_contact)
 
-    assert hydropathy_mask[buried_mask].sum() == 0
+    #assert hydropathy_mask[buried_mask].sum() == 0
 
     if contact_mask[surf_mask].sum() != contact_mask.sum():
         diff_contact = contact_mask.sum() - contact_mask[surf_mask].sum()
@@ -67,7 +67,7 @@ if __name__ == '__main__':
             beta_phi = float(os.path.dirname(fname).split('_')[-1])/ 100.0
 
         pred_contact_mask = np.loadtxt(fname, dtype=bool)
-        assert pred_contact_mask[buried_mask].sum() == 0
+        #assert pred_contact_mask[buried_mask].sum() == 0
 
         pred_contact_mask = pred_contact_mask[surf_mask]
 

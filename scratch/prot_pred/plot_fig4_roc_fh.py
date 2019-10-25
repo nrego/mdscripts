@@ -51,6 +51,7 @@ print('beta phi -: {}   beta phi +: {}'.format(beta_phi_minus, beta_phi_plus))
 #embed()
 beta_phi, tp, fp, tn, fn, tpr, fpr, prec, f_h, f_1, mcc = [arr.squeeze() for arr in np.split(np.loadtxt('performance.dat'), 11, 1)]
 
+prec[(tp+fp)==0] = np.nan
 best_idx = np.argmax(f_h)
 minus_idx = np.argmin(np.abs((beta_phi)-beta_phi_minus))
 plus_idx = np.argmin(np.abs((beta_phi)-beta_phi_plus))
@@ -136,3 +137,5 @@ fig.tight_layout()
 fig.savefig('{}/Desktop/tpr_fpr.pdf'.format(homedir), transparent=True)
 
 print("beta phi opt: {}".format(beta_phi[best_idx]))
+print("auc: {:.2f}".format(np.trapz(tpr, fpr)))
+
