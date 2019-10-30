@@ -9,11 +9,15 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 
 from scipy.spatial import cKDTree
-import os
+import os, glob, pathlib
+from scratch.neural_net import *
+from scratch.sam.util import *
 
 def generate_pattern(univ, univ_ch3, ids_res):
     univ.atoms.tempfactors = 1
-
+    #embed()
+    if ids_res.size == 0:
+        return univ
     for idx_res in ids_res:
         res = univ.residues[idx_res]
         ag_ref = res.atoms
@@ -32,68 +36,61 @@ def generate_pattern(univ, univ_ch3, ids_res):
     return newuniv
 
 
+univ_oh = MDAnalysis.Universe('whole_oh.gro')
+univ_ch3 = MDAnalysis.Universe('whole_ch3.gro')
+univ_oh.add_TopologyAttr('tempfactors')
+univ_ch3.add_TopologyAttr('tempfactors')
 
-mpl.rcParams.update({'axes.labelsize': 60})
-mpl.rcParams.update({'xtick.labelsize': 40})
-mpl.rcParams.update({'ytick.labelsize': 40})
-mpl.rcParams.update({'axes.titlesize': 50})
-mpl.rcParams.update({'legend.fontsize':40})
-
-from util import *
-
-homedir = os.environ['HOME']
-
-z_space = 0.5 # 0.5 nm spacing
-y_space = np.sqrt(3)/2.0 * z_space
-pos = gen_pos_grid(ny=24, z_offset=True)
-cent = gen_pos_grid(ny=12, z_offset=True, shift_y=6.0, shift_z=6)
-
-#plt.plot(pos[:,0], pos[:,1], 'x')
-#plt.plot(cent[:,0], cent[:,1], 'o')
+assert univ_oh.residues.n_residues == univ_ch3.residues.n_residues
 
 
-univ = MDAnalysis.Universe('whole_oh.gro')
 
+### Generate inverse patterns for patch_size=4 (N=16)
+patch_size = 4
+N = patch_size**2
+pos_idx = np.arange(N, dtype=int)
+n_tot_res = univ_oh.residues.n_residues
+patch_start_idx = n_tot_res - N
 
-sulfurs = univ.select_atoms('name S1')
-sulf_pos = sulfurs.positions[:,1:] / 10.0
+positions = gen_pos_grid(patch_size)
+pos_ext = gen_pos_grid(patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
+d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
-tree_all = cKDTree(sulf_pos)
+for k in range(1,15):
 
-pos += sulf_pos.min(axis=0)
-cent += sulf_pos.min(axis=0)
-tree = cKDTree(cent)
-res = tree.query_ball_tree(tree_all, r=0.2)
+    fnames = sorted(glob.glob('k_{:02d}/d_*/trial_0/this_pt.dat'.format(k)))
 
+    for fname in fnames:
+        p = pathlib.Path(fname)
+        rms = p.parts[1]
 
-global_patch_indices = np.unique(res)
+        newpath = 'l_{:02d}/{}/trial_0'.format(k, rms)
 
-patch = univ.residues[global_patch_indices]
-patch.atoms.write('patch.gro')
+        try:
+            os.makedirs(newpath)
+        except:
+            continue
+        old_pt = np.loadtxt(fname, ndmin=1).astype(int)
+        new_pt = np.setdiff1d(pos_idx, old_pt)
 
-not_patch_indices = np.setdiff1d(np.arange(univ.residues.n_residues), global_patch_indices)
-not_patch = univ.residues[not_patch_indices]
-not_patch = not_patch.atoms.select_atoms('not (resname SOL and prop x < 18)')
-not_patch.write('not_patch.gro')
+        np.savetxt('{}/this_pt.dat'.format(newpath), new_pt, fmt='%d')
 
-univ = MDAnalysis.Universe('whole_oh.gro')
-univ.add_TopologyAttr('tempfactors')
-univ.atoms.tempfactors = 1
+        methyl_mask = np.zeros(N, dtype=bool)
+        methyl_mask[new_pt] = True
 
-oh_patch = univ.residues[-144:]
+        ## Plot out pattern
+        feat = np.zeros(pos_ext.shape[0])
+        feat[patch_indices[methyl_mask]] = 1
+        feat[patch_indices[~methyl_mask]] = -1
 
-ch3_patch = MDAnalysis.Universe('ch3_patch.gro').residues[:144]
+        ny, nz = patch_size+2, patch_size+2
+        this_feat = feat.reshape(ny,nz).T[::-1, :]
 
-for oh_res, ch3_res in zip(oh_patch, ch3_patch):
-    ag_ref = oh_res.atoms
-    oh_res.atoms.tempfactors = 0
+        this_feat = this_feat.reshape(1,1,ny,nz)
+        plot_hextensor(this_feat)
+        plt.savefig('{}/schematic2.pdf'.format(newpath))
+        plt.close('all')
 
-    ag_ch3 = ch3_res.atoms
-
-    ch3_shift = ag_ref[-1].position - ag_ch3[-1].position
-    ag_ch3.positions += ch3_shift
-
-newuniv = MDAnalysis.core.universe.Merge(univ.atoms[univ.atoms.tempfactors == 1], ch3_patch.atoms)
-newuniv.atoms.write('whole_ch3.gro')
-univ.atoms.tempfactors = 1
+        newuniv = generate_pattern(univ_oh, univ_ch3, new_pt+patch_start_idx)
+        newuniv.atoms.write('{}/struct.gro'.format(newpath))
 

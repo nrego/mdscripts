@@ -174,3 +174,5 @@ fig.savefig('{}/Desktop/fit_three_err.png'.format(homedir), transparent=True)
 plt.close('all')
 
 np.savez_compressed('m3.dat', feat_vec=feat_vec, energies=energies, methyl_pos=methyl_pos, reg_coef=reg.coef_, reg_intercept=reg.intercept_)
+
+

@@ -33,12 +33,25 @@ def get_energy(pt_idx, m_mask, nn, reg):
     
     return coef1*k_m + coef2*n_mm + coef3*n_mo
 
+# Pos is a collection of points, shape (n_pts, ndim)
+def get_rms(pt_idx, m_mask, positions, prec=2):
+    pos = positions[m_mask]
+    if pos.size == 0:
+        return 0.0
+    centroid = pos.mean(axis=0)
+    diff = pos-centroid
+    sq_dev = (diff**2).sum(axis=1)
+
+    return np.round(np.sqrt(sq_dev.mean()), prec)
+
 
 ## Generate patterns for small patches, either by hand or with WL (according to predicted energy using model 3 for the 6x6 patch)
 
 parser = argparse.ArgumentParser('Generate patterns (indices) for a square patch size')
 parser.add_argument('--do-wl', action='store_true',
                     help='If true, generate patterns using WL algorithm')
+parser.add_argument('--do-rms', action='store_true',
+                    help='If true, use pattern RMS as order parameter for WL/state generation (otherwise, use M3 energies)')
 parser.add_argument('--patch-size', default=1, type=int,
                     help='Size of patch side (total number of head groups is patch_size**2) (default: %(default)s)')
 parser.add_argument('--k-ch3', default=0, type=int,
@@ -87,8 +100,28 @@ pos_ext = gen_pos_grid(patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
 nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 
 # Find minimum energy (i.e. when everything's methyl)
-min_e = get_energy(pos_idx, np.ones(N).astype(bool), nn, reg)
-bins = np.arange(np.floor(min_e), 2, 1)
+if not args.do_rms:
+    min_e = get_energy(pos_idx, np.ones(N).astype(bool), nn, reg)
+    bins = np.arange(np.floor(min_e), 2, 1)
+
+    order_fn = get_energy
+    fn_kwargs = dict(nn=nn, reg=reg)
+
+else:
+
+    min_pos = positions.min(axis=0)
+    max_pos = positions.max(axis=0)
+    test_pos = np.vstack((min_pos, max_pos)) 
+
+    # Hackish, but gets maximum rms we can expect
+    max_rms = get_rms(None, np.ones(2, dtype=bool), test_pos)
+
+    bins = np.arange(0.0, max_rms+0.1, 0.05)
+
+    order_fn = get_rms
+    fn_kwargs = dict(positions=positions)
+
+
 print('k: {}'.format(k_ch3))
 print('{} bins from {} to 0'.format(bins.size-1, bins.min()))
 
@@ -96,8 +129,8 @@ print('{} bins from {} to 0'.format(bins.size-1, bins.min()))
 ######### RUN WL ##########
 ###########################
 
-fn_kwargs = dict(nn=nn, reg=reg)
-wl = WangLandau(positions, bins, get_energy, fn_kwargs=fn_kwargs, eps=args.eps, max_iter=args.max_wl_iter)
+
+wl = WangLandau(positions, bins, order_fn, fn_kwargs=fn_kwargs, eps=args.eps, max_iter=args.max_wl_iter)
 
 wl.gen_states(k_ch3, do_brute, hist_flat_tol=args.hist_flat_tol)
 
@@ -115,3 +148,5 @@ print("saving payload for k={} with patch size {} by {}".format(k_ch3, patch_siz
 with open('{}/pt_idx_data.pkl'.format(dirname), 'wb') as fout:
     output_payload = (wl.bins, wl.density>0, wl.positions, wl.sampled_pt_idx)
     pickle.dump(output_payload, fout)
+
+

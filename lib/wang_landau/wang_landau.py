@@ -107,11 +107,11 @@ class WangLandau:
         # Each element is a list of k indices for a unique configuration
         # Shape: (n_states, k)
         combos = np.array(list(combinations(self.pos_idx, k)))
-        #rand_idx = np.random.permutation(combos.shape[0])
-        #combos = combos[rand_idx]
-        #embed()
+        np.random.seed()
+        rand_idx = np.random.permutation(combos.shape[0])
+        combos = combos[rand_idx]
+        
         # Indices of the k methyl positions
-        #embed()
         for pt_idx in combos:
 
             m_mask = np.zeros(self.N, dtype=bool)

@@ -66,7 +66,8 @@ for i in range(4):
 
 
 p2_energies = np.zeros(len(fnames))
-p2_methyl_pos = np.zeros((len(fnames), 4))
+p2_errs = np.zeros(len(fnames))
+p2_methyl_pos = np.zeros((len(fnames), 4), dtype=bool)
 p2_mo_int = np.zeros_like(p2_energies)
 p2_oo_ext = np.zeros_like(p2_energies)
 
@@ -80,8 +81,10 @@ for i, fname in enumerate(fnames):
     methyl_mask[this_pt] = True
 
     this_energy = np.loadtxt(fname)[0,1]
+    this_err = np.loadtxt(fname)[0,2]
 
     p2_energies[i] = this_energy
+    p2_errs[i] = this_err
     p2_methyl_pos[i] = methyl_mask
 
     this_mo_int = 0
@@ -104,3 +107,18 @@ p2_koh = 4 - p2_methyl_pos.sum(axis=1)
 
 p2_feat_vec = np.vstack((p2_koh, p2_mo_int, p2_oo_ext)).T
 p2_perf_r2, p2_perf_mse, p2_err, p2_xvals, p2_fit, p2_reg = fit_general_linear_model(p2_feat_vec, p2_energies)
+
+
+# Hybrid model with different patch sizes??
+tot_feat_vec = np.zeros((884+16, 4))
+tot_feat_vec[:884, 0] = 36
+tot_feat_vec[-16:, 0] = 4
+tot_feat_vec[:884, 1:] = feat_vec
+tot_feat_vec[-16:, 1:] = p2_feat_vec
+
+tot_energies = np.concatenate((energies, p2_energies))
+
+tot_perf_r2, tot_perf_mse, tot_err, tot_xvals, tot_fit, tot_reg = fit_general_linear_model(tot_feat_vec, tot_energies)
+
+
+

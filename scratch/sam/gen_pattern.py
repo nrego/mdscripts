@@ -46,7 +46,7 @@ parser.add_argument('--point-data', default='pt_idx_data.pkl',
 parser.add_argument('--n-samples', default=1, type=int,
                     help='Number of samples to pull for each rms bin (default: %(default)s)')
 parser.add_argument('--patch-size', default=6, type=int,
-                    help='Size of patch (number of headgroups, default: 36)')
+                    help='Size of patch sides; total size is patch_size**2 (default: 6)')
 
 args = parser.parse_args()
 
@@ -67,7 +67,6 @@ with open(args.point_data, 'rb') as fin:
 pos_ext = gen_pos_grid(args.patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
-
 n_bins = occupied_idx.sum()
 n_samples = args.n_samples
 
@@ -77,8 +76,9 @@ for bin, pts in zip(bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx]):
     # pts should be shape: (n_pts,k)
     n_pts = pts.shape[0]
 
-    #random = np.random.choice(n_pts, n_pts, replace=False)
-    random=np.arange(n_pts)
+    # Randomly choose points from this bin
+    random = np.random.choice(n_pts, n_pts, replace=False)
+    #random=np.arange(n_pts)
 
     print("{} pts with bin {}".format(n_pts, bin))
 
