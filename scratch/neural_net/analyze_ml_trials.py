@@ -71,7 +71,7 @@ for fname in fnames:
 
 # For each trial, average the CV rounds, then find the minimum over the trials
 min_idx = np.argmin(all_perf_cv.mean(axis=1), axis=0)
-avg_perf_cv = all_perf_cv.mean(axis=1).mean(axis=0)
+avg_perf_cv = all_perf_cv.mean(axis=1).min(axis=0)
 
 best_perf_tot = np.zeros_like(avg_perf_cv)
 for i in range(best_perf_tot.shape[0]):
@@ -83,7 +83,7 @@ best_perf_tot = all_perf_tot.mean(axis=0)
 fig, ax = plt.subplots()
 
 extent = [0.5, avg_perf_cv.shape[1]+0.5, 0.5, avg_perf_cv.shape[0]+0.5]
-norm = plt.Normalize(6, 18)
+norm = plt.Normalize(4.5, 6)
 
 pc = ax.imshow(avg_perf_cv, origin='lower', extent=extent, cmap='plasma_r', norm=norm)
 

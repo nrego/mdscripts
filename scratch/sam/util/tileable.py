@@ -55,6 +55,7 @@ class Tessalator:
     def __init__(self):
         self.states = []
         self.tileable = dict()
+        self.non_tileable = [] 
         self.iter_count = 0
 
     def reset(self):

@@ -217,5 +217,5 @@ state_0 = State([], None, reg, get_energy)
 # Fully hydrophobic state; break phobicity
 state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
 
-make_traj(state_0, tile_list, pattern=[True,False,True])
-make_traj_mov(state_0)
+make_traj(state_1, tile_list, pattern=[True,True,False])
+make_traj_mov(state_1)

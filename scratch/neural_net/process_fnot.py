@@ -20,8 +20,8 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
-n_out_channels = 6
-n_hidden = 8
+n_out_channels = 8
+n_hidden = 4
 n_layers = 1
 
 
@@ -54,14 +54,15 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home), ti
     
     c, r, p = net.layer1.children()
     this_pattern = x_pattern[idx][None,:]
-
+    
     # Apply conv filters to pattern
     out_all = r(c(x_pattern).detach())
     max0 = out_all[:,0].max()
     #max1 = out_all[:,1].max()
     #max2 = out_all[:,2].max()
     #max3 = out_all[:,3].max()
-    filter_norm = [Normalize(0,max0) for i in range(out_all.shape[1])]
+    mynorm = Normalize(0,max0)
+    filter_norm = [mynorm for i in range(out_all.shape[1])]
 
     conv = r(c(this_pattern).detach())
     pool = p(conv)
@@ -70,10 +71,11 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home), ti
     plt.savefig('{}/fnot_{}_pattern'.format(path, title))
     plt.close('all')
 
-    plot_hextensor(conv, cmap='Greys', norm=filter_norm)
+    #plot_hextensor(conv, cmap='Greys', norm=filter_norm)
+    plot_hextensor(conv, cmap="Greys", norm=Normalize(0,max0))
     plt.savefig('{}/fnot_{}_filter_conv'.format(path, title))
 
-    plot_hextensor(pool, cmap='Greys', norm=filter_norm)
+    plot_hextensor(pool, cmap='Greys', norm=Normalize(0,max0))
     plt.savefig('{}/fnot_{}_filter_pool'.format(path, title))
 
 

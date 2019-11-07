@@ -2,36 +2,41 @@ import os, glob
 import numpy as np
 from scratch.sam.util import *
 
-fnames = sorted(glob.glob('inv_pattern_sample/*/d_*/trial_0/PvN.dat')) + sorted(glob.glob('pattern_sample/*/d_*/trial_0/PvN.dat'))
+fnames = sorted(glob.glob('*.dat'))
 
-n_dat = len(fnames)
+def get_energy(pt_idx, methyl_mask, nn, ext_count, reg):
+    coef1, coef2, coef3 = reg.coef_
+    inter = reg.intercept_
 
-methyl_pos = np.zeros((n_dat, 36), dtype=bool)
-k_ch3 = np.zeros(n_dat)
-f = np.zeros(n_dat)
-f_old = np.zeros(n_dat)
+    this_pt_o = np.setdiff1d(np.arange(36), pt_idx)
 
-for i, fname in enumerate(fnames):
-    old_fname = 'bkup_{}'.format(fname)
-    path = os.path.dirname(fname)
-    old_path = 'bkup_{}'.format(path)
+    k_oh = 36 - methyl_mask.sum()
+    oo_ext = 0
+    mo_int = 0
+    for o_idx in this_pt_o:
+        oo_ext += ext_count[o_idx]
+    for m_idx in pt_idx:
+        for n_idx in nn[m_idx]:
+            mo_int += ~methyl_mask[n_idx]
 
-    pvn = np.loadtxt(fname)
-    old_pvn = np.loadtxt(old_fname)
-
-    pt = np.loadtxt('{}/this_pt.dat'.format(path)).astype(int)
-    old_pt = np.loadtxt('{}/this_pt.dat'.format(old_path)).astype(int)
-
-    assert np.array_equal(pt, old_pt)
-    methyl_mask = np.zeros(36, dtype=bool)
-    methyl_mask[pt] = True
+    return inter + coef1*k_oh + coef2*mo_int + coef3*oo_ext
 
 
-    k_ch3[i] = methyl_mask.sum()
-    methyl_pos[i] = methyl_mask
-    f[i] = pvn[0][1]
-    f_old[i] = old_pvn[0][1]
+ds = np.load('../../pooled_pattern_sample/m3.dat.npz')
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(ds['feat_vec'], ds['energies'], do_ridge=False)
 
-feat_vec = k_ch3[:,None]
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, f_old)
+for fname in fnames:
+    dirname = fname.split('.')[0]
+    pvn = np.loadtxt('{}/PvN.dat'.format(dirname))[0,1]
+    methyl_mask = np.loadtxt(fname, dtype=bool)
+    pt_idx = np.arange(36)[methyl_mask]
 
+    state = State(pt_idx, reg=reg, e_func=get_energy)
+    print(fname)
+    print("  actual f: {:0.2f}".format(pvn))
+    print("  estimated f: {:0.2f}".format(state.energy))
+    print("\n")
+    plt.close('all')
+    state.plot()
+    plt.savefig('/Users/nickrego/Desktop/{}.png'.format(dirname))
+    

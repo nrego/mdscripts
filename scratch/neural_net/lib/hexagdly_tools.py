@@ -108,7 +108,7 @@ def plot_hextensor(
         p.set_array(np.array(np.array(intensities[i])))
         p.set_linewidth(linewidth)
         p.set_cmap(cmap)
-        p.set_norm(norm)
+        #p.set_norm(norm)
         p.set_edgecolors(edgecolors)
         p.set_zorder(zorder)
         ax.add_collection(p)

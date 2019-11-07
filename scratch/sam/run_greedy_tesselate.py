@@ -201,7 +201,7 @@ state_0 = State([], None, reg, get_energy)
 # Fully hydrophobic state
 state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
 
-make_traj(state_0, tile_list, do_dfs=True)
+make_traj(state_1, tile_list)
 
 
-make_traj_mov(state_0)
+make_traj_mov(state_1)
