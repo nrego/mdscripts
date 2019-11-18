@@ -31,7 +31,7 @@ mpl.rcParams.update({'axes.titlesize': 30})
 # regress y on set of n_dim features, X.
 #   Note this can do a polynomial regression on a single feature -
 #   just make each nth degree a power of that feature
-def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1):
+def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_weight=None):
     np.random.seed()
 
     assert y.ndim == 1
@@ -64,6 +64,7 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1):
     # Choose one of the cohorts as validation set, train on remainder.
     #   repeat for each cohort
     for k in range(5):
+        
         # slc is indices of validation (excluded from training) data set
         slc = slice(k*n_cohort, (k+1)*n_cohort)
         y_validate = y_rand[slc]
@@ -73,13 +74,25 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1):
         y_train = np.delete(y_rand, slc)
         X_train = np.delete(X_rand, slc, axis=0)
 
-        reg.fit(X_train, y_train)
+        if sample_weight is None:
+            reg.fit(X_train, y_train)
+        else:
+            train_weight = np.delete(sample_weight, slc)
+            train_weight /= train_weight.sum()
+            reg.fit(X_train, y_train, sample_weight=train_weight)
+
         pred = reg.predict(X_validate)
-        mse = np.mean((pred - y_validate)**2)
-        perf_r2[k] = reg.score(X_validate, y_validate)
+        if sample_weight is None:
+            mse = np.mean((pred - y_validate)**2)
+            perf_r2[k] = reg.score(X_validate, y_validate)
+        else:
+            valid_weight = sample_weight[slc]
+            valid_weight /= valid_weight.sum()
+            mse = np.dot(valid_weight, (pred - y_validate)**2)
+            perf_r2[k] = reg.score(X_validate, y_validate, sample_weight=valid_weight)
         perf_mse[k] = mse
 
-    reg.fit(X, y)
+    reg.fit(X, y, sample_weight=sample_weight)
     fit = reg.predict(xvals)
 
     pred = reg.predict(X)

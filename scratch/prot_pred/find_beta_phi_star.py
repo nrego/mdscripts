@@ -15,7 +15,7 @@ from constants import k
 from IPython import embed
 
 # Find rho_i, phi for each voxel i at each value phi from directory 'reweight_data'
-dat = np.load("ni_rad_weighted.dat.npz")
+dat = np.load("phi_sims/ni_rad_weighted.dat.npz")
 
 beta_phis = dat['beta_phi']
 n_with_phi = dat['avg']
@@ -35,15 +35,17 @@ rho_with_phi = n_with_phi / n_0[:, None]
 beta_phi_star = np.zeros(rho_with_phi.shape[0])
 n_phi_vals = beta_phis.size
 
+beta_phi_star[:] = 4
 for i_vox in range(rho_with_phi.shape[0]):
     this_rho = rho_with_phi[i_vox]
 
-    for i_phi in range(n_phi_vals-1,0,-1):
-        if this_rho[i_phi] < 0.5:
+    #for i_phi in range(n_phi_vals-1,0,-1):
+    for i_phi in range(0, n_phi_vals):
+        if this_rho[i_phi] > 0.5:
             continue
         else:
             try:
-                this_phi_star = beta_phis[i_phi+1]
+                this_phi_star = beta_phis[i_phi]
             except IndexError:
                 this_phi_star = 4
             beta_phi_star[i_vox] = this_phi_star

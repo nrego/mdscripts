@@ -56,7 +56,8 @@ positions = gen_pos_grid(patch_size)
 pos_ext = gen_pos_grid(patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
-for k in range(1,15):
+#for k in range(1,15):
+for k in [15]:
 
     fnames = sorted(glob.glob('k_{:02d}/d_*/trial_0/this_pt.dat'.format(k)))
 

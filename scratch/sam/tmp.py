@@ -4,39 +4,43 @@ from scratch.sam.util import *
 
 fnames = sorted(glob.glob('*.dat'))
 
-def get_energy(pt_idx, methyl_mask, nn, ext_count, reg):
-    coef1, coef2, coef3 = reg.coef_
-    inter = reg.intercept_
+def find_ext_edge(positions, pos_ext):
+    d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
+    nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 
-    this_pt_o = np.setdiff1d(np.arange(36), pt_idx)
+    int_edges = dict()
+    ext_edges = dict()
+    for i in range(positions.shape[0]):
+        ext_edges[i] = 0
+        int_edges[i] = nn[i].size
 
-    k_oh = 36 - methyl_mask.sum()
-    oo_ext = 0
-    mo_int = 0
-    for o_idx in this_pt_o:
-        oo_ext += ext_count[o_idx]
-    for m_idx in pt_idx:
-        for n_idx in nn[m_idx]:
-            mo_int += ~methyl_mask[n_idx]
-
-    return inter + coef1*k_oh + coef2*mo_int + coef3*oo_ext
+        for j in nn_ext[i]:
+            if j not in patch_indices:
+                ext_edges[i] += 1
 
 
-ds = np.load('../../pooled_pattern_sample/m3.dat.npz')
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(ds['feat_vec'], ds['energies'], do_ridge=False)
+    ext_nodes = (np.array(list(ext_edges.values())) > 0).sum()
 
-for fname in fnames:
-    dirname = fname.split('.')[0]
-    pvn = np.loadtxt('{}/PvN.dat'.format(dirname))[0,1]
-    methyl_mask = np.loadtxt(fname, dtype=bool)
-    pt_idx = np.arange(36)[methyl_mask]
+    return int_edges, ext_edges, ext_nodes
 
-    state = State(pt_idx, reg=reg, e_func=get_energy)
-    print(fname)
-    print("  actual f: {:0.2f}".format(pvn))
-    print("  estimated f: {:0.2f}".format(state.energy))
-    print("\n")
-    plt.close('all')
-    state.plot()
-    plt.savefig('/Users/nickrego/Desktop/{}.png'.format(dirname))
-    
+ds = np.load('sam_pattern_data.dat.npz')
+
+pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
+
+pos_66 = gen_pos_grid(6)
+pos_44 = gen_pos_grid(4)
+pos_22 = gen_pos_grid(2)
+pos_23 = gen_pos_grid(2,3)
+pos_49 = gen_pos_grid(4, 9, shift_z=-1.5, shift_y=1)
+
+int_edges66, ext_edges66, n_ext66 = find_ext_edge(pos_66, pos_ext)
+int_edges44, ext_edges44, n_ext44 = find_ext_edge(pos_44, pos_ext)
+int_edges22, ext_edges22, n_ext22 = find_ext_edge(pos_22, pos_ext)
+int_edges49, ext_edges49, n_ext49 = find_ext_edge(pos_49, pos_ext)
+int_edges23, ext_edges23, n_ext23 = find_ext_edge(pos_23, pos_ext)
+
+
+feat = np.array([[2,2], [2,3], [4,4], [6,6], [4,9]])
+ext = np.array([np.sum(list(ext_edges22.values())), np.sum(list(ext_edges23.values())), np.sum(list(ext_edges44.values())), np.sum(list(ext_edges66.values())), np.sum(list(ext_edges49.values()))])
+n_ext = np.array([n_ext22, n_ext23, n_ext44, n_ext66, n_ext49])
+

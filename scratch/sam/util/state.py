@@ -21,17 +21,12 @@ from scratch.sam.util import *
 from scratch.neural_net.lib import *
 
 homedir = os.environ["HOME"]
-energies, methyl_pos, k_vals, positions, pos_ext, patch_indices, nn, nn_ext, edges, ext_indices, int_indices = extract_data('{}/simulations/pooled_pattern_sample/sam_pattern_data.dat.npz'.format(homedir))
-# global indices of non-patch nodes
-non_patch_indices = np.setdiff1d(np.arange(pos_ext.shape[0]), patch_indices)
 
-# Locally indexed array: ext_count[i] gives number of non-patch neighbors to patch atom i
-ext_count = np.zeros(36, dtype=int)
-for i in range(36):
-    ext_count[i] = np.intersect1d(non_patch_indices, nn_ext[i]).size
 norm = plt.Normalize(-1,1)
 
-def make_feat(methyl_mask):
+pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
+
+def make_feat(methyl_mask, pos_ext, patch_indices):
     feat = np.zeros(pos_ext.shape[0])
     feat[patch_indices[methyl_mask]] = 1
     feat[patch_indices[~methyl_mask]] = -1
@@ -41,7 +36,7 @@ def make_feat(methyl_mask):
 def plot_feat(feat, ny=8, nz=8):
     this_feat = feat.reshape(ny, nz).T[::-1, :]
 
-    return this_feat.reshape(1,1,ny,nz)
+    return this_feat[None, None, ...]
 
 def get_energy(pt_idx, m_mask, nn, ext_count, reg):
     coef1, coef2, coef3 = reg.coef_
@@ -59,20 +54,29 @@ def get_energy(pt_idx, m_mask, nn, ext_count, reg):
     return inter + coef1*mm + coef2*mo_int + coef3*mo_ext
 
 class State:
-    positions = positions.copy()
-    pos_ext = pos_ext.copy()
-    patch_indices = patch_indices.copy()
-    ext_count = ext_count.copy()
-    nn = nn.copy()
 
-    def __init__(self, pt_idx, parent=None, reg=None, e_func=None, mode='build_phob'):
+    def __init__(self, pt_idx, ny=6, nz=6, shift_y=0, shift_z=0, parent=None, reg=None, e_func=None, mode='build_phob'):
+        #embed()
+        self.ny = ny
+        self.nz = nz
+        self.positions = gen_pos_grid(ny, nz, shift_y=shift_y, shift_z=shift_z)
+        self.pos_ext = gen_pos_grid(ny+2, nz+2, z_offset=True, shift_y=-1, shift_z=-1)
+
+        _, self.patch_indices = cKDTree(self.pos_ext).query(self.positions, k=1)
+        self.non_patch_indices = np.setdiff1d(np.arange(self.pos_ext.shape[0]), self.patch_indices)
+        self.nn, self.nn_ext, dd, dd_ext = construct_neighbor_dist_lists(self.positions, self.pos_ext)
+
+        self.N = self.ny*self.nz
+        self.ext_count = np.zeros(self.N, dtype=int)
+        
+        for i in range(self.N):
+            self.ext_count[i] = np.intersect1d(self.non_patch_indices, self.nn_ext[i]).size
+
         self.pt_idx = pt_idx
-        self.nn = nn
-        self.ext_count = ext_count
         self.e_func = e_func
         self.reg = reg
 
-        self.methyl_mask = np.zeros(36, dtype=bool)
+        self.methyl_mask = np.zeros(self.N, dtype=bool)
         self.methyl_mask[self.pt_idx] = True
 
         self.parent = parent
@@ -87,11 +91,81 @@ class State:
     def avail_indices(self):
         if self._avail_indices is None:
             if self.mode == 'build_phob':
-                self._avail_indices = np.delete(np.arange(36), self.pt_idx)
+                self._avail_indices = np.delete(np.arange(self.N), self.pt_idx)
             else:
                 self._avail_indices = self.pt_idx.copy()
 
         return self._avail_indices
+
+    @property
+    def k_o(self):
+        return self.N - self.pt_idx.size
+
+    @property
+    def k_c(self):
+        return self.pt_idx.size
+
+    @property
+    def N_int(self):
+        return (self.ny-2)*(self.nz-2)
+
+    @property
+    def N_ext(self):
+        return 2*(self.ny + self.nz) - 4
+
+    @property
+    def n_mm(self):
+        n_mm = 0
+        for i in self.pt_idx:
+            for j in self.nn[pt_idx]:
+                if j > i:
+                    n_mm += 1
+
+        return n_mm
+
+    @property
+    def n_mm(self):
+        n_mm = 0
+        for i in self.pt_idx:
+            for j in self.nn[i]:
+                if j > i:
+                    n_mm += 1
+
+        return n_mm
+
+    @property
+    def n_mo(self):
+        n_mo = 0
+        for i in self.pt_idx:
+            for j in self.nn[i]:
+                n_mo += ~self.methyl_mask[j]
+
+        return n_mo
+
+    @property
+    def n_me(self):
+        n_me = 0
+        for i in self.pt_idx:
+            n_me += self.ext_count[i]
+
+        return n_me
+
+    @property
+    def n_oo(self):
+        n_oo = 0
+        for i in np.setdiff1d(np.arange(self.N, dtype=int), self.pt_idx):
+            for j in self.nn[i]:
+                n_oo += ~self.methyl_mask[j]
+
+        return n_oo
+
+    @property
+    def n_oe(self):
+        n_oe = 0
+        for i in np.setdiff1d(np.arange(self.N, dtype=int), self.pt_idx):
+            n_oe += self.ext_count[i]
+
+        return n_oe
 
     def add_child(self, child):
         child.parent = self
@@ -117,8 +191,9 @@ class State:
 
 
     def plot(self, **kwargs):
-        feat = make_feat(self.methyl_mask)
-        feat = plot_feat(feat)
+        #embed()
+        feat = make_feat(self.methyl_mask, self.pos_ext, self.patch_indices)
+        feat = plot_feat(feat, self.ny+2, self.nz+2)
 
         new_kwargs = dict()
         if kwargs is not None:

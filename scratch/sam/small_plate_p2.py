@@ -52,7 +52,7 @@ energies = ds['energies']
 coef = ds['reg_coef']
 intercept = ds['reg_intercept']
 
-fnames = sorted(glob.glob("k_*/d_*/trial_*/PvN.dat")) 
+fnames = sorted(glob.glob("*/d_*/trial_*/PvN.dat")) 
 
 
 positions = gen_pos_grid(patch_size)
