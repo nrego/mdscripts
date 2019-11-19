@@ -222,9 +222,24 @@ make_traj(state_1, tile_list, pattern=[True,True,False])
 
 import pickle
 
-with open('trimer_build_phob.dat', 'wb') as fout:
+with open('trimer_build_phob_bbl.dat', 'wb') as fout:
     pickle.dump(state_0, fout)
 
-with open('trimer_build_phil.dat', 'wb') as fout:
+with open('trimer_build_phil_bbl.dat', 'wb') as fout:
+    pickle.dump(state_1, fout)
+
+# Fully hydrophilic state; build phobicity
+state_0 = State([], reg=reg, e_func=get_energy)
+# Fully hydrophobic state; break phobicity
+state_1 = State(np.arange(36), reg=reg, e_func=get_energy, mode='build_phil')
+
+make_traj(state_0, tile_list, pattern=[True,False,True])
+make_traj(state_1, tile_list, pattern=[True,False,True])
+
+
+with open('trimer_build_phob_blb.dat', 'wb') as fout:
+    pickle.dump(state_0, fout)
+
+with open('trimer_build_phil_blb.dat', 'wb') as fout:
     pickle.dump(state_1, fout)
 #make_traj_mov(state_1)
