@@ -58,9 +58,9 @@ perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, ene
 
 
 # Fully hydrophilic state
-state_0 = State([], None, reg, get_energy)
+state_0 = State([], reg=reg, e_func=get_energy)
 # Fully hydrophobic state
-state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
+state_1 = State(np.arange(36), reg=reg, e_func=get_energy, mode='build_phil')
 
 def make_traj(state):
     np.random.seed()
@@ -89,4 +89,14 @@ def make_traj(state):
     make_traj(new_state)
 
 make_traj(state_1)
-make_traj_mov(state_1)
+make_traj(state_0)
+
+import pickle
+
+with open('mono_build_phob.dat', 'wb') as fout:
+    pickle.dump(state_0, fout)
+
+with open('mono_build_phil.dat', 'wb') as fout:
+    pickle.dump(state_1, fout)
+
+#make_traj_mov(state_1)

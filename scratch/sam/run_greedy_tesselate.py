@@ -161,7 +161,7 @@ def make_traj(state, tile_list, do_dfs=False, prefix=None):
             else:
                 new_idx = np.delete(this_idx, np.where(this_idx==j)[0].item()).astype(int)
 
-            new_state = State(new_idx, None, reg, get_energy, mode=state.mode)
+            new_state = State(new_idx, reg=reg, e_func=get_energy, mode=state.mode)
             new_state._avail_indices = test_new_idx
             new_states = np.append(new_states, new_state)
             new_energies = np.append(new_energies, new_state.energy)
@@ -197,11 +197,19 @@ def make_traj(state, tile_list, do_dfs=False, prefix=None):
             make_traj(new_state, tile_list, do_dfs, prefix)
 
 # Fully hydrophilic state
-state_0 = State([], None, reg, get_energy)
+state_0 = State([], reg=reg, e_func=get_energy)
 # Fully hydrophobic state
-state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
+state_1 = State(np.arange(36), reg=reg, e_func=get_energy, mode='build_phil')
 
+make_traj(state_0, tile_list)
 make_traj(state_1, tile_list)
 
+import pickle
 
-make_traj_mov(state_1)
+with open('dimer_build_phob.dat', 'wb') as fout:
+    pickle.dump(state_0, fout)
+
+with open('dimer_build_phil.dat', 'wb') as fout:
+    pickle.dump(state_1, fout)
+
+#make_traj_mov(state_1)

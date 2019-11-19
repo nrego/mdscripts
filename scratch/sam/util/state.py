@@ -187,7 +187,7 @@ class State:
                 idx = np.where(self.pt_idx == idx)[0].item()
                 new_pt_idx = np.delete(self.pt_idx, idx).astype(int)
             
-            yield State(new_pt_idx, self, self.reg, self.e_func, mode=self.mode)
+            yield State(new_pt_idx, parent=self, reg=self.reg, e_func=self.e_func, mode=self.mode)
 
 
     def plot(self, **kwargs):
@@ -202,7 +202,7 @@ class State:
                 if v is None:
                     continue
                 tmp = np.ones(64, dtype=v.dtype)
-                tmp[patch_indices] = v
+                tmp[self.patch_indices] = v
                 tmp = plot_feat(tmp).T.ravel()
                 new_kwargs[k] = tmp
 

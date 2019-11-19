@@ -188,7 +188,7 @@ def make_traj(state, tile_list, pattern=[True, True, True]):
                 if not pattern[2]:
                     new_idx = np.delete(new_idx, np.where(new_idx==k)[0].item())
 
-            new_state = State(new_idx, None, reg, get_energy, mode=state.mode)
+            new_state = State(new_idx, reg=reg, e_func=get_energy, mode=state.mode)
             new_state._avail_indices = test_new_idx
 
             new_states = np.append(new_states, new_state)
@@ -213,9 +213,18 @@ def make_traj(state, tile_list, pattern=[True, True, True]):
     make_traj(new_state, tile_list, pattern)
 
 # Fully hydrophilic state; build phobicity
-state_0 = State([], None, reg, get_energy)
+state_0 = State([], reg=reg, e_func=get_energy)
 # Fully hydrophobic state; break phobicity
-state_1 = State(np.arange(36), None, reg, get_energy, mode='build_phil')
+state_1 = State(np.arange(36), reg=reg, e_func=get_energy, mode='build_phil')
 
+make_traj(state_0, tile_list, pattern=[True,True,False])
 make_traj(state_1, tile_list, pattern=[True,True,False])
-make_traj_mov(state_1)
+
+import pickle
+
+with open('trimer_build_phob.dat', 'wb') as fout:
+    pickle.dump(state_0, fout)
+
+with open('trimer_build_phil.dat', 'wb') as fout:
+    pickle.dump(state_1, fout)
+#make_traj_mov(state_1)
