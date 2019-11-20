@@ -117,18 +117,8 @@ class State:
     def n_mm(self):
         n_mm = 0
         for i in self.pt_idx:
-            for j in self.nn[pt_idx]:
-                if j > i:
-                    n_mm += 1
-
-        return n_mm
-
-    @property
-    def n_mm(self):
-        n_mm = 0
-        for i in self.pt_idx:
             for j in self.nn[i]:
-                if j > i:
+                if j > i and self.methyl_mask[j]:
                     n_mm += 1
 
         return n_mm
@@ -155,7 +145,8 @@ class State:
         n_oo = 0
         for i in np.setdiff1d(np.arange(self.N, dtype=int), self.pt_idx):
             for j in self.nn[i]:
-                n_oo += ~self.methyl_mask[j]
+                if j > i and ~self.methyl_mask[j]:
+                    n_oo += 1
 
         return n_oo
 
