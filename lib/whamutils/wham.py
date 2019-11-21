@@ -240,3 +240,34 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
         cov_data[i] = this_cov_data
 
     return (neglogpdist, neglogpdist_data, avg_ntwid, var_ntwid, avg_data, var_data, cov_data)
+
+
+
+# Get covariance matrix over data, reweighted for each of the beta phi vals
+#
+# logweights: shape: (N_tot, )   
+# ntwid:      shape: (N_tot, )
+# data:       shape: (N_dat, N_tot)
+def reweight_cov_mat(logweights, ntwid, data, beta_phi_vals):
+    
+    # Covariance matrix of data for each beta_phi value
+    cov_mat = np.zeros((beta_phi_vals.size, data.shape[0], data.shape[0]))
+
+    for i, beta_phi_val in enumerate(beta_phi_vals):
+        print("beta phi: {:.2f}".format(beta_phi_val))
+        sys.stdout.flush()
+        bias_logweights = logweights - beta_phi_val*ntwid
+        bias_logweights -= bias_logweights.max()
+        norm = np.log(np.sum(np.exp(bias_logweights)))
+        bias_logweights -= norm
+
+        bias_weights = np.exp(bias_logweights)
+
+        avg_data = np.dot(data, bias_weights)
+        centered_data = data - avg_data[:, None]
+
+        this_cov = np.multiply(centered_data, bias_weights)
+        this_cov = np.dot(this_cov, centered_data.T)
+        cov_mat[i] = this_cov
+
+    return cov_mat

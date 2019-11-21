@@ -49,7 +49,6 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
     else:
         reg = linear_model.LinearRegression()
     
-    
     # Randomly split data into fifths
     n_cohort = n_dat // 5
     rand_idx = np.random.permutation(n_dat)
@@ -60,6 +59,7 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
     # R^2 and MSE for each train/validation round
     perf_r2 = np.zeros(5)
     perf_mse = np.zeros(5)
+
 
     # Choose one of the cohorts as validation set, train on remainder.
     #   repeat for each cohort
@@ -79,20 +79,20 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
         else:
             train_weight = np.delete(sample_weight, slc)
             train_weight /= train_weight.sum()
-            reg.fit(X_train, y_train, sample_weight=train_weight)
+            reg.fit(X_train, y_train, sample_weight=train_weight.copy())
 
         pred = reg.predict(X_validate)
         if sample_weight is None:
             mse = np.mean((pred - y_validate)**2)
             perf_r2[k] = reg.score(X_validate, y_validate)
         else:
-            valid_weight = sample_weight[slc]
+            valid_weight = sample_weight[slc].copy()
             valid_weight /= valid_weight.sum()
             mse = np.dot(valid_weight, (pred - y_validate)**2)
-            perf_r2[k] = reg.score(X_validate, y_validate, sample_weight=valid_weight)
+            perf_r2[k] = reg.score(X_validate, y_validate, sample_weight=valid_weight.copy())
         perf_mse[k] = mse
 
-    reg.fit(X, y, sample_weight=sample_weight)
+    reg.fit(X, y, sample_weight=sample_weight.copy())
     fit = reg.predict(xvals)
 
     pred = reg.predict(X)

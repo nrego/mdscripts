@@ -118,7 +118,7 @@ def get_rdf(state, bins, interior_only=False, mode='mm'):
 
 
 
-fnames = glob.glob('trial_*/trimer_build_phob_bbl.dat')
+fnames = glob.glob('trial_*/trimer_build_phob_blb.dat')
 
 bins = np.arange(0, 3.8, 0.2)
 rdfs_phob_mm = np.zeros((len(fnames), bins.size-1))
@@ -132,10 +132,13 @@ rdfs_phil_mo = np.zeros_like(rdfs_phob_mm)
 tiles_phob = np.zeros((len(fnames), 3))
 tiles_phil = np.zeros_like(tiles_phob)
 
+oo_phob = np.zeros((len(fnames), 2))
+oo_phil = np.zeros_like(oo_phob)
+
 for i, fname in enumerate(fnames):
     this_dir = os.path.dirname(fname)
     print('Doing {}'.format(this_dir))
-    fname_phil = '{}/trimer_build_phil_bbl.dat'.format(this_dir)
+    fname_phil = '{}/trimer_build_phil_blb.dat'.format(this_dir)
 
     try:
         with open(fname, 'rb') as fin:
@@ -153,15 +156,17 @@ for i, fname in enumerate(fnames):
     tiles_phob[i] = (rms0 > 0.16).sum(), ((rms0 < 0.16) & (rms0 > 0.1)).sum(), (rms0 < 0.1).sum()
     tiles_phil[i] = (rms1 > 0.16).sum(), ((rms1 < 0.16) & (rms1 > 0.1)).sum(), (rms1 < 0.1).sum()
 
+    oo_phob[i] = final0.n_oo, final0.n_oe
+    oo_phil[i] = final1.n_oo, final1.n_oe
 
-    if i % 100 == 0:
-        plt.close('all')
-        final0.plot()
-        plt.savefig('snap_{:03d}_phob'.format(i))
-        plt.close('all')
-        final1.plot()
-        plt.savefig('snap_{:03d}_phil'.format(i))
-        plt.close('all')
+    #if i % 100 == 0:
+    #    plt.close('all')
+    #    final0.plot()
+    #    plt.savefig('snap_{:03d}_phob'.format(i))
+    #    plt.close('all')
+    #    final1.plot()
+    #    plt.savefig('snap_{:03d}_phil'.format(i))
+    #    plt.close('all')
 
     rdf0_mm, rdf0_oo, rdf0_mo = get_rdf(final0, bins, mode='mo')
     rdf1_mm, rdf1_oo, rdf1_mo = get_rdf(final1, bins, mode='mo')
@@ -203,7 +208,22 @@ tot_phob = tot_phob_oo
 err_phob = err_phob_oo
 tot_phil = tot_phil_oo
 err_phil = err_phil_oo
-plt.errorbar(bins[:-1][~tot_phob.mask], tot_phob[~tot_phob.mask], yerr=err_phob[~tot_phob.mask], fmt='-o')
-plt.errorbar(bins[:-1][~tot_phil.mask], tot_phil[~tot_phil.mask], yerr=err_phil[~tot_phil.mask], fmt='-o')
+#plt.errorbar(bins[:-1][~tot_phob.mask], tot_phob[~tot_phob.mask], yerr=err_phob[~tot_phob.mask], fmt='-o')
+#plt.errorbar(bins[:-1][~tot_phil.mask], tot_phil[~tot_phil.mask], yerr=err_phil[~tot_phil.mask], fmt='-o')
+
+def plot_dist(phob, phil):
+    min_pt = min(phob.min(), phil.min())
+    max_pt = max(phob.max(), phil.max())
+
+    bins = np.arange(np.floor(min_pt), np.ceil(max_pt), 1)
+
+    hist_phob, bb = np.histogram(phob, bins=bins, normed=True)
+    hist_phil, bb = np.histogram(phil, bins=bins, normed=True)
+
+    plt.plot(bb[:-1], hist_phob, label='phob')
+    plt.plot(bb[:-1], hist_phil, label='phil')
+
+    plt.legend()
+    plt.show()
 
 

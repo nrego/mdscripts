@@ -72,6 +72,10 @@ for i, fname in enumerate(fnames):
     this_err = np.loadtxt(fname)[0,2]
     energies44[i] = this_energy
 
+    if i % 20 == 0:
+        state.plot()
+        plt.savefig('/Users/nickrego/Desktop/fig_{:02d}'.format(i))
+        plt.close('all')
 
 
 fnames = sorted(glob.glob("P2/*/d_*/trial_*/PvN.dat")) 
@@ -96,23 +100,22 @@ names = np.array(['P', 'Q', 'k_c', 'k_o', 'n_mm', 'n_oo', 'n_mo', 'n_me', 'n_oe'
 # Hybrid model with different patch sizes??
 # feat vec is:
 #  N_int, N_ext, k_c, k_o, n_mm, n_oo, n_mo, n_me, n_oe
-tot_feat_vec = np.vstack((feat_vec66, feat_vec44, feat_vec22))
+tot_feat_vec = np.vstack((feat_vec44, feat_vec22))
 
-tot_energies = np.concatenate((energies66, energies44, energies22))
+tot_energies = np.concatenate((energies44, energies22))
 
 indices = np.array([0,3,5,8])
-weights = np.ones(len(tot_energies))
-#weights[-16:] = 884 / 16
-weights /= weights.sum()
 
 #tot_feat_vec = feat_vec22
 #tot_energies = energies22
 
 weights = np.ones(len(tot_energies))
-weights[:884] = 1/884
-weights[884:884+226] = 1/226
-weights[884+226:] = 1/16
+weights[:226] = 1/226
+weights[226:226+16] = 1/16
+#weights[884+226:] = 1/16
 weights /= weights.sum()
+
+#weights = np.ones_like(tot_energies)
 
 tot_perf_r2, tot_perf_mse, tot_err, tot_xvals, tot_fit, tot_reg = fit_general_linear_model(tot_feat_vec[:,indices], tot_energies, sample_weight=weights)
 
