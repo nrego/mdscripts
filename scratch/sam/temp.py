@@ -44,16 +44,17 @@ univ_ch3.add_TopologyAttr('tempfactors')
 assert univ_oh.residues.n_residues == univ_ch3.residues.n_residues
 
 
-
 ### Generate inverse patterns for patch_size=4 (N=16)
 patch_size = 4
-N = patch_size**2
+patch_size_2 = 9
+N = patch_size*patch_size_2
 pos_idx = np.arange(N, dtype=int)
 n_tot_res = univ_oh.residues.n_residues
 patch_start_idx = n_tot_res - N
 
-positions = gen_pos_grid(patch_size)
-pos_ext = gen_pos_grid(patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
+state = State(pos_idx, patch_size, patch_size_2)
+positions = state.positions
+pos_ext = state.pos_ext
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
 #for k in range(1,15):

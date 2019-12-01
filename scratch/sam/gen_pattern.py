@@ -47,6 +47,8 @@ parser.add_argument('--n-samples', default=1, type=int,
                     help='Number of samples to pull for each rms bin (default: %(default)s)')
 parser.add_argument('--patch-size', default=6, type=int,
                     help='Size of patch sides; total size is patch_size**2 (default: 6)')
+parser.add_argument('--patch-size-2', default=None, type=int,
+                    help='Size of other patch dimension (default same as patch_size)')
 
 args = parser.parse_args()
 
@@ -58,18 +60,19 @@ univ_ch3.add_TopologyAttr('tempfactors')
 assert univ_oh.residues.n_residues == univ_ch3.residues.n_residues
 
 # The last 36 residues are the patch
-N = args.patch_size**2
+patch_size_2 = args.patch_size if args.patch_size_2 is None else args.patch_size_2
+N = args.patch_size*patch_size_2
+
 n_tot_res = univ_oh.residues.n_residues
 patch_start_idx = n_tot_res - N
 
 with open(args.point_data, 'rb') as fin:
     bins, occupied_idx, positions, sampled_pt_idx = pickle.load(fin)
-pos_ext = gen_pos_grid(args.patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
-d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
 n_bins = occupied_idx.sum()
 n_samples = args.n_samples
 
+np.random.seed()
 print("{} bins occupied, {} samples per bin ({} total structures will be generated)".format(n_bins, n_samples, n_bins*n_samples))
 
 for bin, pts in zip(bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx]):
@@ -103,19 +106,13 @@ for bin, pts in zip(bins[:-1][occupied_idx], sampled_pt_idx[occupied_idx]):
         #    pickle.dump(payload, fout)
 
         this_pt = pts[random][i_sample]
+        state = State(this_pt.astype(int), args.patch_size, args.patch_size_2)
+        pos_ext = state.pos_ext
         methyl_mask = np.zeros(N).astype(bool)
         if this_pt.size > 0:
             methyl_mask[this_pt] = True
 
-        feat = np.zeros(pos_ext.shape[0])
-        feat[patch_indices[methyl_mask]] = 1
-        feat[patch_indices[~methyl_mask]] = -1
-
-        ny, nz = args.patch_size+2, args.patch_size+2
-        this_feat = feat.reshape(ny,nz).T[::-1, :]
-
-        this_feat = this_feat.reshape(1,1,ny,nz)
-        plot_hextensor(this_feat)
+        state.plot()
         plt.savefig('{}/{}/schematic2.pdf'.format(dirname, subdir))
 
         plt.close('all')

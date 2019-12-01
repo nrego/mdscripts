@@ -91,10 +91,11 @@ def plot_hextensor(
                     hexagons[i].append(hexagon)
                 npixel += 1
         ax = fig.add_subplot(gs[i])
-        ax.set_xlim([-1, np.shape(tensor[image_range[0] + a, channel_range[0] + b])[0]])
+        ax.set_xlim([-1, np.shape(tensor[image_range[0] + a, channel_range[0] + b])[1]])
+        #embed()
         ax.set_ylim(
             [
-                -1.15 * np.shape(tensor[image_range[0] + a, channel_range[0] + b])[1]
+                -1.15 * np.shape(tensor[image_range[0] + a, channel_range[0] + b])[0]
                 - 1,
                 1,
             ]

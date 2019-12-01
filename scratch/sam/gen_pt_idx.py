@@ -54,6 +54,8 @@ parser.add_argument('--do-rms', action='store_true',
                     help='If true, use pattern RMS as order parameter for WL/state generation (otherwise, use M3 energies)')
 parser.add_argument('--patch-size', default=1, type=int,
                     help='Size of patch side (total number of head groups is patch_size**2) (default: %(default)s)')
+parser.add_argument('--patch-size-2', default=None, type=int,
+                    help='Size of other patch dimension (default is same as patch_size)')
 parser.add_argument('--k-ch3', default=0, type=int,
                     help='Number of methyls for this patch type (default: %(default)s)')
 parser.add_argument('--sam-data', default='../sam_pattern_data.dat.npz')
@@ -76,8 +78,9 @@ for i, methyl_mask in enumerate(methyl_pos):
     k_eff[i] = get_keff_all(methyl_mask, edges, patch_indices).sum(axis=0)
 n_mm, n_oo, n_mo, n_me, n_oe = np.split(k_eff, 5, axis=1)
 
+
 feat = np.hstack((k_vals[:,None], n_mm, n_mo))
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat, energies)
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat, energies, sample_weight=np.ones_like(energies))
 
 ######### DONE GEN M3 ###########
 #################################
@@ -86,16 +89,24 @@ perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat, energie
 # Do exhaustive brute-force search thru states
 do_brute = not args.do_wl
 patch_size = args.patch_size
-N = patch_size**2
+if args.patch_size_2 is not None:
+    patch_size_2 = args.patch_size_2
+else:
+    patch_size_2 = patch_size
+
+N = patch_size*patch_size_2
 k_ch3 = args.k_ch3
 assert k_ch3 <= N
+
 
 # Internal indexing system for each patch positin
 pos_idx = np.arange(N)
 
-positions = gen_pos_grid(patch_size)
+state = State(np.arange(N), patch_size, patch_size_2)
+positions = state.positions
 assert N == positions.shape[0]
-pos_ext = gen_pos_grid(patch_size+2, z_offset=True, shift_y=-1, shift_z=-1)
+pos_ext = state.pos_ext
+
 # nn will be used for estimating energies
 nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 
