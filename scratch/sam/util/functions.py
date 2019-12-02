@@ -33,7 +33,8 @@ mpl.rcParams.update({'axes.titlesize': 30})
 #   just make each nth degree a power of that feature
 def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_weight=None):
     np.random.seed()
-
+    if sample_weight is None:
+        sample_weight = np.ones_like(y)
     assert y.ndim == 1
     n_dat = y.size
     # Single feature (1d linear regression)
