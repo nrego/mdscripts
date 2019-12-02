@@ -105,11 +105,11 @@ for pathname in other_dirs:
 
 names = np.array(['N', 'Next', 'k_c', 'k_o', 'n_mm', 'n_oo', 'n_mo', 'n_me', 'n_oe'])
 
-tot_feat_vec = np.vstack((all_feat_vec['feat_04_04'], all_feat_vec['feat_04_09']))
+tot_feat_vec = np.vstack((all_feat_vec['feat_06_06'], all_feat_vec['feat_04_04']))
 d = tot_feat_vec - tot_feat_vec.mean(axis=0)
 cov = np.dot(d.T, d) / d.shape[0]
 
-tot_energies = np.append(all_energies['energies_04_04'], all_energies['energies_04_09'])
+tot_energies = np.append(all_energies['energies_06_06'], all_energies['energies_04_04'])
 indices = np.array([0, 3, 5, 8])
 
 tot_perf_r2, tot_perf_mse, tot_err, tot_xvals, tot_fit, tot_reg = fit_general_linear_model(tot_feat_vec[:,indices], tot_energies)
