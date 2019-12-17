@@ -97,7 +97,7 @@ k_eff_ext_edge = k_eff_all_shape[:, ext_indices, :].sum(axis=1)
 
 # k_oh, n_mo_int, n_oo_ext
 #feat_vec = np.dstack((k_eff_int_edge[:,0], k_eff_int_edge[:,2], k_eff_ext_edge[:,2])).squeeze(axis=0)
-feat_vec = np.dstack((36-k_vals, k_eff_int_edge[:,2], k_eff_ext_edge[:,1])).squeeze(axis=0)
+feat_vec = np.dstack((36-k_vals, k_eff_int_edge[:,1], k_eff_ext_edge[:,1])).squeeze(axis=0)
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
 
 norm = plt.Normalize(132, 287)

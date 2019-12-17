@@ -31,7 +31,7 @@ mpl.rcParams.update({'axes.titlesize': 30})
 # regress y on set of n_dim features, X.
 #   Note this can do a polynomial regression on a single feature -
 #   just make each nth degree a power of that feature
-def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_weight=None):
+def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_weight=None, fit_intercept=True):
     np.random.seed()
     if sample_weight is None:
         sample_weight = np.ones_like(y)
@@ -46,9 +46,9 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
     xvals = X[sort_idx, :]
 
     if do_ridge:
-        reg = linear_model.Ridge(alpha=alpha)
+        reg = linear_model.Ridge(alpha=alpha, fit_intercept=fit_intercept)
     else:
-        reg = linear_model.LinearRegression()
+        reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
     
     # Randomly split data into fifths
     n_cohort = n_dat // 5
