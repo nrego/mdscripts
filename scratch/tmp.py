@@ -1,68 +1,75 @@
 import os, glob
-from util import assign_and_average
-from scipy.integrate import cumtrapz
+import pymbar
 
+def plt_errorbars(bb, vals, errs, **kwargs):
+    ax = plt.gca()
+    ax.plot(bb, vals)
+    ax.fill_between(bb, vals-errs, vals+errs, alpha=0.5, **kwargs)
+
+
+def bootstrap(dat):
+    np.random.seed()
+
+    iact = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dat))
+    n_eff = int(dat.size / (1+2*iact))
+
+    n_boot = 1000
+    boot = np.zeros(n_boot)
+
+    for i in range(1000):
+        this_boot_sample = np.random.choice(dat, size=n_eff, replace=True)
+        boot[i] = this_boot_sample.mean()
+
+
+    return boot.std(ddof=1)
+
+
+# Compare nvphi for old and new gromacs indus
 homedir = os.environ['HOME']
-gamma = 20
-fnames = sorted(glob.glob('umbr_new/nstar*'))
 
-nstars = []
+dat = np.loadtxt('new1/NvPhi.dat')
+bphi = dat[:,0]
 
-f_k = np.loadtxt('umbr_new/f_k_all.dat')
-avg_ns = []
-plt.close('all')
-for fname in fnames:
-    ds = dr.loadPhi('{}/phiout.dat'.format(fname))
-    avg_n = ds.data[1000:]['N'].mean()
-    avg_ns.append(avg_n)
-    is_neg = fname.split('_')[1] == 'neg'
-    num = float(fname.split('_')[-1]) 
-    num = -num if is_neg else num
+new_nvphi = np.zeros((dat.shape[0], 3))
+old_nvphi = np.zeros_like(new_nvphi)
 
-    nstars.append(num)
+## get beta phis
+'''
+new_0 = np.array(dr.loadPhi('new1/beta_phi_000/phiout.dat').data['$\~N$'][500:])
+old_0 = np.array(dr.loadPhi('old1/beta_phi_000/phiout.dat').data['$\~N$'][500:])
+err_new_0 = bootstrap(new_0)
+err_old_0 = bootstrap(old_0)
 
-nstars = np.array(nstars)
-avg_ns = np.array(avg_ns)
-f_k -= f_k.min()
+if err_new_0 + err_old_0 > np.abs(new_0.mean() - old_0.mean()):
+    print('\nbphi=0 NOT sig different\n')
+else:
+    print('\nbphi=0 sig different!\n')
 
-sort_idx = np.argsort(nstars)
-mask = nstars[sort_idx] > -50
+new_phistar = dr.loadPhi('new1/beta_phi_200/phiout.dat').data['$\~N$'][500:]
+old_phistar = dr.loadPhi('old1/beta_phi_200/phiout.dat').data['$\~N$'][500:]
+err_new_phistar = bootstrap(new_phistar)
+err_old_phistar = bootstrap(old_phistar)
 
-dt = 0.1
-start = 1000
-end = 10000
+if err_new_phistar + err_old_phistar > np.abs(new_0.mean() - old_0.mean()):
+    print('\nbphistar NOT sig different\n')
+else:
+    print('\nbphistar sig different!\n')
+'''
 
-# tamd dat
-dat = np.loadtxt('new_tamd_gam_{}/phiout_tamd.dat'.format(gamma))[int(start/dt):]
-kappa = 0.420
-beta = 1 / (k*300)
+for i in range(1,4):
+    newfile = np.loadtxt('new{}/NvPhi.dat'.format(i))
+    oldfile = np.loadtxt('old{}/NvPhi.dat'.format(i))
 
-ntwid = dat[:,2]
-nstar = dat[:,3]
-min_pt = np.floor(nstar.min())
-max_pt = np.ceil(nstar.max())
-bins = np.arange(min_pt, max_pt+1, 0.1)
+    assert np.array_equal(bphi, newfile[:,0])
+    assert np.array_equal(bphi, oldfile[:,0])
 
-forces = beta*kappa*(ntwid-nstar)
-bin_assign = np.digitize(nstar, bins) - 1
+    new_nvphi[:,i-1] = newfile[:,1]
+    old_nvphi[:,i-1] = oldfile[:,1]
 
-avg_force_by_kappa = assign_and_average(forces.astype(np.float32), bin_assign, bins.size-1)
-masked_ar = np.ma.masked_invalid(avg_force_by_kappa)
-avg_force_by_kappa[masked_ar.mask] = 0
+avg_new = new_nvphi.mean(axis=1)
+avg_old = old_nvphi.mean(axis=1)
 
-integ = cumtrapz(-avg_force_by_kappa, bins[:-1])
-integ -= integ.min()
-f_k -= f_k.min()
+err_new = new_nvphi.std(axis=1, ddof=1)
+err_old = old_nvphi.std(axis=1, ddof=1)
 
-fig, ax = plt.subplots(figsize=(7,6))
-ax.plot(bins[:-2], integ, label='tamd, gamma={}'.format(gamma))
-ax.plot(nstars[sort_idx][mask], f_k[sort_idx][mask], 'x', label='umbrella')
-ax.legend()
 
-ax.set_xlabel(r'$N^*$')
-ax.set_ylabel(r'$\beta F_{\kappa, N^*}$')
-fig.tight_layout()
-
-plt.savefig('{}/Desktop/gam_{}'.format(homedir, gamma), transparent=True)
-outdat = np.hstack((bins[:-2, None], integ[:, None]))
-np.savetxt('new_tamd_gam_{}/f_k.dat'.format(gamma), outdat)

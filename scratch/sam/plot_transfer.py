@@ -39,6 +39,8 @@ def extract_feat(P, Q, pt_indices, energies):
     feat_vec = np.zeros((len(pt_indices), 9))
     states = np.empty(len(pt_indices), dtype=object)
 
+    print('{} by {}  ({} data points)'.format(P,Q,len(pt_indices)))
+
     for i, pt_index in enumerate(pt_indices):
         state = State(pt_index, P, Q)
         states[i] = state
@@ -72,18 +74,18 @@ for methyl_mask in methyl_pos:
 all_feat_vec['feat_06_06'], all_states['states_06_06'] = extract_feat(6, 6, pt_indices, energies66)
 all_energies['energies_06_06'] = energies66
 
+headdirs = sorted(glob.glob('P*'))
 
-first_dirs = glob.glob('P*/k_*/PvN.dat')
-assert len(first_dirs) % 2 == 0
 
-other_dirs = ['P2/*/d_*/trial_*/PvN.dat', 'P3/k_00/d_*/trial_*/PvN.dat', 'P3/k_09/d_*/trial_*/PvN.dat', 'P4/*/d_*/trial_*/PvN.dat', 'P4_9/*/d_*/trial_*/PvN.dat']
-all_dirs = first_dirs + other_dirs
+# For each patch size ...
+for headdir in headdirs:
+    pathnames = sorted( glob.glob('{}/*/d_*/trial_*/PvN.dat'.format(headdir)) + glob.glob('{}/k_*/PvN.dat'.format(headdir)) )
+    
+    if len(pathnames) == 0:
+        continue
 
-for pathname in all_dirs:
-    fnames = sorted(glob.glob(pathname))
+    size_list = np.array(headdir[1:].split('_'), dtype=int)
 
-    splits = fnames[0].split('/')
-    size_list = np.array(splits[0][1:].split('_'), dtype=int)
     try:
         P, Q = size_list
     except ValueError:
@@ -95,15 +97,15 @@ for pathname in all_dirs:
 
     print("Doing P: {}  Q: {}".format(P,Q))
 
-    this_energies = np.zeros(len(fnames))
+
+
+    ## Collect all patterns and energies for all patches of this size
+    this_energies = np.zeros(len(pathnames))
     pt_indices = []
 
-    test_state = State(np.arange(P*Q).astype(int), P, Q)
-    test_state.plot()
-    plt.savefig('{}/Desktop/fig_{:02d}_{:02d}.png'.format(outdir, P, Q), transparent=True)
-    plt.close('all')
 
-    for i, fname in enumerate(fnames):
+    for i, fname in enumerate(pathnames):
+
         this_energies[i] = np.loadtxt(fname)[0,1]
         kc = int(fname.split('/')[1].split('_')[1])
 
@@ -142,64 +144,67 @@ all_dat_keys = list(all_energies.keys())
 
 names = np.array(['N', 'Next', 'k_c', 'k_o', 'n_mm', 'n_oo', 'n_mo', 'n_me', 'n_oe'])
 
-tot_feat_vec = np.vstack([feat_vec for feat_vec in all_feat_vec.values()])
-n_feat = tot_feat_vec.shape[1]
 
+tot_feat_vec = np.vstack(list(all_feat_vec.values()))
+d = tot_feat_vec - tot_feat_vec.mean(axis=0)
+cov = np.dot(d.T, d) / d.shape[0]
 
-weights = np.zeros(all_n_dat.sum())
-cum_n = np.cumsum(np.append(0, all_n_dat))
-for i in range(all_n_dat.shape[0]):
-    start = cum_n[i]
-    end = cum_n[i+1]
-    weights[start:end] = 1 / all_n_dat[i]
+tot_energies = np.concatenate(list(all_energies.values()))
+#indices = np.array([0, 1, 3, 5, 8])
 
-weights /= weights.sum()
-weights = np.ones_like(weights)
+#tot_perf_r2, tot_perf_mse, tot_err, tot_xvals, tot_fit, tot_reg = fit_general_linear_model(tot_feat_vec[:,indices], tot_energies)
 
-tot_energies = np.concatenate([energy for energy in all_energies.values()])
+indices = np.array([3, 5, 8])
+# Just the k_00 and k_[P*Q]
+shape_feat_vec = dict()
+shape_energies = dict()
+models = dict()
 
-# max num independent features
-rank = get_cov_rank(tot_feat_vec)
-for indices in itertools.combinations(np.arange(n_feat), rank):
-    print("Doing {}".format(names[np.array(indices)]))
-    this_rank = get_cov_rank(tot_feat_vec[:, indices])
-    if this_rank < rank:
-        continue
+p_q = []
 
-    tot_perf_r2, tot_perf_mse, tot_err, tot_xvals, tot_fit, tot_reg = fit_general_linear_model(tot_feat_vec[:,indices], tot_energies, sample_weight=weights)
+# Extract the shapes (k_00 and k_[p*q])
+# and fit models
+for e_key, f_key in zip(all_energies.keys(), all_feat_vec.keys()):
 
-    print("  perf: {:0.2f}".format(tot_perf_mse.mean()))
-    print("  inter: {:0.2f}   coef: {}".format(tot_reg.intercept_, tot_reg.coef_))
+    p, q = np.array(e_key.split('_')[1:], dtype=int)
+    p_q.append(np.array([p,q]))
 
-indices = np.array([0, 1, 3, 5, 8])
-indices2 = np.array([0, 1, 2, 4, 7])
+    this_energies = all_energies[e_key]
+    this_feat_vec = all_feat_vec[f_key]
 
-tot_perf_r2, tot_perf_mse, tot_err, tot_xvals, tot_fit, tot_reg = fit_general_linear_model(tot_feat_vec[:, indices], tot_energies)
+    this_kvals = this_feat_vec[:,2]
+    N, Next = this_feat_vec.astype(int)[0, :2]
 
-# Perform leave-one-out xval
-for idx, name in enumerate(all_dat_keys):
-    print("leaving out: {}".format(name))
+    k0_idx = this_kvals == 0
+    kn_idx = this_kvals == N
+    #try:
+    assert k0_idx.sum() == kn_idx.sum() == 1
+    #except:
+    #    continue
+    idx = k0_idx | kn_idx
+    print("e key: {}".format(e_key))
+    print("  N: {:02d} Next: {:02d}".format(N, Next))
 
-    slc = slice(cum_n[idx], cum_n[idx+1], None)
+    shape_energies[e_key] = this_energies[idx]
+    shape_feat_vec[f_key] = this_feat_vec[idx]
 
-    train_dat = np.delete(tot_feat_vec, slc, axis=0)
-    train_y = np.delete(tot_energies, slc)
+    if this_energies.size > 2:
+        print(" fitting model...")
+        perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(this_feat_vec[:,indices], this_energies)
+        print('  Coef: {}'.format(reg.coef_))
+        print('  Inter: {}'.format(reg.intercept_))
+        models[e_key] = reg
 
-    test_dat = tot_feat_vec[slc]
-    test_y = tot_energies[slc]
-    assert np.unique(test_dat[:,0]).size == 1 and np.unique(test_dat[:,1]).size == 1
+p_q = np.array(p_q)
 
-    reg = linear_model.LinearRegression()
-    reg.fit(train_dat[:,indices], train_y)
+shape_energies = np.concatenate(list(shape_energies.values()))
+shape_feat_vec = np.concatenate(list(shape_feat_vec.values()))
 
-    print('  Inter: {:.2f}   coef: {}'.format(reg.intercept_, reg.coef_))
+# Non-intercept values, fit on consensus regression coefs
+non_int = np.dot(shape_feat_vec[:,indices], reg.coef_)
+ints = shape_energies - non_int
 
-    pred = reg.predict(test_dat[:,indices])
-
-    perf_mse = np.mean((pred - test_y)**2).mean()
-    print('  perf: {:.2f}'.format(perf_mse))
-
-    r2 = 1 - perf_mse / test_y.var()
-    print('  r2: {:.4f}'.format(r2))
+# Fit intercepts to N, Next
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(shape_feat_vec[:,:2], ints, fit_intercept=True)
 
 
