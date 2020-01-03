@@ -150,6 +150,35 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True):
 
     return (perf_mse, err, xvals, fit, reg)
 
+# Perform bootstrapping on data to estimate errors in linear regression coefficients
+def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000):
+
+    np.random.seed()
+    assert y.ndim == 1
+    n_dat = y.size
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+    
+    # For plotting fit...
+    boot_inter = np.zeros(n_bootstrap)
+    boot_coef = np.zeros((n_bootstrap, X.shape[1]))
+
+    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+
+    for i_boot in range(n_bootstrap):
+        dat_indices = np.random.choice(n_dat, size=n_dat, replace=True)
+
+        this_boot_y = y[dat_indices]
+        this_boot_X = X[dat_indices, ...]
+
+        reg.fit(this_boot_X, this_boot_y)
+
+        boot_inter[i_boot] = reg.intercept_
+        boot_coef[i_boot] = reg.coef_ 
+
+    return (boot_inter, boot_coef)
+
 def plot_3d(x, y, z, **kwargs):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
