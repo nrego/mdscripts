@@ -101,6 +101,52 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
 
     return (perf_r2, perf_mse, err, xvals, fit, reg)
 
+
+# regress y on set of n_dim features, X.
+#   Do leave-one-out CV
+def fit_leave_one(X, y, sort_axis=0, fit_intercept=True):
+
+    assert y.ndim == 1
+    n_dat = y.size
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+    
+    # For plotting fit...
+    sort_idx = np.argsort(X[:,sort_axis])
+    xvals = X[sort_idx, :]
+
+    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+
+    # R^2 and MSE for each train/validation round
+    perf_mse = np.zeros(n_dat)
+
+
+    # Choose one of the cohorts as validation set, train on remainder.
+    #   repeat for each cohort
+    for k in range(n_dat):
+
+        # Get training samples. np.delete makes a copy and **does not** act on array in-place
+        y_train = np.delete(y, k)
+        X_train = np.delete(X, k, axis=0)
+
+        y_validate = y[k]
+        X_validate = X[k].reshape(1,-1)
+
+        reg.fit(X_train, y_train)
+        pred = reg.predict(X_validate)
+
+        mse = ((y_validate - pred)**2).item()
+        perf_mse[k] = mse
+
+    reg.fit(X, y)
+    fit = reg.predict(xvals)
+
+    pred = reg.predict(X)
+    err = y - pred
+
+    return (perf_mse, err, xvals, fit, reg)
+
 def plot_3d(x, y, z, **kwargs):
     fig = plt.figure()
     ax = fig.gca(projection='3d')

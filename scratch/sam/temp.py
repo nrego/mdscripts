@@ -13,6 +13,10 @@ import os, glob, pathlib
 from scratch.neural_net import *
 from scratch.sam.util import *
 
+
+## Generate Inverse patterns from a directory of methyl patterns (given by k_*/d_*/trial_0, 
+#    assume this_pt.dat for each pattern in directory indicating the methyl indices)
+
 def generate_pattern(univ, univ_ch3, ids_res):
     univ.atoms.tempfactors = 1
     #embed()
@@ -57,9 +61,8 @@ positions = state.positions
 pos_ext = state.pos_ext
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
-#for k in range(1,15):
-for k in [15]:
-
+for k in range(1,35):
+    print('Doing k->l for k={:02d}'.format(k))
     fnames = sorted(glob.glob('k_{:02d}/d_*/trial_0/this_pt.dat'.format(k)))
 
     for fname in fnames:
@@ -81,15 +84,9 @@ for k in [15]:
         methyl_mask[new_pt] = True
 
         ## Plot out pattern
-        feat = np.zeros(pos_ext.shape[0])
-        feat[patch_indices[methyl_mask]] = 1
-        feat[patch_indices[~methyl_mask]] = -1
-
-        ny, nz = patch_size+2, patch_size+2
-        this_feat = feat.reshape(ny,nz).T[::-1, :]
-
-        this_feat = this_feat.reshape(1,1,ny,nz)
-        plot_hextensor(this_feat)
+        plt.close('all')
+        new_state = State(new_pt, patch_size, patch_size_2)
+        new_state.plot()
         plt.savefig('{}/schematic2.pdf'.format(newpath))
         plt.close('all')
 

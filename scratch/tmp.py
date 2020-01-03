@@ -23,6 +23,20 @@ def bootstrap(dat):
 
     return boot.std(ddof=1)
 
+def get_avg_box_vec(univ, start=500):
+
+    n_frames = univ.trajectory.n_frames - start
+    box_v = np.zeros(3)
+
+    for i in range(start, univ.trajectory.n_frames):
+        univ.trajectory[i]
+        box_v += univ.dimensions[:3]
+
+    box_v /= n_frames
+
+    return box_v
+
+bGetbphi = True
 
 # Compare nvphi for old and new gromacs indus
 homedir = os.environ['HOME']
@@ -33,28 +47,17 @@ bphi = dat[:,0]
 new_nvphi = np.zeros((dat.shape[0], 3))
 old_nvphi = np.zeros_like(new_nvphi)
 
-## get beta phis
-'''
-new_0 = np.array(dr.loadPhi('new1/beta_phi_000/phiout.dat').data['$\~N$'][500:])
-old_0 = np.array(dr.loadPhi('old1/beta_phi_000/phiout.dat').data['$\~N$'][500:])
-err_new_0 = bootstrap(new_0)
-err_old_0 = bootstrap(old_0)
+new_bphi0 = np.zeros(3)
+old_bphi0 = np.zeros(3)
+new_bphistar = np.zeros(3)
+old_bphistar = np.zeros(3)
 
-if err_new_0 + err_old_0 > np.abs(new_0.mean() - old_0.mean()):
-    print('\nbphi=0 NOT sig different\n')
-else:
-    print('\nbphi=0 sig different!\n')
+new_box_bphi0 = np.zeros((3, 3))
+old_box_bphi0 = np.zeros((3, 3))
 
-new_phistar = dr.loadPhi('new1/beta_phi_200/phiout.dat').data['$\~N$'][500:]
-old_phistar = dr.loadPhi('old1/beta_phi_200/phiout.dat').data['$\~N$'][500:]
-err_new_phistar = bootstrap(new_phistar)
-err_old_phistar = bootstrap(old_phistar)
+new_box_bphistar = np.zeros((3, 3))
+old_box_bphistar = np.zeros((3, 3))
 
-if err_new_phistar + err_old_phistar > np.abs(new_0.mean() - old_0.mean()):
-    print('\nbphistar NOT sig different\n')
-else:
-    print('\nbphistar sig different!\n')
-'''
 
 for i in range(1,4):
     newfile = np.loadtxt('new{}/NvPhi.dat'.format(i))
@@ -65,6 +68,21 @@ for i in range(1,4):
 
     new_nvphi[:,i-1] = newfile[:,1]
     old_nvphi[:,i-1] = oldfile[:,1]
+
+    if bGetbphi:
+        new_bphi0[i-1] = dr.loadPhi('new{}/beta_phi_000/phiout.dat'.format(i)).data[500:]['$\~N$'].mean()
+        old_bphi0[i-1] = dr.loadPhi('old{}/beta_phi_000/phiout.dat'.format(i)).data[500:]['$\~N$'].mean()
+
+        new_bphistar[i-1] = dr.loadPhi('new{}/beta_phi_star/phiout.dat'.format(i)).data[500:]['$\~N$'].mean()
+        old_bphistar[i-1] = dr.loadPhi('old{}/beta_phi_star/phiout.dat'.format(i)).data[500:]['$\~N$'].mean()
+
+        new_box_bphi0[i-1] = get_avg_box_vec(MDAnalysis.Universe('new{}/beta_phi_000/confout.gro'.format(i), 'new{}/beta_phi_000/traj.trr'.format(i)))
+        old_box_bphi0[i-1] = get_avg_box_vec(MDAnalysis.Universe('old{}/beta_phi_000/confout.gro'.format(i), 'old{}/beta_phi_000/traj.trr'.format(i)))
+
+        new_box_bphistar[i-1] = get_avg_box_vec(MDAnalysis.Universe('new{}/beta_phi_star/confout.gro'.format(i), 'new{}/beta_phi_star/traj.trr'.format(i)))
+        old_box_bphistar[i-1] = get_avg_box_vec(MDAnalysis.Universe('old{}/beta_phi_star/confout.gro'.format(i), 'old{}/beta_phi_star/traj.trr'.format(i)))
+
+
 
 avg_new = new_nvphi.mean(axis=1)
 avg_old = old_nvphi.mean(axis=1)
