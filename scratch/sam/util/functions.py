@@ -80,7 +80,10 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
         else:
             train_weight = np.delete(sample_weight, slc)
             train_weight /= train_weight.sum()
-            reg.fit(X_train, y_train, sample_weight=train_weight.copy())
+            try:
+                reg.fit(X_train, y_train, sample_weight=train_weight.copy())
+            except:
+                embed()
 
         pred = reg.predict(X_validate)
         if sample_weight is None:

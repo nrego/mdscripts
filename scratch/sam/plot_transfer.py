@@ -25,7 +25,7 @@ from scratch.sam.util import *
 
 import itertools
 from itertools import combinations
-
+np.set_printoptions(precision=3)
 ### Add small plate datasets to build/test transferable models ###
 # Run from small_patterns/ directory
 
@@ -49,7 +49,16 @@ def extract_feat(P, Q, pt_indices, energies):
 
     return feat_vec, states
 
+# Gets rank of feat vec's cov matrix
+#
+def get_cov_rank(feat_vec):
+    d = feat_vec - feat_vec.mean(axis=0)
+    cov = np.dot(d.T, d) / d.shape[0]
 
+    return np.linalg.matrix_rank(cov)
+
+
+outdir = os.environ['HOME']
 all_feat_vec = dict()
 all_energies = dict()
 all_states = dict()
@@ -67,6 +76,7 @@ all_energies['energies_06_06'] = energies66
 
 headdirs = sorted(glob.glob('P*'))
 
+
 # For each patch size ...
 for headdir in headdirs:
     pathnames = sorted( glob.glob('{}/*/d_*/trial_*/PvN.dat'.format(headdir)) + glob.glob('{}/k_*/PvN.dat'.format(headdir)) )
@@ -81,6 +91,10 @@ for headdir in headdirs:
     except ValueError:
         P, Q = size_list[0], size_list[0]
 
+#    if P != Q:
+#        continue
+
+
     print("Doing P: {}  Q: {}".format(P,Q))
 
 
@@ -89,7 +103,9 @@ for headdir in headdirs:
     this_energies = np.zeros(len(pathnames))
     pt_indices = []
 
+
     for i, fname in enumerate(pathnames):
+
         this_energies[i] = np.loadtxt(fname)[0,1]
         kc = int(fname.split('/')[1].split('_')[1])
 
@@ -103,13 +119,31 @@ for headdir in headdirs:
 
         pt_indices.append(this_pt)
 
-    this_feat_vec = extract_feat(P, Q, pt_indices, this_energies)
+    this_feat_vec, this_state = extract_feat(P, Q, pt_indices, this_energies)
 
-    all_feat_vec['feat_{:02d}_{:02d}'.format(P, Q)], all_states['states_{:02d}_{:02d}'.format(P, Q)] = this_feat_vec
-    all_energies['energies_{:02d}_{:02d}'.format(P, Q)] = this_energies
+    ener_key = 'energies_{:02d}_{:02d}'.format(P, Q)
+    feat_key = 'feat_{:02d}_{:02d}'.format(P,Q)
+    state_key = 'states_{:02d}_{:02d}'.format(P, Q)
 
+    if ener_key in all_energies.keys():
+        old_energies = all_energies[ener_key]
+        old_feat_vec = all_feat_vec[feat_key]
+        old_state = all_states[state_key]
+
+        this_energies = np.append(old_energies, this_energies)
+        this_feat_vec = np.vstack((old_feat_vec, this_feat_vec))
+        this_state = np.append(old_state, this_state)
+
+    all_energies[ener_key] = this_energies
+    all_feat_vec[feat_key] = this_feat_vec
+    all_states[state_key] = this_state
+
+
+all_n_dat = np.array([energies.size for energies in all_energies.values()], dtype=int)
+all_dat_keys = list(all_energies.keys())
 
 names = np.array(['N', 'Next', 'k_c', 'k_o', 'n_mm', 'n_oo', 'n_mo', 'n_me', 'n_oe'])
+
 
 tot_feat_vec = np.vstack(list(all_feat_vec.values()))
 d = tot_feat_vec - tot_feat_vec.mean(axis=0)
@@ -172,4 +206,5 @@ ints = shape_energies - non_int
 
 # Fit intercepts to N, Next
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(shape_feat_vec[:,:2], ints, fit_intercept=True)
+
 
