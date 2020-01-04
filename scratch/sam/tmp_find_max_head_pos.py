@@ -2,8 +2,8 @@ from scipy.spatial import cKDTree
 
 #univ_ch3 = MDAnalysis.Universe('P9_4/whole.gro', 'P9_4/traj.xtc')
 univ_ch3 = MDAnalysis.Universe('whole.gro', 'whole.xtc')
-univ_oh = MDAnalysis.Universe('../whole.gro', '../whole.xtc')
-#univ_oh = MDAnalysis.Universe('equil_oh/whole.gro', 'equil_oh/whole.xtc')
+#univ_oh = MDAnalysis.Universe('../whole.gro', '../whole.xtc')
+univ_oh = MDAnalysis.Universe('../../initial_prep/equil_oh/whole.gro', '../../initial_prep/equil_oh/whole.xtc')
 
 head_ch3 = univ_ch3.select_atoms("name CT")
 head_oh = univ_oh.select_atoms("name O12")

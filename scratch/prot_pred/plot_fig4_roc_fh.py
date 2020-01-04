@@ -49,7 +49,7 @@ beta_phi_minus = beta_phi_vals[chi_minus_idx]
 beta_phi_plus = beta_phi_vals[chi_plus_idx]
 print('beta phi -: {}   beta phi +: {}'.format(beta_phi_minus, beta_phi_plus))
 #embed()
-beta_phi, tp, fp, tn, fn, tpr, fpr, prec, f_1, f_h, mcc = [arr.squeeze() for arr in np.split(np.loadtxt('performance.dat'), 11, 1)]
+beta_phi, tp, fp, tn, fn, tpr, fpr, prec, f_h, f_1, mcc = [arr.squeeze() for arr in np.split(np.loadtxt('performance.dat'), 11, 1)]
 
 prec[(tp+fp)==0] = np.nan
 best_idx = np.argmax(f_h)

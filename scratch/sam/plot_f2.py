@@ -96,10 +96,10 @@ n_conn_type = k_eff_all_shape.shape[2]
 ###############
 
 # k_ch3 #
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(36-k_vals, energies, do_ridge=False)
+perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_vals, energies, do_ridge=False)
 
 fig, ax = plt.subplots(figsize=(7,6))
-ax.scatter(36-k_vals, energies, s=12, color='b')
+ax.scatter(k_vals, energies, s=12, color='b')
 ax.plot(xvals, fit, 'k-', linewidth=3)
 #ax.set_xlabel(r'$k_C$')
 #ax.set_ylabel(r'$f$')

@@ -95,7 +95,7 @@ n_conn_type = k_eff_all_shape.shape[2]
 k_eff_one_edge = k_eff_all_shape.sum(axis=1)
 
 # K_OH, n_mm
-feat_vec = np.dstack((k_vals, k_eff_one_edge[:,0])).squeeze(axis=0)
+feat_vec = np.dstack((36-k_vals, k_eff_one_edge[:,1])).squeeze(axis=0)
 perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec, energies, do_ridge=False)
 np.savetxt('m2_coef.dat', reg.coef_)
 #np.savetxt('m2_int.dat', reg.intercept_)

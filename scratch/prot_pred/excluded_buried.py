@@ -1,5 +1,8 @@
-# Analyze results of dynamic_indus (i.e. per-atom, time resolved number of waters and other prot atoms)
-#   to locate hydrophobic patches on protein
+
+
+# Analyze results of dynamic_interface.py (e.g., rho_data_dat_rad_N.dat.npz,
+#   the n_i's with time for heavy atoms) to determine INDUS umbrella probe volume
+#   (umbr.conf file). Excludes atoms that are obviously buried to reduce probe volume size
 from __future__ import division, print_function
 
 import MDAnalysis
@@ -17,27 +20,27 @@ import argparse
 
 from IPython import embed
 
-parser = argparse.ArgumentParser('color protein atoms by their hydrophilicity, '
-                                 'optionally excluding buried atoms or applying mask')
+parser = argparse.ArgumentParser('Determine probe volume, excluding any obviously buried heavy atoms of solute,' \
+                                 'using output from \'dynamic_interface.py\' ')
 parser.add_argument('-s', '--top', type=str, required=True,
-                    help='Topology input file (tpr or gro file; need tpr to color buried hydrogens)')
+                    help='Topology input file (tpr or gro file; need tpr for more complicated selections)')
 parser.add_argument('-c', '--struct', type=str,
                     help='Structure file (gro, pdb, etc) - output will have same positions')
-parser.add_argument('--rhodata', type=str, required=True,
-                    help='Rho data file, for determining buried atoms')
+parser.add_argument('--rhodata', type=str, required=True, default='rho_data_dump_rad_6.0.dat.npz',
+                    help='Rho data file, for determining buried atoms (Default: %(default)s)')
 parser.add_argument('--max', action='store_true',
                     help='If true, exclude all atoms that have a maximum (not average) number of waters ' \
-                         'less than nburied (default: False, do average)')
+                         'less than nburied (Default: False, do average)')
 parser.add_argument('-nb', '--nburied', type=float, default=5,
                     help='If rhodata supplied, atoms are considered buried if they have fewer than '
                          'this many average water molecules')
 parser.add_argument('--sel-spec', type=str, default='segid targ',
-                    help='selection spec for finding protein (all) atoms')
+                    help='selection spec for finding solute (all) atoms, including hydrogens (MDSystem will take care of them)')
 parser.add_argument('--do-static', action='store_true', 
                     help='Create static probe volume')
 
 args = parser.parse_args()
-
+#embed()
 sys = MDSystem(args.top, args.struct, sel_spec=args.sel_spec)
 
 if args.max:
@@ -49,7 +52,6 @@ bb = np.arange(0, max_val, 1)
 hist, bb = np.histogram(rho_dat, bins=bb)
 #plt.bar(bb[:-1], hist)
 #plt.show()
-
 sys.find_buried(rho_dat, args.nburied)
 
 print("N Heavy Atoms: {}".format(sys.n_prot_h_tot))

@@ -42,7 +42,7 @@ def center_by_water(atoms, probe_atom_idx):
 
     return atoms, box_min, box_max
 
-univ = MDAnalysis.Universe('equil.gro', 'traj.xtc')
+univ = MDAnalysis.Universe('equil.gro', 'traj_comp.xtc')
 water_ow = univ.select_atoms('name OW')
 
 dr = 0.1

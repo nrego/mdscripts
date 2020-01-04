@@ -31,7 +31,7 @@ mpl.rcParams.update({'axes.titlesize': 30})
 # regress y on set of n_dim features, X.
 #   Note this can do a polynomial regression on a single feature -
 #   just make each nth degree a power of that feature
-def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_weight=None):
+def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_weight=None, fit_intercept=True):
     np.random.seed()
     if sample_weight is None:
         sample_weight = np.ones_like(y)
@@ -46,9 +46,9 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
     xvals = X[sort_idx, :]
 
     if do_ridge:
-        reg = linear_model.Ridge(alpha=alpha)
+        reg = linear_model.Ridge(alpha=alpha, fit_intercept=fit_intercept)
     else:
-        reg = linear_model.LinearRegression()
+        reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
     
     # Randomly split data into fifths
     n_cohort = n_dat // 5
@@ -80,7 +80,10 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
         else:
             train_weight = np.delete(sample_weight, slc)
             train_weight /= train_weight.sum()
-            reg.fit(X_train, y_train, sample_weight=train_weight.copy())
+            try:
+                reg.fit(X_train, y_train, sample_weight=train_weight.copy())
+            except:
+                embed()
 
         pred = reg.predict(X_validate)
         if sample_weight is None:
@@ -100,6 +103,81 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
     err = y - pred
 
     return (perf_r2, perf_mse, err, xvals, fit, reg)
+
+
+# regress y on set of n_dim features, X.
+#   Do leave-one-out CV
+def fit_leave_one(X, y, sort_axis=0, fit_intercept=True):
+
+    assert y.ndim == 1
+    n_dat = y.size
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+    
+    # For plotting fit...
+    sort_idx = np.argsort(X[:,sort_axis])
+    xvals = X[sort_idx, :]
+
+    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+
+    # R^2 and MSE for each train/validation round
+    perf_mse = np.zeros(n_dat)
+
+
+    # Choose one of the cohorts as validation set, train on remainder.
+    #   repeat for each cohort
+    for k in range(n_dat):
+
+        # Get training samples. np.delete makes a copy and **does not** act on array in-place
+        y_train = np.delete(y, k)
+        X_train = np.delete(X, k, axis=0)
+
+        y_validate = y[k]
+        X_validate = X[k].reshape(1,-1)
+
+        reg.fit(X_train, y_train)
+        pred = reg.predict(X_validate)
+
+        mse = ((y_validate - pred)**2).item()
+        perf_mse[k] = mse
+
+    reg.fit(X, y)
+    fit = reg.predict(xvals)
+
+    pred = reg.predict(X)
+    err = y - pred
+
+    return (perf_mse, err, xvals, fit, reg)
+
+# Perform bootstrapping on data to estimate errors in linear regression coefficients
+def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000):
+
+    np.random.seed()
+    assert y.ndim == 1
+    n_dat = y.size
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+    
+    # For plotting fit...
+    boot_inter = np.zeros(n_bootstrap)
+    boot_coef = np.zeros((n_bootstrap, X.shape[1]))
+
+    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+
+    for i_boot in range(n_bootstrap):
+        dat_indices = np.random.choice(n_dat, size=n_dat, replace=True)
+
+        this_boot_y = y[dat_indices]
+        this_boot_X = X[dat_indices, ...]
+
+        reg.fit(this_boot_X, this_boot_y)
+
+        boot_inter[i_boot] = reg.intercept_
+        boot_coef[i_boot] = reg.coef_ 
+
+    return (boot_inter, boot_coef)
 
 def plot_3d(x, y, z, **kwargs):
     fig = plt.figure()
