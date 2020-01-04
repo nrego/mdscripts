@@ -180,7 +180,7 @@ Command-line options
 
                     if i_frame == self.start_frame:
                         self.other_univ.atoms.write('first_frame_fit.gro')
-                    W.write(self.other_univ.atoms, bonds=None)
+                    W.write(self.other_univ.atoms)
 
 
                     if self.rmsd_spec is not None and not self.center_only:
