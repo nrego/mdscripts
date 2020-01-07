@@ -152,6 +152,24 @@ cov = np.dot(d.T, d) / d.shape[0]
 tot_energies = np.concatenate(list(all_energies.values()))
 #indices = np.array([0, 1, 3, 5, 8])
 
+
+ener_06_06 = all_energies['energies_06_06']
+ener_04_04 = all_energies['energies_04_04']
+ener_04_09 = all_energies['energies_04_09']
+ener_02_02 = all_energies['energies_02_02']
+
+feat_06_06 = all_feat_vec['feat_06_06']
+feat_04_04 = all_feat_vec['feat_04_04']
+feat_04_09 = all_feat_vec['feat_04_09']
+feat_02_02 = all_feat_vec['feat_02_02']
+
+perf_mse_06_06, err, xvals, fit, reg_06_06 = fit_leave_one(feat_06_06[:,indices], ener_06_06)
+perf_mse_04_04, err, xvals, fit, reg_04_04 = fit_leave_one(feat_04_04[:,indices], ener_04_04)
+perf_mse_04_09, err, xvals, fit, reg_04_09 = fit_leave_one(feat_04_09[:,indices], ener_04_09)
+perf_mse_02_02, err, xvals, fit, reg_02_02 = fit_leave_one(feat_02_02[:,indices], ener_02_02)
+
+
+comb_coef = (reg_06_06.coef_ + reg_04_04.coef_ + reg_04_09.coef_)/3
 #tot_perf_r2, tot_perf_mse, tot_err, tot_xvals, tot_fit, tot_reg = fit_general_linear_model(tot_feat_vec[:,indices], tot_energies)
 
 indices = np.array([3, 5, 8])
@@ -159,6 +177,9 @@ indices = np.array([3, 5, 8])
 shape_feat_vec = dict()
 shape_energies = dict()
 models = dict()
+
+
+
 
 p_q = []
 
@@ -201,10 +222,34 @@ shape_energies = np.concatenate(list(shape_energies.values()))
 shape_feat_vec = np.concatenate(list(shape_feat_vec.values()))
 
 # Non-intercept values, fit on consensus regression coefs
-non_int = np.dot(shape_feat_vec[:,indices], reg.coef_)
+non_int = np.dot(shape_feat_vec[:,indices], comb_coef)
 ints = shape_energies - non_int
 
+tmp = np.repeat(p_q, 2, axis=0)
+feat = np.zeros_like(tmp)
+feat[:,0] = tmp.prod(axis=1)
+feat[:,1] = tmp.sum(axis=1)
+
 # Fit intercepts to N, Next
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(shape_feat_vec[:,:2], ints, fit_intercept=True)
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat, ints)
+ax = plt.figure().gca(projection='3d')
+
+nvals = np.arange(100)
+nextvals = np.arange(40)
+
+xx, yy = np.meshgrid(nvals, nextvals)
+
+vals = reg.intercept_ + reg.coef_[0] * xx + reg.coef_[1] * yy
+
+ax.plot_surface(xx, yy, vals, alpha=0.5)
+#ax.scatter(feat[:,0], feat[:,1], ints)
+ax.scatter(feat[::2,0], feat[::2,1], ints[1::2], label='methyl')
+ax.scatter(feat[::2, 0], feat[::2,1], ints[::2], label='hydroxyl')
+
+pred_phob = reg.predict(feat[::2])
+pred_phil = reg.predict(feat[::2])
+
+err_phob = ints[1::2] - pred_phob
+err_phil = ints[::2] - pred_phil
 
 
