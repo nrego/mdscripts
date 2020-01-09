@@ -107,7 +107,7 @@ def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_
 
 # regress y on set of n_dim features, X.
 #   Do leave-one-out CV
-def fit_leave_one(X, y, sort_axis=0, fit_intercept=True):
+def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
 
     assert y.ndim == 1
     n_dat = y.size
@@ -115,6 +115,9 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True):
     if X.ndim == 1:
         X = X[:,None]
     
+    if weights is None:
+        weights = np.ones_like(y)
+
     # For plotting fit...
     sort_idx = np.argsort(X[:,sort_axis])
     xvals = X[sort_idx, :]
@@ -132,11 +135,12 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True):
         # Get training samples. np.delete makes a copy and **does not** act on array in-place
         y_train = np.delete(y, k)
         X_train = np.delete(X, k, axis=0)
+        w_train = np.delete(weights, k)
 
         y_validate = y[k]
         X_validate = X[k].reshape(1,-1)
 
-        reg.fit(X_train, y_train)
+        reg.fit(X_train, y_train, sample_weight=w_train)
         pred = reg.predict(X_validate)
 
         mse = ((y_validate - pred)**2).item()
@@ -151,7 +155,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True):
     return (perf_mse, err, xvals, fit, reg)
 
 # Perform bootstrapping on data to estimate errors in linear regression coefficients
-def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000):
+def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000, weights=None):
 
     np.random.seed()
     assert y.ndim == 1
@@ -159,6 +163,9 @@ def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000):
     # Single feature (1d linear regression)
     if X.ndim == 1:
         X = X[:,None]
+
+    if weights is None:
+        weights = np.ones_like(y)
     
     # For plotting fit...
     boot_inter = np.zeros(n_bootstrap)
@@ -171,8 +178,9 @@ def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000):
 
         this_boot_y = y[dat_indices]
         this_boot_X = X[dat_indices, ...]
+        this_boot_w = weights[dat_indices]
 
-        reg.fit(this_boot_X, this_boot_y)
+        reg.fit(this_boot_X, this_boot_y, sample_weight=this_boot_w)
 
         boot_inter[i_boot] = reg.intercept_
         boot_coef[i_boot] = reg.coef_ 
