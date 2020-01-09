@@ -22,6 +22,8 @@ energies_new = np.zeros(len(fnames))
 energies_new[:] = -1
 energies_err = np.zeros_like(energies_new)
 
+states = np.empty_like(energies_new, dtype=object)
+
 for i, fname in enumerate(fnames):
     pvn = np.loadtxt(fname)[0]
     pt_idx = np.loadtxt('{}/this_pt.dat'.format(os.path.dirname(fname)), dtype=int)
@@ -30,6 +32,7 @@ for i, fname in enumerate(fnames):
     myfeat_new[i] = state.k_o, state.n_oo, state.n_oe
     energies_new[i] = pvn[1]
     energies_err[i] = pvn[2]
+    states[i] = state
 
 perf_mse_new, err, xvals, fit, reg_new = fit_leave_one(myfeat_new, energies_new)
 

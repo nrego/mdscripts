@@ -72,7 +72,7 @@ class State:
         for i in range(self.N):
             self.ext_count[i] = np.intersect1d(self.non_patch_indices, self.nn_ext[i]).size
 
-        self.pt_idx = pt_idx
+        self.pt_idx = np.atleast_1d(pt_idx)
         self.e_func = e_func
         self.reg = reg
 
@@ -96,6 +96,13 @@ class State:
                 self._avail_indices = self.pt_idx.copy()
 
         return self._avail_indices
+
+    @property
+    def P(self):
+        return self.ny
+    @property
+    def Q(self):
+        return self.nz
 
     @property
     def k_o(self):
