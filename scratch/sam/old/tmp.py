@@ -40,6 +40,6 @@ for i, fname in enumerate(fnames):
 perf_mse_new, err, xvals, fit, reg_new = fit_leave_one(myfeat_new, energies_new)
 
 
-np.savez_compressed('sam_pattern_{:02d}_{:02d}'.format(p, q), states=states, energies=energies_new) 
+np.savez_compressed('sam_pattern_{:02d}_{:02d}'.format(p, q), states=states, energies=energies_new, err_energies=energies_err) 
 
 

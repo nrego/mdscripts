@@ -28,10 +28,11 @@ mpl.rcParams.update({'legend.fontsize':30})
 ### PLOT SIMPLE REG ON k_O for 6 x 6 ####
 #########################################
 
-ds = np.load('sam_pattern_06_06.dat.npz')
+ds = np.load('sam_pattern_06_06.npz')
 
 states = ds['states']
 energies = ds['energies']
+errs = ds['err_energies']
 
 n_dat = energies.size
 indices = np.arange(n_dat)
@@ -45,12 +46,12 @@ for i, state in enumerate(states):
 
 # Fit model - LOO CV
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies)
+perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies, weights=1/errs)
 
 fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
 
-ax.plot(myfeat[:,0], energies, 'o', color='gray')
+ax.errorbar(myfeat[:,0], energies, fmt='o', color='gray', yerr=errs)
 ax.plot(xvals, fit, 'k-', linewidth=4)
 ax.set_xticks([0,12,24,36])
 
@@ -122,4 +123,6 @@ ax.plot(pred, energies, 'ok')
 ax.plot([130, 130], [290, 290], 'k-')
 plt.savefig('{}/Desktop/fig_m1_parity.pdf'.format(homedir), transparent=True)
 
-
+## are we allowed to do this? check what weighted OLS is minimizing (is it weighted residuals?)
+wt = 1/errs
+wt /= wt.sum()

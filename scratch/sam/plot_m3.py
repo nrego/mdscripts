@@ -28,10 +28,11 @@ mpl.rcParams.update({'legend.fontsize':30})
 ### PLOT Final model for 6x6 - on ko, noo, noe ####
 #########################################
 
-ds = np.load('sam_pattern_06_06.dat.npz')
+ds = np.load('sam_pattern_06_06.npz')
 
 states = ds['states']
 energies = ds['energies']
+wt = 1 / ds['err_energies']
 
 n_dat = energies.size
 indices = np.arange(n_dat)
@@ -44,8 +45,8 @@ for i, state in enumerate(states):
 
 
 # Fit model - LOO CV
-perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one(myfeat[:,0].reshape(-1,1), energies)
-perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies)
+perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one(myfeat[:,0].reshape(-1,1), energies, weights=wt)
+perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies, weights=wt)
 k_vals = myfeat[:,0]
 
 

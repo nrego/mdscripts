@@ -146,7 +146,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
         mse = ((y_validate - pred)**2).item()
         perf_mse[k] = mse
 
-    reg.fit(X, y)
+    reg.fit(X, y, sample_weight=weights)
     fit = reg.predict(xvals)
 
     pred = reg.predict(X)
