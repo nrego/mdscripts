@@ -56,7 +56,7 @@ max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 bins = np.arange(0, max_val+1, 1)
 
 ## In kT!
-beta_phi_vals = np.linspace(0,8,101)
+beta_phi_vals = np.linspace(0,8,201)
 
 
 
