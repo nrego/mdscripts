@@ -16,12 +16,12 @@ import numpy as np
 
 from scratch.sam.util import *
 
-
+indices = np.array([2,3,4])
 def extract_from_states(states):
-    feat_vec = np.zeros((states.size, 3))
+    feat_vec = np.zeros((states.size, 9))
 
     for i, state in enumerate(states):
-        feat_vec[i] = state.k_o, state.n_oo, state.n_oe
+        feat_vec[i] = state.P, state.Q, state.k_o, state.n_oo, state.n_oe, state.k_c, state.n_mm, state.n_me, state.n_mo
 
 
     return feat_vec
@@ -60,9 +60,9 @@ energies_04_09 = ds_04_09['energies']
 err_06_06 = ds_06_06['err_energies']
 err_04_04 = ds_04_04['err_energies']
 err_04_09 = ds_04_09['err_energies']
-err_06_06 = np.ones_like(err_06_06)
-err_04_04 = np.ones_like(err_04_04)
-err_04_09 = np.ones_like(err_04_09)
+#err_06_06 = np.ones_like(err_06_06)
+#err_04_04 = np.ones_like(err_04_04)
+#err_04_09 = np.ones_like(err_04_09)
 
 states_06_06 = ds_06_06['states']
 states_04_04 = ds_04_04['states']
@@ -73,24 +73,28 @@ feat_04_04 = extract_from_states(states_04_04)
 feat_04_09 = extract_from_states(states_04_09)
 
 ### Find coefs ###
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06, energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_06_06, energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
+
+### 6 x 6 ###
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06[:,indices], energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_06_06[:,indices], energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
 
 print("DOING 6x6... (N={:02d})".format(energies_06_06.size))
 print_data(reg, boot_intercept, boot_coef)
 rsq = 1 - (perf_mse.mean() / energies_06_06.var())
 print("  perf: {:0.6f}".format(rsq))
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09, energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_04_09, energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
+### 4 x 9 ###
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09[:,indices], energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_04_09[:,indices], energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
 
 print("DOING 4x9... (N={:02d})".format(energies_04_09.size))
 print_data(reg, boot_intercept, boot_coef)
 rsq = 1 - (perf_mse.mean() / energies_04_09.var())
 print("  perf: {:0.6f}".format(rsq))
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04, energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_04_04, energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
+### 4 x 4 ###
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04[:,indices], energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_04_04[:,indices], energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
 
 print("DOING 4x4... (N={:02d})".format(energies_04_04.size))
 print_data(reg, boot_intercept, boot_coef)
@@ -105,9 +109,9 @@ feat_all = np.vstack((feat_06_06, feat_04_09, feat_04_04))
 w_all = np.hstack((1/err_06_06, 1/err_04_09, 1/err_04_04))
 states_all = np.concatenate((states_06_06, states_04_09, states_04_04))
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_all, e_all, weights=w_all, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_all, e_all, weights=w_all, fit_intercept=False)
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_all[:,indices], e_all, weights=w_all, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_all[:,indices], e_all, weights=w_all, fit_intercept=False)
 
-np.save('sam_reg_pooled.dat', reg)
-np.savez_compressed('sam_pattern_pooled', energies=e_all2, weights=w_all, states=states_all)
+np.save('sam_reg_pooled', reg)
+np.savez_compressed('sam_pattern_pooled', energies=e_all2, weights=w_all, states=states_all, feat_vec=feat_all)
 

@@ -26,28 +26,39 @@ mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':30})
 
 
+reg_coef = np.load('sam_reg_pooled.npy').item()
+reg_int = np.load('sam_reg_inter.npy').item()
 
+inter = reg_int.intercept_
+# for P, Q, k_o, n_oo, n_oe
+coefs = np.concatenate((reg_int.coef_, reg_coef.coef_))
 
-ds_06_06 = np.load('sam_pattern_06_06.npz')
-ds_04_04 = np.load('sam_pattern_04_04.npz')
-ds_04_09 = np.load('sam_pattern_04_09.npz')
+ds = np.load('sam_pattern_pooled.npz')
+energies = ds['energies']
+states = ds['states']
+feat_vec = ds['feat_vec']
+errs = 1 / ds['weights']
 
+# Total number of unique edges for each size (6x6, 4x9, 4x4)
+n_edges_int = np.array([85., 83., 33.])
+n_edges_ext = np.array([46., 50., 30.])
 
-energies_06_06 = ds_06_06['energies']
-energies_04_04 = ds_04_04['energies']
-energies_04_09 = ds_04_09['energies']
+n_edges_tot = n_edges_int + n_edges_ext
+pq = np.array([[36, 12],
+               [36, 13],
+               [16, 8]])
+n_ext = np.array([20, 22, 12])
 
-err_06_06 = ds_06_06['err_energies']
-err_04_04 = ds_04_04['err_energies']
-err_04_09 = ds_04_09['err_energies']
-err_06_06 = np.ones_like(err_06_06)
-err_04_04 = np.ones_like(err_04_04)
-err_04_09 = np.ones_like(err_04_09)
+p, q, ko, n_oo, n_oe, kc, n_mm, n_me, n_mo = np.split(feat_vec, indices_or_sections=9, axis=1)
 
-states_06_06 = ds_06_06['states']
-states_04_04 = ds_04_04['states']
-states_04_09 = ds_04_09['states']
+pq = p*q
+p_p_q = p+q
 
-feat_06_06 = extract_from_states(states_06_06)
-feat_04_04 = extract_from_states(states_04_04)
-feat_04_09 = extract_from_states(states_04_09)
+# Fit a dummy regression and then change its coeffs
+myfeat = np.hstack((pq, p_p_q, ko, n_oo, n_oe))
+reg = linear_model.LinearRegression()
+reg.fit(myfeat, energies)
+
+reg.intercept_ = reg_int.intercept_
+reg.coef_[:2] = reg_int.coef_
+reg.coef_[2:] = reg_coef.coef_

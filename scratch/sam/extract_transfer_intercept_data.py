@@ -32,10 +32,14 @@ def get_min_err(dsname):
 
     return dsname['energies'][min_idx], dsname['err_energies'][min_idx]
 
-### PLOT Transferability of coefs for 4x4, 6x6, 4x9 ####
-#########################################
+def get_max_err(dsname):
+    max_idx = dsname['energies'].argmax()
+    assert dsname['states'][max_idx].k_c == 0
 
-reg = np.load('reg_pooled.dat.npy')
+    return dsname['energies'][max_idx], dsname['err_energies'][max_idx]
+
+### Extract all pure methyl and hydroxyl free energies
+#########################################
 
 ## Extract all f_0's
 headdirs = sorted(glob.glob('P*'))
@@ -59,34 +63,65 @@ for headdir in headdirs:
         P, Q = size_list[0], size_list[0]
 
     for pathname in pathnames:
-        if int(pathname.split('/')[1].split('_')[1]) != P*Q:
+        kc = int(pathname.split('/')[1].split('_')[1])
+        if kc != P*Q or kc != 0:
             continue
         pvn = np.loadtxt(pathname)
 
+        if kc == P*Q:
+            pt_idx = np.arange(P*Q, dtype=int)
+        else:
+            pt_idx = np.array([], dtype=int)
+
+        state = State(pt_idx, ny=P, nz=Q)
+        ko = state.ko
+        n_oo = state.n_oo
+        n_oe = state.n_oe
         energies.append(pvn[0,1])
         errs.append(pvn[0,2])
-        feat_vec.append([P*Q, P, Q])
+        feat_vec.append([P, Q, ko, n_oo, n_oe])
 
-
+# 6 x 6 meth
 e, err = get_min_err(np.load('sam_pattern_06_06.npz'))
-feat_vec.append([36, 6, 6])
+feat_vec.append([6, 6, 0, 0, 0])
 energies.append(e)
 errs.append(err)
 
+# 6 x 6 hydroxyl
+e, err = get_max_err(np.load('sam_pattern_06_06.npz'))
+feat_vec.append([6, 6, 36, 85, 46])
+energies.append(e)
+errs.append(err)
+
+# 4 x 9 meth
 e, err = get_min_err(np.load('sam_pattern_04_09.npz'))
-feat_vec.append([36, 4, 9])
+feat_vec.append([4, 9, 0, 0, 0])
 energies.append(e)
 errs.append(err)
 
-e, err = get_min_err(np.load('sam_pattern_04_04.npz'))
-feat_vec.append([16, 4, 4])
+# 4 x 9 hydroxyl
+e, err = get_max_err(np.load('sam_pattern_04_09.npz'))
+feat_vec.append([4, 9, 83, 50])
 energies.append(e)
 errs.append(err)
+
+# 4 x 4 meth
+e, err = get_min_err(np.load('sam_pattern_04_04.npz'))
+feat_vec.append([4, 4, 0, 0])
+energies.append(e)
+errs.append(err)
+
+# 4 x 4 hydroxyl
+e, err = get_max_err(np.load('sam_pattern_04_04.npz'))
+feat_vec.append([4, 4, 33, 30])
+energies.append(e)
+errs.append(err)
+
 
 energies = np.array(energies)
 feat_vec = np.array(feat_vec)
 errs = np.array(errs)
 
-np.savez_compressed('sam_pattern_methyl', energies=energies, feat_vec=feat_vec, err_energies=errs)
+np.savez_compressed('sam_pattern_pure', energies=energies, feat_vec=feat_vec, err_energies=errs)
 
 

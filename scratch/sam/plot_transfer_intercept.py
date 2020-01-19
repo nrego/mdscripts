@@ -37,6 +37,7 @@ errs = ds['err_energies']
 # fit on just P*Q
 perf_mse, err, xvals, fit, reg = fit_leave_one(feat_vec[:,0].reshape(-1,1), energies, weights=1/errs)
 
+# PQ and (P+Q)
 myfeat = np.zeros((feat_vec.shape[0], 2))
 
 myfeat[:,0] = feat_vec[:,1:].prod(axis=1)
