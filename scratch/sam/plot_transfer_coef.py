@@ -26,6 +26,14 @@ def extract_from_states(states):
 
     return feat_vec
 
+def print_data(reg, boot_intercept, boot_coef):
+    print("    inter: {:0.2f} ({:0.4f})".format(reg.intercept_, boot_intercept.std(ddof=1)))
+    errs = boot_coef.std(ddof=1, axis=0)
+
+    print("    k_o: {:0.2f} ({:0.4f})".format(reg.coef_[0], errs[0]))
+    print("    noo: {:0.2f} ({:0.4f})".format(reg.coef_[1], errs[1]))
+    print("    noe: {:0.2f} ({:0.4f})".format(reg.coef_[2], errs[2]))
+
 
 plt.close('all')
 homedir = os.environ['HOME']
@@ -49,6 +57,13 @@ energies_06_06 = ds_06_06['energies']
 energies_04_04 = ds_04_04['energies']
 energies_04_09 = ds_04_09['energies']
 
+err_06_06 = ds_06_06['err_energies']
+err_04_04 = ds_04_04['err_energies']
+err_04_09 = ds_04_09['err_energies']
+err_06_06 = np.ones_like(err_06_06)
+err_04_04 = np.ones_like(err_04_04)
+err_04_09 = np.ones_like(err_04_09)
+
 states_06_06 = ds_06_06['states']
 states_04_04 = ds_04_04['states']
 states_04_09 = ds_04_09['states']
@@ -57,9 +72,42 @@ feat_06_06 = extract_from_states(states_06_06)
 feat_04_04 = extract_from_states(states_04_04)
 feat_04_09 = extract_from_states(states_04_09)
 
+### Find coefs ###
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06, energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_06_06, energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
+
+print("DOING 6x6... (N={:02d})".format(energies_06_06.size))
+print_data(reg, boot_intercept, boot_coef)
+rsq = 1 - (perf_mse.mean() / energies_06_06.var())
+print("  perf: {:0.6f}".format(rsq))
+
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09, energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_04_09, energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
+
+print("DOING 4x9... (N={:02d})".format(energies_04_09.size))
+print_data(reg, boot_intercept, boot_coef)
+rsq = 1 - (perf_mse.mean() / energies_04_09.var())
+print("  perf: {:0.6f}".format(rsq))
+
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04, energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_04_04, energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
+
+print("DOING 4x4... (N={:02d})".format(energies_04_04.size))
+print_data(reg, boot_intercept, boot_coef)
+rsq = 1 - (perf_mse.mean() / energies_04_04.var())
+print("  perf: {:0.6f}".format(rsq))
 
 
+e_all = np.hstack((energies_06_06-energies_06_06.min(), energies_04_09-energies_04_09.min(), energies_04_04-energies_04_04.min()))
+e_all2 = np.hstack((energies_06_06, energies_04_09, energies_04_04))
 
+feat_all = np.vstack((feat_06_06, feat_04_09, feat_04_04))
+w_all = np.hstack((1/err_06_06, 1/err_04_09, 1/err_04_04))
+states_all = np.concatenate((states_06_06, states_04_09, states_04_04))
 
+perf_mse, err, xvals, fit, reg = fit_leave_one(feat_all, e_all, weights=w_all, fit_intercept=False)
+boot_intercept, boot_coef = fit_bootstrap(feat_all, e_all, weights=w_all, fit_intercept=False)
 
+np.save('sam_reg_pooled.dat', reg)
+np.savez_compressed('sam_pattern_pooled', energies=e_all2, weights=w_all, states=states_all)
 

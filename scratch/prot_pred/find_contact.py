@@ -39,6 +39,7 @@ parser.add_argument('--hydropathy', type=str,
 
 args = parser.parse_args()
 
+
 sys = MDSystem(args.topology, args.struct, sel_spec=args.sel_spec)
 
 #ref_data0 = np.load(args.ref)['rho_water'].mean(axis=0)
