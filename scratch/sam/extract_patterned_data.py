@@ -4,10 +4,10 @@ from scratch.sam.util import *
 
 ## Extracts all data from patterned dataset (6 x 6, 4 x 9, or 4 x 4) ###
 
-#fnames = sorted(glob.glob('k_*/d_*/trial_0/PvN.dat')) + sorted(glob.glob('../inv_pattern_sample/l_*/d_*/trial_0/PvN.dat')) + sorted(glob.glob('k_*/PvN.dat'))
-fnames = sorted(glob.glob('*/d_*/trial_0/PvN.dat'))
-p = 4
-q = 9
+fnames = sorted(glob.glob('k_*/d_*/trial_0/PvN.dat')) + sorted(glob.glob('../inv_pattern_sample/l_*/d_*/trial_0/PvN.dat')) + sorted(glob.glob('k_*/PvN.dat'))
+#fnames = sorted(glob.glob('*/d_*/trial_0/PvN.dat'))
+p = 6
+q = 6
 #ds = np.load("sam_pattern_data.dat.npz")
 
 #energies_old = ds['energies']

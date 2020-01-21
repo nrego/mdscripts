@@ -50,7 +50,7 @@ feat_vec = []
 
 for headdir in headdirs:
 
-    pathnames = sorted( glob.glob('{}/k_*/PvN.dat'.format(headdir)) )
+    pathnames = list(reversed(sorted( glob.glob('{}/k_*/PvN.dat'.format(headdir)) )))
 
     if len(pathnames) == 0:
         continue
@@ -63,8 +63,9 @@ for headdir in headdirs:
         P, Q = size_list[0], size_list[0]
 
     for pathname in pathnames:
+        print("doing {}".format(pathname))
         kc = int(pathname.split('/')[1].split('_')[1])
-        if kc != P*Q or kc != 0:
+        if kc != P*Q and kc != 0:
             continue
         pvn = np.loadtxt(pathname)
 
@@ -74,7 +75,7 @@ for headdir in headdirs:
             pt_idx = np.array([], dtype=int)
 
         state = State(pt_idx, ny=P, nz=Q)
-        ko = state.ko
+        ko = state.k_o
         n_oo = state.n_oo
         n_oe = state.n_oe
         energies.append(pvn[0,1])
@@ -101,19 +102,19 @@ errs.append(err)
 
 # 4 x 9 hydroxyl
 e, err = get_max_err(np.load('sam_pattern_04_09.npz'))
-feat_vec.append([4, 9, 83, 50])
+feat_vec.append([4, 9, 36, 83, 50])
 energies.append(e)
 errs.append(err)
 
 # 4 x 4 meth
 e, err = get_min_err(np.load('sam_pattern_04_04.npz'))
-feat_vec.append([4, 4, 0, 0])
+feat_vec.append([4, 4, 0, 0, 0])
 energies.append(e)
 errs.append(err)
 
 # 4 x 4 hydroxyl
 e, err = get_max_err(np.load('sam_pattern_04_04.npz'))
-feat_vec.append([4, 4, 33, 30])
+feat_vec.append([4, 4, 16, 33, 30])
 energies.append(e)
 errs.append(err)
 
@@ -122,6 +123,6 @@ energies = np.array(energies)
 feat_vec = np.array(feat_vec)
 errs = np.array(errs)
 
-np.savez_compressed('sam_pattern_pure', energies=energies, feat_vec=feat_vec, err_energies=errs)
+np.savez_compressed('sam_pattern_pure', energies=energies, feat_vec=feat_vec, err_energies=errs, header='featvec:  P  Q  k_o  n_oo  n_oe')
 
 

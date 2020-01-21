@@ -28,23 +28,34 @@ mpl.rcParams.update({'legend.fontsize':30})
 
 ### PLOT Transferability of Intercepts
 #########################################
-ds = np.load('sam_pattern_methyl.npz')
+ds = np.load('sam_pattern_pure.npz')
 
-energies = ds['energies']
-feat_vec = ds['feat_vec']
-errs = ds['err_energies']
+energies = ds['energies'][::2]
+feat_vec = ds['feat_vec'][::2].astype(float)
+errs = ds['err_energies'][::2]
 
-# fit on just P*Q
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_vec[:,0].reshape(-1,1), energies, weights=1/errs)
+#feat_vec[:,1] = 0.5*np.sqrt(3) * feat_vec[:,1]
+# Load in perturbation reg coefs
+reg_coef = np.load('sam_reg_coef.npy').item()
+
+# adjusts the hydroxyl patterns by removing the delta f
+e_adjusted = energies - np.dot(feat_vec[:,2:], reg_coef.coef_)
 
 # PQ and (P+Q)
 myfeat = np.zeros((feat_vec.shape[0], 2))
 
-myfeat[:,0] = feat_vec[:,1:].prod(axis=1)
-myfeat[:,1] = feat_vec[:,1:].sum(axis=1)
+myfeat[:,0] = feat_vec[:,:2].prod(axis=1)
+myfeat[:,1] = feat_vec[:,:2].sum(axis=1)
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies, weights=1/errs)
-boot_intercept, boot_coef = fit_bootstrap(myfeat, energies, weights=1/errs)
+#myfeat = np.zeros((feat_vec.shape[0], 3))
+#myfeat[:,0] = feat_vec[:,:2].prod(axis=1)
+#myfeat[:,1:] = feat_vec[:,:2]
+
+# fit on just P*Q
+perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat[:,0].reshape(-1,1), e_adjusted, weights=1/errs)
+
+perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, e_adjusted, weights=1/errs)
+boot_intercept, boot_coef = fit_bootstrap(myfeat, e_adjusted, weights=1/errs)
 
 #fig = plt.figure()
 #ax = fig.gca(projection='3d')
@@ -58,9 +69,13 @@ vals = fn(xx, yy)
 
 ax = plt.gca(projection='3d')
 ax.plot_surface(xx, yy, vals, alpha=0.5)
-ax.scatter(myfeat[:,0], myfeat[:,1], energies)
+ax.scatter(myfeat[:,0], myfeat[:,1], e_adjusted)
+plt.close('all')
+
 
 lim = np.abs(err).max() + 1
+
+### Plot errs versus PQ ###
 
 fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
@@ -68,6 +83,7 @@ ax.scatter(myfeat[:,0], err)
 ax.set_ylim(-lim, lim)
 plt.savefig('{}/Desktop/err1.png'.format(homedir), transparent=True)
 
+## Plot errs versus (P+Q)
 plt.close('all')
 fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
@@ -75,12 +91,30 @@ ax.scatter(myfeat[:,1], err)
 ax.set_ylim(-lim, lim)
 plt.savefig('{}/Desktop/err2.png'.format(homedir), transparent=True)
 
+## Plot errs versus just P
+plt.close('all')
+fig = plt.figure(figsize=(7,6))
+ax = fig.gca()
+ax.scatter(feat_vec[:,0], err)
+ax.set_ylim(-lim, lim)
+plt.savefig('{}/Desktop/err_p.png'.format(homedir), transparent=True)
+
+## Plot errs versus just Q
+plt.close('all')
+fig = plt.figure(figsize=(7,6))
+ax = fig.gca()
+ax.scatter(feat_vec[:,0], err)
+ax.set_ylim(-lim, lim)
+plt.savefig('{}/Desktop/err_q.png'.format(homedir), transparent=True)
+
+
+
 pred = reg.predict(myfeat)
 plt.close('all')
 fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
 ax.plot(np.array([0,320]), np.array([0,320]), 'k-', linewidth=4)
-ax.scatter(pred, energies, color='orange', zorder=3)
+ax.scatter(pred, e_adjusted, color='orange', zorder=3)
 ax.set_xticks([0, 100, 200, 300])
 ax.set_yticks([0, 100, 200, 300])
 plt.savefig('{}/Desktop/parity.png'.format(homedir), transparent=True)

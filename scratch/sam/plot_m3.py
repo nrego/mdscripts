@@ -32,6 +32,8 @@ ds = np.load('sam_pattern_06_06.npz')
 
 states = ds['states']
 energies = ds['energies']
+e_min = energies.min()
+energies -= e_min
 wt = 1 / ds['err_energies']
 
 n_dat = energies.size
@@ -45,11 +47,11 @@ for i, state in enumerate(states):
 
 
 # Fit model - LOO CV
-perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one(myfeat[:,0].reshape(-1,1), energies, weights=wt)
-perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies, weights=wt)
+perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one(myfeat[:,0].reshape(-1,1), energies, weights=wt, fit_intercept=False)
+perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies, weights=wt, fit_intercept=False)
 k_vals = myfeat[:,0]
 
-
+e_lim = np.ceil(np.abs(err_m1).max()) + 1
 # Plot residuals v k_o
 plt.close('all')
 
@@ -58,9 +60,8 @@ ax = fig.gca()
 ax.plot(k_vals, err_m1, 'o', label='Model 1')
 ax.plot(k_vals, err, 'o', label='Model 3')
 ax.set_xticks([0,12,24,36])
-#fig.legend()
-#ax.set_ylim(100,110)
-#plt.axis('off')
+ax.set_ylim(-e_lim, e_lim)
+ax.set_yticks([-20, -10, 0, 10, 20])
 fig.tight_layout()
 fig.savefig('{}/Desktop/res_comparison_ko.pdf'.format(homedir), transparent=True)
 
@@ -71,6 +72,8 @@ fig = plt.figure(figsize=(7,6.5))
 ax = fig.gca()
 ax.plot(myfeat[:,1], err_m1, 'o', label='Model 1')
 ax.plot(myfeat[:,1], err, 'o', label='Model 3')
+ax.set_ylim(-e_lim, e_lim)
+ax.set_yticks([-20, -10, 0, 10, 20])
 #ax.set_xticks([0,12,24,36])
 #fig.legend()
 #ax.set_ylim(100,110)
@@ -85,6 +88,8 @@ fig = plt.figure(figsize=(7,6.5))
 ax = fig.gca()
 ax.plot(myfeat[:,2], err_m1, 'o', label='Model 1')
 ax.plot(myfeat[:,2], err, 'o', label='Model 3')
+ax.set_ylim(-e_lim, e_lim)
+ax.set_yticks([-20, -10, 0, 10, 20])
 #ax.set_xticks([0,12,24,36])
 #fig.legend()
 #ax.set_ylim(100,110)

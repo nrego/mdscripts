@@ -112,6 +112,6 @@ states_all = np.concatenate((states_06_06, states_04_09, states_04_04))
 perf_mse, err, xvals, fit, reg = fit_leave_one(feat_all[:,indices], e_all, weights=w_all, fit_intercept=False)
 boot_intercept, boot_coef = fit_bootstrap(feat_all[:,indices], e_all, weights=w_all, fit_intercept=False)
 
-np.save('sam_reg_pooled', reg)
+np.save('sam_reg_coef', reg)
 np.savez_compressed('sam_pattern_pooled', energies=e_all2, weights=w_all, states=states_all, feat_vec=feat_all)
 
