@@ -98,6 +98,14 @@ class State:
         return self._avail_indices
 
     @property
+    def ext_indices(self):
+        return np.arange(self.N, dtype=int)[self.ext_count>0]
+        
+    @property
+    def int_indices(self):
+        return np.arange(self.N, dtype=int)[self.ext_count==0]
+
+    @property
     def P(self):
         return self.ny
     @property

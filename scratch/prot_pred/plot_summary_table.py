@@ -21,7 +21,7 @@ dat_star = np.loadtxt('{}/Desktop/protein_prediction_summary_phi_star.dat'.forma
 col_labels_opt = (r"$\beta \phi^\mathrm{opt}$", 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
 col_labels_star = (r'$\beta \phi^*$', 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
 
-row_labels = np.array(['Thymidylate Synthase', 'Mannose-Binding Protein', 'Phospholipase A2', 'MDM2', 'Ubiquitin'])
+row_labels = np.array(['Thymidylate Synthase (TS)', 'Mannose-Binding Protein (MBP)', 'Melittin (MLT)', 'Mouse Double Minute 2 (MDM2)', 'Ubiquitin (UBQ)'])
 
 def plot_data_table(dat, row_labels, col_labels):
     ax = plt.gca()

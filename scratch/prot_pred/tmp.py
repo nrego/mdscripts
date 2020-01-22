@@ -1,31 +1,37 @@
 from scipy.spatial import cKDTree
 import numpy as np
 import MDAnalysis
+import glob, os, pathlib
+from scipy.integrate import cumtrapz
 
-univ = MDAnalysis.Universe('../bulk_discharge/contacts.pdb')
-contact_mask = univ.atoms.tempfactors == 1
+fnames = sorted(glob.glob('*/prot_contact/phi_sims/PvN.dat'))
 
-univ = MDAnalysis.Universe('phi_200/confout.gro')
-univ.add_TopologyAttr('tempfactors')
-prot = univ.select_atoms('protein')
-prot[contact_mask].tempfactors = 1
-contact = prot[contact_mask].select_atoms('not name H*')
-ow = univ.select_atoms('name OW')
 
-tree_contact = cKDTree(contact.positions)
-tree_ow = cKDTree(ow.positions)
+name_lut = {
+    '1brs_bn': 'barnase',
+    '1brs_bs': 'barstar',
+    '1msb_pred': 'MBP',
+    '2mlt': 'MLT',
+    '2tsc_pred': 'TS'
+}
 
-res = tree_contact.query_ball_tree(tree_ow, r=6.0)
-close_ow_ids = np.unique( np.concatenate(res) ).astype(int)
-sel_str = ''.join([' {}'.format(idx) for idx in ow[close_ow_ids].ids])
+bphi = None
+for i, fname in enumerate(fnames):
 
-close_ow = univ.select_atoms('bynum {}'.format(sel_str))
-close_water_ids = np.ravel([[idx, idx+1, idx+2] for idx in close_ow.ids])
+    path = pathlib.Path(fname)
+    name = name_lut[path.parts[0]]
+    dirname = os.path.dirname(fname)
 
-sel_str = ''.join([' {}'.format(idx) for idx in close_water_ids])
-close_waters = univ.select_atoms('bynum {}'.format(sel_str))
-close_waters.write('close_waters.pdb')
+    n0 = np.loadtxt('{}/NvPhi.dat'.format(dirname))[0,1]
 
-empty = univ.select_atoms('not (bynum {})'.format(sel_str))
-empty.write('empty.pdb')
-empty.write('empty.gro')
+    dat = np.loadtxt(fname)
+    n = dat[:,0]
+    beta_G_N = dat[:,1]
+
+    n0 = n[np.argmin(beta_G_N)]
+
+    n_diff = n0 - n
+    mask = n_diff > 0
+    plt.plot(n_diff[mask], (beta_G_N)[mask], label=name)
+plt.legend()
+plt.show()

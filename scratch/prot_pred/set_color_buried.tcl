@@ -1,5 +1,5 @@
 set buried [atomselect top "beta=-2"]
-set phil [atomselect top "beta=0"]
+set phil [atomselect top "beta=-1"]
 set phob [atomselect top "beta=1"]
 
 
