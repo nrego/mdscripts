@@ -30,16 +30,51 @@ mpl.rcParams.update({'legend.fontsize':30})
 #########################################
 ds = np.load('sam_pattern_pure.npz')
 
-energies = ds['energies'][::2]
-feat_vec = ds['feat_vec'][::2].astype(float)
-errs = ds['err_energies'][::2]
+# Skip pure hydroxyl
+slc = slice(5, None, 2)
+energies = ds['energies'][slc]
+feat_vec = ds['feat_vec'][slc].astype(float)
+errs = ds['err_energies'][slc]
+
+p = feat_vec[:,0]
+q = feat_vec[:,1]
+
+dx = ds['dx'][slc]
+dy = ds['dy'][slc]
+dz = ds['dz'][slc]
+
+reg_dy = linear_model.LinearRegression()
+reg_dz = linear_model.LinearRegression()
+
+reg_dy.fit(p.reshape(-1,1), dy)
+reg_dz.fit(q.reshape(-1,1), dz)
+
+b1_y = (np.sqrt(3)/2)*0.5
+b1_z = 0.5
+
+int_y = (dy-b1_y*p).mean()
+pseudo_dy = int_y + b1_y*p
+
+int_z = (dz-b1_z*q).mean()
+pseudo_dz = int_z + b1_z*q
+#pseudo_dy = reg_dy.predict(p.reshape(-1,1))
+#pseudo_dz = reg_dz.predict(q.reshape(-1,1))
+
+reg_dy.fit(p.reshape(-1,1), dy)
+reg_dz.fit(q.reshape(-1,1), dz)
+
+vol = dx * dy * dz
+sa = (dy*dz) + 2*dx*(dy+dz)
+
+subvol_feat = np.vstack((dy*dz, dy+dz)).T
 
 #feat_vec[:,1] = 0.5*np.sqrt(3) * feat_vec[:,1]
 # Load in perturbation reg coefs
 reg_coef = np.load('sam_reg_coef.npy').item()
 
 # adjusts the hydroxyl patterns by removing the delta f
-e_adjusted = energies - np.dot(feat_vec[:,2:], reg_coef.coef_)
+#e_adjusted = energies - np.dot(feat_vec[:,2:], reg_coef.coef_)
+e_adjusted = energies
 
 # PQ and (P+Q)
 myfeat = np.zeros((feat_vec.shape[0], 2))
@@ -47,9 +82,12 @@ myfeat = np.zeros((feat_vec.shape[0], 2))
 myfeat[:,0] = feat_vec[:,:2].prod(axis=1)
 myfeat[:,1] = feat_vec[:,:2].sum(axis=1)
 
-#myfeat = np.zeros((feat_vec.shape[0], 3))
-#myfeat[:,0] = feat_vec[:,:2].prod(axis=1)
-#myfeat[:,1:] = feat_vec[:,:2]
+myfeat[:,0] = pseudo_dy*pseudo_dz
+myfeat[:,1] = pseudo_dy+pseudo_dz
+
+myfeat = np.zeros((feat_vec.shape[0], 3))
+myfeat[:,0] = feat_vec[:,:2].prod(axis=1)
+myfeat[:,1:] = feat_vec[:,:2]
 
 # fit on just P*Q
 perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat[:,0].reshape(-1,1), e_adjusted, weights=1/errs)
