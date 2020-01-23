@@ -35,7 +35,11 @@ def extract_p_q(fname):
 
     return p,q
 
-fnames = sorted(glob.glob('P*/PvN.dat'))
+fnames = np.array(sorted(glob.glob('P*/PvN.dat')))
+
+idx_to_remove = np.where((fnames=='P6/PvN.dat') | (fnames=='P4_9/PvN.dat') | (fnames=='P4/PvN.dat'))[0]
+addl_fnames = fnames[idx_to_remove][::-1]
+fnames = np.concatenate((np.delete(fnames, idx_to_remove), addl_fnames))
 
 n_dat = len(fnames)
 
@@ -74,11 +78,17 @@ for i, fname in enumerate(fnames):
 y0 = np.mean(myfeat[:,1] - dp * p_q[:,1])
 z0 = np.mean(myfeat[:,2] - dq * p_q[:,2])
 
-
-perf_mse_subvol, err_subvol, xvals, fit, reg_subvol = fit_leave_one(myfeat[:,0].reshape(-1,1), energies)
-
-perf_mse_pq, err_pq, xvals, fit, reg_pq = fit_leave_one(p_q, energies)
-
+e_min = energies[0]
+perf_mse_subvol, err_subvol, xvals, fit, reg_subvol = fit_leave_one(myfeat[:,0].reshape(-1,1)-myfeat.min(), energies-e_min, fit_intercept=False)
+alpha1 = reg_subvol.coef_[0]
+perf_mse_pq, err_pq, xvals, fit, reg_pq = fit_leave_one(p_q, energies-e_min, fit_intercept=False)
 
 lylz = y0*z0 + dp*z0*p_q[:,1] + dq*y0*p_q[:,2] + dp*dq*p_q[:,0]
-perf, err, xvals, fit, reg = fit_leave_one(lylz.reshape(-1,1), energies)
+
+
+reg = linear_model.LinearRegression()
+reg.fit(p_q, energies)
+reg.intercept_ = e_min
+reg.coef_ = alpha1 * np.array([(dp*dq, dp*z0, dq*y0)])
+
+
