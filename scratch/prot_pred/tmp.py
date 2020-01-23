@@ -32,6 +32,6 @@ for i, fname in enumerate(fnames):
 
     n_diff = n0 - n
     mask = n_diff > 0
-    plt.plot(n_diff[mask], (beta_G_N)[mask], label=name)
+    plt.plot(n_diff[mask], (beta_G_N/n_diff)[mask], label=name)
 plt.legend()
 plt.show()

@@ -25,6 +25,15 @@ def extract_probe_vol(umbr_path):
 
     return (np.round(max_x-min_x, 4), np.round(max_y-min_y, 4), np.round(max_z-min_z, 4))
 
+def extract_p_q(fname):
+    splits = [int(s) for s in fname.split('/')[0].split('P')[1].split('_')]
+
+    try:
+        p,q = splits
+    except ValueError:
+        p = q = splits[0]
+
+    return p,q
 
 fnames = sorted(glob.glob('P*/PvN.dat'))
 
@@ -36,6 +45,11 @@ vols = np.zeros_like(energies)
 sas = np.zeros_like(energies)
 
 myfeat = np.zeros((n_dat, 3))
+
+p_q = np.zeros_like(myfeat)
+
+dq = 0.5
+dp = 0.5*np.sqrt(3)*dq
 
 for i, fname in enumerate(fnames):
     dirname = os.path.dirname(fname)
@@ -52,3 +66,19 @@ for i, fname in enumerate(fnames):
 
     myfeat[i] = dy*dz, dy, dz
 
+    p, q = extract_p_q(fname)
+
+    p_q[i] = p*q, p, q
+
+
+y0 = np.mean(myfeat[:,1] - dp * p_q[:,1])
+z0 = np.mean(myfeat[:,2] - dq * p_q[:,2])
+
+
+perf_mse_subvol, err_subvol, xvals, fit, reg_subvol = fit_leave_one(myfeat[:,0].reshape(-1,1), energies)
+
+perf_mse_pq, err_pq, xvals, fit, reg_pq = fit_leave_one(p_q, energies)
+
+
+lylz = y0*z0 + dp*z0*p_q[:,1] + dq*y0*p_q[:,2] + dp*dq*p_q[:,0]
+perf, err, xvals, fit, reg = fit_leave_one(lylz.reshape(-1,1), energies)
