@@ -28,136 +28,77 @@ mpl.rcParams.update({'legend.fontsize':30})
 
 ### PLOT Transferability of Intercepts
 #########################################
-ds = np.load('sam_pattern_pure.npz')
+ds_bulk = np.load('sam_pattern_bulk_pure.npz')
+ds_pure = np.load('sam_pattern_pure.npz')
 
 # Skip pure hydroxyl
-slc = slice(5, None, 2)
-energies = ds['energies'][slc]
-feat_vec = ds['feat_vec'][slc].astype(float)
-errs = ds['err_energies'][slc]
+slc = slice(1, None, 2)
+energies_pure = ds_pure['energies'][slc]
+emin_pure = ds_pure['base_energy']
+p_q = ds_pure['pq'][slc].astype(float)
+errs_pure = ds_pure['err_energies'][slc]
+dx = ds_pure['dx'][slc]
+dy = ds_pure['dy'][slc]
+dz = ds_pure['dz'][slc]
 
-p = feat_vec[:,0]
-q = feat_vec[:,1]
+sa = dy*dz #+ 2*dx*(dy+dz)
+feat = np.vstack((dy*dz, dy, dz)).T
 
-dx = ds['dx'][slc]
-dy = ds['dy'][slc]
-dz = ds['dz'][slc]
+energies_bulk = ds_bulk['energies']
+errs_bulk = ds_bulk['err_energies']
+emin_bulk = ds_bulk['base_energy']
 
-reg_dy = linear_model.LinearRegression()
-reg_dz = linear_model.LinearRegression()
-
-reg_dy.fit(p.reshape(-1,1), dy)
-reg_dz.fit(q.reshape(-1,1), dz)
-
-b1_y = (np.sqrt(3)/2)*0.5
-b1_z = 0.5
-
-int_y = (dy-b1_y*p).mean()
-pseudo_dy = int_y + b1_y*p
-
-int_z = (dz-b1_z*q).mean()
-pseudo_dz = int_z + b1_z*q
-#pseudo_dy = reg_dy.predict(p.reshape(-1,1))
-#pseudo_dz = reg_dz.predict(q.reshape(-1,1))
-
-reg_dy.fit(p.reshape(-1,1), dy)
-reg_dz.fit(q.reshape(-1,1), dz)
-
-vol = dx * dy * dz
-sa = (dy*dz) + 2*dx*(dy+dz)
-
-subvol_feat = np.vstack((dy*dz, dy+dz)).T
-
-#feat_vec[:,1] = 0.5*np.sqrt(3) * feat_vec[:,1]
-# Load in perturbation reg coefs
-reg_coef = np.load('sam_reg_coef.npy').item()
-
-# adjusts the hydroxyl patterns by removing the delta f
-#e_adjusted = energies - np.dot(feat_vec[:,2:], reg_coef.coef_)
-e_adjusted = energies
-
-# PQ and (P+Q)
-myfeat = np.zeros((feat_vec.shape[0], 2))
-
-myfeat[:,0] = feat_vec[:,:2].prod(axis=1)
-myfeat[:,1] = feat_vec[:,:2].sum(axis=1)
-
-myfeat[:,0] = pseudo_dy*pseudo_dz
-myfeat[:,1] = pseudo_dy+pseudo_dz
-
-myfeat = np.zeros((feat_vec.shape[0], 3))
-myfeat[:,0] = feat_vec[:,:2].prod(axis=1)
-myfeat[:,1:] = feat_vec[:,:2]
-
-# fit on just P*Q
-perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat[:,0].reshape(-1,1), e_adjusted, weights=1/errs)
-
-perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, e_adjusted, weights=1/errs)
-boot_intercept, boot_coef = fit_bootstrap(myfeat, e_adjusted, weights=1/errs)
-
-#fig = plt.figure()
-#ax = fig.gca(projection='3d')
-
-pq_vals = np.arange(myfeat[:,0].min(), myfeat[:,0].max()+10, 10)
-p_vals = np.arange(myfeat[:,1].min(), myfeat[:,1].max()+10, 10)
-
-xx, yy = np.meshgrid(pq_vals, p_vals)
-fn = lambda x, y: reg.intercept_ + reg.coef_[0]*x + reg.coef_[1]*y
-vals = fn(xx, yy)
-
-ax = plt.gca(projection='3d')
-ax.plot_surface(xx, yy, vals, alpha=0.5)
-ax.scatter(myfeat[:,0], myfeat[:,1], e_adjusted)
-plt.close('all')
+assert np.array_equal(p_q, ds_bulk['pq'])
+assert np.array_equal(dx, ds_bulk['dx'])
+assert np.array_equal(dy, ds_bulk['dy'])
+assert np.array_equal(dz, ds_bulk['dz'])
 
 
-lim = np.abs(err).max() + 1
+#diffs = energies_pure - energies_bulk
+#plt.errorbar(sa, energies_bulk, yerr=errs_bulk, fmt='o')
+#plt.show()
 
-### Plot errs versus PQ ###
-
-fig = plt.figure(figsize=(7,6))
-ax = fig.gca()
-ax.scatter(myfeat[:,0], err)
-ax.set_ylim(-lim, lim)
-plt.savefig('{}/Desktop/err1.png'.format(homedir), transparent=True)
-
-## Plot errs versus (P+Q)
-plt.close('all')
-fig = plt.figure(figsize=(7,6))
-ax = fig.gca()
-ax.scatter(myfeat[:,1], err)
-ax.set_ylim(-lim, lim)
-plt.savefig('{}/Desktop/err2.png'.format(homedir), transparent=True)
-
-## Plot errs versus just P
-plt.close('all')
-fig = plt.figure(figsize=(7,6))
-ax = fig.gca()
-ax.scatter(feat_vec[:,0], err)
-ax.set_ylim(-lim, lim)
-plt.savefig('{}/Desktop/err_p.png'.format(homedir), transparent=True)
-
-## Plot errs versus just Q
-plt.close('all')
-fig = plt.figure(figsize=(7,6))
-ax = fig.gca()
-ax.scatter(feat_vec[:,0], err)
-ax.set_ylim(-lim, lim)
-plt.savefig('{}/Desktop/err_q.png'.format(homedir), transparent=True)
+perf_mse_bulk, err_bulk, xvals, fit, reg_bulk = fit_leave_one(feat, energies_bulk, fit_intercept=False)
+alpha1, alpha2, alpha3 = reg_bulk.coef_ 
+plt.plot(xvals, fit)
+plt.errorbar(sa, energies_bulk, yerr=errs_bulk, fmt='o')
+plt.show()
 
 
+## Relate P,Q to dy, dz
+dq = 0.5
+dp = 0.5*np.sqrt(3)*dq
 
-pred = reg.predict(myfeat)
-plt.close('all')
-fig = plt.figure(figsize=(7,6))
-ax = fig.gca()
-ax.plot(np.array([0,320]), np.array([0,320]), 'k-', linewidth=4)
-ax.scatter(pred, e_adjusted, color='orange', zorder=3)
-ax.set_xticks([0, 100, 200, 300])
-ax.set_yticks([0, 100, 200, 300])
-plt.savefig('{}/Desktop/parity.png'.format(homedir), transparent=True)
+y0 = np.mean(dy - dp*p_q[:,0])
+z0 = np.mean(dz - dq*p_q[:,1])
 
-np.save('sam_reg_inter', reg)
+reg_y = linear_model.LinearRegression()
+reg_y.fit(p_q[:,0].reshape(-1,1), dy)
+
+reg_z = linear_model.LinearRegression()
+reg_z.fit(p_q[:,1].reshape(-1,1), dz)
+
+y0 = reg_y.intercept_
+z0 = reg_z.intercept_
+dp = reg_y.coef_[0]
+dq = reg_z.coef_[0]
+
+ly = y0 + dp*p_q[:,0]
+lz = z0 + dq*p_q[:,1]
+lylz = y0*z0 + dp*dq*np.prod(p_q, axis=1) + z0*dp*p_q[:,0] + y0*dq*p_q[:,1]
+assert np.allclose(ly*lz, lylz)
+
+## Construct model with just P, Q
+feat_pq = np.zeros_like(feat)
+feat_pq[:,0] = np.prod(p_q, axis=1)
+feat_pq[:,1:] = p_q
+reg_pq = linear_model.LinearRegression()
+reg_pq.fit(feat, energies_bulk)
+
+reg_pq.intercept_ = alpha1*y0*z0 + alpha2*y0 + alpha3*z0
+reg_pq.coef_[0] = alpha1*dp*dq
+reg_pq.coef_[1] = dp*(alpha1*z0 + alpha2)
+reg_pq.coef_[2] = dq*(alpha1*y0 + alpha3)
 
 
 

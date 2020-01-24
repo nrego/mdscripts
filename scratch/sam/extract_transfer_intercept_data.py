@@ -170,7 +170,9 @@ dx = np.array(dx)
 dy = np.array(dy)
 dz = np.array(dz)
 
-np.savez_compressed('sam_pattern_pure', energies=energies, feat_vec=feat_vec, err_energies=errs, 
-                    dx=dx, dy=dy, dz=dz, header='featvec:  P  Q  k_o  n_oo  n_oe')
+base_dat = np.loadtxt('base_P0/PvN.dat')
+
+np.savez_compressed('sam_pattern_pure', energies=energies, pq=feat_vec[:,:2], err_energies=errs, 
+                    dx=dx, dy=dy, dz=dz, base_energy=base_dat[0,1], base_err=base_dat[0,2])
 
 

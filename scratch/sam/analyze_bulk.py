@@ -91,4 +91,8 @@ reg.fit(p_q, energies)
 reg.intercept_ = e_min
 reg.coef_ = alpha1 * np.array([(dp*dq, dp*z0, dq*y0)])
 
+base_dat = np.loadtxt("base_P0/PvN.dat")
+np.savez_compressed('sam_pattern_bulk_pure', energies=energies, err_energies=errs, base_energy=base_dat[0,1], base_err=base_dat[0,2],
+                    dx=np.ones(n_dat)*0.3, dy=myfeat[:,1], dz=myfeat[:,2], pq=p_q[:,1:])
+
 

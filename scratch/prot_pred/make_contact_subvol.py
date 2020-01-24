@@ -4,7 +4,7 @@ import numpy as np
 dat = np.loadtxt("actual_contact_mask.dat", dtype=bool)
 
 univ = MDAnalysis.Universe("../equil/equil.tpr", "../equil/cent.gro")
-prot = univ.select_atoms("(segid seg_0_Protein_chain_A or segid seg_1_Protein_chain_B)and not name H*")
+prot = univ.select_atoms("(segid seg_0_Protein_targ) and not name H*")
 
 assert dat.size == prot.n_atoms
 contact_atoms = prot[dat]
