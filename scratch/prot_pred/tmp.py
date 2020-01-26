@@ -49,12 +49,9 @@ for i, fname in enumerate(fnames):
     delta_n_q = n0_q - n_q
     mask = delta_n_q > 0
 
-    #plt.plot(n_q[mask]/n0_q, (f_q/delta_n_q)[mask], label=name)
-    #plt.plot(n_q[mask]/n0_noq, (f_noq/delta_n_q)[mask], label=name)
-    #plt.plot(n_q/n0_q, f_q - f_noq, label=name)
     plt.plot(n_q/n0_q, (f_q-f_noq)/n0_q, label=name)
 
-#plt.ylim(-0.1, 6)
+
 plt.legend()
 plt.show()
 

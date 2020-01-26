@@ -120,7 +120,9 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
 
     # For plotting fit...
     sort_idx = np.argsort(X[:,sort_axis])
-    xvals = X[sort_idx, :]
+    xvals = X[sort_idx, sort_axis]
+    if xvals.min() > 0:
+        xvals = np.append(0, xvals)
 
     reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
 
@@ -147,7 +149,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
         perf_mse[k] = mse
 
     reg.fit(X, y, sample_weight=weights)
-    fit = reg.predict(xvals)
+    fit = reg.predict(xvals.reshape(-1,1))
 
     pred = reg.predict(X)
     err = y - pred

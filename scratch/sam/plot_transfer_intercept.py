@@ -25,6 +25,7 @@ mpl.rcParams.update({'ytick.labelsize': 35})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':30})
 
+plt.close('all')
 
 ### PLOT Transferability of Intercepts
 #########################################
@@ -59,8 +60,8 @@ diffs = energies_pure - energies_bulk
 errs_diffs = np.sqrt(errs_bulk**2 + errs_pure**2)
 
 ## Fit regressions of dy, dz on P and Q
-reg_p = linear_model.LinearRegression().fit(p_q[:,0].reshape(-1,1), dy)
-reg_q = linear_model.LinearRegression().fit(p_q[:,1].reshape(-1,1), dz)
+perf_p, err_p, xvals_p, fit_p, reg_p = fit_leave_one(p_q[:,0].reshape(-1,1), dy)
+perf_q, err_q, xvals_q, fit_q, reg_q = fit_leave_one(p_q[:,1].reshape(-1,1), dz)
 y0 = reg_p.intercept_
 z0 = reg_q.intercept_
 
@@ -69,6 +70,16 @@ lz = reg_q.predict(p_q[:,1].reshape(-1,1))
 
 dp = reg_p.coef_[0]
 dq = reg_q.coef_[0]
+
+
+fig = plt.figure(figsize=(7,6))
+ax = fig.gca()
+ax.plot(xvals_p, fit_p)
+ax.scatter(p_q[:,0], dy)
+ax.plot(xvals_q, fit_q)
+ax.scatter(p_q[:,1], dz)
+fig.tight_layout()
+plt.show()
 
 # PQ, P, Q
 feat_pq = np.zeros_like(feat_subvol)
