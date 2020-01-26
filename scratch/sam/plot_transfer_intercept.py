@@ -56,6 +56,7 @@ assert np.array_equal(dz, ds_bulk['dz'])
 
 
 diffs = energies_pure - energies_bulk
+errs_diffs = np.sqrt(errs_bulk**2 + errs_pure**2)
 
 ## Fit regressions of dy, dz on P and Q
 reg_p = linear_model.LinearRegression().fit(p_q[:,0].reshape(-1,1), dy)
@@ -69,10 +70,15 @@ lz = reg_q.predict(p_q[:,1].reshape(-1,1))
 dp = reg_p.coef_[0]
 dq = reg_q.coef_[0]
 
+# PQ, P, Q
 feat_pq = np.zeros_like(feat_subvol)
 feat_pq[:,0] = p_q.prod(axis=1)
 feat_pq[:,1:] = p_q
 
+perf_mse, err_reg, xvals, fit, reg = fit_leave_one(feat_pq, diffs)
+
+
+'''
 perf_mse_subvol, err_subvol, xvals, fit, reg_subvol = fit_leave_one(feat_subvol, energies_pure, fit_intercept=False)
 a1, a2, a3 = reg_subvol.coef_
 perf_mse_pq, err_pq, xvals, fit, reg_pq = fit_leave_one(feat_pq, energies_pure-emin_pure, fit_intercept=False)
@@ -86,3 +92,4 @@ reg_temp.coef_[2] = (a1*y0 + a3)*dq
 pred = reg_temp.predict(feat_pq)
 err = energies_pure - pred
 perf_mse = err**2
+'''
