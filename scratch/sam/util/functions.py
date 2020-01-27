@@ -28,82 +28,6 @@ mpl.rcParams.update({'xtick.labelsize': 20})
 mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize': 30})
 
-# regress y on set of n_dim features, X.
-#   Note this can do a polynomial regression on a single feature -
-#   just make each nth degree a power of that feature
-def fit_general_linear_model(X, y, sort_axis=0, do_ridge=False, alpha=1, sample_weight=None, fit_intercept=True):
-    np.random.seed()
-    if sample_weight is None:
-        sample_weight = np.ones_like(y)
-    assert y.ndim == 1
-    n_dat = y.size
-    # Single feature (1d linear regression)
-    if X.ndim == 1:
-        X = X[:,None]
-    
-    # For plotting fit...
-    sort_idx = np.argsort(X[:,sort_axis])
-    xvals = X[sort_idx, :]
-
-    if do_ridge:
-        reg = linear_model.Ridge(alpha=alpha, fit_intercept=fit_intercept)
-    else:
-        reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
-    
-    # Randomly split data into fifths
-    n_cohort = n_dat // 5
-    rand_idx = np.random.permutation(n_dat)
-    # y_rand, X_rand are just the shuffled energies and predictors
-    y_rand = y[rand_idx]
-    X_rand = X[rand_idx]
-
-    # R^2 and MSE for each train/validation round
-    perf_r2 = np.zeros(5)
-    perf_mse = np.zeros(5)
-
-
-    # Choose one of the cohorts as validation set, train on remainder.
-    #   repeat for each cohort
-    for k in range(5):
-        
-        # slc is indices of validation (excluded from training) data set
-        slc = slice(k*n_cohort, (k+1)*n_cohort)
-        y_validate = y_rand[slc]
-        X_validate = X_rand[slc]
-
-        # Get training samples. np.delete makes a copy and **does not** act on array in-place
-        y_train = np.delete(y_rand, slc)
-        X_train = np.delete(X_rand, slc, axis=0)
-
-        if sample_weight is None:
-            reg.fit(X_train, y_train)
-        else:
-            train_weight = np.delete(sample_weight, slc)
-            train_weight /= train_weight.sum()
-            try:
-                reg.fit(X_train, y_train, sample_weight=train_weight.copy())
-            except:
-                embed()
-
-        pred = reg.predict(X_validate)
-        if sample_weight is None:
-            mse = np.mean((pred - y_validate)**2)
-            perf_r2[k] = reg.score(X_validate, y_validate)
-        else:
-            valid_weight = sample_weight[slc].copy()
-            valid_weight /= valid_weight.sum()
-            mse = np.dot(valid_weight, (pred - y_validate)**2)
-            perf_r2[k] = reg.score(X_validate, y_validate, sample_weight=valid_weight.copy())
-        perf_mse[k] = mse
-
-    reg.fit(X, y, sample_weight=sample_weight.copy())
-    fit = reg.predict(xvals)
-
-    pred = reg.predict(X)
-    err = y - pred
-
-    return (perf_r2, perf_mse, err, xvals, fit, reg)
-
 
 # regress y on set of n_dim features, X.
 #   Do leave-one-out CV
@@ -120,9 +44,9 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
 
     # For plotting fit...
     sort_idx = np.argsort(X[:,sort_axis])
-    xvals = X[sort_idx, sort_axis]
-    if xvals.min() > 0:
-        xvals = np.append(0, xvals)
+    xvals = X[sort_idx, ...]
+    if xvals[:,sort_axis].min() > 0:
+        xvals = np.vstack((np.zeros(xvals.shape[1]).reshape(1,-1), xvals))
 
     reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
 
@@ -149,12 +73,12 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
         perf_mse[k] = mse
 
     reg.fit(X, y, sample_weight=weights)
-    fit = reg.predict(xvals.reshape(-1,1))
+    fit = reg.predict(xvals)
 
     pred = reg.predict(X)
     err = y - pred
 
-    return (perf_mse, err, xvals, fit, reg)
+    return (perf_mse, err, xvals[:,sort_axis], fit, reg)
 
 # Perform bootstrapping on data to estimate errors in linear regression coefficients
 def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000, weights=None):

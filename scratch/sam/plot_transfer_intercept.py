@@ -16,6 +16,8 @@ import numpy as np
 
 from scratch.sam.util import *
 
+### PLOTTING SETUP ###
+######################
 plt.close('all')
 homedir = os.environ['HOME']
 from IPython import embed
@@ -25,9 +27,8 @@ mpl.rcParams.update({'ytick.labelsize': 35})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':30})
 
-plt.close('all')
 
-### PLOT Transferability of Intercepts
+### Extract cavity creation FE's for bulk and near pure surfaces
 #########################################
 ds_bulk = np.load('sam_pattern_bulk_pure.npz')
 ds_pure = np.load('sam_pattern_pure.npz')
@@ -55,11 +56,12 @@ assert np.array_equal(dx, ds_bulk['dx'])
 assert np.array_equal(dy, ds_bulk['dy'])
 assert np.array_equal(dz, ds_bulk['dz'])
 
-
+## Binding free energy to pure surface
 diffs = energies_pure - energies_bulk
 errs_diffs = np.sqrt(errs_bulk**2 + errs_pure**2)
 
-## Fit regressions of dy, dz on P and Q
+## Regress Ly, Lz on P, Q ##
+############################
 perf_p, err_p, xvals_p, fit_p, reg_p = fit_leave_one(p_q[:,0].reshape(-1,1), dy)
 perf_q, err_q, xvals_q, fit_q, reg_q = fit_leave_one(p_q[:,1].reshape(-1,1), dz)
 y0 = reg_p.intercept_
@@ -79,28 +81,34 @@ ax.scatter(p_q[:,0], dy)
 ax.plot(xvals_q, fit_q)
 ax.scatter(p_q[:,1], dz)
 fig.tight_layout()
-plt.show()
+#plt.show()
+
+plt.close('all')
 
 # PQ, P, Q
 feat_pq = np.zeros_like(feat_subvol)
 feat_pq[:,0] = p_q.prod(axis=1)
 feat_pq[:,1:] = p_q
 
-perf_mse, err_reg, xvals, fit, reg = fit_leave_one(feat_pq, diffs)
+perf_mse, err_reg, xvals, fit, reg = fit_leave_one(feat_pq, diffs, fit_intercept=False)
+boot_int, boot_coef = fit_bootstrap(feat_pq, diffs, fit_intercept=False)
+lim_min = np.floor(diffs.min())
+lim_max = np.ceil(diffs.max()) 
+
+pred = reg.predict(feat_pq)
+
+fig = plt.figure(figsize=(7,6))
+ax = plt.gca()
+ax.plot([lim_min, lim_max], [lim_min, lim_max], 'k-', linewidth=4)
+ax.plot(pred, diffs, 'o', zorder=3, markersize=12, color='orange')
+ax.set_xlim(lim_min, lim_max)
+ax.set_ylim(lim_min, lim_max)
+
+fig.tight_layout()
+
+ax.set_xticks([-300, -200, -100, 0])
+plt.savefig('{}/Desktop/fig_inter_fit.png'.format(homedir), transparent=True)
+plt.close('all')
 
 
-'''
-perf_mse_subvol, err_subvol, xvals, fit, reg_subvol = fit_leave_one(feat_subvol, energies_pure, fit_intercept=False)
-a1, a2, a3 = reg_subvol.coef_
-perf_mse_pq, err_pq, xvals, fit, reg_pq = fit_leave_one(feat_pq, energies_pure-emin_pure, fit_intercept=False)
 
-reg_temp = linear_model.LinearRegression().fit(feat_pq, energies_pure)
-reg_temp.intercept_ = a1*y0*z0 + a2*y0 + a3*z0
-reg_temp.coef_[0] = a1*dp*dq
-reg_temp.coef_[1] = (a1*z0 + a2)*dp
-reg_temp.coef_[2] = (a1*y0 + a3)*dq
-
-pred = reg_temp.predict(feat_pq)
-err = energies_pure - pred
-perf_mse = err**2
-'''
