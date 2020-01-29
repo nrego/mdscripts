@@ -110,5 +110,5 @@ ax.set_xticks([-300, -200, -100, 0])
 plt.savefig('{}/Desktop/fig_inter_fit.png'.format(homedir), transparent=True)
 plt.close('all')
 
-
+np.save('sam_reg_inter', reg)
 
