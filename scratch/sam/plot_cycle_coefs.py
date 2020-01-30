@@ -137,6 +137,7 @@ assert max_rank == 3
 alpha = np.zeros(feat_red.shape[1])
 alpha[:3] = reg_coef.coef_
 
+
 groups = []
 
 for idx in itertools.combinations(indices_to_choose, max_rank):
@@ -148,11 +149,22 @@ for idx in itertools.combinations(indices_to_choose, max_rank):
     if this_rank < max_rank:
         continue
 
-    print(x[idx])
+    #print(x[idx])
     groups.append(x[idx])
 
-    indices_to_remove = np.setdiff1d(indices_to_choose, np.unique(np.append(np.array([0,1,2]), idx)))
 
-b_mat = np.array(([np.eye(6) for i in range(len(groups))]))
+b_mat = np.zeros((len(groups), 3, 3))
+v = np.zeros((len(groups), 3), dtype=object)
+ne = 4*(p+q) - 2
+n = pq
 
+for i in range(10,len(groups)):
+    grp = groups[i]
+    print('\n({}), {}'.format(i+1, grp))
+    print('####################\n')
 
+    this_b_mat =  np.array(eval(input("  Input matrix:\n")))
+    this_v = np.array(eval(input("  Input v vals:\n")))
+
+    b_mat[i,...] = this_b_mat
+    v[i] = this_v

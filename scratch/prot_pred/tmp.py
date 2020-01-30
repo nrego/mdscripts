@@ -5,7 +5,7 @@ import glob, os, pathlib
 from scipy.integrate import cumtrapz
 
 fnames = sorted(glob.glob('*/prot_contact/noq_phi_sims/PvN.dat'))
-
+homedir = os.environ['HOME']
 
 name_lut = {
     '1bmd': 'MDH',
@@ -35,6 +35,36 @@ for i, fname in enumerate(fnames):
     dat_noq = np.loadtxt(fname)
     dat_q = np.loadtxt('{}/phi_sims/PvN.dat'.format(topdir))
 
+    rho_noq = np.load('{}/noq_phi_sims/equil/rho_data_dump_rad_6.0.dat.npz'.format(topdir))['rho_water'].mean(axis=0)
+    rho_q = np.load('{}/phi_sims/equil/rho_data_dump_rad_6.0.dat.npz'.format(topdir))['rho_water'].mean(axis=0)
+
+    univ = MDAnalysis.Universe('{}/phi_sims/cent.gro'.format(topdir))
+    prot = univ.select_atoms('protein and not name H*')
+    prot = univ.select_atoms("not resname SOL and not name H* and not name CL and not name NA")
+    assert prot.n_atoms == rho_noq.size == rho_q.size
+    
+    univ.add_TopologyAttr('tempfactors')
+    contact_mask = np.loadtxt('{}/old_prot_all/bound/actual_contact_mask.dat'.format(path.parts[0]), dtype=bool)
+    buried_mask = np.loadtxt('{}/old_prot_all/bound/buried_mask.dat'.format(path.parts[0]), dtype=bool)
+    #prot.tempfactors = -2
+    #prot[contact_mask].tempfactors = (rho_noq/rho_q)[contact_mask]
+    prot.tempfactors = (rho_noq/rho_q)
+    prot[buried_mask].tempfactors = -2
+    prot.write('{}/Desktop/prot_{}.pdb'.format(homedir,name), bonds=None)
+
+
+    plt.close('all')
+    fig = plt.figure(figsize=(7,6))
+    ax = fig.gca()
+    ax.plot(dat_q[:,0], dat_q[:,1], label='{}, reg'.format(name))
+    ax.plot(dat_noq[:,0], dat_noq[:,1], label='{}, q=0'.format(name))
+    ax.set_xlabel(r'$N$')
+    ax.set_ylabel(r'$\beta F_v(N)$')
+    fig.legend()
+    fig.tight_layout()
+    fig.savefig('{}/Desktop/fig_fvn_{}'.format(homedir, name), transparent=True)
+
+
     tmp_pvn_q_all.append(dat_q[:,1])
     tmp_pvn_noq_all.append(dat_noq[:,1])
 
@@ -48,6 +78,26 @@ for i, fname in enumerate(fnames):
         n_vals = dat_q[:,0]
     elif n_vals.size < dat_q[:,0].size:
         n_vals = dat_q[:,0]
+
+    n0_noq = n_noq[0,1]
+    n0_q = n_q[0,1]
+
+    print('Name: {}  <Nv>0_reg: {:1.2f}   <Nv>0_noq: {:1.2f}  Delta <Nv>0: {:1.2f}  ({:0.2f})'.format(name, n0_q, n0_noq, n0_q-n0_noq, (n0_q-n0_noq)/n0_q))
+
+
+    plt.close('all')
+    fig = plt.figure(figsize=(7,6))
+    ax = fig.gca()
+    ax.plot(n_q[:,0], n_q[:,1], label='{}, reg'.format(name))
+    ax.plot(n_noq[:,0], n_noq[:,1], label='{}, q=0'.format(name))
+    ax.set_xlabel(r'$\beta \phi$')
+    ax.set_ylabel(r'$\langle N_v \rangle_\phi$')
+    fig.legend()
+    fig.tight_layout()
+    fig.savefig('{}/Desktop/fig_nvphi_{}'.format(homedir, name), transparent=True)
+
+
+
 
 names = np.array(names)
 
