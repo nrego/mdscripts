@@ -26,16 +26,35 @@ def get_rank(feat):
 
     return np.linalg.matrix_rank(cov)
 
-def fill_A(idx, reg_coef):
+def gaus_elim(mat, indices_to_keep, indices_to_remove):
+    root_indices = np.array([0,1,2])
 
-    a1, a2, a3, a4, a5, a6, a7, a8, a9 = sympy.symbols('a1 a2 a3 a4 a5 a6 a7 a8 a9')
-    A = np.zeros((7,7), dtype=object)
+    tmp_mat = mat.copy()
 
-    A[idx[0], :3] = a1, a2, a3
-    A[idx[1], :3] = a4, a5, a6
-    A[idx[2], :3] = a7, a8, a9
+    B = np.zeros((3,3))
 
-    return A
+    for idx in indices_to_remove[:3]:
+        this_col = tmp_mat[:,idx]
+
+        # Now go row by row, starting from top and adding rows below as necessary
+        for i_row in range(3):
+
+            if i_row in indices_to_keep:
+                continue
+
+            if this_col[i_row] == 0:
+                continue
+
+            # One of original coeficients - don't remove
+            if idx in root_indices and i_row == idx:
+                continue
+
+            else:
+                print("doing")
+
+            this_row = tmp_mat[i_row]
+
+            
 
 ## Cycle through sets of linearly independent coefficients and recast the model ####
 ####################################################################################
@@ -51,14 +70,16 @@ base_indices = np.array([0,1,2,3,4,5])
 #x = np.array([pq, p, q, k_o, n_oo, n_oe, k_c, n_cc, n_ce, n_oc])
 x = np.array([k_o, n_oo, n_oe, k_c, n_cc, n_ce, n_oc])
 
-C = np.array([[1, 0, 0, 1, 0, 0, 0],
-              [6,-2,-1, 0, 0, 0,-1],
+C = np.array([[6,-2,-1, 0, 0, 0,-1],
+              [1, 0, 0, 1, 0, 0, 0],
               [0, 0, 1, 0, 0, 1, 0],
               [0, 0, 0, 6,-2,-1,-1]], dtype=float)
 
 ## Get it in reduced row-echelon form
-C[1] = C[1] - 6*C[0]
-C[1] = C[1] / -2
+C[1] = 6*C[1] - C[0] + 2*C[3]
+C[2] = C[2] + 2*C[3]
+C[0] = C[0] + C[3]
+
 #A = np.hstack((np.zeros((4,3)), A))
 #b = np.array([pq, 0, 4*(p+q)-2, 0])
 b = np.array([0,0,0,0])
@@ -116,15 +137,8 @@ assert max_rank == 3
 alpha = np.zeros(feat_red.shape[1])
 alpha[:3] = reg_coef.coef_
 
-idx = np.array([0,1,6])
-B = np.zeros(((7,7)))
+groups = []
 
-alpha_prime = np.zeros(alpha.size, dtype=object)
-alpha1, alpha2, alpha3 = sympy.symbols('alpha1 alpha2 alpha3')
-alpha_prime[idx] = alpha1, alpha2, alpha3
-
-indices_to_remove = np.setdiff1d(indices_to_choose, idx)
-'''
 for idx in itertools.combinations(indices_to_choose, max_rank):
     idx = np.array(idx)
 
@@ -135,8 +149,10 @@ for idx in itertools.combinations(indices_to_choose, max_rank):
         continue
 
     print(x[idx])
+    groups.append(x[idx])
 
     indices_to_remove = np.setdiff1d(indices_to_choose, np.unique(np.append(np.array([0,1,2]), idx)))
-'''
+
+b_mat = np.array(([np.eye(6) for i in range(len(groups))]))
 
 
