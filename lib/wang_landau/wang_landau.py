@@ -128,7 +128,7 @@ class WangLandau:
 
         occ = self.density > 0
         print("{} of {} bins occupied for k={}".format(occ.sum(), self.n_bins, k))
-        print("time: {:1.2f}".format(end_time-start_time))
+        print("time: {:1.1f} s".format(end_time-start_time))
 
     ## Private methods ##
     def _gen_states_brute(self, k):
