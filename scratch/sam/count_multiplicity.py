@@ -26,7 +26,7 @@ from functools import reduce
 
 # Force WL if number of configs for this P,Q,k_o is greater than this number
 MAX_MULT = 300000
-
+MAX_N = 81
 
 def get_order(pt_idx, m_mask, p, q):
     state = State(pt_idx.astype(int), ny=p, nz=q)
@@ -52,6 +52,9 @@ k_o = args.k_o
 N = p*q
 if N < 0:
     raise ValueError('P*Q cannot be negative!')
+if N > MAX_N:
+    print('N ({}) > MAX_N (MAX_N), exiting.'.format(N, MAX_N))
+    exit()
 
 if k_o < 0 or k_o > N:
     raise ValueError('Invalid k_o ({})'.format(k_o))
