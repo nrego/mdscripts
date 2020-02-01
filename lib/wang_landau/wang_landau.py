@@ -34,8 +34,15 @@ class WangLandau:
         self.fn_kwargs = fn_kwargs if fn_kwargs is not None else {}
 
         self.positions = positions
-        self.bins = bins
 
+        # List of the bin boundaries for each dimension of the progress coord
+        self.bins = list(bins)
+
+        for i, this_bin in enumerate(self.bins):
+            this_bin = np.array(this_bin)
+            assert this_bin.ndim == 1
+            self.bins[i] = this_bin
+        
         self._init_state()
 
         ## WL paramters ##
@@ -49,11 +56,28 @@ class WangLandau:
 
     def _init_state(self):
         # density of states histogram
-        self.density = np.zeros(self.bins.size-1)
-        self.entropies = np.zeros(self.bins.size-1)
+        self.density = np.zeros(self.shape)
+        self.entropies = np.zeros(self.shape)
         # indices of the sampled points - a record of patterns in each bin
-        self.sampled_pt_idx = np.empty(self.bins.size-1, dtype=object)
+        self.sampled_pt_idx = np.empty(self.shape, dtype=object)
         self._k_current = None
+
+    # This is different than the dimensionality of self.bins, which is a
+    #    1d array of (possibly multiple) bin boundaries.
+    #    The number of bin boundaries is what we're calling ndim here -
+    #    i.e., the dimensionality of whatever order parameter we're trying
+    #    to determine the multiplicity
+    @property
+    def n_dim(self):
+        return len(self.bins)
+
+    @property
+    def shape(self):
+        return tuple(b.size for b in self.bins)
+
+    @property
+    def n_bins(self):
+        return np.sum([b.size for b in self.bins])
 
     @property
     def N(self):
@@ -100,7 +124,7 @@ class WangLandau:
             self._gen_states_wl(k, hist_flat_tol)
 
         occ = self.density > 0
-        print("{} of {} bins occupied for k={}".format(occ.sum(), self.bins.size-1, k))
+        print("{} of {} bins occupied for k={}".format(occ.sum(), self.n_bins, k))
 
     ## Private methods ##
     def _gen_states_brute(self, k):
@@ -121,8 +145,11 @@ class WangLandau:
                 pass
 
             order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
-            bin_assign = np.digitize(order_param, self.bins) - 1
-
+            try:
+                bin_assign = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param, self.bins))
+            except TypeError:
+                print("ERROR: Order param not iterable (is your function returning an ndim length iterable?)")
+            
             try:
                 self.density[bin_assign] += 1
             except IndexError:
@@ -133,19 +160,14 @@ class WangLandau:
             this_arr = self.sampled_pt_idx[bin_assign]
             if this_arr is None:
                 self.sampled_pt_idx[bin_assign] = np.array([pt_idx])
-            else:
+            elif this_arr.shape[0] < 10:
                 this_arr = np.vstack((this_arr, pt_idx))
                 self.sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
 
-            #elif this_arr.shape[0] < 10:
-            #    this_arr = np.vstack((this_arr, pt_idx))
-
-            #    self.sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
-
         ## Normalize density of states histogram ##
+        np.seterr(divide='ignore')
         self.entropies = np.log(self.density)
-        self.entropies -= np.nanmax(self.entropies)
-        #self.density /= np.trapz(self.density, self.bins[:-1])
+        self.entropies -= np.ma.masked_invalid(self.entropies).max()
 
     ## Wang-Landau ##
     def _gen_states_wl(self, k, hist_flat_tol):
@@ -165,8 +187,12 @@ class WangLandau:
         pt_idx = np.sort( np.random.choice(self.pos_idx, size=k, replace=False) )
         m_mask = np.zeros(self.N, dtype=bool)
         m_mask[pt_idx] = True
+
         order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
-        bin_assign = np.digitize(order_param, self.bins) - 1
+        try:
+            bin_assign = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param, self.bins))
+        except TypeError:
+            print("ERROR: Order param not iterable (is your function returning an ndim length iterable?)")
 
         f = self.f_init
 
@@ -185,10 +211,13 @@ class WangLandau:
             m_mask = np.zeros(self.N, dtype=bool)
             m_mask[pt_idx_new] = True
             assert np.unique(pt_idx_new).size == k
+            
             # Outside call is slow!
             order_param_new = self.fn(pt_idx_new, m_mask, **self.fn_kwargs)
-            
-            bin_assign_new = np.digitize(order_param_new, self.bins) - 1
+            try:
+                bin_assign_new = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param_new, self.bins))
+            except TypeError:
+                print("ERROR: Order param not iterable (is your function returning an ndim length iterable?)")
 
             # Accept trial move
             if np.log(np.random.random()) < (wl_entropies[bin_assign] - wl_entropies[bin_assign_new]):
@@ -236,9 +265,9 @@ class WangLandau:
         occ = wl_entropies > 0
         wl_entropies -= wl_entropies.max()
         self.entropies = wl_entropies.copy()
+        self.entropies -= np.ma.masked_invalid(self.entropies).max()
         self.density = np.exp(wl_entropies)
         self.density[~occ] = 0.0
-        self.density /= np.trapz(self.density, self.bins[:-1])
 
     # Generate a new random point R_j, given existing point R_i
 
