@@ -25,7 +25,7 @@ from scratch.sam.util import *
 from functools import reduce
 
 # Force WL if number of configs for this P,Q,k_o is greater than this number
-MAX_MULT = 300000
+MAX_MULT = 1e6
 MAX_N = 81
 
 def get_order(pt_idx, m_mask, p, q):
