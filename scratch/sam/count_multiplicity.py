@@ -76,4 +76,4 @@ print('  ({} total states); do_wl: {}\n\n'.format(mult_total, do_wl))
 wl = WangLandau(state.positions, bins, fn=get_order, fn_kwargs={'p':p, 'q':q})
 wl.gen_states(k=k_o, do_brute=(not do_wl))
 
-np.savez_compressed('dos_p_{:02d}_q_{:02d}_ko_{:02d}'.format(p,q,k_o), entropies=wl.entropies, density=wl.density, omega_k=wl.omega_k)
+np.savez_compressed('dos_p_{:02d}_q_{:02d}_ko_{:02d}'.format(p,q,k_o), entropies=wl.entropies, density=wl.density, omega_k=wl.omega_k, p=p, q=q, ko=k_o)
