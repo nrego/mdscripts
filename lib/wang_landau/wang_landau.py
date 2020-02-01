@@ -77,7 +77,7 @@ class WangLandau:
 
     @property
     def n_bins(self):
-        return np.sum([b.size for b in self.bins])
+        return np.prod([b.size for b in self.bins])
 
     @property
     def N(self):
@@ -184,6 +184,7 @@ class WangLandau:
         iter_update_bin_mask = self.max_iter // 10
         initial_iter_update = self.max_iter // 100
 
+        ## Choose random initial configuration
         pt_idx = np.sort( np.random.choice(self.pos_idx, size=k, replace=False) )
         m_mask = np.zeros(self.N, dtype=bool)
         m_mask[pt_idx] = True
@@ -246,11 +247,15 @@ class WangLandau:
             if ((n_iter + 1) % iter_update_bin_mask == 0): #or (M_iter == 0 and n_iter > initial_iter_update):
                 print("    iter: {} updating bin mask".format(n_iter+1))
                 old_center_bin_mask = center_bin_mask.copy()
-                center_bin_mask = (wl_hist > 0) | old_center_bin_mask
+                if M_iter > 0:
+                    center_bin_mask = (wl_hist > 0) | old_center_bin_mask
+                else:
+                    center_bin_mask = (wl_hist > 0)
                 print("      (from {} bins to {} bins)".format(old_center_bin_mask.sum(), center_bin_mask.sum()))
 
             is_flat = self.is_flat(wl_hist[center_bin_mask], hist_flat_tol)
 
+            # Bin's flat - move onto next WL iter (i.e. M_iter += 1)
             if  is_flat or n_iter > self.max_iter:
                 
                 print(" n_iter: {}".format(n_iter+1))
