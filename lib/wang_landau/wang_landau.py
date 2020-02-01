@@ -116,6 +116,7 @@ class WangLandau:
         except AssertionError:
             raise ValueError('parameter hist_flat_tol must be a float between 0.0 and 1.0')
 
+        start_time = time.time()
         if do_brute:
             n_states = int(binom(self.N, k))
             print("generating all {:d} states by hand".format(n_states))
@@ -123,8 +124,11 @@ class WangLandau:
         else:
             self._gen_states_wl(k, hist_flat_tol)
 
+        end_time = time.time()
+
         occ = self.density > 0
         print("{} of {} bins occupied for k={}".format(occ.sum(), self.n_bins, k))
+        print("time: {:1.2f}".format(end_time-start_time))
 
     ## Private methods ##
     def _gen_states_brute(self, k):

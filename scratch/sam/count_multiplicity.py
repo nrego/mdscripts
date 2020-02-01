@@ -22,6 +22,7 @@ from scipy.special import binom
 
 from scratch.sam.util import *
 
+
 from functools import reduce
 
 # Force WL if number of configs for this P,Q,k_o is greater than this number
