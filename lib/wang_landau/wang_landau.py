@@ -246,7 +246,7 @@ class WangLandau:
             if ((n_iter + 1) % iter_update_bin_mask == 0): #or (M_iter == 0 and n_iter > initial_iter_update):
                 print("    iter: {} updating bin mask".format(n_iter+1))
                 old_center_bin_mask = center_bin_mask.copy()
-                center_bin_mask = (wl_hist > 0)
+                center_bin_mask = (wl_hist > 0) | old_center_bin_mask
                 print("      (from {} bins to {} bins)".format(old_center_bin_mask.sum(), center_bin_mask.sum()))
 
             is_flat = self.is_flat(wl_hist[center_bin_mask], hist_flat_tol)
@@ -254,7 +254,7 @@ class WangLandau:
             if  is_flat or n_iter > self.max_iter:
                 
                 print(" n_iter: {}".format(n_iter+1))
-                center_bin_mask = (wl_states > 0)
+                center_bin_mask = (wl_states > 0) | center_bin_mask
                 n_iter = 0
                 prev_hist = wl_hist.copy()
                 wl_hist[:] = 0
