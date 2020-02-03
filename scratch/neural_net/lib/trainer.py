@@ -9,7 +9,7 @@ from torchvision import transforms
 from torch.autograd import Variable
 from IPython import embed
 
-
+import sys
 
 
 class EarlyStopping:
@@ -167,6 +167,7 @@ class Trainer:
                 if self.break_out is not None and test_loss < self.break_out:
                     blah = net(self.test_X).detach()
                     print("test loss ({:.2f}) is lower than break out ({:.2f}); breaking out of loop".format(test_loss, self.break_out))
+                    sys.stdout.flush()
                     return 
 
                 if self.stopper is not None:
@@ -174,6 +175,7 @@ class Trainer:
 
                     if self.stopper.early_stop:
                         print("Breaking out of training loop")
+                        sys.stdout.flush()
                         return 
 
                 if epoch % self.log_interval == 0:
@@ -183,7 +185,7 @@ class Trainer:
                              '  (valid: {:0.6f})'.format(epoch, batch_idx * len(train_y), self.n_data, 
                                                          100*batch_idx/self.n_batches, train_loss.item(), test_loss)
                     print(outstr)
-
+                    sys.stdout.flush()
 
         return 
 

@@ -12,6 +12,7 @@ from torch import optim
 import argparse
 
 from sklearn import linear_model
+import sys
 
 def loss_fnot(net_out, target, criterion, emin, erange):
     pred = (net_out * erange) + emin
@@ -118,6 +119,7 @@ Command-line options
                     "\n"
 
         print(param_str)
+        sys.stdout.flush()
 
         DatasetType = SAMConvDataset if self.do_conv else SAMDataset
         if self.do_conv:
