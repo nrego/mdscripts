@@ -191,25 +191,13 @@ def augment_data(feat_vec, y):
     return (aug_feat_vec, aug_y)
 
 # Load in data (energies and methyl positions)
-def load_and_prep(fname='sam_pattern_pooled.npz', fname_pure='sam_pattern_pure.npz'):
+def load_and_prep(fname='sam_pattern_pooled.npz'):
 
     ds = np.load(fname)
-    energies = ds['energies']
+    dg_bind = ds['dg_bind']
     e_red = np.zeros_like(energies)
     ols_feat = ds['feat_vec']
     states = ds['states']
-
-    ds_pure = np.load(fname_pure)
-
-    e_06_06, e_04_09, e_04_04 = ds_pure['energies'][::2][-3:]
-
-    n_06_06 = 884
-    n_04_09 = 682
-    n_04_04 = 228
-
-    e_red[:884] = energies[:n_06_06] - e_06_06
-    e_red[884:884+682] = energies[n_06_06:n_06_06+n_04_09] - e_04_09
-    e_red[-n_04_04:] = energies[-n_04_04:] - e_04_04
 
     n_data = energies.size
 
@@ -224,6 +212,7 @@ def load_and_prep(fname='sam_pattern_pooled.npz', fname_pure='sam_pattern_pure.n
         center_pos(this_pos, pos_ext)
 
         d, patch_idx = cKDTree(pos_ext).query(this_pos, k=1)
+        assert np.unique(patch_idx).size == this_pos.shape[0]
         
         tmp_mask = np.zeros_like(state.methyl_mask, dtype=int)
         tmp_mask[state.methyl_mask] = 1
@@ -232,7 +221,7 @@ def load_and_prep(fname='sam_pattern_pooled.npz', fname_pure='sam_pattern_pure.n
         patch_indices[i_dat] = patch_idx
 
 
-    return feat_vec, patch_indices, pos_ext, e_red, ols_feat, states
+    return feat_vec, patch_indices, pos_ext, dg_bind, ols_feat, states
 
 
 def save_net(net, foutname='net.pkl'):

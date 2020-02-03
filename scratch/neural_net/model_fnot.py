@@ -103,8 +103,6 @@ Command-line options
                            help="If true, perform epsilon training on errors from linear regression on k_ch3, rather than actual energies (default: False)")
         tgroup.add_argument("--eps-m2", action="store_true",
                            help="If true, perform epsilon training on errors from linear regression on (k_ch3, n_mm) rather than actual energies (default: False)")
-        tgroup.add_argument("--eps-m3", action="store_true",
-                           help="If true, perform epsilon training on errors from linear regression on (k_ch3, n_mm, n_mo_int) rather than actual energies (default: False)")
 
     def process_args(self, args):
         # 5 polynomial coefficients for 4th degree polynomial
