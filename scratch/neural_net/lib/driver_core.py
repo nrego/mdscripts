@@ -74,8 +74,6 @@ class Core:
         group = parser.add_argument_group('general training options')
         group.add_argument("--infile", "-f", type=str, default="sam_pattern_pooled.npz",
                            help="Input file name (Default: %(default)s)")
-        group.add_argument("--infile-pure", "-f", type=str, default="sam_pattern_pure.npz",
-                           help="Input file name (Default: %(default)s)")
         group.add_argument("--augment-data", action="store_true",
                            help="Augment data by flipping every input pattern (Default: Do not augment data)")
         group.add_argument("--batch-size", type=int, default=200,

@@ -11,6 +11,8 @@ from torch import optim
 
 import argparse
 
+from sklearn import linear_model
+
 def loss_fnot(net_out, target, criterion, emin, erange):
     pred = (net_out * erange) + emin
     act = (target * erange) + emin
@@ -19,68 +21,24 @@ def loss_fnot(net_out, target, criterion, emin, erange):
 
     return loss
 
-def get_err_m1(feat_vec, energies):
-    k = feat_vec.sum(axis=1).reshape(-1,1)
-    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k, energies)
+def get_err(X, y, weights=None, fit_intercept=False):
+    
+    if weights is None:
+        weights = np.ones_like(y)
+    
+    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+    reg.fit(X, y, sample_weight=weights)
+
+    pred = reg.predict(X)
+    err = y - pred
 
     return err
 
-def get_err_m2(methyl_pos, energies, positions):
-    k = methyl_pos.sum(axis=1)
-    nn, nn_ext, _, _ = construct_neighbor_dist_lists(positions, positions)
-
-    n_mm = np.zeros_like(k)
-    for i_pos, methyl_mask in enumerate(methyl_pos):
-        this_n_mm = 0
-        for i in range(36):
-            for j in nn[i]:
-                if j <= i:
-                    continue
-                if methyl_mask[i] and methyl_mask[j]:
-                    this_n_mm += 1
-
-        n_mm[i_pos] = this_n_mm
-
-    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(np.vstack((k, n_mm)).T, energies)
-
-    return err
-
-def get_err_m3(methyl_pos, energies, positions):
-    k = methyl_pos.sum(axis=1)
-    pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
-    nn, nn_ext, _, _ = construct_neighbor_dist_lists(positions, pos_ext)
-
-    n_mm = np.zeros_like(k)
-    n_mo_int = np.zeros_like(k)
-    n_mo_ext = np.zeros_like(k)
-    for i_pos, methyl_mask in enumerate(methyl_pos):
-        this_n_mm = 0
-        this_n_mo_int = 0
-        this_n_mo_ext = 0
-        for i in range(36):
-            for j in nn[i]:
-                if j <= i:
-                    continue
-                if methyl_mask[i] and methyl_mask[j]:
-                    this_n_mm += 1
-                elif methyl_mask[i] or methyl_mask[j]:
-                    this_n_mo_int += 1
-            for j in nn_ext[i]:
-                if methyl_mask[i]:
-                    this_n_mo_ext += 1
-
-            n_mm[i_pos] = this_n_mm
-            n_mo_int[i_pos] = this_n_mo_int
-            n_mo_ext[i_pos] = this_n_mo_ext
-
-    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(np.vstack((k, n_mm, n_mo_int)).T, energies)
-
-    return err
 
 class FnotModel(NNModel):
 
 
-    prog='Predict F_v(0) from pattern'
+    prog='Predict delta_f from pattern'
     description = '''\
 Construct and train NN to predict f (F_v(0)) from SAM surface patterns
 
@@ -109,18 +67,19 @@ Command-line options
         self.n_epochs = args.n_epochs
         self.break_out = args.break_out
 
-        feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep(args.infile, args.infile_pure)
+        feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
         
-        y = energies
+        feat_idx = np.array([2,3,4])
+        y = delta_e
 
         if args.eps_m1:
-            err = get_err_m1(ols_feat, energies)
+            err = get_err(ols_feat[:,feat_idx[0]].reshape(-1,1), delta_e, weights)
             mse = np.mean(err**2)
             print("Doing epsilon on M1 with MSE: {:.2f}".format(mse))
             y = err
 
         if args.eps_m2:
-            err = get_err_m2(ols_feat, energies)
+            err = get_err(ols_feat[:,feat_idx], delta_e, weights)
             mse = np.mean(err**2)
             print("Doing epsilon on M2 with MSE: {:.2f}".format(mse))
             y = err
