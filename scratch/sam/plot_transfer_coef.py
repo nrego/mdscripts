@@ -52,6 +52,9 @@ ds_06_06 = np.load('sam_pattern_06_06.npz')
 ds_04_04 = np.load('sam_pattern_04_04.npz')
 ds_04_09 = np.load('sam_pattern_04_09.npz')
 
+ds_bulk = np.load('sam_pattern_bulk_pure.npz')
+e_bulk_06_06, e_bulk_04_09, e_bulk_04_04 = ds_bulk['energies'][-3:]
+
 
 energies_06_06 = ds_06_06['energies']
 energies_04_04 = ds_04_04['energies']
@@ -101,9 +104,10 @@ print_data(reg, boot_intercept, boot_coef)
 rsq = 1 - (perf_mse.mean() / energies_04_04.var())
 print("  perf: {:0.6f}".format(rsq))
 
-
 e_all = np.hstack((energies_06_06-energies_06_06.min(), energies_04_09-energies_04_09.min(), energies_04_04-energies_04_04.min()))
 e_all2 = np.hstack((energies_06_06, energies_04_09, energies_04_04))
+dg_bind = np.hstack((energies_06_06-e_bulk_06_06, energies_04_09-e_bulk_04_09, energies_04_04-e_bulk_04_04))
+
 
 feat_all = np.vstack((feat_06_06, feat_04_09, feat_04_04))
 w_all = np.hstack((1/err_06_06, 1/err_04_09, 1/err_04_04))
@@ -113,5 +117,5 @@ perf_mse, err, xvals, fit, reg = fit_leave_one(feat_all[:,indices], e_all, weigh
 boot_intercept, boot_coef = fit_bootstrap(feat_all[:,indices], e_all, weights=w_all, fit_intercept=False)
 
 np.save('sam_reg_coef', reg)
-np.savez_compressed('sam_pattern_pooled', energies=e_all2, weights=w_all, states=states_all, feat_vec=feat_all)
+np.savez_compressed('sam_pattern_pooled', energies=e_all2, delta_e=e_all, dg_bind=dg_bind, weights=w_all, states=states_all, feat_vec=feat_all)
 
