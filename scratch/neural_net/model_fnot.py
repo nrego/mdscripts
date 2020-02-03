@@ -111,35 +111,30 @@ Command-line options
         self.n_epochs = args.n_epochs
         self.break_out = args.break_out
 
-        feat_vec, energies, poly, beta_phi_stars, positions, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
+        feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep(args.infile, args.infile_pure)
         
         y = energies
 
         if args.eps_m1:
-            err = get_err_m1(feat_vec, energies)
+            err = get_err_m1(ols_feat, energies)
             mse = np.mean(err**2)
             print("Doing epsilon on M1 with MSE: {:.2f}".format(mse))
             y = err
 
         if args.eps_m2:
-            err = get_err_m2(methyl_pos, energies, positions)
+            err = get_err_m2(ols_feat, energies)
             mse = np.mean(err**2)
             print("Doing epsilon on M2 with MSE: {:.2f}".format(mse))
             y = err
 
-        if args.eps_m3:
-            err = get_err_m3(methyl_pos, energies, positions)
-            mse = np.mean(err**2)
-            print("Doing epsilon on M3 with MSE: {:.2f}".format(mse))
-            y = err
 
         if self.augment_data:
-            feat_vec, y = hex_augment_data(feat_vec, y)
+            feat_vec, y = hex_augment_data(feat_vec, y, pos_ext, patch_indices)
 
         self.y = y
         self.feat_vec = feat_vec
         
-        self.pos_ext = positions
+        self.pos_ext = pos_ext
         self.patch_indices = patch_indices
 
     def run(self):
@@ -180,9 +175,6 @@ Command-line options
         emin = self.y.min()
         emax = self.y.max()
         erange = emax - emin
-
-        # Position of patch indices (only different if we're using an extended grid)
-        pos = self.pos_ext[self.patch_indices]
 
         ## Split up input data into training and validation sets
         mses = np.zeros(self.n_valid)

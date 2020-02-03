@@ -72,7 +72,9 @@ class Core:
     def add_args(self, parser):
         '''Add some default arguments'''
         group = parser.add_argument_group('general training options')
-        group.add_argument("--infile", "-f", type=str, default="sam_pattern_data.dat.npz",
+        group.add_argument("--infile", "-f", type=str, default="sam_pattern_pooled.npz",
+                           help="Input file name (Default: %(default)s)")
+        group.add_argument("--infile-pure", "-f", type=str, default="sam_pattern_pure.npz",
                            help="Input file name (Default: %(default)s)")
         group.add_argument("--augment-data", action="store_true",
                            help="Augment data by flipping every input pattern (Default: Do not augment data)")

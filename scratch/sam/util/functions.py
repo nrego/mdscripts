@@ -285,32 +285,6 @@ def gen_w_graph(positions, methyl_mask, wt_mm=1, wt_oo=-1, wt_mo=-0.5):
     return graph
 
 
-def gen_pos_grid(ny=6, nz=None, z_offset=False, shift_y=0, shift_z=0):
-    if nz is None:
-        nz = ny
-    ## Generate grid of center points
-    z_space = 0.5 # 0.5 nm spacing
-    y_space = np.sqrt(3)/2.0 * z_space
-
-    y_pos = 0 + shift_y*y_space
-    pos_row = np.arange(0,0.5*(nz+1), 0.5) + shift_z*z_space
-
-    positions = []
-    for i in range(ny):
-        if not z_offset:
-            this_pos_row = pos_row if i % 2 == 0 else pos_row + z_space/2.0
-        else:
-            this_pos_row = pos_row if i % 2 != 0 else pos_row + z_space/2.0
-
-
-        for j in range(nz):
-            z_pos = this_pos_row[j]
-            positions.append(np.array([y_pos, z_pos]))
-
-        y_pos += y_space
-
-
-    return np.array(positions)
 
 def construct_neighbor_dist_lists(positions, pos_ext):
 

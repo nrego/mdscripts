@@ -68,13 +68,13 @@ class SAMNet(nn.Module):
 
 class SAMConvNet(nn.Module):
 
-    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=11):
+    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=13):
         super(SAMConvNet, self).__init__()
 
         self.n_out_channels = n_out_channels
-        # INPUT: (1 x 6 x 6)
-        # Conv Output: (1 x 6 x 6)
-        # Pool Output: (1 x 3 x 3)
+        # INPUT: (1 x ny x nz)
+        # Conv Output: (1 x ny x nz)
+        # Pool Output: (1 x ny/2 x nz/2) (check!)
         self.layer1 = nn.Sequential(
             hexagdly.Conv2d(1, n_out_channels, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
@@ -100,7 +100,7 @@ class SAMConvNet(nn.Module):
 # Only learned weights are the filters
 class SAMFixedConvNet(nn.Module):
 
-    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=11):
+    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=13):
         super(SAMFixedConvNet, self).__init__()
 
         self.n_out_channels = n_out_channels

@@ -197,7 +197,7 @@ class State:
 
 
     def plot(self, **kwargs):
-        #embed()
+
         feat = make_feat(self.methyl_mask, self.pos_ext, self.patch_indices)
         feat = plot_feat(feat, self.ny+2, self.nz+2)
 
