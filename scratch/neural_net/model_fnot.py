@@ -143,6 +143,9 @@ Command-line options
         criterion = nn.MSELoss()
         data_partitions = partition_data(self.feat_vec, self.y, n_groups=self.n_valid)
 
+        loss_fn_kwargs = {'emin': emin,
+                          'erange': erange}
+                          
         ## Train and validate for each round (n_valid rounds)
         for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
             if self.skip_cv:
@@ -170,9 +173,6 @@ Command-line options
             trainer = Trainer(train_dataset, test_dataset, batch_size=self.batch_size,
                               learning_rate=self.learning_rate, n_patience=self.n_patience, 
                               epochs=self.n_epochs)
-            
-            loss_fn_kwargs = {'emin': emin,
-                              'erange': erange}
 
             trainer(net, criterion, loss_fn=loss_fnot, loss_fn_kwargs=loss_fn_kwargs)
             
