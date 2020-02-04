@@ -62,11 +62,14 @@ Command-line options
                            help="If true, perform epsilon training on errors from linear regression on k_ch3, rather than actual energies (default: False)")
         tgroup.add_argument("--eps-m2", action="store_true",
                            help="If true, perform epsilon training on errors from linear regression on (k_ch3, n_mm) rather than actual energies (default: False)")
+        tgroup.add_argument("--skip-cv", action="store_true", 
+                           help="If true, skip the N-fold CV and just fit on entire dataset (default: False, perform CV)")
 
     def process_args(self, args):
         # 5 polynomial coefficients for 4th degree polynomial
         self.n_epochs = args.n_epochs
         self.break_out = args.break_out
+        self.skip_cv = args.skip_cv
 
         feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
         
@@ -142,7 +145,10 @@ Command-line options
 
         ## Train and validate for each round (n_valid rounds)
         for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
-            
+            if self.skip_cv:
+                print("\nSkipping CV...")
+                break
+
             print("\nCV ROUND {} of {}\n".format(i_round+1, self.n_valid))
             print("\nBegin training\n")
             
@@ -200,6 +206,12 @@ Command-line options
                              n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
         else:
             net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
+
+        if torch.cuda.is_available():
+            print("\n(GPU detected)")
+            net = net.cuda()
+        else:
+            print("\n(No GPU detected)")
 
         dataset = DatasetType(self.feat_vec, self.y, norm_target=True, y_min=emin, y_max=emax)
 
