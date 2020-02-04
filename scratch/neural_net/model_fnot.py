@@ -231,7 +231,9 @@ Command-line options
         print("\n")
         print("ALL DATA Final CV: {:.2f}\n".format(test_loss))
 
-        embed()
+        if torch.cuda.is_available():
+            test_loss = test_loss.cpu()
+            
         np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
                 mses_cv=mses, mse_tot=test_loss)
 
