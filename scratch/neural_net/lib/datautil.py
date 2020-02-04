@@ -98,7 +98,8 @@ class SAMConvDataset(SAMDataset):
             x = np.ascontiguousarray(x.reshape(ny, nz).T[::-1,...])
             self.X[i,0] = x
 
-        #self.X = torch.from_numpy(self.X)
+        self.X = torch.from_numpy(self.X)
+
         if torch.cuda.is_available():
             self.X = self.X.cuda()
 
