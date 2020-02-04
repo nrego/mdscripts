@@ -154,6 +154,7 @@ Command-line options
 
             print("\nCV ROUND {} of {}\n".format(i_round+1, self.n_valid))
             print("\nBegin training\n")
+            sys.stdout.flush()
             
             if self.do_conv:
                 net = NetType(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
@@ -213,6 +214,8 @@ Command-line options
         else:
             print("\n(No GPU detected)")
 
+        sys.stdout.flush()
+
         dataset = DatasetType(self.feat_vec, self.y, norm_target=True, y_min=emin, y_max=emax)
 
 
@@ -227,8 +230,10 @@ Command-line options
         test_loss = loss_fnot(pred, trainer.test_y, criterion, **loss_fn_kwargs)
         print("\n")
         print("ALL DATA Final CV: {:.2f}\n".format(test_loss))
+
         np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
                 mses_cv=mses, mse_tot=test_loss)
+        embed()
         torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(self.n_layers, self.n_hidden, self.n_out_channels))
 
 if __name__ == "__main__":
