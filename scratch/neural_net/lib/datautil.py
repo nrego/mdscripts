@@ -98,7 +98,11 @@ class SAMConvDataset(SAMDataset):
             x = np.ascontiguousarray(x.reshape(ny, nz).T[::-1,...])
             self.X[i,0] = x
 
-        self.X = torch.from_numpy(self.X)
+        #self.X = torch.from_numpy(self.X)
+        if torch.cuda.is_available():
+            self.X = self.X.cuda()
+
+        del old_X
 
 # Split SAM dataset into N random, equally sized groups - N-1 will be used as training, and remaining as validation
 #   In the case of a remainder, the remainder is cut off.
