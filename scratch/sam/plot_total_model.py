@@ -76,7 +76,7 @@ a1, a2, a3 = reg_coef.coef_
 
 pred = reg.predict(myfeat)
 
-err = energies - pred
+err = dg_bind - pred
 elim = np.ceil(np.abs(err).max()) + 2
 bins = np.arange(-elim, elim, 0.5)
 
@@ -95,5 +95,8 @@ plt.savefig('{}/Desktop/fig_err_comp'.format(homedir))
 
 
 plt.close('all')
+
+np.save('sam_reg_total', reg)
+
 
 
