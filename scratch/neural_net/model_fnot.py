@@ -220,7 +220,7 @@ Command-line options
 
 
         trainer = Trainer(dataset, dataset, batch_size=self.batch_size,
-                          learning_rate=self.learning_rate, epochs=int(self.n_epochs*0.5))
+                          learning_rate=self.learning_rate, epochs=int(self.n_epochs*0.5), n_patience=self.n_patience)
         
         trainer(net, criterion, loss_fn=loss_fnot, loss_fn_kwargs=loss_fn_kwargs)
 
