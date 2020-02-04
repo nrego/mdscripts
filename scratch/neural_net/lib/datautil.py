@@ -30,8 +30,8 @@ class SAMDataset(data.Dataset):
             raise ValueError("Error: Different number of input features and targets ({} and {})".format(X.shape[0], y.shape[0]))
         n_pts = X.shape[0]
         
-        self.X = X.astype(np.float32).reshape(n_pts, -1)
-        self.y = y.astype(np.float32).reshape(n_pts, -1)
+        self.X = torch.from_numpy(X.astype(np.float32).reshape(n_pts, -1))
+        self.y = torch.from_numpy(y.astype(np.float32).reshape(n_pts, -1))
 
         if torch.cuda.is_available():
             print("GPU detected; Initializing SAM dataset with CUDA")
