@@ -33,6 +33,11 @@ class SAMDataset(data.Dataset):
         self.X = X.astype(np.float32).reshape(n_pts, -1)
         self.y = y.astype(np.float32).reshape(n_pts, -1)
 
+        if torch.cuda.is_available():
+            print("GPU detected; Initializing SAM dataset with CUDA")
+            self.X = self.X.cuda()
+            self.test_y = self.y.cuda()
+
         if norm_target:
             if y_min is None or y_max is None:
                 raise ValueError("Must supply minimum and maximum value for y vector if normalizing")

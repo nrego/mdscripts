@@ -65,10 +65,14 @@ class Trainer:
 
         self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
         test_loader = DataLoader(test_dataset, batch_size=len(test_dataset))
+        
         self.test_X, self.test_y = iter(test_loader).next()
-        if torch.cuda.is_available():
-            self.test_X = self.test_X.cuda()
-            self.test_y = self.test_y.cuda()
+        
+        # GPU stuff should be taken care of by SAMDatasets
+        #
+        #if torch.cuda.is_available():
+        #    self.test_X = self.test_X.cuda()
+        #    self.test_y = self.test_y.cuda()
 
         self.learning_rate = learning_rate
         self.epochs = epochs
@@ -132,9 +136,11 @@ class Trainer:
 
             for batch_idx, (train_X, train_y) in enumerate(self.train_loader):
 
-                if torch.cuda.is_available():
-                    train_X = train_X.cuda()
-                    train_y = train_y.cuda()
+                # Again, should be handled by SAMDataset
+                #
+                #if torch.cuda.is_available():
+                #    train_X = train_X.cuda()
+                #    train_y = train_y.cuda()
                     
                 idx = epoch*self.n_batches + batch_idx
                 ### TRAIN THIS BATCH ###
