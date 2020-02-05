@@ -100,6 +100,17 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
     #    tot_max_e = max_e
 
     #print('p: {}  q: {}  min_e: {:.2f}  max_e: {:.2f}'.format(p,q,min_e,max_e))
+
+new_ds = dict()
+
+for k, v in ds.items():
+    new_ds[k] = v
+
+new_ds['dos_f'] = f_dos
+new_ds['vals_f'] = f_vals
+
+np.savez_compressed('sam_dos', **new_ds)
+
 '''
 ## Test
 import itertools

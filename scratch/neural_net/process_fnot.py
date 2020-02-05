@@ -20,10 +20,12 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
-n_out_channels = 8
+n_out_channels = 6
 n_hidden = 4
 n_layers = 1
 
+#pattern_idx = 4200
+pattern_idx = 8401
 
 def kernel_rep(k0, k1, norm=None, cmap=None):
     k0 = k0.detach()[:,0,...]
@@ -50,7 +52,7 @@ def kernel_rep(k0, k1, norm=None, cmap=None):
 
 # Given a pattern, save its PvN as well as predicted
 #  Save CNN filters for pattern
-def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home), title=None):
+def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir), title=None):
     
     c, r, p = net.layer1.children()
     this_pattern = x_pattern[idx][None,:]
@@ -64,82 +66,85 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(home), ti
     mynorm = Normalize(0,max0)
     filter_norm = [mynorm for i in range(out_all.shape[1])]
 
+    # Convolve and max-pool this particular pattern at index idx
     conv = r(c(this_pattern).detach())
     pool = p(conv)
 
     plot_hextensor(this_pattern, norm=Normalize(-1,1))
-    plt.savefig('{}/fnot_{}_pattern'.format(path, title))
+    plt.savefig('{}/fig_idx_{}_pattern'.format(path, title), transparent=True)
     plt.close('all')
 
     #plot_hextensor(conv, cmap='Greys', norm=filter_norm)
     plot_hextensor(conv, cmap="Greys", norm=Normalize(0,max0))
-    plt.savefig('{}/fnot_{}_filter_conv'.format(path, title))
+    plt.savefig('{}/fig_{}_filter_conv'.format(path, title), transparent=True)
 
     plot_hextensor(pool, cmap='Greys', norm=Normalize(0,max0))
-    plt.savefig('{}/fnot_{}_filter_pool'.format(path, title))
+    plt.savefig('{}/fnot_{}_filter_pool'.format(path, title), transparent=True)
 
 
-home = os.environ['HOME']
+homedir = os.environ['HOME']
 
 from matplotlib.colors import Normalize
 
 
-feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep()
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(feat_vec.sum(axis=1)[:,None], energies)
+feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep()
+feat_idx = np.array([2,3,4])
 
-emin, emax = energies.min(), energies.max()
+y = delta_e
+emin = y.min()
+emax = y.max()
+n_dat = y.size
 
-n_dat = feat_vec.shape[0]
-
-aug_feat_vec, aug_y = hex_augment_data(feat_vec, energies)
+aug_feat_vec, aug_y = hex_augment_data(feat_vec, y, pos_ext, patch_indices)
 dataset = SAMConvDataset(aug_feat_vec, aug_y, norm_target=True, y_min=emin, y_max=emax)
 x, y = dataset[:]
 
 k_c = (aug_feat_vec == 1).sum(axis=1)
-pos_ext = gen_pos_grid(ny=9, nz=8, z_offset=True)
-
-fnames = sorted(glob.glob('trial_*/model_n_layer_1_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(n_hidden, n_out_channels)))
+k_o = (aug_feat_vec == -1).sum(axis=1)
 
 net = SAMConvNet(n_out_channels=n_out_channels, n_layers=n_layers, n_hidden=n_hidden, n_out=1)
 
 
-for fname in fnames:
-    state_dict = torch.load(fname)
-    net.load_state_dict(state_dict)
+headdir = 'dg_bind/n_layer_{:1d}/n_filter_{:02d}'.format(n_layers, n_out_channels)
+fnamemodel = '{}/model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(headdir, n_layers, n_hidden, n_out_channels)
+fnameperf = '{}/perf_model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.npz'.format(headdir, n_layers, n_hidden, n_out_channels)
+
+state_dict = torch.load(fnamemodel, map_location="cpu")
+net.load_state_dict(state_dict)
+
+title = os.path.dirname(fnamemodel)
+print("Filters: {}".format(title))
+
+perf = np.load(fnameperf)['mses_cv'].mean()
+tot_perf = np.load(fnameperf)['mse_tot']
+print("Mean MSE: {:0.2f}".format(perf))
+print("Tot MSE: {:0.2f}".format(tot_perf))
 
 
-    #title = fname.split('.')[0].split('_')[-1]
-    title = os.path.dirname(fname)
-    print("Filters: {}".format(title))
-    perfname = '{}/perf_model_n_layer_1_n_hidden_{:02d}_n_channel_{:02d}.npz'.format(title, n_hidden, n_out_channels)
-    perf = np.load(perfname)['mses_cv'].mean()
-    tot_perf = np.load(perfname)['mse_tot']
-    print("Mean MSE: {:0.2f}".format(perf))
-    print("Tot MSE: {:0.2f}".format(tot_perf))
-    # Contains the conv layer, relu, and max pool
-    l1 = net.layer1
-    c, r, p = l1.children()
+# Contains the conv layer, relu, and max pool
+l1 = net.layer1
+c, r, p = l1.children()
 
-    k0 = c.kernel0
-    k1 = c.kernel1
+k0 = c.kernel0
+k1 = c.kernel1
 
-    arr = kernel_rep(k0, k1)
-    plt.close('all')
+arr = kernel_rep(k0, k1)
+plt.close('all')
 
-    # Get largest weight for each of the filters (channels)
-    rng_pt = np.abs(arr[0].reshape(n_out_channels,9)).max(axis=1)
+# Get largest weight for each of the filters (channels)
+rng_pt = np.abs(arr[0].reshape(n_out_channels,9)).max(axis=1)
 
-    norms = []
-    #for i in range(n_out_channels):
-    #    norms.append(plt.Normalize(-rng_pt[i], rng_pt[i]))
-    norm = plt.Normalize(-rng_pt.max(), rng_pt.max())
-    print(rng_pt.max())
-    kernel_rep(k0, k1, norm=norm, cmap='RdBu')
-    ax = plt.gca()
-    #ax.set_title(title)
-    plt.savefig('{}/Desktop/filter_{}.png'.format(home, title))
+norms = []
 
-    #plt.show()
-    construct_pvn_images(700, net, x, title=title)
-#for i in range(6):
-#    construct_pvn_images(100+i*n_dat, net, x)
+norm = plt.Normalize(-rng_pt.max(), rng_pt.max())
+print('max kernel weight: {:.2f}'.format(rng_pt.max()))
+
+
+kernel_rep(k0, k1, norm=norm, cmap='RdBu')
+ax = plt.gca()
+
+plt.savefig('{}/Desktop/filters_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.png'.format(homedir, n_layers, n_hidden, n_out_channels), transparent=True)
+
+title = 'idx_{}_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}'.format(pattern_idx, n_layers, n_hidden, n_out_channels)
+construct_pvn_images(pattern_idx, net, x, title=title)
+
