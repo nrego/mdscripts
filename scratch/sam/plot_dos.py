@@ -105,3 +105,29 @@ bA = -np.log(z)
 
 # (gc) free energies
 bPhi = -np.log(Z)
+
+
+## quick test
+import itertools
+
+test_idx = 4
+test_p, test_q = vals_pq[test_idx]
+test_n = test_p*test_q
+
+test_indices = np.arange(test_n)
+test_energies = []
+
+for test_ko in range(test_n+1):
+    for test_pt_idx in itertools.combinations(test_indices, test_ko):
+        test_pt_idx = np.array(test_pt_idx, dtype=int)
+        state = State(test_pt_idx, test_p, test_q)
+
+        test_feat = np.array([test_n, test_p, test_q, state.k_o, state.n_oo, state.n_oe])
+        this_e = np.dot(test_feat, reg.coef_)
+
+        test_energies.append(this_e)
+
+test_energies = np.array(test_energies)
+
+assert z[50, test_idx].sum() == Z[50, test_idx] == test_energies.size
+

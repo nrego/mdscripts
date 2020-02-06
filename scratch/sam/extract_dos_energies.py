@@ -61,7 +61,7 @@ assert dos.min() == 0
 tot_min_e = np.inf
 tot_max_e = -np.inf
 
-f_vals = np.arange(-250, 50, 1)
+f_vals = np.arange(-250, 50, 0.1)
 
 # Density of states for each volume, k_o, energy value
 #    shape: (n_pq, n_ko, n_fvals)
@@ -86,7 +86,7 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
         occ_f = this_f[occ]
         occ_dos = this_dos[occ]
 
-        f_all[i_pq, i_ko] = this_f
+        #f_all[i_pq, i_ko] = this_f
 
         # The bin indices for the energies
         f_bin_assign = np.digitize(occ_f, f_vals) - 1
