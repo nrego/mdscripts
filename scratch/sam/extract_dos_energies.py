@@ -67,6 +67,7 @@ f_vals = np.arange(-250, 50, 1)
 #    shape: (n_pq, n_ko, n_fvals)
 f_dos = np.zeros((dos.shape[0], dos.shape[1], f_vals.size))
 
+
 for i_pq, (pq,p,q) in enumerate(feat_pq):
     assert p == vals_pq[i_pq,0]
     assert q == vals_pq[i_pq,1]
@@ -84,6 +85,8 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
 
         occ_f = this_f[occ]
         occ_dos = this_dos[occ]
+
+        f_all[i_pq, i_ko] = this_f
 
         # The bin indices for the energies
         f_bin_assign = np.digitize(occ_f, f_vals) - 1

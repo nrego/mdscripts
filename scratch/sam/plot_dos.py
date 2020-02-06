@@ -15,7 +15,8 @@ from matplotlib import cm
 import numpy as np
 
 from scratch.sam.util import *
-
+from sklearn import linear_model
+from scipy.special import binom
 
 plt.close('all')
 homedir = os.environ['HOME']
@@ -35,4 +36,72 @@ mpl.rcParams.update({'legend.fontsize':30})
 ds = np.load('sam_dos.npz')
 reg = np.load('sam_reg_total.npy').item()
 
+vals_pq = ds['vals_pq']
+vals_ko = ds['vals_ko']
+vals_f = ds['vals_f']
+
+# Shape: (n_pq_vals, n_ko_vals, n_f_vals)
 dos_f = ds['dos_f']
+
+# Our 'toggle' temps
+betavals = np.linspace(-1, 1, 101)
+
+
+# Density of states for a given patch size, ko (pq, choose ko)
+# Shape: (n_pq_vals, n_ko_vals)
+big_omega = np.zeros(dos_f.shape[:-1])
+
+for i_pq, (p,q) in enumerate(vals_pq):
+    for i_ko, ko in enumerate(vals_ko):
+        big_omega[i_pq, i_ko] = binom(p*q, ko)
+
+
+# canonical partittion function
+#  shape: (n_betavals, n_pq_vals, n_ko_vals)
+z = np.zeros((betavals.size, *dos_f.shape[:-1]))
+avg_f_canonical = np.zeros_like(z)
+var_f_canonical = np.zeros_like(z)
+
+# Grand canonical part function
+#   shape: (n_betavals, n_pq_vals)
+Z = np.zeros((betavals.size, vals_pq.shape[0]))
+avg_f_gc = np.zeros_like(Z)
+var_f_gc = np.zeros_like(Z)
+
+for i, bval in enumerate(betavals):
+    this_z = np.dot(dos_f, np.exp(-bval*vals_f))
+    this_avg_f = np.dot(dos_f, (np.exp(-bval*vals_f)*vals_f)) / this_z
+    this_avg_fsq = np.dot(dos_f, (np.exp(-bval*vals_f)*vals_f**2)) / this_z
+    
+    z[i] = this_z
+    avg_f_canonical[i] = this_avg_f
+    var_f_canonical[i] = this_avg_fsq - this_avg_f**2
+
+    # Now for grand-canonical
+
+    this_Z = this_z.sum(axis=1)
+
+    # Any averages with a nan should have a d.o.s. of zero. Here, we make sure this is so.
+    mask = np.ma.masked_invalid(this_avg_f).mask
+    assert np.array_equal(mask, np.ma.masked_invalid(this_avg_fsq).mask)
+    assert np.alltrue(~this_z[mask].astype(bool))
+    
+    tmp_avg_f = this_avg_f.copy()
+    tmp_avg_f[mask] = 0
+    this_gc_avg_f = (this_z * tmp_avg_f).sum(axis=1) / this_Z
+
+    tmp_avg_fsq = this_avg_fsq.copy()
+    tmp_avg_fsq[mask] = 0
+    this_gc_avg_fsq = (this_z * tmp_avg_fsq).sum(axis=1) / this_Z
+
+    Z[i] = this_Z
+    avg_f_gc[i] = this_gc_avg_f
+    var_f_gc[i] = this_gc_avg_fsq - this_gc_avg_f**2
+
+
+# (canonical) free energies with temp
+
+bA = -np.log(z)
+
+# (gc) free energies
+bPhi = -np.log(Z)
