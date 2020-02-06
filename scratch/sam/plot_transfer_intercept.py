@@ -76,12 +76,12 @@ dq = reg_q.coef_[0]
 
 fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
-ax.plot(xvals_p, fit_p)
-ax.scatter(p_q[:,0], dy)
-ax.plot(xvals_q, fit_q)
-ax.scatter(p_q[:,1], dz)
+ax.plot(xvals_p, fit_p, color='C5')
+ax.scatter(p_q[:,0], dy, color='C5')
+ax.plot(xvals_q, fit_q, 'C9')
+ax.scatter(p_q[:,1], dz, color='C9')
 fig.tight_layout()
-#plt.show()
+plt.show()
 
 plt.close('all')
 

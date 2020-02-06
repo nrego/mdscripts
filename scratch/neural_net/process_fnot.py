@@ -20,12 +20,17 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
+maindir='dg_bind'
 n_out_channels = 6
-n_hidden = 4
+n_hidden = 16
 n_layers = 1
 
-#pattern_idx = 4200
-pattern_idx = 8401
+headdir = '{}/n_layer_{:1d}/n_filter_{:02d}'.format(maindir, n_layers, n_out_channels)
+
+
+pattern_idx = 4200
+#pattern_idx = 8401
+#pattern_idx = 10000
 
 def kernel_rep(k0, k1, norm=None, cmap=None):
     k0 = k0.detach()[:,0,...]
@@ -105,7 +110,6 @@ k_o = (aug_feat_vec == -1).sum(axis=1)
 net = SAMConvNet(n_out_channels=n_out_channels, n_layers=n_layers, n_hidden=n_hidden, n_out=1)
 
 
-headdir = 'dg_bind/n_layer_{:1d}/n_filter_{:02d}'.format(n_layers, n_out_channels)
 fnamemodel = '{}/model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(headdir, n_layers, n_hidden, n_out_channels)
 fnameperf = '{}/perf_model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.npz'.format(headdir, n_layers, n_hidden, n_out_channels)
 
@@ -143,8 +147,8 @@ print('max kernel weight: {:.2f}'.format(rng_pt.max()))
 kernel_rep(k0, k1, norm=norm, cmap='RdBu')
 ax = plt.gca()
 
-plt.savefig('{}/Desktop/filters_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.png'.format(homedir, n_layers, n_hidden, n_out_channels), transparent=True)
+plt.savefig('{}/Desktop/{}_filters_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.png'.format(homedir, maindir, n_layers, n_hidden, n_out_channels), transparent=True)
 
-title = 'idx_{}_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}'.format(pattern_idx, n_layers, n_hidden, n_out_channels)
+title = '{}_idx_{}_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}'.format(maindir, pattern_idx, n_layers, n_hidden, n_out_channels)
 construct_pvn_images(pattern_idx, net, x, title=title)
 
