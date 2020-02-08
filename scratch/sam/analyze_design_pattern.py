@@ -173,7 +173,7 @@ fnames = glob.glob('trial_*/mono_build_phil.dat')
 with open(fnames[0], 'rb') as fin:
     tmp_state = pickle.load(fin)
 N = tmp_state.N
-half_idx = int(N/2)
+half_idx = int(3*N/4)
 
 bins = np.arange(0, 3.8, 0.2)
 rdfs_phil_oo = np.zeros((len(fnames), bins.size-1))

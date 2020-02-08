@@ -35,7 +35,7 @@ ds_pure = np.load('sam_pattern_pure.npz')
 
 
 # Skip pure hydroxyl or methyl
-slc = slice(0, None, 2)
+slc = slice(1, None, 2)
 energies_pure = ds_pure['energies'][slc]
 emin_pure = ds_pure['base_energy']
 p_q = ds_pure['pq'][slc].astype(float)
@@ -44,7 +44,7 @@ dx = ds_pure['dx'][slc]
 dy = ds_pure['dy'][slc]
 dz = ds_pure['dz'][slc]
 
-sa = dy*dz #+ 2*dx*(dy+dz)
+sa = 2*dy*dz + 4*dx*(dy+dz)
 feat_subvol = np.vstack((dy*dz, dy, dz)).T
 
 energies_bulk = ds_bulk['energies']
