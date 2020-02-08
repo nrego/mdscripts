@@ -37,8 +37,8 @@ def extract_n_params(n_layers, n_hidden, n_channels):
 
 
 homdir = os.environ['HOME']
-tmp_n_layer = 2
-headdir = 'dg_bind'
+tmp_n_layer = 1
+headdir = 'eps2'
 fnames = sorted(glob.glob("{}/n_layer_{}/n_filter_*/perf_model_*".format(headdir, tmp_n_layer)))
 
 # All combos of hyper params: n_layer, n_hidden_nodes, n_channels
@@ -110,7 +110,7 @@ plt.show()
 plt.close('all')
 fig, ax = plt.subplots(figsize=(10,5))
 
-norm = plt.Normalize(7, 15)
+norm = plt.Normalize(4, 5.5)
 pc = ax.pcolormesh(xx, yy, avg_perf_cv, cmap='plasma_r', norm=norm)
 
 plt.colorbar(pc)
