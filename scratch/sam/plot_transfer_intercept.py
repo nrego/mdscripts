@@ -44,7 +44,7 @@ dx = ds_pure['dx'][slc]
 dy = ds_pure['dy'][slc]
 dz = ds_pure['dz'][slc]
 
-sa = 2*dy*dz + 4*dx*(dy+dz)
+sa = 2*dy*dz + 2*dx*(dy+dz)
 feat_subvol = np.vstack((dy*dz, dy, dz)).T
 
 energies_bulk = ds_bulk['energies']
