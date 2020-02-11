@@ -21,22 +21,25 @@ from scratch.sam.util import *
 
 
 parser = argparse.ArgumentParser('Generate schematic image for given patch pattern')
-parser.add_argument('-f', '--infile', default='this_pt.dat', type=str,
-                    help='input file name for methyl pt indices (default: %(default)s)')
+parser.add_argument('-f', '--indirs', default='*/d_*/trial_0', type=str,
+                    help='String wildcard expr for listing all the input directories (default: %(default)s)')
 parser.add_argument('-p', '-ny', default=6, type=int,
                     help='patch dimension p (default %(default)s)')
 parser.add_argument('-q', '-nz', default=6, type=int,
                     help='patch dimension q (default %(default)s)')
-parser.add_argument('-o', '--outfile', default='schematic.png', type=str,
-                    help='output path to write schematic image (default: %(default)s)')
+
 
 args = parser.parse_args()
 
+indirs = sorted(glob.glob(args.indirs))
 
-this_pt = np.loadtxt(args.infile).astype(int)
+for i, this_dir in enumerate(indirs):
 
-state = State(this_pt, ny=args.p, nz=args.q)
+    print('Doing dir: {} ({:03d} of {:03d})'.format(this_dir, i, len(indirs)))
+    this_pt = np.loadtxt('{}/this_pt.dat'.format(this_dir)).astype(int)
 
-state.plot()
+    state = State(this_pt, ny=args.p, nz=args.q)
 
-plt.savefig('{}'.format(args.outfile), transparent=True)
+    state.plot()
+    plt.savefig('{}/schematic'.format(this_dir))
+
