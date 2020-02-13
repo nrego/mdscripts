@@ -23,6 +23,8 @@ from scipy.integrate import cumtrapz
 
 import math
 
+from scipy.optimize import fmin_slsqp
+
 mpl.rcParams.update({'axes.labelsize': 20})
 mpl.rcParams.update({'xtick.labelsize': 20})
 mpl.rcParams.update({'ytick.labelsize': 20})
@@ -79,6 +81,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
     err = y - pred
 
     return (perf_mse, err, xvals[:,sort_axis], fit, reg)
+
 
 # Perform bootstrapping on data to estimate errors in linear regression coefficients
 def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000, weights=None):
@@ -509,3 +512,75 @@ def extract_data(fname="sam_pattern_data.dat.npz"):
 
     return (energies, methyl_pos, k_vals, positions, pos_ext, patch_indices, nn, nn_ext, edges, ext_indices, int_indices)
 
+
+
+### Constrained optimization stuff.
+
+def sse(alpha, X, y, *args):
+    err = np.dot(X, alpha) - y
+
+    return np.sum(err**2) / y.size
+
+def grad_sse(alpha, X, y, *args):
+    return (2/y.size)*(np.linalg.multi_dot((X.T, X, alpha)) - np.linalg.multi_dot((X.T, y)))
+
+
+# regress y on set of n_dim features. include list of constraints
+def fit_leave_one_constr(X, y, weights=None, eqcons=(), fo=()):
+
+
+    
+    assert y.ndim == 1
+    n_dat = y.size
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+    
+    if weights is None:
+        weights = np.ones_like(y)
+
+    # For plotting fit...
+    sort_idx = np.argsort(X[:,sort_axis])
+    xvals = X[sort_idx, ...]
+    if xvals[:,sort_axis].min() > 0:
+        xvals = np.vstack((np.zeros(xvals.shape[1]).reshape(1,-1), xvals))
+
+    reg = linear_model.LinearRegression(fit_intercept=False)
+    reg.fit(X, y)
+
+
+    # R^2 and MSE for each train/validation round
+    perf_mse = np.zeros(n_dat)
+
+
+    # Choose one of the cohorts as validation set, train on remainder.
+    #   repeat for each cohort
+    for k in range(n_dat):
+
+        # Get training samples. np.delete makes a copy and **does not** act on array in-place
+        y_train = np.delete(y, k)
+        X_train = np.delete(X, k, axis=0)
+        w_train = np.delete(weights, k)
+
+        y_validate = y[k]
+        X_validate = X[k].reshape(1,-1)
+
+        args = (X_train, y_train) + fo
+        #reg.fit(X_train, y_train, sample_weight=w_train)
+        reg.coef_ = fmin_slsqp(sse, reg.coef_, eqcons=eqcons, fprime=grad_sse, args=args)
+        pred = reg.predict(X_validate)
+
+        mse = ((y_validate - pred)**2).item()
+        perf_mse[k] = mse
+
+    args = (X, y) + fo
+    #reg.fit(X, y, sample_weight=weights)
+    reg.coef_ = fmin_slsqp(sse, reg.coef_, eqcons=eqcons, fprime=grad_sse, args=args)
+    fit = reg.predict(xvals)
+
+    pred = reg.predict(X)
+    err = y - pred
+
+    return (perf_mse, err, xvals[:,sort_axis], fit, reg)
+
+    

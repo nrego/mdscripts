@@ -15,6 +15,9 @@ from matplotlib import cm
 import numpy as np
 
 from scratch.sam.util import *
+
+from scipy.optimize import fmin_slsqp
+
 plt.close('all')
 homedir = os.environ['HOME']
 from IPython import embed
@@ -117,4 +120,13 @@ boot_intercept, boot_coef = fit_bootstrap(myfeat, energies)
 
 print("intercept: {:0.4f} ({:0.4f})".format(reg.intercept_, boot_intercept.std(ddof=1)))
 print("coefs: {} ({})".format(reg.coef_, boot_coef.std(axis=0, ddof=1)))
+
+
+fo = energies.max()
+
+p=q=6
+n_ext = 4*(p+q) - 2
+xo = np.array([p*q, 3*p*q-0.5*n_ext, n_ext])
+
+constraint = lambda alpha, X, y, fo: np.dot(alpha, xo) - fo
 

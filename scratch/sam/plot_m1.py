@@ -128,3 +128,13 @@ plt.savefig('{}/Desktop/fig_m1_parity.pdf'.format(homedir), transparent=True)
 ## are we allowed to do this? check what weighted OLS is minimizing (is it weighted residuals?)
 wt = 1/errs
 wt /= wt.sum()
+
+
+def sse(alpha, X, y, fo):
+    err = np.dot(X, alpha) - y
+
+    return np.sum(err**2)
+
+
+constraint = lambda alpha, X, y, fo: (alpha*36).item() - fo
+

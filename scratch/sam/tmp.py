@@ -46,8 +46,11 @@ print('\n  beta Pv(0): {:0.2f} ({:0.2f})'.format(dg_bulk, err_dg_bulk))
 dnames = sorted(glob.glob('surf*'))
 
 for dirname in dnames:
-    pvn = np.loadtxt('{}/PvN.dat'.format(dirname))
-    nvphi = np.loadtxt('{}/NvPhi.dat'.format(dirname))
+    try:
+        pvn = np.loadtxt('{}/PvN.dat'.format(dirname))
+        nvphi = np.loadtxt('{}/NvPhi.dat'.format(dirname))
+    except:
+        continue
 
     dg = pvn[0,1]
     err_dg =pvn[0,2]
@@ -55,9 +58,9 @@ for dirname in dnames:
     min_x, dx, dy, dz = extract_probe_vol('{}/umbr.conf'.format(dirname))
     this_v = np.prod(np.array([dx, dy, dz]))
 
-    univ = MDAnalysis.Universe('{}/phi_000/confout.gro'.format(dirname))
+    univ = MDAnalysis.Universe('{}/nstar_108/confout.gro'.format(dirname))
     min_x0 = univ.select_atoms('name OW').positions[:,0].min() / 10
-    univ = MDAnalysis.Universe('{}/phi_200/confout.gro'.format(dirname))
+    univ = MDAnalysis.Universe('{}/nstar_neg_044/confout.gro'.format(dirname))
     min_x20 = univ.select_atoms('name OW').positions[:,0].min() / 10
 
     print('\n############')
