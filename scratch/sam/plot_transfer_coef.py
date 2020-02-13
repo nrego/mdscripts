@@ -16,6 +16,7 @@ import numpy as np
 
 from scratch.sam.util import *
 
+# k_o, n_oo, n_oe
 indices = np.array([2,3,4])
 def extract_from_states(states):
     feat_vec = np.zeros((states.size, 9))
@@ -54,18 +55,23 @@ ds_04_09 = np.load('sam_pattern_04_09.npz')
 
 ds_bulk = np.load('sam_pattern_bulk_pure.npz')
 e_bulk_06_06, e_bulk_04_09, e_bulk_04_04 = ds_bulk['energies'][-3:]
+err_bulk_06_06, err_bulk_04_09, err_bulk_04_04 = ds_bulk['err_energies'][-3:]
 
+assert np.array_equal(ds_bulk['pq'][-3], np.array([6,6]))
+assert np.array_equal(ds_bulk['pq'][-2], np.array([4,9]))
+assert np.array_equal(ds_bulk['pq'][-1], np.array([4,4]))
 
 energies_06_06 = ds_06_06['energies']
 energies_04_04 = ds_04_04['energies']
 energies_04_09 = ds_04_09['energies']
 
-err_06_06 = ds_06_06['err_energies']
-err_04_04 = ds_04_04['err_energies']
-err_04_09 = ds_04_09['err_energies']
-#err_06_06 = np.ones_like(err_06_06)
-#err_04_04 = np.ones_like(err_04_04)
-#err_04_09 = np.ones_like(err_04_09)
+dg_bind_06_06 = energies_06_06 - e_bulk_06_06
+dg_bind_04_09 = energies_04_09 - e_bulk_04_09
+dg_bind_04_04 = energies_04_04 - e_bulk_04_04
+
+err_06_06 = np.sqrt(ds_06_06['err_energies']**2 + err_bulk_06_06**2)
+err_04_09 = np.sqrt(ds_04_09['err_energies']**2 + err_bulk_04_09**2)
+err_04_04 = np.sqrt(ds_04_04['err_energies']**2 + err_bulk_04_04**2)
 
 states_06_06 = ds_06_06['states']
 states_04_04 = ds_04_04['states']
@@ -75,53 +81,133 @@ feat_06_06 = extract_from_states(states_06_06)
 feat_04_04 = extract_from_states(states_04_04)
 feat_04_09 = extract_from_states(states_04_09)
 
-### Find coefs ###
+print('\nExtracting pure models...')
+reg_c = np.load('sam_reg_inter_c.npz')['reg'].item()
+reg_o = np.load('sam_reg_inter_o.npz')['reg'].item()
 
+
+print('  ...Done\n')
+
+### Find coefs ###
+###################
+constraint = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o) + (f_c - f_o)
 ### 6 x 6 ###
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06[:,indices], energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_06_06[:,indices], energies_06_06-energies_06_06.min(), weights=1/err_06_06, fit_intercept=False)
+#############
+
+p = q = 6
+
+shape_arr = np.array([p*q, p, q])
+f_c = f_c_06_06 = reg_c.predict(shape_arr.reshape(1,-1)).item()
+f_o = f_o_06_06 = reg_o.predict(shape_arr.reshape(1,-1)).item()
+
+delta_f = dg_bind_06_06 - f_c
+
+# Get feature for pure hydroxyl of this shape (for second constraint)
+state_pure = State(np.array([], dtype=int), ny=p, nz=q)
+x_o = x_o_06_06 = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
+args = (x_o, f_c, f_o)
+
+# perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06[:,indices], dg_bind_06_06 - f_c, fit_intercept=False)
+perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_06_06[:,indices], delta_f, eqcons=[constraint], args=args)
+boot_intercept, boot_coef = fit_bootstrap(feat_06_06[:,indices], delta_f, fit_intercept=False)
+
+assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
 
 print("\nDOING 6x6... (N={:02d})".format(energies_06_06.size))
 print_data(reg, boot_intercept, boot_coef)
-rsq = 1 - (perf_mse.mean() / energies_06_06.var())
+rsq = 1 - (perf_mse.mean() / delta_f.var())
 print("  perf: {:0.6f}".format(rsq))
 
 ### 4 x 9 ###
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09[:,indices], energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_04_09[:,indices], energies_04_09-energies_04_09.min(), weights=1/err_04_09, fit_intercept=False)
+#############
+
+p = 4
+q = 9
+
+shape_arr = np.array([p*q, p, q])
+f_c = f_c_04_09 = reg_c.predict(shape_arr.reshape(1,-1)).item()
+f_o = f_o_04_09 = reg_o.predict(shape_arr.reshape(1,-1)).item()
+
+delta_f = dg_bind_04_09 - f_c
+
+# Get feature for pure hydroxyl of this shape (for second constraint)
+state_pure = State(np.array([], dtype=int), ny=p, nz=q)
+x_o = x_o_04_09 = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
+args = (x_o, f_c, f_o)
+
+# perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09[:,indices], delta_f, fit_intercept=False, weights=1/err_06_06)
+perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_04_09[:,indices], delta_f, eqcons=[constraint], args=args)
+boot_intercept, boot_coef = fit_bootstrap(feat_04_09[:,indices], delta_f, fit_intercept=False)
+
+assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
 
 print("\nDOING 4x9... (N={:02d})".format(energies_04_09.size))
 print_data(reg, boot_intercept, boot_coef)
 rsq = 1 - (perf_mse.mean() / energies_04_09.var())
 print("  perf: {:0.6f}".format(rsq))
 
+
 ### 4 x 4 ###
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04[:,indices], energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_04_04[:,indices], energies_04_04-energies_04_04.min(), weights=1/err_04_04, fit_intercept=False)
+
+p = 4
+q = 4
+
+shape_arr = np.array([p*q, p, q])
+f_c = f_c_04_04 = reg_c.predict(shape_arr.reshape(1,-1)).item()
+f_o = f_o_04_04 = reg_o.predict(shape_arr.reshape(1,-1)).item()
+
+delta_f = dg_bind_04_04 - f_c
+
+# Get feature for pure hydroxyl of this shape (for second constraint)
+state_pure = State(np.array([], dtype=int), ny=p, nz=q)
+x_o = x_o_04_04 = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
+args = (x_o, f_c, f_o)
+
+# perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04[:,indices], delta_f, fit_intercept=False, weights=1/err_04_04)
+perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_04_04[:,indices], delta_f, eqcons=[constraint], args=args)
+boot_intercept, boot_coef = fit_bootstrap(feat_04_04[:,indices], delta_f, fit_intercept=False)
+
+assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
 
 print("\nDOING 4x4... (N={:02d})".format(energies_04_04.size))
 print_data(reg, boot_intercept, boot_coef)
 rsq = 1 - (perf_mse.mean() / energies_04_04.var())
 print("  perf: {:0.6f}".format(rsq))
 
-e_all = np.hstack((energies_06_06-energies_06_06.min(), energies_04_09-energies_04_09.min(), energies_04_04-energies_04_04.min()))
-e_all2 = np.hstack((energies_06_06, energies_04_09, energies_04_04))
-dg_bind = np.hstack((energies_06_06-e_bulk_06_06, energies_04_09-e_bulk_04_09, energies_04_04-e_bulk_04_04))
 
+### ALL ###
+
+
+def constraint_all(alpha, X, y, x_o_06_06, f_c_06_06, f_o_06_06,
+                   x_o_04_09, f_c_04_09, f_o_04_09, x_o_04_04, f_c_04_04, f_o_04_04):
+
+    c1 = np.dot(alpha, x_o_06_06) + (f_c_06_06 - f_o_06_06)
+    c2 = np.dot(alpha, x_o_04_09) + (f_c_04_09 - f_o_04_09)
+    c3 = np.dot(alpha, x_o_04_04) + (f_c_04_04 - f_o_04_04)
+
+    #return np.array([c1, c2, c3])
+    return [c1]
+
+e_all = np.hstack((energies_06_06, energies_04_09, energies_04_04))
+dg_bind_all = np.hstack((dg_bind_06_06, dg_bind_04_09, dg_bind_04_04))
+delta_f_all = np.hstack((dg_bind_06_06-f_c_06_06, dg_bind_04_09-f_c_04_09, dg_bind_04_04-f_c_04_04))
 
 feat_all = np.vstack((feat_06_06, feat_04_09, feat_04_04))
 w_all = np.hstack((1/err_06_06, 1/err_04_09, 1/err_04_04))
 states_all = np.concatenate((states_06_06, states_04_09, states_04_04))
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(feat_all[:,indices], e_all, weights=w_all, fit_intercept=False)
-boot_intercept, boot_coef = fit_bootstrap(feat_all[:,indices], e_all, weights=w_all, fit_intercept=False)
-r_sq = 1 - (perf_mse.mean() / e_all.var())
+args = (x_o_06_06, f_c_06_06, f_o_06_06, x_o_04_09, f_c_04_09, f_o_04_09, x_o_04_04, f_c_04_04, f_o_04_04)
 
-print("\nFINAL MODEL (N={:02d}".format(e_all.size))
+#perf_mse, err, xvals, fit, reg = fit_leave_one(feat_all[:,indices], delta_f_all, fit_intercept=False)
+perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_all[:,indices], delta_f_all, f_eqcons=constraint_all, args=args)
+boot_intercept, boot_coef = fit_bootstrap(feat_all[:,indices], delta_f_all, fit_intercept=False)
+r_sq = 1 - (perf_mse.mean() / delta_f_all.var())
+
+print("\nFINAL MODEL (N={:02d})".format(e_all.size))
 print_data(reg, boot_intercept, boot_coef)
 print("  Final performance: {:0.6f}".format(r_sq))
 print("  (MSE: {:0.2f})".format(perf_mse.mean()))
 
 np.save('sam_reg_coef', reg)
-np.savez_compressed('sam_pattern_pooled', energies=e_all2, delta_e=e_all, dg_bind=dg_bind, weights=w_all, states=states_all, feat_vec=feat_all)
+np.savez_compressed('sam_pattern_pooled', energies=e_all, dg_bind=dg_bind_all, delta_f=delta_f_all, weights=w_all, states=states_all, feat_vec=feat_all)
 

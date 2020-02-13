@@ -524,12 +524,9 @@ def sse(alpha, X, y, *args):
 def grad_sse(alpha, X, y, *args):
     return (2/y.size)*(np.linalg.multi_dot((X.T, X, alpha)) - np.linalg.multi_dot((X.T, y)))
 
-
 # regress y on set of n_dim features. include list of constraints
-def fit_leave_one_constr(X, y, weights=None, eqcons=(), fo=()):
+def fit_leave_one_constr(X, y, weights=None, sort_axis=0, eqcons=(), f_eqcons=None, args=()):
 
-
-    
     assert y.ndim == 1
     n_dat = y.size
     # Single feature (1d linear regression)
@@ -548,7 +545,6 @@ def fit_leave_one_constr(X, y, weights=None, eqcons=(), fo=()):
     reg = linear_model.LinearRegression(fit_intercept=False)
     reg.fit(X, y)
 
-
     # R^2 and MSE for each train/validation round
     perf_mse = np.zeros(n_dat)
 
@@ -565,21 +561,22 @@ def fit_leave_one_constr(X, y, weights=None, eqcons=(), fo=()):
         y_validate = y[k]
         X_validate = X[k].reshape(1,-1)
 
-        args = (X_train, y_train) + fo
+        this_args = (X_train, y_train) + args
         #reg.fit(X_train, y_train, sample_weight=w_train)
-        reg.coef_ = fmin_slsqp(sse, reg.coef_, eqcons=eqcons, fprime=grad_sse, args=args)
+        reg.coef_ = fmin_slsqp(sse, reg.coef_, eqcons=eqcons, fprime=grad_sse, f_eqcons=f_eqcons, args=this_args, disp=False)
         pred = reg.predict(X_validate)
 
         mse = ((y_validate - pred)**2).item()
         perf_mse[k] = mse
 
-    args = (X, y) + fo
+    this_args = (X, y) + args
     #reg.fit(X, y, sample_weight=weights)
-    reg.coef_ = fmin_slsqp(sse, reg.coef_, eqcons=eqcons, fprime=grad_sse, args=args)
+    reg.coef_ = fmin_slsqp(sse, reg.coef_, eqcons=eqcons, fprime=grad_sse, f_eqcons=f_eqcons, args=this_args, disp=False)
     fit = reg.predict(xvals)
 
     pred = reg.predict(X)
     err = y - pred
+
 
     return (perf_mse, err, xvals[:,sort_axis], fit, reg)
 

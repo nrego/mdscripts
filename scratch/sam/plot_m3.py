@@ -32,14 +32,40 @@ mpl.rcParams.update({'legend.fontsize':30})
 #########################################
 
 ds = np.load('sam_pattern_06_06.npz')
+ds_bulk = np.load('sam_pattern_bulk_pure.npz')
+
+print('\nExtracting sam data...')
+p = q = 6
+bulk_idx = np.where((ds_bulk['pq'] == (p,q)).all(axis=1))[0].item()
+bulk_e = ds_bulk['energies'][bulk_idx]
+
+print('  bulk energy: {:.2f}'.format(bulk_e))
+
+shape_arr = np.array([p*q, p, q])
 
 states = ds['states']
 energies = ds['energies']
-e_min = energies.min()
-energies -= e_min
-wt = 1 / ds['err_energies']
+errs = ds['err_energies']
 
-n_dat = energies.size
+dg_bind = energies - bulk_e
+
+# Sanity
+for state in states:
+    assert state.P == p and state.Q == q
+print('  ...Done\n')
+
+print('\nExtracting pure models...')
+reg_c = np.load('sam_reg_inter_c.npz')['reg'].item()
+reg_o = np.load('sam_reg_inter_o.npz')['reg'].item()
+
+f_c = reg_c.predict(shape_arr.reshape(1,-1)).item()
+f_o = reg_o.predict(shape_arr.reshape(1,-1)).item()
+
+print('  ...Done\n')
+
+delta_f = dg_bind - f_c
+
+n_dat = delta_f.size
 indices = np.arange(n_dat)
 
 # Gen feat vec 
@@ -49,9 +75,21 @@ for i, state in enumerate(states):
     myfeat[i] = state.k_o, state.n_oo, state.n_oe
 
 
+state_pure = State(np.array([],dtype=int), ny=p, nz=q)
+x_o = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
+
+
 # Fit model - LOO CV
-perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one(myfeat[:,0].reshape(-1,1), energies, weights=wt, fit_intercept=False)
-perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, energies, weights=wt, fit_intercept=False)
+constraint = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o) + (f_c - f_o)
+c1 = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o[0]).item() + (f_c - f_o)
+args = (x_o, f_c, f_o)
+
+perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one_constr(myfeat[:,0], delta_f, eqcons=[c1], args=args)
+
+perf_mse, err, xvals, fit, reg = fit_leave_one_constr(myfeat, delta_f, eqcons=[constraint], args=args)
+
+#perf_mse, err, xvals, fit, reg2 = fit_leave_one(myfeat, delta_f, fit_intercept=False)
+
 k_vals = myfeat[:,0]
 
 e_lim = np.ceil(np.abs(err_m1).max()) + 1
@@ -120,13 +158,4 @@ boot_intercept, boot_coef = fit_bootstrap(myfeat, energies)
 
 print("intercept: {:0.4f} ({:0.4f})".format(reg.intercept_, boot_intercept.std(ddof=1)))
 print("coefs: {} ({})".format(reg.coef_, boot_coef.std(axis=0, ddof=1)))
-
-
-fo = energies.max()
-
-p=q=6
-n_ext = 4*(p+q) - 2
-xo = np.array([p*q, 3*p*q-0.5*n_ext, n_ext])
-
-constraint = lambda alpha, X, y, fo: np.dot(alpha, xo) - fo
 
