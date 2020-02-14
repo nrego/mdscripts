@@ -35,6 +35,8 @@ mpl.rcParams.update({'legend.fontsize':30})
 ds = np.load('sam_dos.npz')
 
 reg = np.load('sam_reg_total.npy').item()
+reg_int_c = np.load('sam_reg_inter_c.npz')['reg'].item()
+reg_int_o = np.load('sam_reg_inter_o.npz')['reg'].item()
 
 # p,q combos we're considering
 vals_pq = ds['vals_pq']
@@ -45,14 +47,15 @@ vals_noo = ds['vals_noo']
 vals_noe = ds['vals_noe']
 
 # Minimum f=dg_bind
-min_dg = np.floor(np.dot(feat_pq, reg.coef_[:3]).min() - 1)
+min_dg = np.floor(np.dot(feat_pq, reg_int_c.coef_).min() - 1)
+max_dg = np.ceil(np.dot(feat_pq, reg_int_o.coef_).max() + 1)
+
 x_ko, x_noo, x_noe = np.meshgrid(vals_ko, vals_noo, vals_noe, indexing='ij')
 
 # shape: (n_ko, n_noo, n_noe)
 delta_f = reg.coef_[3]*x_ko + reg.coef_[4]*x_noo + reg.coef_[5]*x_noe
 # Shape: (n_pq)
 f0 = np.dot(feat_pq, reg.coef_[:3])
-
 
 # Shape
 dos = ds['dos']
@@ -61,7 +64,7 @@ assert dos.min() == 0
 tot_min_e = np.inf
 tot_max_e = -np.inf
 
-f_vals = np.arange(-250, 50, 0.1)
+f_vals = np.arange(min_dg, max_dg, 0.1)
 
 # Density of states for each volume, k_o, energy value
 #    shape: (n_pq, n_ko, n_fvals)

@@ -25,7 +25,7 @@ mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 35})
 mpl.rcParams.update({'ytick.labelsize': 35})
 mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':30})
+mpl.rcParams.update({'legend.fontsize':14})
 
 
 ### PLOT State functions of full model from WL sampling 
@@ -39,6 +39,9 @@ reg = np.load('sam_reg_total.npy').item()
 vals_pq = ds['vals_pq']
 vals_ko = ds['vals_ko']
 vals_f = ds['vals_f']
+
+# indices of all shapes with pq==36
+idx_pq_36 = np.arange(vals_pq.shape[0])[vals_pq.prod(axis=1) == 36]
 
 # Shape: (n_pq_vals, n_ko_vals, n_f_vals)
 dos_f = ds['dos_f']
@@ -56,7 +59,7 @@ for i_pq, (p,q) in enumerate(vals_pq):
         big_omega[i_pq, i_ko] = binom(p*q, ko)
 
 
-# canonical partittion function
+# canonical partition function
 #  shape: (n_betavals, n_pq_vals, n_ko_vals)
 z = np.zeros((betavals.size, *dos_f.shape[:-1]))
 avg_f_canonical = np.zeros_like(z)
@@ -130,4 +133,32 @@ for test_ko in range(test_n+1):
 test_energies = np.array(test_energies)
 
 assert z[50, test_idx].sum() == Z[50, test_idx] == test_energies.size
+
+## Now for the plotting...
+
+for bidx in np.where((betavals==-1) | (betavals==1) | (betavals==0)) [0]:
+    
+    print(betavals[bidx])
+    this_f_avg = avg_f_canonical[bidx, idx_pq_36, ...]
+    this_f_var = var_f_canonical[bidx, idx_pq_36, ...]
+
+    for i, pq_idx in enumerate(idx_pq_36):
+        #plt.plot(vals_ko, this_f_avg[i], label='p: {:d}  q: {:d}'.format(*vals_pq[pq_idx]))
+        plt.plot(vals_ko, this_f_var[i], label='p: {:d}  q: {:d}'.format(*vals_pq[pq_idx]))
+
+    plt.legend()
+    plt.show()
+
+
+# grand-canonical <f> and <delta f^2> with beta
+
+this_f_avg = avg_f_gc[:, idx_pq_36]
+this_f_var = var_f_gc[:, idx_pq_36]
+
+for i, pq_idx in enumerate(idx_pq_36):
+    #plt.plot(betavals, this_f_avg[:,i], label='p: {:d}  q: {:d}'.format(*vals_pq[pq_idx]))
+    plt.plot(betavals, this_f_var[:,i], label='p: {:d}  q: {:d}'.format(*vals_pq[pq_idx]))
+
+plt.legend()
+plt.show()
 

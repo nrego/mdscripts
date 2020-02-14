@@ -39,7 +39,7 @@ def print_data(reg, boot_intercept, boot_coef):
 
 
 reg_coef = np.load('sam_reg_coef.npy').item()
-reg_int = np.load('sam_reg_inter.npy').item()
+reg_int = np.load('sam_reg_inter_c.npz')['reg'].item()
 
 inter = reg_int.intercept_
 # for P, Q, k_o, n_oo, n_oe
@@ -47,7 +47,7 @@ coefs = np.concatenate((reg_int.coef_, reg_coef.coef_))
 
 ds = np.load('sam_pattern_pooled.npz')
 energies = ds['energies']
-delta_e = ds['delta_e']
+delta_f = ds['delta_f']
 dg_bind = ds['dg_bind']
 states = ds['states']
 # P Q k_o n_oo n_oe k_c n_mm n_me n_mo
@@ -63,10 +63,10 @@ p_p_q = p+q
 # Fit a dummy regression and then change its coeffs
 myfeat = np.vstack((pq, p, q, ko, n_oo, n_oe)).T
 #myfeat2 = np.vstack((pq, p_p_q, kc, n_mm, n_me)).T
-perf_mse, err1, xvals, fit, reg = fit_leave_one(myfeat, dg_bind, weights=1/errs)
+perf_mse, err1, xvals, fit, reg = fit_leave_one(myfeat, dg_bind)
 #perf_mse, err2, xvals, fit, reg2 = fit_leave_one(myfeat, energies, weights=1/errs)
 boot_intercept, boot_coef = fit_bootstrap(myfeat, dg_bind, weights=1/errs)
-print_data(reg, boot_intercept, boot_coef)
+#print_data(reg, boot_intercept, boot_coef)
 
 
 reg.intercept_ = reg_int.intercept_
@@ -97,6 +97,3 @@ plt.savefig('{}/Desktop/fig_err_comp'.format(homedir))
 plt.close('all')
 
 np.save('sam_reg_total', reg)
-
-
-
