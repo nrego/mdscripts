@@ -9,10 +9,11 @@ import logging
 DTYPE = np.float64
 
 log = logging.getLogger('mdtools.WHAMDataExtractor')
+
+
 class WHAMDataExtractor:
 
-
-    def __init__(self, infiles, fmt='phi', autocorr=None, start=0, end=None, beta=1):
+    def __init__(self, infiles, fmt='phi', auxinfiles=None, autocorr=None, start=0, end=None, beta=1):
         self.dr = dr
         self.fmt = fmt
         self.n_windows = 0
@@ -35,7 +36,10 @@ class WHAMDataExtractor:
                 if self.fmt == 'phi': 
                     self.dr.loadPhi(infile) 
                 elif self.fmt == 'simple':
-                    ds = self.dr.loadSimple(infile)
+                    this_auxfile = None
+                    if auxinfiles is not None:
+                        this_auxfile = auxinfiles[i]
+                    self.dr.loadSimple(infile, aux_filename=this_auxfile)
                 self.n_windows += 1
         except:
             raise IOError("Error: Unable to successfully load inputs")
@@ -183,6 +187,7 @@ class WHAMDataExtractor:
     def _unpack_simple_data(self, start, end=None):
 
         self.all_data = np.array([], dtype=np.float32)
+        self.all_data_aux = np.array([], dtype=DTYPE)
         self.n_samples = np.array([]).astype(int)
 
         if self.autocorr is None:
@@ -190,7 +195,7 @@ class WHAMDataExtractor:
             self.autocorr = np.zeros(self.n_windows)
         else:
             do_autocorr = False
-
+        embed()
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
 
             if self.ts == None:
@@ -217,7 +222,8 @@ class WHAMDataExtractor:
             else:
                 self.bias_mat = np.vstack((self.bias_mat, self.beta*dataframe))
 
-            self.all_data = np.append(self.all_data, dataframe[:,-1])
+            self.all_data = np.append(self.all_data, dataframe[:,i])
+            self.all_data_aux = np.append(self.all_data_aux, ds.auxdata[start:end])
             
         #if do_autocorr:
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")

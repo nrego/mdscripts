@@ -372,12 +372,12 @@ class SimpleDataSet(DataSet):
     # can provide additional string arguments in args - if provided
     #   will search for string in data's header file and extract corresponding
     #   float
-    def __init__(self, filename, corr_len=1, addl_args=None):
+    def __init__(self, filename, corr_len=1, addl_args=None, aux_filename=None):
         super(SimpleDataSet, self).__init__()
 
         # Value of lambda for each window
 
-        self.title=filename
+        self.title = filename
         self.header = ''
         self.header = self.header.rstrip()
         if addl_args is not None:
@@ -393,6 +393,16 @@ class SimpleDataSet(DataSet):
         #self.dhdl1 = pandas.DataFrame(data[::corr_len, 1], index=data[::corr_len, 0])
         # Data has biases in kJ/mol !
         self.data = pandas.DataFrame(data[::corr_len, 1:], index=data[::corr_len, 0])
+
+        # Assumed to have same shape (and timepoints) as data!
+        if aux_filename:
+            try:
+                aux_data = np.loadtxt(aux_filename, comments=['#', '@'])
+                log.debug('Datareader {} reading aux input file {}'.format(self, aux_filename))
+
+                self.aux_data = aux_data
+            except:
+                raise ValueError('ERROR: Could not load aux file {}'.format(aux_filename))
 
     def _scan_header_dat(self, filename, arg):
 
@@ -478,8 +488,8 @@ class DataReader:
         return cls._addSet(ds)
 
     @classmethod
-    def loadSimple(cls, filename, corr_len=1, addl_args=None):
-        ds = SimpleDataSet(filename, corr_len, addl_args)
+    def loadSimple(cls, filename, corr_len=1, aux_filename=None, addl_args=None):
+        ds = SimpleDataSet(filename, aux_filename=aux_filename, corr_len=corr_len, addl_args=addl_args)
         return cls._addSet(ds)
 
     @classmethod

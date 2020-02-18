@@ -137,6 +137,8 @@ Command-line options
                             help='Format of input data files:  \'phi\' for phiout.dat; \ '
                             '\'xvg\' for XVG type files (i.e. from alchemical GROMACS sims); \ '
                             '\'rama\' for RAMA type files (alanine dipeptide)')
+        sgroup.add_argument('--auxfiles', metavar='AUXINPUT', type=str, nargs='+',
+                            help='(Optional): Aux data file names, same number of data points as inputs')
         sgroup.add_argument('-b', '--start', type=int, default=0,
                             help='first timepoint (in ps) - default is first available time point')  
         sgroup.add_argument('-e', '--end', type=int, default=None,
@@ -187,19 +189,22 @@ Command-line options
         else:
             auto = args.autocorr
 
+        if args.auxfiles is not None:
+            auxfiles = args.auxfiles
+        else:
+            auxfiles = None
 
         log.info("Extracting data...")
-        self.data_extractor = WHAMDataExtractor(args.input, args.fmt, auto, args.start, args.end, self.beta)
+
+        self.data_extractor = WHAMDataExtractor(args.input, auxinfiles=auxfiles, fmt=args.fmt, autocorr=auto, start=args.start, end=args.end, beta=self.beta)
         log.info("Tau for each window: {} ps".format(self.autocorr))
         log.info("data time step: {} ps".format(self.ts))
         log.info("autocorr nsteps: {}".format(self.autocorr_blocks))        
 
-        
         if args.boot_fn is not None:
             self.boot_fn = get_object(args.boot_fn)
 
     def go(self):
-
 
         if self.start_weights is not None:
             log.info("using initial weights: {}".format(self.start_weights))
