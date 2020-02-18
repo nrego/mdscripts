@@ -189,15 +189,14 @@ class WHAMDataExtractor:
         self.all_data = np.array([], dtype=np.float32)
         self.all_data_aux = np.array([], dtype=DTYPE)
         self.n_samples = np.array([]).astype(int)
+        self.bias_mat = None
 
-        if self.autocorr is None:
-            do_autocorr = True
+        # If autocorr not set, set it ouselves
+        if self.calc_autocorr:
             self.autocorr = np.zeros(self.n_windows)
-        else:
-            do_autocorr = False
-        embed()
+        
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
-
+            
             if self.ts == None:
                 self.ts = []
                 
@@ -208,12 +207,9 @@ class WHAMDataExtractor:
             data = ds.data[start:end]
             dataframe = np.array(data)
 
-            if do_autocorr:
-                try:
-                    autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:, -1]))
-                    self.autocorr[i] = max(ds.ts * autocorr_len, self.min_autocorr_time)
-                except:
-                    embed()
+            if self.calc_autocorr:
+                autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:, 0]))
+                self.autocorr[i] = ds.ts * autocorr_len
 
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
@@ -223,7 +219,7 @@ class WHAMDataExtractor:
                 self.bias_mat = np.vstack((self.bias_mat, self.beta*dataframe))
 
             self.all_data = np.append(self.all_data, dataframe[:,i])
-            self.all_data_aux = np.append(self.all_data_aux, ds.auxdata[start:end])
+            self.all_data_aux = np.append(self.all_data_aux, ds.aux_data[start:end])
             
         #if do_autocorr:
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")

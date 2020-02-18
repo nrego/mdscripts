@@ -400,7 +400,8 @@ class SimpleDataSet(DataSet):
                 aux_data = np.loadtxt(aux_filename, comments=['#', '@'])
                 log.debug('Datareader {} reading aux input file {}'.format(self, aux_filename))
 
-                self.aux_data = aux_data
+                assert np.array_equal(aux_data[::corr_len, 0], data[::corr_len, 0]), "Error: index btwn data and aux data does not line up"
+                self.aux_data = pandas.DataFrame(aux_data[::corr_len, 1:], index=aux_data[::corr_len, 0])
             except:
                 raise ValueError('ERROR: Could not load aux file {}'.format(aux_filename))
 
