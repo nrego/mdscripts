@@ -31,6 +31,7 @@ proc animatepdbs {start inc end fileformat scriptname} {
         render TachyonInternal $outfile
         exec convert -composite -gravity south $outfile $labelfile $outfile_mod
     }
+    
     exec convert -delay 20 -loop 4 snap*_labeled*.png movie.gif
     eval file delete [ glob snap*rgb ]
     #eval file delete [ glob snap*png ]
