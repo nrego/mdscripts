@@ -36,7 +36,7 @@ args = parser.parse_args()
 
 
 homedir = os.environ['HOME']
-reg = np.load('sam_reg_pooled.npy').item()
+reg = np.load('sam_reg_coef.npy').item()
 
 alpha1, alpha2, alpha3 = reg.coef_
 
@@ -75,7 +75,7 @@ def enumerate_states(state):
         if n_reachable == state.N:
             print("doing {} of {}".format(i+1, state.children.size))
             sys.stdout.flush()
-            
+
         enumerate_states(child)
 
 
