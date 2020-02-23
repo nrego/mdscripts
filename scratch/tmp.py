@@ -109,5 +109,5 @@ tot_negloghist = -tot_loghist
 max_vals = tot_loghist.max(axis=1)
 pvn = -(np.log(np.sum(np.exp(tot_loghist - max_vals[:,None]), axis=1)) + max_vals)
 
-np.loadtxt('../k_00/d_not/trial_0')
+blah = np.loadtxt('../k_00/d_not/trial_0/PvN.dat')
 

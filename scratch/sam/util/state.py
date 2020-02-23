@@ -193,7 +193,7 @@ class State:
                 idx = np.where(self.pt_idx == idx)[0].item()
                 new_pt_idx = np.delete(self.pt_idx, idx).astype(int)
             
-            yield State(new_pt_idx, parent=self, reg=self.reg, e_func=self.e_func, mode=self.mode)
+            yield State(new_pt_idx, parent=self, ny=self.ny, nz=self.nz, mode=self.mode)
 
 
     def plot(self, **kwargs):

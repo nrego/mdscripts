@@ -22,56 +22,99 @@ from scratch.sam.util import *
 
 from functools import reduce
 
-def factors(n):    
-    return set(reduce(list.__add__, 
-                ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
 
-state = State(np.array([], dtype=int), ny=3, nz=3)
-max_ko = state.k_o
-max_noo = state.n_oo
-max_noe = state.n_oe
 
-max_N = 16 
-vals_p = vals_q = np.arange(max_N+1)
+parser = argparse.ArgumentParser('exhaustively run greedy algorithm')
+parser.add_argument('-p', default=4, type=int,
+                    help='p (default: %(default)s)')
+parser.add_argument('-q', default=4, type=int,
+                    help='q (default: %(default)s)')
+parser.add_argument('--build-phob', action='store_true', 
+                    help='If true, go philic => phobic')
 
-vals_ko = np.arange(max_ko+1)
-vals_noo = np.arange(max_noo+1)
-vals_noe = np.arange(max_noe+1)
+args = parser.parse_args()
 
-pp, qq, xx, yy, zz = np.meshgrid(vals_p, vals_q, vals_ko, vals_noo, vals_noe, indexing='ij')
 
-# Count of density of states, binned by p, q, k_o, n_oo, and n_oe
-omega = np.zeros_like(pp)
+homedir = os.environ['HOME']
+reg = np.load('sam_reg_pooled.npy').item()
 
-for p, q in itertools.product(vals_p, repeat=2):
+alpha1, alpha2, alpha3 = reg.coef_
+
+p = args.p
+q = args.q
+n = p*q
+
+pt_idx = np.arange(n, dtype=int) if not args.build_phob else np.array([], dtype=int)
+
+mode = 'build_phil' if not args.build_phob else 'build_phob'
+state0 = State(pt_idx, ny=p, nz=q, mode=mode)
+
+def enumerate_states(state):
+
+    n_reachable = state.avail_indices.size
+
+    if n_reachable == 0:
+        return 
+
+    trial_states = np.empty(n_reachable, dtype=object)
+    trial_energies = np.zeros(n_reachable)
+
+    for i, newstate in enumerate(state.gen_next_pattern()):
+
+        trial_states[i] = newstate
+        trial_energies[i] = alpha2*(newstate.n_oo) + alpha3*(newstate.n_oe)
+
+    if state.mode == 'build_phil':
+        mask = np.isclose(trial_energies, trial_energies.max())
+    else:
+        mask = np.isclose(trial_energies, trial_energies.min())
+
+    state.children = trial_states[mask]
     
-    N = p*q
+    for i, child in enumerate(state.children):
+        if n_reachable == state.N:
+            print("doing {} of {}".format(i+1, state.children.size))
 
-    if N == 0 or N > max_N:
-        print("\n##############\n[Skipping p={} q={} (N={})]\n################\n".format(p,q,N))
-        continue
+        enumerate_states(child)
 
-    indices_to_choose = np.arange(N)
 
-    print("\n\nP = {} Q = {} (N = {})".format(p,q,N))
-    print("################\n")
+def print_states(state):
+    plt.close('all')
+    state.plot()
+    n_avail = state.avail_indices.size
+    plt.savefig('{}/Desktop/state_{}'.format(homedir, n_avail))
 
-    idx_p = np.digitize(p, vals_p) - 1
-    idx_q = np.digitize(q, vals_q) - 1
-    
-    for k_c in np.arange(N+1):
-        n_combos = int(binom(N, k_c))
-        print("  kc = {}  (combos: {})".format(k_c, n_combos))
+    if len(state.children) == 0:
+        return
 
-        idx_ko = np.digitize(N-k_c, vals_ko) - 1
-        
-        for pt_idx in itertools.combinations(indices_to_choose, k_c):
-            pt_idx = np.array(pt_idx).astype(int)
+    print_states(state.children[0])
 
-            state = State(pt_idx, ny=p, nz=q)
+# Go thru state trajectory tree, enumerate patterns
+#   at each k_o
 
-            idx_noo = np.digitize(state.n_oo, vals_noo) - 1
-            idx_noe = np.digitize(state.n_oe, vals_noe) - 1
+def _make_prob_dist(state, state_count):
+    idx = state.k_o
 
-            omega[idx_p, idx_q, idx_ko, idx_noo, idx_noe] += 1
+    state_count[idx].append(state.methyl_mask)
 
+    for child in state.children:
+        _make_prob_dist(child, state_count)
+
+def make_prob_dist(state):
+    state_count = [ [] for i in range(state.N+1) ]
+
+    _make_prob_dist(state, state_count)
+
+    state_count = [np.array(arr) for arr in state_count]
+
+    return state_count  
+
+print("ENUMERATING STATES FOR MODE {} P: {} Q: {}\n".format(mode, p, q))
+enumerate_states(state0)
+print("...Done\n")
+print("...enumerating states...")
+state_count = make_prob_dist(state0)
+del state0
+print("...Done...Saving...\n")
+np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), state_count)
+print("...Done!")
