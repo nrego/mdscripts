@@ -5,7 +5,7 @@ import MDAnalysis
 
 import argparse
 from IPython import embed
-import os, glob
+import os, glob, sys
 
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import matplotlib as mpl
@@ -74,7 +74,8 @@ def enumerate_states(state):
     for i, child in enumerate(state.children):
         if n_reachable == state.N:
             print("doing {} of {}".format(i+1, state.children.size))
-
+            sys.stdout.flush()
+            
         enumerate_states(child)
 
 
