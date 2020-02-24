@@ -31,6 +31,8 @@ parser.add_argument('-q', default=4, type=int,
                     help='q (default: %(default)s)')
 parser.add_argument('--build-phob', action='store_true', 
                     help='If true, go philic => phobic')
+parser.add_argument('-i', '--index', default=-1, type=int,
+                    help='index of state to start with')
 
 args = parser.parse_args()
 
@@ -49,11 +51,11 @@ pt_idx = np.arange(n, dtype=int) if not args.build_phob else np.array([], dtype=
 mode = 'build_phil' if not args.build_phob else 'build_phob'
 state0 = State(pt_idx, ny=p, nz=q, mode=mode)
 
-def enumerate_states(state):
+def enumerate_states(state, break_out=0):
 
     n_reachable = state.avail_indices.size
 
-    if n_reachable == 0:
+    if n_reachable == break_out:
         return 
 
     trial_states = np.empty(n_reachable, dtype=object)
@@ -72,11 +74,11 @@ def enumerate_states(state):
     state.children = trial_states[mask]
     
     for i, child in enumerate(state.children):
-        if n_reachable == state.N:
+        if n_reachable >= state.N - 2:
             print("doing {} of {}".format(i+1, state.children.size))
             sys.stdout.flush()
 
-        enumerate_states(child)
+        enumerate_states(child, break_out=break_out)
 
 
 def print_states(state):
@@ -110,12 +112,33 @@ def make_prob_dist(state):
 
     return state_count  
 
+## Finding initial states
 print("ENUMERATING STATES FOR MODE {} P: {} Q: {}\n".format(mode, p, q))
-enumerate_states(state0)
+print("(enumerating intitial trial moves)")
+enumerate_states(state0, break_out=state0.N-2)
+
+all_states = []
+
+for c1 in state0.children:
+    for c2 in c1.children:
+        all_states.append(c2)
+
+print("number of states: {}".format(len(all_states)))
+
+if args.index == -1:
+    print("exiting...")
+    sys.exit()
+
+else:
+    this_state = all_states[args.index]
+
+print("ENUMERATING STATES FOR MODE {} P: {} Q: {}, index: {}\n".format(mode, p, q, args.index))
+enumerate_states(this_state)
 print("...Done\n")
 print("...enumerating states...")
-state_count = make_prob_dist(state0)
-del state0
+state_count = make_prob_dist(this_state)
+del state0, this_state
 print("...Done...Saving...\n")
-np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), state_count)
+np.save('state_count_p_{:02g}_q_{:02g}_idx_{:03g}_{}'.format(p, q, mode), state_count)
 print("...Done!")
+

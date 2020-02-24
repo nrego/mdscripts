@@ -196,6 +196,7 @@ class WHAMDataExtractor:
             self.autocorr = np.zeros(self.n_windows)
         
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
+            log.info('extracting ds {}'.format(i))
             
             if self.ts == None:
                 self.ts = []
@@ -220,6 +221,8 @@ class WHAMDataExtractor:
 
             self.all_data = np.append(self.all_data, dataframe[:,i])
             self.all_data_aux = np.append(self.all_data_aux, ds.aux_data[start:end])
+
+            del ds
             
         #if do_autocorr:
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
