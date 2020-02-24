@@ -137,8 +137,9 @@ enumerate_states(this_state)
 print("...Done\n")
 print("...enumerating states...")
 state_count = make_prob_dist(this_state)
+np.save('state_p_{:02g}_q_{:02g}_idx_{:03g}_{}'.format(p, q, args.index, mode), this_state)
 del state0, this_state
 print("...Done...Saving...\n")
-np.save('state_count_p_{:02g}_q_{:02g}_idx_{:03g}_{}'.format(p, q, mode), state_count)
+np.save('state_count_p_{:02g}_q_{:02g}_idx_{:03g}_{}'.format(p, q, args.index, mode), state_count)
 print("...Done!")
 
