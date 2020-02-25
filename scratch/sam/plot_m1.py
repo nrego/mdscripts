@@ -89,8 +89,8 @@ perf_mse, err, xvals, fit, reg = fit_leave_one_constr(myfeat, delta_f, eqcons=[c
 fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
 
-ax.errorbar(myfeat[:,0], delta_f, fmt='o', color='gray', yerr=errs)
-ax.plot(xvals, fit, 'k-', linewidth=4)
+ax.errorbar(myfeat[:,0], delta_f+f_c, fmt='o', color='gray', yerr=errs)
+ax.plot(xvals, fit+f_c, 'k-', linewidth=4)
 ax.set_xticks([0,12,24,36])
 
 fig.tight_layout()

@@ -28,7 +28,7 @@ mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':30})
 
 
-def construct_pure_model(ds_pure, ds_bulk, slc, suffix=''):
+def construct_pure_model(ds_pure, ds_bulk, slc, suffix='', exclude=None):
 
     energies_pure = ds_pure['energies'][slc]
     emin_pure = ds_pure['base_energy'].item()
@@ -55,6 +55,14 @@ def construct_pure_model(ds_pure, ds_bulk, slc, suffix=''):
 
     assert energies_pure.size == energies_bulk.size
 
+
+    # exclude data points, if desired
+    if exclude is not None:
+        energies_pure = np.delete(energies_pure, exclude)
+        energies_bulk = np.delete(energies_bulk, exclude)
+        errs_bulk = np.delete(errs_bulk, exclude)
+        errs_pure = np.delete(errs_pure, exclude)
+        p_q = np.delete(p_q, exclude, axis=0)
 
     ## Binding free energy to pure surface
     diffs = energies_pure - energies_bulk
@@ -111,8 +119,8 @@ ds_pure = np.load('sam_pattern_pure.npz')
 
 # Pure surfaces
 
-construct_pure_model(ds_pure, ds_bulk, slice(0, None, 2), suffix='_c')
-construct_pure_model(ds_pure, ds_bulk, slice(1, None, 2), suffix='_o')
+construct_pure_model(ds_pure, ds_bulk, slice(0, None, 2), suffix='_c', exclude=5)
+construct_pure_model(ds_pure, ds_bulk, slice(1, None, 2), suffix='_o', exclude=5)
 
 
 

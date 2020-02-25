@@ -33,6 +33,22 @@ mpl.rcParams.update({'lines.markersize':8})
 mpl.rcParams.update({'legend.fontsize':10})
 
 homedir = os.environ['HOME']
+
+reg = np.load('sam_reg_total.npy').item()
+f_c = np.dot(reg.coef_[:3], np.array([36, 6, 6]))
+alpha = reg.coef_[3:]
+
+
+def get_energies(edge_types, f_c, alpha):
+    indices = np.array([0,1])
+    energies = np.zeros((edge_types.shape[0], edge_types.shape[1]))
+
+    for i in range(edge_types.shape[0]):
+        this_edges = np.hstack((np.arange(37).reshape(-1,1), edge_types[i][:,np.array([0,1])]))
+        energies[i] = np.dot(this_edges, alpha) + f_c
+
+    return energies
+
 # Loop thru a given (starting) state's children,
 #   making not of the position of added tile at each round
 #   Can optionally break out when break_out==k_c
@@ -187,7 +203,6 @@ rdfs_phob_oc = np.zeros_like(rdfs_phil_oo)
 edgetype_phil = np.zeros((len(fnames), N+1, 5))
 edgetype_phob = np.zeros_like(edgetype_phil)
 
-
 for i, fname in enumerate(fnames):
     this_dir = os.path.dirname(fname)
     print('Doing {}'.format(this_dir))
@@ -239,6 +254,15 @@ for i, fname in enumerate(fnames):
     rdfs_phob_oc[i] = rdf1_oc
 
 
+energies_phil = get_energies(edgetype_phil, f_c, alpha)
+energies_phob = get_energies(edgetype_phob[:,::-1,:], f_c, alpha)
+
+avg_energies_phil = energies_phil.mean(axis=0)
+avg_energies_phob = energies_phob.mean(axis=0)
+
+err_energies_phil = energies_phil.std(axis=0, ddof=1)
+err_energies_phob = energies_phob.std(axis=0, ddof=1)
+
 # Average number of edge types, for each round of tesselation
 #   Shape: (n_tile_rounds, n_edge_type)
 # edgetypes: (n_oo, n_oe, n_cc, n_ce, n_oc)
@@ -247,6 +271,18 @@ avg_edgetype_phob = edgetype_phob.mean(axis=0)
 
 err_edgetype_phil = edgetype_phil.std(axis=0, ddof=1)
 err_edgetype_phob = edgetype_phob.std(axis=0, ddof=1)
+
+
+## Plot average energies
+plt.close('all')
+fig, ax = plt.subplots(figsize=(6.5,6))
+
+rounds = np.arange(N+1)
+ax.errorbar(rounds, avg_energies_phil, yerr=err_energies_phil, fmt='-o', color='#1f77b4', label='breaking phobicity')
+ax.errorbar(rounds, avg_energies_phob, yerr=err_energies_phob, fmt='-o', color='#7f7f7f', label='building phobicity')
+ax.set_xticks(rounds[::6])
+plt.savefig('{}/Desktop/avg_f'.format(homedir), transparent=True)
+
 
 ## Plot noo
 plt.close('all')
@@ -268,7 +304,7 @@ ax.errorbar(rounds, avg_edgetype_phob[::-1,2], yerr=err_edgetype_phob[:,2], fmt=
 ax.set_xticks(rounds[::6])
 plt.savefig('{}/Desktop/avg_ncc'.format(homedir), transparent=True)
 
-## PLOT NCC ##
+## PLOT NOC ##
 plt.close('all')
 fig, ax = plt.subplots(figsize=(6.5,6))
 
@@ -277,6 +313,16 @@ ax.errorbar(rounds, avg_edgetype_phil[:,4], yerr=err_edgetype_phil[:,4], fmt='-o
 ax.errorbar(rounds, avg_edgetype_phob[::-1,4], yerr=err_edgetype_phob[:,4], fmt='-o', color='#7f7f7f', label='building phobicity')
 ax.set_xticks(rounds[::6])
 plt.savefig('{}/Desktop/avg_noc'.format(homedir), transparent=True)
+
+## PLOT NOE ##
+plt.close('all')
+fig, ax = plt.subplots(figsize=(6.5,6))
+
+rounds = np.arange(N+1)
+ax.errorbar(rounds, avg_edgetype_phil[:,1], yerr=err_edgetype_phil[:,1], fmt='-o', color='#1f77b4', label='breaking phobicity')
+ax.errorbar(rounds, avg_edgetype_phob[::-1,1], yerr=err_edgetype_phob[:,1], fmt='-o', color='#7f7f7f', label='building phobicity')
+ax.set_xticks(rounds[::6])
+plt.savefig('{}/Desktop/avg_noe'.format(homedir), transparent=True)
 
 #############################################
 #############################################
