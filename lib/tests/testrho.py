@@ -86,6 +86,7 @@ class TestPhi:
         max_diff = np.abs((test_phivals - self.phivals)).max()
         assert max_diff < arr_tol, "maximum difference ({}) > tolerance ({})".format(max_diff, arr_tol)
 
+
     def test_gaus_1d_vals(self, arr_tol=1e-7):
         test_gvals = gaus_1d(self.vals, self.sigma, self.sigma**2)
 

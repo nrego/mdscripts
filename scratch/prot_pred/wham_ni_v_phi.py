@@ -71,6 +71,7 @@ sys.stdout.flush()
 n_heavies = None
 
 n_i_dat_fnames = np.append(sorted(glob.glob('phi*/rho_data_dump_rad_6.0.dat.npz')), sorted(glob.glob('nstar*/rho_data_dump_rad_6.0.dat.npz')))
+# Final shape: (n_heavies, n_total_data)
 all_data_n_i = None
 
 ## Gather n_i data from each umbrella window (phi value)
