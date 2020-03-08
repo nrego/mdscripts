@@ -143,7 +143,7 @@ class MDSystem():
             try:
                 hydrophil = charge_assign[atm.resname][atm.name]
             except:
-                hydrophil = float(input('enter hydrophilicity for atom {} of {} (q={:1.2f}) (-1 for hydrophilic, 1 for hydrophobic):  '.format(atm.name, atm.resname, atm.charge)))
+                hydrophil = float(input('enter hydrophilicity for atom {} of {} (-1 for polar/charged, 1 for non-polar):  '.format(atm.name, atm.resname)))
                 try: 
                     charge_assign[atm.resname][atm.name] = hydrophil
                 except KeyError:

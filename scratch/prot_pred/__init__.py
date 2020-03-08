@@ -1,1 +1,1 @@
-from merge_dist_list import align
+from .merge_dist_list import align
