@@ -16,7 +16,7 @@ beta = 1/(300*k)
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Remove internal waters from solvated protein')
-    parser.add_argument('-c', '--struct', type=str,
+    parser.add_argument('-c', '--struct', type=str, required=True,
                         help='GRO structure file')
     parser.add_argument('--sel-spec', type=str, default='protein',
                         help='Selection spec for selecting all protein atoms (including hydrogens) \
