@@ -43,7 +43,7 @@ def align(larger, smaller):
     # Same number of atoms - use all
     else:
         large_mask = np.ones(larger.n_atoms, dtype=bool)
-    #embed()
+    embed()
     assert larger[large_mask].n_residues == smaller.n_residues
 
 
