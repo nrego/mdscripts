@@ -115,7 +115,7 @@ def enumerate_states(x, delta, mode='build_phil'):
 
     return all_states
 
-print("ENUMERATING STATES FOR MODE {} P: {} Q: {}, index: {}\n".format(mode, p, q, args.index))
+print("ENUMERATING STATES FOR MODE {} P: {} Q: {}, index: {}\n".format(mode, p, q))
 print("...enumerating states...")
 all_states = enumerate_states(x0, delta, mode=mode)
 print("...Done\n")
