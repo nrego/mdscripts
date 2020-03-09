@@ -107,7 +107,7 @@ def _enumerate_states_build(x, delta, i_round, all_states):
 
     all_states[i_round].append(x)
 
-    if x.sum() == 0:
+    if x.sum() == x.size:
         return
 
     # Go thru candidate methyl placements, select the one(s) with the lowest energy
