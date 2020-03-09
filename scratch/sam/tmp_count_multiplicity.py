@@ -22,17 +22,29 @@ from scratch.sam.util import *
 
 from functools import reduce
 
+class GetDelta:
+    def __init__(self, adj_mat, ext_count, alpha_n_cc, alpha_n_ce):
+        self.adj_mat = adj_mat
+        self.ext_count = ext_count
+        self.alpha_n_cc = alpha_n_cc
+        self.alpha_n_ce = alpha_n_ce
 
 
-parser = argparse.ArgumentParser('exhaustively run greedy algorithm')
+    def __call__(self, x0, x1):
+        delta_n_cc = 0.5*(np.linalg.multi_dot((x1, self.adj_mat, x1)) - np.linalg.multi_dot((x0, self.adj_mat, x0)))
+        delta_n_ce = np.dot(x1-x0, self.ext_count)
+
+        return self.alpha_n_cc * delta_n_cc + self.alpha_n_ce * delta_n_ce
+
+
+parser = argparse.ArgumentParser('Exhaustively run greedy algorithm')
 parser.add_argument('-p', default=4, type=int,
                     help='p (default: %(default)s)')
 parser.add_argument('-q', default=4, type=int,
                     help='q (default: %(default)s)')
 parser.add_argument('--build-phob', action='store_true', 
                     help='If true, go philic => phobic')
-parser.add_argument('-i', '--index', default=-1, type=int,
-                    help='index of state to start with')
+
 
 args = parser.parse_args()
 
@@ -42,6 +54,9 @@ reg = np.load('sam_reg_coef.npy').item()
 
 alpha1, alpha2, alpha3 = reg.coef_
 
+alpha_n_cc = alpha2
+alpha_n_ce = alpha2 - alpha3
+
 p = args.p
 q = args.q
 n = p*q
@@ -49,97 +64,61 @@ n = p*q
 pt_idx = np.arange(n, dtype=int) if not args.build_phob else np.array([], dtype=int)
 
 mode = 'build_phil' if not args.build_phob else 'build_phob'
+
 state0 = State(pt_idx, ny=p, nz=q, mode=mode)
 
-def enumerate_states(state, break_out=0):
+x0 = state0.methyl_mask.astype(int)
+adj_mat = state0.adj_mat
+ext_count = state0.ext_count
 
-    n_reachable = state.avail_indices.size
+delta = GetDelta(adj_mat, ext_count, alpha_n_cc, alpha_n_ce)
 
-    if n_reachable == break_out:
-        return 
+# x is methyl mask
+# *Breaking* phobicity, so we choose the ko addition
+#   that causes the greatest increase in f
+def _enumerate_states_break(x, delta, i_round, all_states):
 
-    trial_states = np.empty(n_reachable, dtype=object)
-    trial_energies = np.zeros(n_reachable)
+    all_states[i_round].append(x)
 
-    for i, newstate in enumerate(state.gen_next_pattern()):
-
-        trial_states[i] = newstate
-        trial_energies[i] = alpha2*(newstate.n_oo) + alpha3*(newstate.n_oe)
-
-    if state.mode == 'build_phil':
-        mask = np.isclose(trial_energies, trial_energies.max())
-    else:
-        mask = np.isclose(trial_energies, trial_energies.min())
-
-    state.children = trial_states[mask]
-    
-    for i, child in enumerate(state.children):
-        if n_reachable >= state.N - 2:
-            print("doing {} of {}".format(i+1, state.children.size))
-            sys.stdout.flush()
-
-        enumerate_states(child, break_out=break_out)
-
-
-def print_states(state):
-    plt.close('all')
-    state.plot()
-    n_avail = state.avail_indices.size
-    plt.savefig('{}/Desktop/state_{}'.format(homedir, n_avail))
-
-    if len(state.children) == 0:
+    if x.sum() == 0:
         return
 
-    print_states(state.children[0])
+    # Go thru candidate hydroxyl placements, select the one(s) with the lowest energy
+    avail_indices = np.arange(x.size)[x==1]
+    trial_energies = np.zeros_like(avail_indices).astype(float)
+    x_cand = np.zeros_like(avail_indices).astype(object)
 
-# Go thru state trajectory tree, enumerate patterns
-#   at each k_o
+    for i, cand_idx in enumerate(avail_indices):
+        x_trial = x.copy()
+        x_cand[i] = x_trial
+        x_trial[cand_idx] = 0
+        trial_energies[i] = delta(x, x_trial)
 
-def _make_prob_dist(state, state_count):
-    idx = state.k_o
+    trial_energies = np.round(trial_energies, 5)
+    traj_mask = trial_energies == trial_energies.max()
 
-    state_count[idx].append(state.methyl_mask)
+    for new_x in x_cand[traj_mask]:
+        _enumerate_states_break(new_x, delta, i_round+1, all_states)
 
-    for child in state.children:
-        _make_prob_dist(child, state_count)
+# Breaking phobicity by adding hydroxyls
+def enumerate_states(x, delta, mode='build_phil'):
+    all_states = dict()
+    for i in range(x.size+1):
+        all_states[i] = []
 
-def make_prob_dist(state):
-    state_count = [ [] for i in range(state.N+1) ]
+    if mode == 'build_phil':
+        fn = _enumerate_states_break
+    elif mode == 'build_phob':
+        fn = _enumerate_states_build
 
-    _make_prob_dist(state, state_count)
+    fn(x, delta, 0, all_states)
 
-    state_count = [np.array(arr) for arr in state_count]
-
-    return state_count  
-
-## Finding initial states
-print("ENUMERATING STATES FOR MODE {} P: {} Q: {}\n".format(mode, p, q))
-print("(enumerating intitial trial moves)")
-enumerate_states(state0, break_out=state0.N-2)
-
-all_states = []
-
-for c1 in state0.children:
-    for c2 in c1.children:
-        all_states.append(c2)
-
-print("number of states: {}".format(len(all_states)))
-
-if args.index == -1:
-    print("exiting...")
-    sys.exit()
-
-else:
-    this_state = all_states[args.index]
+    return all_states
 
 print("ENUMERATING STATES FOR MODE {} P: {} Q: {}, index: {}\n".format(mode, p, q, args.index))
-enumerate_states(this_state)
-print("...Done\n")
 print("...enumerating states...")
-state_count = make_prob_dist(this_state)
-np.save('state_p_{:02g}_q_{:02g}_idx_{:03g}_{}'.format(p, q, args.index, mode), this_state)
-del state0, this_state
-print("...Done...Saving...\n")
-np.save('state_count_p_{:02g}_q_{:02g}_idx_{:03g}_{}'.format(p, q, args.index, mode), state_count)
-print("...Done!")
+all_states = enumerate_states(x0, delta, mode=mode)
+print("...Done\n")
+
+np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), all_states)
 

@@ -69,8 +69,16 @@ class State:
         self.N = self.ny*self.nz
         self.ext_count = np.zeros(self.N, dtype=int)
         
+        # Shape (N, N): adj_mat[i,j] = 1 if i,j nearest neighbors, 0 otherwise
+        #   Note: symmetric matrix with 0's on the diagonal
+        self.adj_mat = np.zeros((self.N, self.N), dtype=int)
+        
         for i in range(self.N):
             self.ext_count[i] = np.intersect1d(self.non_patch_indices, self.nn_ext[i]).size
+            self.adj_mat[i][self.nn[i]] = 1
+
+        assert self.adj_mat.diagonal().max() == 0
+        assert np.array_equal(self.adj_mat, self.adj_mat.T)
 
         self.pt_idx = np.atleast_1d(pt_idx)
         self.e_func = e_func
@@ -86,6 +94,7 @@ class State:
         self._avail_indices = None
 
         self.mode = mode
+
 
     @property
     def avail_indices(self):
