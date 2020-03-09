@@ -100,6 +100,33 @@ def _enumerate_states_break(x, delta, i_round, all_states):
     for new_x in x_cand[traj_mask]:
         _enumerate_states_break(new_x, delta, i_round+1, all_states)
 
+# x is methyl mask
+# *Building* phobicity, so we choose the kc addition
+#   that causes the greatest decrease in f
+def _enumerate_states_build(x, delta, i_round, all_states):
+
+    all_states[i_round].append(x)
+
+    if x.sum() == 0:
+        return
+
+    # Go thru candidate methyl placements, select the one(s) with the lowest energy
+    avail_indices = np.arange(x.size)[x==0]
+    trial_energies = np.zeros_like(avail_indices).astype(float)
+    x_cand = np.zeros_like(avail_indices).astype(object)
+
+    for i, cand_idx in enumerate(avail_indices):
+        x_trial = x.copy()
+        x_cand[i] = x_trial
+        x_trial[cand_idx] = 1
+        trial_energies[i] = delta(x, x_trial)
+
+    trial_energies = np.round(trial_energies, 5)
+    traj_mask = trial_energies == trial_energies.min()
+
+    for new_x in x_cand[traj_mask]:
+        _enumerate_states_build(new_x, delta, i_round+1, all_states)
+
 # Breaking phobicity by adding hydroxyls
 def enumerate_states(x, delta, mode='build_phil'):
     all_states = dict()
