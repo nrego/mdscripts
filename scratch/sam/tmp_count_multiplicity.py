@@ -78,7 +78,7 @@ delta = GetDelta(adj_mat, ext_count, alpha_n_cc, alpha_n_ce)
 #   that causes the greatest increase in f
 def _enumerate_states_break(x, delta, i_round, all_states):
 
-    all_states[i_round].append(x)
+    #all_states[i_round].append(x)
 
     if x.sum() == 0:
         return
@@ -144,8 +144,8 @@ def enumerate_states(x, delta, mode='build_phil'):
 
 print("ENUMERATING STATES FOR MODE {} P: {} Q: {}\n".format(mode, p, q))
 print("...enumerating states...")
-all_states = enumerate_states(x0, delta, mode=mode)
+#all_states = enumerate_states(x0, delta, mode=mode)
 print("...Done\n")
 
-np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), all_states)
+#np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), all_states)
 

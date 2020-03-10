@@ -90,12 +90,18 @@ def construct_pure_model(ds_pure, ds_bulk, slc, suffix='', exclude=None):
 
     pred = reg.predict(feat_pq)
 
-    fig = plt.figure(figsize=(7,6))
+    fig = plt.figure(figsize=(8,6))
     ax = plt.gca()
     ax.plot([lim_min, lim_max], [lim_min, lim_max], 'k-', linewidth=4)
-    ax.plot(pred, diffs, 'o', zorder=3, markersize=12, color='orange')
+    s = ax.scatter(pred, diffs, zorder=3, s=200, cmap='bwr_r', norm=plt.Normalize(-6,6), c=err_reg, edgecolors='k')
+    fig.colorbar(s, ticks=[-6,0,6])
     ax.set_xlim(lim_min, lim_max)
     ax.set_ylim(lim_min, lim_max)
+    lim_min = np.round(lim_min/100)*100
+    lim_max = np.round(lim_max/100)*100
+    xticks = np.arange(lim_min, lim_max+100, 100)
+    ax.set_xticks(xticks)
+    ax.set_yticks(xticks)
 
     fig.tight_layout()
 
@@ -107,9 +113,36 @@ def construct_pure_model(ds_pure, ds_bulk, slc, suffix='', exclude=None):
 
     np.savez_compressed('sam_reg_inter{}'.format(suffix), reg=reg, coef_err=coef_err, coef=reg.coef_)
 
+    ## Plot resolution
+    dg = 0.05
+    pvals = np.arange(0, p_q[:,0].max()+2, dg)
+    qvals = np.arange(0, p_q[:,1].max()+2, dg)
+    pp, qq = np.meshgrid(pvals, qvals, indexing='ij')
+    ppqq = pp*qq
 
+    fn = lambda p, q, pq, reg: reg.coef_[0]*pq + reg.coef_[1]*p + reg.coef_[2]*q
 
+    vals = fn(pp, qq, ppqq, reg)
 
+    #min_val = np.round(vals.min()/100)*100
+    min_val = np.floor(diffs.min()/100)*100 
+    max_val = np.ceil(diffs.max()/100)*100
+    #max_val = np.round(vals.max()/100)*100
+    e_vals = np.arange(min_val, max_val, 100)
+    #ax = plt.gca(projection='3d')
+    plt.close('all')
+    fig = plt.figure(figsize=(6,8))
+    ax = plt.gca()
+    pc = ax.pcolormesh(pp, qq, vals, norm=plt.Normalize(min_val, max_val))
+    
+    c = ax.contour(pp, qq, vals, levels=e_vals, colors='k', linestyles='solid')
+    fig.colorbar(pc, ticks=e_vals)
+
+    ax.scatter(p_q[:,0], p_q[:,1], c=err_reg, norm=plt.Normalize(-6,6), cmap='bwr_r', edgecolors='k', s=200, zorder=3)
+
+    fig.tight_layout()
+    plt.savefig('{}/Desktop/fig_inter_2d{}.png'.format(homedir, suffix), transparent=True)
+    #plt.show()
 
 ### Extract cavity creation FE's for bulk and near pure surfaces
 #########################################
@@ -119,8 +152,8 @@ ds_pure = np.load('sam_pattern_pure.npz')
 
 # Pure surfaces
 
-construct_pure_model(ds_pure, ds_bulk, slice(0, None, 2), suffix='_c', exclude=5)
-construct_pure_model(ds_pure, ds_bulk, slice(1, None, 2), suffix='_o', exclude=5)
+construct_pure_model(ds_pure, ds_bulk, slice(0, None, 2), suffix='_c')
+construct_pure_model(ds_pure, ds_bulk, slice(1, None, 2), suffix='_o')
 
 
 

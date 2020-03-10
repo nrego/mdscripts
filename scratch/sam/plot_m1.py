@@ -28,7 +28,8 @@ mpl.rcParams.update({'ytick.labelsize': 35})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':30})
 
-
+# If true, enforce endpoint constraints ('pure' patterns constrained to f_0)
+do_constr = False
 ### PLOT SIMPLE REG ON k_O for 6 x 6 ####
 #########################################
 
@@ -63,6 +64,7 @@ reg_o = np.load('sam_reg_inter_o.npz')['reg'].item()
 f_c = reg_c.predict(shape_arr.reshape(1,-1)).item()
 f_o = reg_o.predict(shape_arr.reshape(1,-1)).item()
 
+
 print('  ...Done\n')
 
 delta_f = dg_bind - f_c
@@ -82,15 +84,34 @@ args = (f_c, f_o)
 
 # Fit model - LOO CV, constrained so that a pure hydroxyl group gives 
 #   delta f = fo - fc
-perf_mse, err, xvals, fit, reg = fit_leave_one_constr(myfeat, delta_f, eqcons=[constraint], args=args)
+if do_constr:
+    perf_mse, err, xvals, fit, reg = fit_leave_one_constr(myfeat, delta_f, eqcons=[constraint], args=args)
+    boot_int, boot_coef = fit_bootstrap(myfeat, delta_f, fit_intercept=False)
+    
+else:
+    perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, dg_bind, weights=np.ones_like(errs), fit_intercept=True)
+    boot_int, boot_coef = fit_bootstrap(myfeat, dg_bind, fit_intercept=True)
 
-#perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, delta_f, weights=np.ones_like(errs), fit_intercept=False)
+coef_err = boot_coef.std(axis=0, ddof=1).item()
+inter_err = boot_int.std(axis=0, ddof=1)
 
+print('M1 Regression:')
+print('##############\n')
+print('inter: {:.2f} ({:1.2e})  coef: {:.2f} ({:1.2e})'.format(reg.intercept_, inter_err, reg.coef_[0], coef_err))
+
+plt.close('all')
 fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
+norm = plt.Normalize(-15,15)
+err_kwargs = {"lw":.5, "zorder":0, "color":'k'}
+if do_constr:
+    ax.errorbar(myfeat[:,0], delta_f+f_c, fmt='o', color='gray', yerr=errs)
+    ax.plot(xvals, fit+f_c, 'k-', linewidth=4)
+else:
+    sc = ax.scatter(myfeat[:,0], dg_bind, s=50, c=norm(err), cmap='coolwarm_r', zorder=100)
+    ax.errorbar(myfeat[:,0], dg_bind, errs, fmt='none', **err_kwargs)
+    ax.plot(xvals, fit, 'k-', linewidth=2, zorder=200)    
 
-ax.errorbar(myfeat[:,0], delta_f+f_c, fmt='o', color='gray', yerr=errs)
-ax.plot(xvals, fit+f_c, 'k-', linewidth=4)
 ax.set_xticks([0,12,24,36])
 
 fig.tight_layout()
@@ -100,8 +121,13 @@ fig.savefig('{}/Desktop/m1.pdf'.format(homedir), transparent=True)
 ## Horizontal error slice (different k vals, but similar delta f)
 ##########################
 
-e_val = 70
-diff = np.abs(delta_f - e_val)
+e_val = -61
+if do_constr:
+    e_val = e_val - f_c
+    diff = np.abs(delta_f - e_val)
+else:
+    diff = np.abs(dg_bind - e_val)
+
 diff_mask = diff < 2
 min_k = myfeat[diff_mask, 0].min()
 max_k = myfeat[diff_mask, 0].max()
@@ -137,7 +163,11 @@ plt.close('all')
 k_val = 23
 k_mask = myfeat[:,0] == k_val
 pred_e = reg.predict(np.array([k_val]).reshape(1,-1)).item()
-diff = delta_f[k_mask] - pred_e
+
+if do_constr:
+    delta_f[k_mask] - pred_e
+else:
+    diff = dg_bind[k_mask] - pred_e
 
 min_idx = indices[k_mask][diff.argmin()]
 max_idx = indices[k_mask][diff.argmax()]
