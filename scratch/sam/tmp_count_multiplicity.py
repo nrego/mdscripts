@@ -144,8 +144,9 @@ def enumerate_states(x, delta, mode='build_phil'):
 
 print("ENUMERATING STATES FOR MODE {} P: {} Q: {}\n".format(mode, p, q))
 print("...enumerating states...")
+sys.stdout.flush()
 all_states = enumerate_states(x0, delta, mode=mode)
 print("...Done\n")
-
+sys.stdout.flush()
 np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), all_states)
 
