@@ -305,6 +305,8 @@ Command-line options
 
             return
 
+        log.info('Main sel spec: {}'.format(self.mol_sel_spec))
+        log.info('Neighbor sel spec: {}'.format(self.neighbor_sel_spec))
         log.info('Writing output to \'{}_norm.pdb\' and \'{}_avg.pdb\' '.format(self.outpdb, self.outpdb))
 
         ##TODO: Outsource this to a dedicated data-manager

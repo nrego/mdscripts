@@ -92,6 +92,10 @@ else:
     perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, dg_bind, weights=np.ones_like(errs), fit_intercept=True)
     boot_int, boot_coef = fit_bootstrap(myfeat, dg_bind, fit_intercept=True)
 
+poly_feat = np.hstack((myfeat**2, myfeat))
+perf_mse_poly, err_poly, xvals2, fit_poly, reg_poly = fit_leave_one(poly_feat, dg_bind, weights=np.ones_like(errs), fit_intercept=True)
+
+
 coef_err = boot_coef.std(axis=0, ddof=1).item()
 inter_err = boot_int.std(axis=0, ddof=1)
 

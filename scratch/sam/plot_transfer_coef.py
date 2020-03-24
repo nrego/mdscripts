@@ -16,6 +16,8 @@ import numpy as np
 
 from scratch.sam.util import *
 
+do_constr = False
+
 # k_o, n_oo, n_oe
 indices = np.array([2,3,4])
 def extract_from_states(states):
@@ -91,6 +93,7 @@ print('  ...Done\n')
 ### Find coefs ###
 ###################
 constraint = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o) + (f_c - f_o)
+
 ### 6 x 6 ###
 #############
 
@@ -107,16 +110,20 @@ state_pure = State(np.array([], dtype=int), ny=p, nz=q)
 x_o = x_o_06_06 = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
 args = (x_o, f_c, f_o)
 
-# perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06[:,indices], dg_bind_06_06 - f_c, fit_intercept=False)
-perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_06_06[:,indices], delta_f, eqcons=[constraint], args=args)
-boot_intercept, boot_coef = fit_bootstrap(feat_06_06[:,indices], delta_f, fit_intercept=False)
-
-assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
+if do_constr:
+    perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_06_06[:,indices], delta_f, eqcons=[constraint], args=args)
+    boot_intercept, boot_coef = fit_bootstrap(feat_06_06[:,indices], delta_f, fit_intercept=False)
+    assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
+else:
+    perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06[:,indices], dg_bind_06_06, fit_intercept=True)
+    boot_intercept, boot_coef = fit_bootstrap(feat_06_06[:,indices], dg_bind_06_06, fit_intercept=True)
 
 print("\nDOING 6x6... (N={:02d})".format(energies_06_06.size))
 print_data(reg, boot_intercept, boot_coef)
-rsq = 1 - (perf_mse.mean() / delta_f.var())
-print("  perf: {:0.6f}".format(rsq))
+
+rsq = 1 - (perf_mse.mean() / dg_bind_06_06.var())
+
+print("  perf: {:0.6f} (mse: {:.1f})".format(rsq, perf_mse.mean()))
 
 ### 4 x 9 ###
 #############
@@ -136,15 +143,20 @@ x_o = x_o_04_09 = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
 args = (x_o, f_c, f_o)
 
 # perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09[:,indices], delta_f, fit_intercept=False, weights=1/err_06_06)
-perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_04_09[:,indices], delta_f, eqcons=[constraint], args=args)
-boot_intercept, boot_coef = fit_bootstrap(feat_04_09[:,indices], delta_f, fit_intercept=False)
-
-assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
+if do_constr:
+    perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_04_09[:,indices], delta_f, eqcons=[constraint], args=args)
+    boot_intercept, boot_coef = fit_bootstrap(feat_04_09[:,indices], delta_f, fit_intercept=False)
+    assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
+else:
+    perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09[:,indices], dg_bind_04_09, fit_intercept=True)
+    boot_intercept, boot_coef = fit_bootstrap(feat_04_09[:,indices], dg_bind_04_09, fit_intercept=True)    
 
 print("\nDOING 4x9... (N={:02d})".format(energies_04_09.size))
 print_data(reg, boot_intercept, boot_coef)
-rsq = 1 - (perf_mse.mean() / energies_04_09.var())
-print("  perf: {:0.6f}".format(rsq))
+
+rsq = 1 - (perf_mse.mean() / dg_bind_04_09.var())
+
+print("  perf: {:0.6f} (mse: {:.1f})".format(rsq, perf_mse.mean()))
 
 
 ### 4 x 4 ###
@@ -164,15 +176,20 @@ x_o = x_o_04_04 = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
 args = (x_o, f_c, f_o)
 
 # perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04[:,indices], delta_f, fit_intercept=False, weights=1/err_04_04)
-perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_04_04[:,indices], delta_f, eqcons=[constraint], args=args)
-boot_intercept, boot_coef = fit_bootstrap(feat_04_04[:,indices], delta_f, fit_intercept=False)
-
-assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
+if do_constr:
+    perf_mse, err, xvals, fit, reg = fit_leave_one_constr(feat_04_04[:,indices], delta_f, eqcons=[constraint], args=args)
+    boot_intercept, boot_coef = fit_bootstrap(feat_04_04[:,indices], delta_f, fit_intercept=False)
+    assert np.allclose(reg.predict(x_o.reshape(1,-1)).item(), f_o - f_c)
+else:
+    perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04[:,indices], dg_bind_04_04, fit_intercept=True)
+    boot_intercept, boot_coef = fit_bootstrap(feat_04_04[:,indices], dg_bind_04_04, fit_intercept=True)    
 
 print("\nDOING 4x4... (N={:02d})".format(energies_04_04.size))
 print_data(reg, boot_intercept, boot_coef)
-rsq = 1 - (perf_mse.mean() / energies_04_04.var())
-print("  perf: {:0.6f}".format(rsq))
+
+rsq = 1 - (perf_mse.mean() / dg_bind_04_04.var())
+
+print("  perf: {:0.6f} (mse: {:.1f})".format(rsq, perf_mse.mean()))
 
 
 ### ALL ###
