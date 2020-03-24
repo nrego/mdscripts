@@ -205,10 +205,12 @@ class State:
             yield State(new_pt_idx, parent=self, ny=self.ny, nz=self.nz, mode=self.mode)
 
 
-    def plot(self, **kwargs):
+    def plot(self, noedge=False, **kwargs):
 
         feat = make_feat(self.methyl_mask, self.pos_ext, self.patch_indices)
         feat = plot_feat(feat, self.ny+2, self.nz+2)
+        if noedge:
+            feat[feat==0] = -1
 
         new_kwargs = dict()
         if kwargs is not None:

@@ -77,8 +77,9 @@ delta = GetDelta(adj_mat, ext_count, alpha_n_cc, alpha_n_ce)
 # *Breaking* phobicity, so we choose the ko addition
 #   that causes the greatest increase in f
 def _enumerate_states_break(x, delta, i_round, all_states):
-
-    all_states[i_round].append(x)
+    global count
+    count += 1
+    #all_states[i_round].append(x)
 
     if x.sum() == 0:
         return
@@ -105,7 +106,7 @@ def _enumerate_states_break(x, delta, i_round, all_states):
 #   that causes the greatest decrease in f
 def _enumerate_states_build(x, delta, i_round, all_states):
 
-    all_states[i_round].append(x)
+    #all_states[i_round].append(x)
 
     if x.sum() == x.size:
         return
@@ -125,7 +126,7 @@ def _enumerate_states_build(x, delta, i_round, all_states):
     traj_mask = trial_energies == trial_energies.min()
 
     for new_x in x_cand[traj_mask]:
-        _enumerate_states_build(new_x, delta, i_round+1, all_states)
+        return _enumerate_states_build(new_x, delta, i_round+1, all_states)
 
 # Breaking phobicity by adding hydroxyls
 def enumerate_states(x, delta, mode='build_phil'):
@@ -142,10 +143,12 @@ def enumerate_states(x, delta, mode='build_phil'):
 
     return all_states
 
+count = 0
 print("ENUMERATING STATES FOR MODE {} P: {} Q: {}\n".format(mode, p, q))
 print("...enumerating states...")
+sys.stdout.flush()
 all_states = enumerate_states(x0, delta, mode=mode)
 print("...Done\n")
-
-np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), all_states)
+sys.stdout.flush()
+#np.save('state_count_p_{:02g}_q_{:02g}_{}'.format(p, q, mode), all_states)
 
