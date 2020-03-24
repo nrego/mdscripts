@@ -235,7 +235,7 @@ Command-line options
 
         log.info('n workers: {}'.format(n_workers))
         log.info('n frames: {}'.format(self.n_frames))
-
+        log.info('n solute atoms: {}'.format(self.univ.select_atoms(self.mol_sel_spec).n_atoms))
 
         def task_gen():
 
