@@ -14,6 +14,23 @@ import MDAnalysis
 import argparse
 from IPython import embed
 
+
+def get_perf(dewet_mask, contact_mask, hydropathy_mask):
+
+    tp_np = (dewet_mask & contact_mask & hydropathy_mask).sum()
+    fp_np = (dewet_mask & ~contact_mask & hydropathy_mask).sum()
+    tn_np = (~dewet_mask & ~contact_mask & hydropathy_mask).sum()
+    fn_np = (~dewet_mask & contact_mask & hydropathy_mask).sum()
+
+    tp_po = (dewet_mask & contact_mask & ~hydropathy_mask).sum()
+    fp_po = (dewet_mask & ~contact_mask & ~hydropathy_mask).sum()
+    tn_po = (~dewet_mask & ~contact_mask & ~hydropathy_mask).sum()
+    fn_po = (~dewet_mask & contact_mask & ~hydropathy_mask).sum()
+
+
+    return tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po
+
+
 beta = 1/(300*k)
 
 ### A mix of evaluate perforance.py and anayze patch.py
@@ -32,9 +49,11 @@ if __name__ == '__main__':
                         help='mask of non-polar atoms (default: %(default)s)')
     parser.add_argument('--no-beta', action='store_true', default=False,
                         help='If provided, assume input files are in kJ/mol, not kT')
+    parser.add_argument('--thresh', '-s', type=float, default=0.5,
+                        help='Rho threshold for determining if atom is dewetted (default: %(default)s)')
     args = parser.parse_args()
 
-
+    s = args.thresh
     buried_mask = np.loadtxt(args.buried_mask, dtype=bool)
     surf_mask = ~buried_mask
     contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
@@ -43,7 +62,7 @@ if __name__ == '__main__':
     rho_ds = np.load(args.rho_cross)
 
     # Beta phi vals, Shape: n_bphi_vals
-    beta_phi_vals = rho_ds['beta_phi']
+    beta_phi_vals = np.round(rho_ds['beta_phi'], 4)
     # <rho_i>_phi, Shape: (n_heavy_atoms, n_bphi_vals)
     rho_dat = rho_ds['rho_data']
     # Critical bphis for each atom - odd number of bphis means atom i is dewetted by bphimax
@@ -57,7 +76,9 @@ if __name__ == '__main__':
     
     contact_mask = contact_mask[surf_mask] # Only considering surface atoms
     hydropathy_mask = hydropathy_mask[surf_mask]
-
+    cross_vals = cross_vals[surf_mask]
+    rho_dat = rho_dat[surf_mask]
+    cross_mask = np.diff(rho_dat < args.thresh)
 
     print('Number of surface atoms: {}'.format(surf_mask.sum()))
     print('Number of contacts: {}'.format(contact_mask.sum()))
@@ -65,38 +86,75 @@ if __name__ == '__main__':
     print('Number of non-polar contact atoms: {} ({:0.2f})'.format((hydropathy_mask&contact_mask).sum(), (hydropathy_mask&contact_mask).sum() / contact_mask.sum()))
 
     header = 'beta*phi  tp(np) tp(p)  fp(np)  fp(p)  tn(np)  tn(p)  fn(np)  fn(p)'   
-    dat = np.zeros((len(pred_contacts), 9))
+    dat = []
+    surf_indices = np.arange(surf_mask.sum())
 
-    for i,fname in enumerate(pred_contacts):
+    for i, beta_phi in enumerate(beta_phi_vals[:-1]):
 
         if args.no_beta:
-            beta_phi = beta*float(os.path.dirname(fname).split('_')[-1]) / 10.0
-        else:
-            beta_phi = float(os.path.dirname(fname).split('_')[-1])/ 100.0
+            beta_phi = beta*beta_phi
 
-        pred_contact_mask = np.loadtxt(fname, dtype=bool)
-        #assert pred_contact_mask[buried_mask].sum() == 0
+        this_rho = rho_dat[:,i]
+        next_rho = rho_dat[:,i+1]
 
-        pred_contact_mask = pred_contact_mask[surf_mask]
+        dewet_mask = this_rho < s
 
-        tp_np = (pred_contact_mask & contact_mask & hydropathy_mask).sum()
-        fp_np = (pred_contact_mask & ~contact_mask & hydropathy_mask).sum()
-        tn_np = (~pred_contact_mask & ~contact_mask & hydropathy_mask).sum()
-        fn_np = (~pred_contact_mask & contact_mask & hydropathy_mask).sum()
+        ## Record state at this beta phi val
 
-        tp_po = (pred_contact_mask & contact_mask & ~hydropathy_mask).sum()
-        fp_po = (pred_contact_mask & ~contact_mask & ~hydropathy_mask).sum()
-        tn_po = (~pred_contact_mask & ~contact_mask & ~hydropathy_mask).sum()
-        fn_po = (~pred_contact_mask & contact_mask & ~hydropathy_mask).sum()
+        tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = get_perf(dewet_mask, contact_mask, hydropathy_mask)
+        this_dat = beta_phi, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po
+        dat.append(this_dat)
 
+        ## If we're about to cross a threshold for any atom(s), linearly interpolate their cross values
+        this_cross_mask = cross_mask[:,i]
+        n_cross = this_cross_mask.sum()
 
-        dat[i] = beta_phi, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po
+        if n_cross > 0:
 
+            print("\n{} crosses from bphi={:.2f} to {:.2f}".format(n_cross, beta_phi, beta_phi_vals[i+1]))
+            assert np.logical_xor((this_rho < s), (next_rho < s)).sum() == n_cross
 
+            # Should always be the same, but oh well
+            delta_bphi = np.round(beta_phi_vals[i+1] - beta_phi, 4)
+            delta_rho = next_rho - this_rho
+            slope = delta_rho / delta_bphi
+
+            # Deltas giving the critical points for each atom
+            d_bphi = ((s-this_rho)/(slope))[this_cross_mask]
+            cross_indices = surf_indices[this_cross_mask]
+
+            assert (d_bphi > 0).all()
+            assert np.max(d_bphi) < delta_bphi
+
+            sort_idx = np.argsort(d_bphi)
+
+            for delta_index in sort_idx:
+                this_idx = cross_indices[delta_index]
+                this_d_bphi = d_bphi[delta_index]
+                new_rho = this_rho + slope*this_d_bphi
+                new_beta_phi = beta_phi + this_d_bphi
+                dewet_mask = dewet_mask.copy()
+                
+                # This atom has dewetted
+                if this_rho[this_idx] >= s:
+                    assert next_rho[this_idx] < s
+                    dewet_mask[this_idx] = True
+                # This atom is wetting (flicker)
+                elif this_rho[this_idx] < s:
+                    assert next_rho[this_idx] >= s
+                    dewet_mask[this_idx] = False
+    
+                tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = get_perf(dewet_mask, contact_mask, hydropathy_mask)
+                this_dat = new_beta_phi, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po
+                dat.append(this_dat)
+
+    dat = np.array(dat)
     # check that the data in sorted order by phi...
-    sort_idx = np.argsort(dat[:,0])
+    assert np.diff(dat[:,0]).min() >= 0
+    beta_phi_vals, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = [arr.squeeze() for arr in np.split(dat, dat.shape[1], axis=1)]
+    n_dewet = tp_np + tp_po + fp_np + fp_po
 
-    dat = dat[sort_idx]
+    assert np.abs(np.diff(n_dewet)).max() <= 1
 
-    np.savetxt('perf_by_chemistry.dat', dat, header=header, fmt='%1.2e')
+    np.savetxt('perf_by_chemistry.dat', dat, header=header, fmt='%1.8e')
 
