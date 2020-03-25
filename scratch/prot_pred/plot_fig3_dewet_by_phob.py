@@ -32,16 +32,14 @@ mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
+mpl.rcParams.update({'font.size': 20})
 
 
 ################################ INPUT DATA ########################################
 beta = 1 /(300*k)
 
-beta_phi_vals, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = [arr.squeeze() for arr in np.split(np.loadtxt('perf_by_chemistry.dat'), 9, 1)]
-beta_phi_vals2, avg_N, err_avg_N, smooth_chi, err_smooth_chi, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('../phi_sims/NvPhi.dat'), 7, 1)]
-
-assert np.allclose(beta_phi_vals, beta_phi_vals2)
-del beta_phi_vals2
+beta_phi_vals_all, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = [arr.squeeze() for arr in np.split(np.loadtxt('perf_by_chemistry.dat'), 9, 1)]
+beta_phi_vals, avg_N, err_avg_N, smooth_chi, err_smooth_chi, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('../phi_sims/NvPhi.dat'), 7, 1)]
 
 
 ############### FIND bphi minus, star, plus ##############
@@ -72,6 +70,8 @@ n_surf = tot_po + tot_np
 # Number of wetted or dewetted atoms
 dewet_tot = dewet_po + dewet_np
 wet_tot = wet_po + wet_np
+# Sanity
+assert np.abs(np.diff(dewet_tot)).max() <= 1
 
 max_dewet = dewet_tot[-1]
 assert max_dewet == dewet_tot.max()
@@ -84,7 +84,7 @@ max_x = np.ceil(100*(frac_dewet.max()))/100
 # Fraction dewetted atoms that are non-polar
 frac_np_dewet = dewet_np / dewet_tot
 # Fraction of wet atoms that are polar, versus fraction of surf atoms that are dewetted
-frac_p_wet = wet_po / wet_tot
+frac_po_wet = wet_po / wet_tot
 
 ## Find dewetting cohorts (first N that dewet, second N that dewet, etc)
 n_cohort = 10
@@ -143,13 +143,14 @@ plt.close('all')
 fig, ax = plt.subplots(figsize=(5.25, 5))
 
 ax.plot(frac_dewet, frac_np_dewet, linewidth=4, color=COLOR_NO_CONTACT)
-ax.plot(frac_dewet, frac_p_wet, linewidth=4, color=COLOR_PO)
+ax.plot(frac_dewet, frac_po_wet, linewidth=4, color=COLOR_PO)
 #ax.plot(frac_dewet[cohort_indices], cohort_dewet_np/cohort_dewet_tot, 'o', zorder=100)
 
 for idx, sym in zip(plot_idx, plot_sym):
-    if frac_dewet[idx] > 0:
-        ax.plot(frac_dewet[idx], frac_np_dewet[idx], sym, markersize=16, zorder=3)
-        ax.plot(frac_dewet[idx], frac_p_wet[idx], sym, markersize=16, zorder=3)
+    exp_idx = np.abs(beta_phi_vals_all - beta_phi_vals[idx]).argmin()
+    if frac_dewet[exp_idx] > 0:
+        ax.plot(frac_dewet[exp_idx], frac_np_dewet[exp_idx], sym, markersize=16, zorder=3)
+        ax.plot(frac_dewet[exp_idx], frac_po_wet[exp_idx], sym, markersize=16, zorder=3)
 
 ax.set_xlim(0, max_x)
 ax.set_xticks(np.arange(0,max_x+0.2, 0.2))
@@ -168,13 +169,14 @@ plt.close('all')
 fig, ax = plt.subplots(figsize=(5.25, 5))
 
 ax.plot(frac_dewet, frac_np_dewet, linewidth=4, color=COLOR_NO_CONTACT)
-ax.plot(frac_dewet, frac_p_wet, linewidth=4, color=COLOR_PO)
+ax.plot(frac_dewet, frac_po_wet, linewidth=4, color=COLOR_PO)
 pt = ax.plot(frac_dewet[cohort_indices], cohort_dewet_np/cohort_dewet_tot, 'kx', markersize=20, zorder=100)
 pt[0].set_clip_on(False)
 for idx, sym in zip(plot_idx, plot_sym):
-    if frac_dewet[idx] > 0:
-        ax.plot(frac_dewet[idx], frac_np_dewet[idx], sym, markersize=16, zorder=3)
-        ax.plot(frac_dewet[idx], frac_p_wet[idx], sym, markersize=16, zorder=3)
+    exp_idx = np.abs(beta_phi_vals_all - beta_phi_vals[idx]).argmin()
+    if frac_dewet[exp_idx] > 0:
+        ax.plot(frac_dewet[exp_idx], frac_np_dewet[exp_idx], sym, markersize=16, zorder=3)
+        ax.plot(frac_dewet[exp_idx], frac_po_wet[exp_idx], sym, markersize=16, zorder=3)
 
 ax.set_xlim(0, max_x)
 ax.set_xticks(np.arange(0,max_x+0.2, 0.2))
@@ -189,11 +191,11 @@ plt.close('all')
 ##   that are np or po (cohorts should be roughly 50/50 for intermediately phobic grps of atoms)
 plt.close('all')
 
-fig, ax = plt.subplots(figsize=(5.25, 5))
+fig, ax = plt.subplots(figsize=(5.5, 5))
 
-width = 1.8
-ax.bar(np.arange(n_cohort)*2, cohort_dewet_np, width, color=COLOR_NO_CONTACT)
-ax.bar(np.arange(n_cohort)*2, cohort_dewet_po, width, bottom=cohort_dewet_np, color=COLOR_PO)
+width = 0.9
+ax.bar(np.arange(n_cohort), cohort_dewet_np, width, color=COLOR_NO_CONTACT)
+ax.bar(np.arange(n_cohort), cohort_dewet_po, width, bottom=cohort_dewet_np, color=COLOR_PO)
 ax.set_xticks([])
 ax.set_xticklabels([])
 fig.tight_layout()
@@ -202,8 +204,8 @@ for i, (n_np, n_po) in enumerate(zip(cohort_dewet_np, cohort_dewet_po)):
     frac_np = (n_np / (n_np+n_po)) * 100
     frac_po = (n_po / (n_np+n_po)) * 100
 
-    ax.text(2*i-0.3, n_np/2.0, r'{:.0f}\%'.format(frac_np), color='white', rotation=90.)
-    ax.text(2*i-0.3, n_np+ n_po/2.0, r'{:.0f}\%'.format(frac_po), color='white', rotation=90.)
+    ax.text(i-0.25, n_np/2.0, r'{:.0f}\%'.format(frac_np), color='white', rotation=90.)
+    ax.text(i-0.25, n_np+ n_po/2.0, r'{:.0f}\%'.format(frac_po), color='white', rotation=90.)
 
 fig.savefig('{}/cohort_chemistry.pdf'.format(savedir), transparent=True)
 plt.close('all')
