@@ -36,6 +36,9 @@ xmax = 38.5
 ymax = 55.0
 zmax = 55.0
 
+ycom = ymin + (ymax - ymin)/2.0
+zcom = zmin + (zmax - zmin)/2.0
+
 dx = 0.4
 xvals = np.arange(xmin, xmax+dx, dx)
 dr = 0.2
@@ -46,6 +49,7 @@ start_frame = int(args.start / univ.trajectory.dt)
 n_frames = univ.trajectory.n_frames
 
 n_waters = np.zeros(n_frames-start_frame)
+water_com = np.zeros((n_frames-start_frame, 3))
 
 for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
     if i_frame % 100 == 0:
@@ -62,6 +66,10 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
 
     sel_mask = selx & sely & selz
 
+    this_waters = waters[sel_mask]
+    water_com[i] = this_waters.positions.mean(axis=0)
+
     n_waters[i] = sel_mask.sum()
 
 np.savetxt("phiout_cube.dat", n_waters, fmt='%3d')
+np.save("com_noshift.dat", water_com)
