@@ -19,13 +19,13 @@ from mdtools import ParallelTool
 
 from constants import SEL_SPEC_HEAVIES, SEL_SPEC_HEAVIES_NOWALL
 from mdtools.fieldwriter import RhoField
-
+import sys
 import argparse
 
 parser = argparse.ArgumentParser('Output cavity voxels for each frame')
-parser.add_argument('-c', '--top', type=str, help='input structure file')
-parser.add_argument('-f', '--traj', type=str, help='Input trajectory')
-
+parser.add_argument('-c', '--top', type=str, default='ofile.gro', help='input structure file')
+parser.add_argument('-f', '--traj', type=str, default='ofile.xtc', help='Input trajectory')
+parser.add_argument('-b', '--start', default=500, type=int, help='start time, in ps')
 args = parser.parse_args()
 
 xmin = 28.0
@@ -42,11 +42,17 @@ dr = 0.2
 rvals = np.arange(0, 20+dr, dr)
 
 univ = MDAnalysis.Universe(args.top, args.traj)
+start_frame = int(args.start / univ.trajectory.dt)
 n_frames = univ.trajectory.n_frames
 
-n_waters = np.zeros(n_frames)
+n_waters = np.zeros(n_frames-start_frame)
 
-for i, ts, in enumerate(univ.trajectory):
+for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
+    if i_frame % 100 == 0:
+        print("frame: {}".format(i_frame))
+        sys.stdout.flush()
+
+    univ.trajectory[i_frame]
     waters = univ.select_atoms("name OW")
     water_pos = waters.positions
 
