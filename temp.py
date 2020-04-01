@@ -55,7 +55,7 @@ def get_rhoz(water_pos, box_com, xvals, rvals, bulk_rho):
 
             if tot_mask.sum() > max_n:
                 max_n = tot_mask.sum()
-            rhoz[ix, ir] = tot_mask.sum() / expt_waters
+            rhoz[ix, ir] = tot_mask.sum() #/ expt_waters
 
     return rhoz
 
