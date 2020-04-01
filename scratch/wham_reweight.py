@@ -108,7 +108,7 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals, do_n
     return (neglogpdist, neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_data, var_data)
 
 
-beta_phi_vals = np.arange(0,6.04,0.04)
+beta_phi_vals = np.arange(0,6.02,0.02)
 temp = 300
 #k = 8.3144598e-3
 beta = 1./(k*temp)
