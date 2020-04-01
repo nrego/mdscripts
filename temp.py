@@ -46,7 +46,7 @@ def get_rhoz(water_pos, box_com, xvals, rvals, bulk_rho):
 
             this_dr = rval_ub - rval_lb
 
-            this_vol = this_dx*np.pi*(this_dr**2)
+            this_vol = this_dx*np.pi*(rval_ub**2 - rval_lb**2)
             expt_waters = this_vol * bulk_rho
             ## Mask for waters that are between rval_lb and rval_ub in y,z
             rmask = (water_distances >= rval_lb) & (water_distances < rval_ub)
@@ -94,7 +94,7 @@ box_com = np.array([xmin, ycom, zcom])
 
 dx = 0.4
 xvals = np.arange(xmin, xmax+dx, dx)
-dr = 0.2
+dr = 0.5
 rvals = np.arange(0, 20+dr, dr)
 
 univ = MDAnalysis.Universe(args.top, args.traj)
