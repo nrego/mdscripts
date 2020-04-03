@@ -19,6 +19,9 @@ import sys
 
 from whamutils import get_negloghist, extract_and_reweight_data
 
+def plot_errorbar(bb, dat, err, **kwargs):
+    plt.plot(bb, dat, **kwargs)
+    plt.fill_between(bb, dat-err, dat+err, alpha=0.5)
 
 print('Constructing Nv v phi, chi v phi...')
 sys.stdout.flush()
@@ -33,7 +36,7 @@ mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize': 50})
 
 
-### EXTRACT DATA ###
+### EXTRACT MBAR DATA ###
 
 all_data_ds = np.load('all_data.dat.npz')
 all_logweights = all_data_ds['logweights']
@@ -50,10 +53,8 @@ bins = np.arange(0, max_val+1, 1)
 ## In kT!
 beta_phi_vals = np.arange(0,6.02,0.02)
 
-## Get PvN, <Nv>, chi_v from all data ###
-all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_N, all_chi_N, _ = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, beta_phi_vals)
-
-### Now input all <n_i>_\phi's for a given i ###
+## EXTRACT DATA TO REWEIGHT ##
+### Extract all N_V's (number of waters in cube vol V)
 print('')
 print('Extracting cubic probe volume data\'s...')
 sys.stdout.flush()
@@ -84,11 +85,12 @@ sys.stdout.flush()
 bins = np.arange(all_data_cube.max()+3)
 
 # Find <N_V>0 and unbiased average water COM in V
-all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_cube, all_chi_N, _ = extract_and_reweight_data(all_logweights, all_data, all_data_cube, bins, beta_phi_vals)
+all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_cube, all_chi_N, all_cov_cube = extract_and_reweight_data(all_logweights, all_data, all_data_cube, bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comx, all_avg, all_chi, all_avg_comx, all_chi_comx, all_cov_comx = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,0], bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comy, all_avg, all_chi, all_avg_comy, all_chi_comy, all_cov_comy = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,1], bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comz, all_avg, all_chi, all_avg_comz, all_chi_comz, all_cov_comz = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,2], bins, beta_phi_vals)
 
+# Save out the average 
 avg_com = np.array([all_avg_comx[0], all_avg_comy[0], all_avg_comz[0]])
 np.savez_compressed("cube_data_equil.dat", avg_com=avg_com, n0=all_avg_cube[0])
 
