@@ -19,15 +19,6 @@ import sys
 
 from whamutils import get_negloghist, extract_and_reweight_data
 
-## Construct -ln P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
-## also get <N> v phi, and suscept
-
-do_smooth = False
-
-def plot_errorbar(bb, dat, err):
-    plt.plot(bb, dat)
-    plt.fill_between(bb, dat-err, dat+err, alpha=0.5)
-
 
 print('Constructing Nv v phi, chi v phi...')
 sys.stdout.flush()
@@ -67,18 +58,19 @@ print('')
 print('Extracting cubic probe volume data\'s...')
 sys.stdout.flush()
 
-
+# Number of waters in V for each frame of each traj - collect them
 cube_dat_fnames = sorted(glob.glob("Nstar_*/phiout_cube.dat"))
+
 # Final shape: (n_total_data,)
-# Number of waters in cubic probe volume
+# Number of waters in cubic probe volume V, all frames from all simulations
 all_data_cube = []
 all_data_com = []
 
-## Gather n_i data from each umbrella window (phi value)
+## Gather n_i data from each umbrella window (nstar value)
 for fname in cube_dat_fnames:
     dirname = os.path.dirname(fname)
     all_data_cube.append(np.loadtxt(fname))
-    all_data_com.append(np.load('{}/com_noshift.dat.npy'.format(dirname)))
+    all_data_com.append(np.load('{}/com_cube.dat.npy'.format(dirname)))
 
 all_data_cube = np.concatenate(all_data_cube)
 all_data_com = np.concatenate(all_data_com, axis=0)
@@ -88,15 +80,17 @@ print('')
 print('WHAMing and reweighting to phi-ens')
 sys.stdout.flush()
 
+# Make sure our PV(N) goes to high enough N
 bins = np.arange(all_data_cube.max()+3)
 
+# Find <N_V>0 and unbiased average water COM in V
 all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_cube, all_chi_N, _ = extract_and_reweight_data(all_logweights, all_data, all_data_cube, bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comx, all_avg, all_chi, all_avg_comx, all_chi_comx, all_cov_comx = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,0], bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comy, all_avg, all_chi, all_avg_comy, all_chi_comy, all_cov_comy = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,1], bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comz, all_avg, all_chi, all_avg_comz, all_chi_comz, all_cov_comz = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,2], bins, beta_phi_vals)
 
 avg_com = np.array([all_avg_comx[0], all_avg_comy[0], all_avg_comz[0]])
-np.savez_compressed("cube_data_noshift.dat", avg_com=avg_com, n0=all_avg_cube[0])
+np.savez_compressed("cube_data_equil.dat", avg_com=avg_com, n0=all_avg_cube[0])
 
 
 # Now check to see if rho_z data is ready

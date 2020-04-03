@@ -78,11 +78,14 @@ parser = argparse.ArgumentParser('Output cavity voxels for each frame')
 parser.add_argument('-c', '--top', type=str, default='ofile.gro', help='input structure file')
 parser.add_argument('-f', '--traj', type=str, default='ofile.xtc', help='Input trajectory')
 parser.add_argument('-b', '--start', default=500, type=int, help='start time, in ps')
-parser.add_argument('--shift-data', type=str, help='Dataset with average number of waters within cube, as well as unbiased water COM')
+parser.add_argument('--equil-vals', type=str, 
+                    help='path to file with equilibrium values - will calc denstty')
+parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z)')
+parser.add_argument('-dz', default=0.5, type=float, help='spacing in r')
 args = parser.parse_args()
 
 
-do_shift = False
+do_calc_rho = False
 
 xmin = 28.0
 ymin = 15.0
@@ -94,22 +97,30 @@ zmax = 55.0
 
 box_vol = (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 
-if args.shift_data is not None:
-    do_shift = True
-    shift_ds = np.load(args.shift_data)
-    avg_0 = shift_ds['n0'].item()
-    com_0 = shift_ds['avg_com']
-    bulk_rho = avg_0 / box_vol
-
-
 ycom = ymin + (ymax - ymin)/2.0
 zcom = zmin + (zmax - zmin)/2.0
 box_com = np.array([xmin, ycom, zcom])
 
-dx = 0.4
-xvals = np.arange(xmin, xmax+dx, dx)
-dr = 0.5
-rvals = np.arange(0, 20+dr, dr)
+# Equil vals avail for V (i.e., N_V and COM at equil - well, unbiased)
+#.   Since they're available - calculate rho(z,r)
+if args.equil_vals is not None:
+
+    do_calc_rho = True
+
+    equil_ds = np.load(args.equil_vals)
+    # Average num waters in V at bphi=0
+    avg_0 = equil_ds['n0'].item()
+    # Average COM of waters in V at bphi=0
+    com_0 = equil_ds['avg_com']
+    # Average water density in box (at bphi=0)
+    bulk_rho = avg_0 / box_vol
+
+    dx = args.dx
+    xvals = np.arange(xmin, xmax+dx, dx)
+    dr = args.dr
+    rvals = np.arange(0, 20+dr, dr)
+
+
 
 univ = MDAnalysis.Universe(args.top, args.traj)
 start_frame = int(args.start / univ.trajectory.dt)
@@ -118,7 +129,9 @@ n_frames = univ.trajectory.n_frames
 n_waters = np.zeros(n_frames-start_frame)
 water_com = np.zeros((n_frames-start_frame, 3))
 
-rho_z = np.zeros((n_frames-start_frame, xvals.size-1, rvals.size-1))
+if do_calc_rho:
+    # Shape: (n_frames, n_x, n_r)
+    rho_z = np.zeros((n_frames-start_frame, xvals.size-1, rvals.size-1))
 
 for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
     if i_frame % 100 == 0:
@@ -126,6 +139,8 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         sys.stdout.flush()
 
     univ.trajectory[i_frame]
+
+    ## Find waters in V at this step
     waters = univ.select_atoms("name OW")
     water_pos = waters.positions
 
@@ -138,37 +153,50 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
     this_waters = waters[sel_mask]
     #this_waters.write("noshift.gro")
 
+    ## COM of waters in V
     this_water_com = this_waters.positions.mean(axis=0)
     water_com[i] = this_water_com
 
+    ## N_V: number of waters in V
     this_n_waters = this_waters.n_atoms
     n_waters[i] = this_n_waters
 
-    if do_shift:
+
+    ## Center cavity COM in V's COM (in y,z)
+    if do_calc_rho:
         
         #First, find com of cavity
+        # Found from a weighted difference of water COM at bphi=0 and at this ensemble
         cavity_com = (avg_0*com_0 - this_n_waters*this_water_com) / (avg_0 - this_n_waters)
         
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
         shift_vector = np.array([0,ycom,zcom]) - cavity_com
         shift_vector[0] = 0
         
-        # Shift water positions
+        # Shift *all* water positions in this frame 
         water_pos_shift = water_pos + shift_vector
         waters.positions = water_pos_shift
         
-        # Find waters that are still in box after shifting
+        # Find waters that are in V after shifting 
         selx = (water_pos_shift[:,0] >= xmin) & (water_pos_shift[:,0] < xmax)
         sely = (water_pos_shift[:,1] >= ymin) & (water_pos_shift[:,1] < ymax)
         selz = (water_pos_shift[:,2] >= zmin) & (water_pos_shift[:,2] < zmax)
         sel_mask = selx & sely & selz
 
-        # Waters that are in cubic box, after shifting cav COM
+        # Waters that are in V, after shifting cav COM
         this_waters_shift = waters[sel_mask]
-        this_rho_z = get_rhoz(this_waters_shift.positions, box_com, xvals, rvals, bulk_rho)
+        
+        # Finally - get instantaneous (un-normalized) density
+        #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
+        this_rho_z = get_rhoz(this_waters_shift.positions, box_com, xvals, rvals)
 
         rho_z[i] = this_rho_z
 
+# Output number of waters in V at each frame, as well as their COM's
+#   Note: *non* shifted positions - just directly from trajectory
 np.savetxt("phiout_cube.dat", n_waters, fmt='%3d')
-np.save("com_noshift.dat", water_com)
-np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
+np.save("com_cube.dat", water_com)
+
+if do_calc_rho:
+    np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
+
