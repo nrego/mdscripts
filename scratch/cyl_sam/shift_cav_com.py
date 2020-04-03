@@ -74,14 +74,14 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
     return rhoz
 
 
-parser = argparse.ArgumentParser('Output cavity voxels for each frame')
+parser = argparse.ArgumentParser('Output cavity voxels for each frame', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-c', '--top', type=str, default='ofile.gro', help='input structure file')
 parser.add_argument('-f', '--traj', type=str, default='ofile.xtc', help='Input trajectory')
 parser.add_argument('-b', '--start', default=500, type=int, help='start time, in ps')
 parser.add_argument('--equil-vals', type=str, 
                     help='path to file with equilibrium values - will calc denstty')
-parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z), in **Angstroms**. (default: %s(default))')
-parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. (default: %s(default))')
+parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z), in **Angstroms**. ')
+parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. ')
 args = parser.parse_args()
 
 
