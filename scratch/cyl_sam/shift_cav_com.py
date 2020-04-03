@@ -23,12 +23,27 @@ import sys
 import argparse
 
 
-def get_rhoz(water_pos, box_com, xvals, rvals, bulk_rho):
+## Get rho as a function of x (renamed to z) and r
+#
+# water_pos: Positions of all water O's in V 
+# box_com: COM of box in parallel to R; y,z (renamed x,y) - sets r=0
+# xvals: (renamed zvals): bin spacing in x (z)
+#
+# Returns: rhoz;   Shape: (xvals.size-1, rvals.size-1)
+#
+def get_rhoz(water_pos, box_com, xvals, rvals):
+
+    # x component of each box water
+    water_pos_x = water_pos[:,0]
+
     # Shape: (n_xvals-1, n_rvals-1)
-    max_n = 0
     rhoz = np.zeros((xvals.size-1, rvals.size-1))
+
+    # Water distances from center of box in y,z
     # R2 = y**2 + z**2
-    water_distances = np.sqrt(((water_pos-box_com)**2)[:,1:].sum(axis=1))
+    d_yz = (water_pos - box_com)[:,1:]
+    sq_yz = d_yz**2
+    water_distances = np.sqrt( sq_yz.sum(axis=1) )
 
     for ix, xval_lb in enumerate(xvals[:-1]):
         xval_lb = np.round(xval_lb, 5)
@@ -37,24 +52,23 @@ def get_rhoz(water_pos, box_com, xvals, rvals, bulk_rho):
         this_dx = xval_ub - xval_lb
 
         ## Mask for waters that are between xval_lb and xval_ub
-        xmask = (water_pos[:,0] >= xval_lb) & (water_pos[:,0] < xval_ub)
-        x_water_pos = water_pos[xmask]
+        xmask = (xval_lb <= water_pos_x) & (water_pos_x < xval_ub)
 
+        # Donut between rval_lb and rval_ub of height this_dx
         for ir, rval_lb in enumerate(rvals[:-1]):
             rval_lb = np.round(rval_lb, 5)
             rval_ub = np.round(rvals[ir+1], 5)
 
             this_dr = rval_ub - rval_lb
 
+            # Volume of this donut element - for normalizing, later
             this_vol = this_dx*np.pi*(rval_ub**2 - rval_lb**2)
-            expt_waters = this_vol * bulk_rho
+
             ## Mask for waters that are between rval_lb and rval_ub in y,z
             rmask = (water_distances >= rval_lb) & (water_distances < rval_ub)
 
             tot_mask = xmask & rmask
 
-            if tot_mask.sum() > max_n:
-                max_n = tot_mask.sum()
             rhoz[ix, ir] = tot_mask.sum() #/ expt_waters
 
     return rhoz
