@@ -97,11 +97,18 @@ for i, grp in enumerate(groups):
     alphaprime = np.dot(this_B.T, alpha)
 
     print('  H(p,q): {}'.format(h_pq))
-    print('  aprime: {}'.format(alphaprime))
+    print('  a1: {}'.format(alphaprime[0]))
+    print('  a2: {}'.format(alphaprime[1]))
+    print('  a3: {}'.format(alphaprime[2]))
+    #print('  aprime: {}'.format(alphaprime))
 
     act_h_pq = h_pq.subs([(a1, act_alpha[0]), (a2, act_alpha[1]), (a3, act_alpha[2]), (pq, 36), (p, 6), (q, 6)]) 
     act_alphaprime = np.dot(A, act_alpha)
 
+    #print('  H(p,q): {}'.format(h_pq))
+    print('\n  a1_act: {:0.2f}'.format(act_alphaprime[0]))
+    print('  a2_act: {:0.2f}'.format(act_alphaprime[1]))
+    print('  a3_act: {:0.2f}'.format(act_alphaprime[2]))
 
     this_indices = np.append([0,1,2], np.in1d(x,grp).nonzero()[0]+3)
     this_feat = feat_vec[0, this_indices]
@@ -111,4 +118,8 @@ for i, grp in enumerate(groups):
 
     pred = reg_tmp.predict(this_feat.reshape(1,-1)).item() + act_h_pq
     print('  \n(pred: {:0.2f})\n'.format(pred))
+
+
+
+
 

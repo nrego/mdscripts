@@ -52,7 +52,7 @@ for i, dirname in enumerate(sys_names):
 
     perf_dat = np.loadtxt(path)
 
-    bphi, tp, fp, tn, fn, tpr, fpr, ppv, d_h, f_1, mcc = [arr.squeeze() for arr in np.split(perf_dat, 11, 1)]
+    bphi, tp, fp, tn, fn, tpr, fpr, ppv, f_1, d_h, mcc = [arr.squeeze() for arr in np.split(perf_dat, 11, 1)]
     ppv[tp+fp==0] = np.nan
 
 
