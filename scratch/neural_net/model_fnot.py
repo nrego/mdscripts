@@ -36,7 +36,7 @@ def get_err(X, y, weights=None, fit_intercept=False):
     return err
 
 
-class FnotModel(NNModel):
+class FnotDriver(NNDriver):
 
 
     prog='Predict delta_f from pattern'
@@ -50,7 +50,7 @@ Command-line options
 '''
 
     def __init__(self):
-        super(FnotModel, self).__init__()
+        super(FnotDriver, self).__init__()
 
     def add_args(self, parser):
         tgroup = parser.add_argument_group("Training Options")
@@ -241,4 +241,4 @@ Command-line options
 
 if __name__ == "__main__":
 
-    FnotModel().main()
+    FnotDriver().main()

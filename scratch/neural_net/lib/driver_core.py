@@ -19,7 +19,7 @@ import os
 ## 
 ## Since this class is meant to be inhereted, its argument building and argument parsing
 #    routines are structured to climb down the inheritance tree when adding/parsing cmd
-#    line args.
+#    line args (so you can add additional args ad naseum by implementing 'add_args' for subclasses).
 #
 #  All subclasses will call the method "main()" which will in turn call:
 #    ->make_parser_and_process(), which will call:
@@ -77,7 +77,7 @@ class Core:
         group.add_argument("--augment-data", action="store_true",
                            help="Augment data by flipping every input pattern (Default: Do not augment data)")
         group.add_argument("--batch-size", type=int, default=200,
-                           help="Size of training batches. There will be (N_data/batch_size) batches in each "\
+                           help="Size of training batches. There will be (N_data//batch_size + N_data mod batch_size) batches in each "\
                                 "training epoch.  (Default: %(default)s)")
         group.add_argument("--n-valid", type=int, default=5,
                            help="Number of partitions for cross-validation (Default: split data into %(default)s groups")
@@ -135,12 +135,12 @@ class Core:
         self.make_parser_and_process()
         self.run()
 
-
-class NNModel(Core):
+## All command-line tools for training ANNs should subclass this!
+class NNDriver(Core):
     ''' Basic class for command line tools that train NN's.  This guy encapsulates NN architecture, including whether we want a CNN'''
 
     def __init__(self):
-        super(NNModel, self).__init__()
+        super(NNDriver, self).__init__()
 
         self.net_train = []
         self.trainers = []
@@ -149,30 +149,34 @@ class NNModel(Core):
 
     def add_args(self, parser):
         group = parser.add_argument_group("NN Architecture options")
-        group.add_argument("--n-layers", type=int, default=3,
-                           help="Number of hidden layers. (Default: %(default)s)")
-        group.add_argument("--n-hidden", type=int, default=18,
-                           help="Number of nodes per hidden layer. (Default: %(default)s)")
+        group.add_argument("--n-hidden-layer", type=int, default=3,
+                           help="Number of hidden layers (network depth). (Default: %(default)s)")
+        group.add_argument("--n-node-hidden", type=int, default=18,
+                           help="Number of nodes per hidden layer (network width). (Default: %(default)s)")
+        group.add_argument("--n-node-feature", type=int, default=0,
+                           help="Number of nodes in an optional 'feature' layer between the hidden layers and the output layer."\
+                                 "This can be used to train the network to 'learn' features that are fed in to a linear model (via the output node)."\
+                                 "If '0', this layer is ignored and the hidden layers feed directly into the output layer (default: %(default)s)")
         group.add_argument("--drop-out", type=float, default=0.0,
-                           help="Dropout probability per node during training. (Default %(default)s)")
+                           help="Dropout probability per node during training. Can assist with model robustness. (Default %(default)s)")
         group.add_argument("--do-conv", action="store_true",
                            help="Do a convolutional neural net (default: false)")
-        group.add_argument("--n-out-channels", type=int, default=4,
+        group.add_argument("--n-conv-filters", type=int, default=4,
                            help="Number of convolutional filters to apply; ignored if not doing CNN (Default: %(default)s)")
         group.add_argument("--no-run", action="store_true",
                            help="Don't run CV if true")
 
     def process_args(self, args):
-        self.n_layers = args.n_layers
-        self.n_hidden = args.n_hidden if self.n_layers > 0 else 0
+        self.n_hidden_layer = args.n_hidden_layer
+        self.n_node_hidden = args.n_node_hidden if self.n_hidden_layer > 0 else 0
         self.drop_out = args.drop_out
 
         self.do_conv = args.do_conv
-        self.n_out_channels = args.n_out_channels
+        self.n_conv_filters = args.n_conv_filters
 
         self.no_run = args.no_run
 
-        if self.n_layers == 0 and not self.do_conv:
+        if self.n_hidden_layer == 0 and not self.do_conv:
             raise ValueError("If zero layers, must do CNN")
 
 
