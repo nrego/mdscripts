@@ -54,8 +54,13 @@ class SAMNet(nn.Module):
                 layers.append(nn.Dropout(drop_out))
 
         # Add feature layer, which might have a different number of nodes than the hidden layers, if we want
+        
         if n_node_feature > 0:
-            L = nn.Linear(n_node_hidden, n_node_feature)
+            L = nn.Linear(n_node_hidden, n_node_feature, bias=True)
+            layers.append(L)
+            # Note: No ReLU here???
+            layers.append(nn.ReLU())
+            n_node_pre_out = n_node_feature
 
         self.layers = nn.Sequential(*layers)
         self.o = nn.Linear(n_node_pre_out, n_out)
@@ -78,10 +83,12 @@ class SAMConvNet(nn.Module):
         super(SAMConvNet, self).__init__()
 
         self.n_conv_filters = n_conv_filters
+
+        ## Conv and pooling layer
         # INPUT: (1 x ny x nz)
         # Conv Output: (1 x ny x nz)
         # Pool Output: (1 x ny/2 x nz/2) (check!)
-        self.layer1 = nn.Sequential(
+        self.conv = nn.Sequential(
             hexagdly.Conv2d(1, n_conv_filters, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
@@ -92,11 +99,11 @@ class SAMConvNet(nn.Module):
         self.n_pool_out = np.prod(p(dummy).shape) * n_conv_filters
 
         # Fully-connected hidden layer(s), optional feature layer, and output layer
-        self.fc = SAMNet(self.n_pool_out, n_hidden_layer, n_node_hidden, n_out, drop_out)
+        self.fc = SAMNet(self.n_pool_out, n_hidden_layer, n_node_hidden, n_node_feature, n_out, drop_out)
 
     def forward(self, x):
 
-        out = self.layer1(x)
+        out = self.conv(x)
         out = out.reshape(-1, self.n_pool_out)
         out = self.fc(out)
 

@@ -170,9 +170,9 @@ Command-line options
                 net = NetType(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
                                  n_node_hidden=self.n_node_hidden, n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
             else:
-                net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, 
-                             drop_out=self.drop_out)
-
+                net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, 
+                             n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
+            
             if torch.cuda.is_available():
                 print("\n(GPU detected)")
                 net = net.cuda()
@@ -212,13 +212,13 @@ Command-line options
         print("================================\n")
 
         print("\nBegin training\n")
-        
+
         if self.do_conv:
-            net = SAMConvNet(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
-                             n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
+            net = NetType(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
+                             n_node_hidden=self.n_node_hidden, n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
         else:
-            net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, 
-                         drop_out=self.drop_out)
+            net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, 
+                         n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
 
         if torch.cuda.is_available():
             print("\n(GPU detected)")
