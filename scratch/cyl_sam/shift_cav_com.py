@@ -38,6 +38,8 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
 
     # Shape: (n_xvals-1, n_rvals-1)
     rhoz = np.zeros((xvals.size-1, rvals.size-1))
+    # Contains the volume of each donut, in A^3
+    rho_vols = np.zeros_like(rhoz)
 
     # Water distances from center of box in y,z
     # R2 = y**2 + z**2
@@ -70,8 +72,9 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
             tot_mask = xmask & rmask
 
             rhoz[ix, ir] = tot_mask.sum() #/ expt_waters
+            rho_vols[ix, ir] = this_vol
 
-    return rhoz
+    return rhoz, rho_vols
 
 
 parser = argparse.ArgumentParser('Output cavity voxels for each frame', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -188,7 +191,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         
         # Finally - get instantaneous (un-normalized) density
         #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
-        this_rho_z = get_rhoz(this_waters_shift.positions, box_com, xvals, rvals)
+        this_rho_z, rho_vols = get_rhoz(this_waters_shift.positions, box_com, xvals, rvals)
 
         rho_z[i] = this_rho_z
 
@@ -199,4 +202,5 @@ np.save("com_cube.dat", water_com)
 
 if do_calc_rho:
     np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
+    np.save('rho_vols.dat', rho_vols)
 

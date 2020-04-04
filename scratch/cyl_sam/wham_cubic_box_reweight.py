@@ -95,6 +95,8 @@ avg_com = np.array([all_avg_comx[0], all_avg_comy[0], all_avg_comz[0]])
 np.savez_compressed("cube_data_equil.dat", avg_com=avg_com, n0=all_avg_cube[0])
 
 
+## If 2d density profiles are ready - reweight them, too, to find the unbiased rho(z,r) ###
+
 # Now check to see if rho_z data is ready
 all_data_rhoz = []
 rhoz_dat_fnames = sorted(glob.glob("Nstar_*/rhoz.dat.npz"))
@@ -104,7 +106,9 @@ if len(rhoz_dat_fnames) > 0:
 xvals = None
 rvals = None
 for fname in rhoz_dat_fnames:
+
     ds = np.load(fname)
+
     if xvals is None:
         xvals = ds['xvals']
     if rvals is None:
@@ -118,14 +122,19 @@ for fname in rhoz_dat_fnames:
 
 all_data_rhoz = np.concatenate(all_data_rhoz, axis=0)
 n_tot, nx, nr = all_data_rhoz.shape
+
 # Flatten last dimension
+#. Shape: (n_tot_data, n_cyls)
 all_data_rhoz = all_data_rhoz.reshape(n_tot, -1)
 
+
+# Now find density profile for all bphi vals
 rr, xx = np.meshgrid(rvals[:-1], xvals[:-1], indexing='ij')
-xx -= xx.min()
-xx/=10
-rr /= 10
+#xx -= xx.min()
+
+
 all_rho = np.zeros((beta_phi_vals.size, nx, nr))
+
 # Should really abstract back to method (TODO), but can do later
 for i, beta_phi_val in enumerate(beta_phi_vals):
     print("  doing {} of {}".format(i, beta_phi_vals.size))
@@ -141,47 +150,9 @@ for i, beta_phi_val in enumerate(beta_phi_vals):
 
     all_rho[i] = this_rho
 
-homedir = os.environ['HOME']
+# Save total density profile
+np.savez_compressed('rhoz_final.dat', rhoz=all_rho, beta_phi_vals=beta_phi_vals, 
+                    xvals=xvals, rvals=rvals, xx=xx, rr=rr)
 
-for i, beta_phi_val in enumerate(beta_phi_vals):
-    plt.close('all')
-    fig, ax = plt.subplots()
-    blah = all_rho[i] / all_rho[0]
-    ax.pcolormesh(rr, xx, blah.T, norm=plt.Normalize(0,1), cmap='bwr_r')
-    #plt.colorbar()
-    ax.set_title(r'$\beta \phi={:.2f}$'.format(beta_phi_val))
-    ax.set_xlim(0, 1.5)
-    ax.set_ylim(0.1, 0.35)
-    plt.savefig('{}/Desktop/snap_{:03d}'.format(homedir, i, transparent=True))
-
-blah = all_rho[35] / all_rho[0]
-
-# For each rval, find point at which we first go above rho = 0.5
-thresh_vals = np.zeros(nr)
-thresh_vals[:] = np.nan
-
-for i in range(nr):
-
-    this_r = blah[:,i]
-    this_dens = (this_r >= 0.5)
-    if this_dens.sum() == 0:
-        continue
-
-    idx = np.argmax(np.diff(this_dens))
-    x_lb = xvals[idx]
-    x_ub = xvals[idx+1]
-    rho_lb = this_r[idx]
-    rho_ub = this_r[idx+1]
-
-    dx = x_ub - x_lb
-    drho = rho_ub - rho_lb
-    m = drho/dx
-
-    xthresh = x_lb + (0.5 - rho_lb) / m
-
-    thresh_vals[i] = xthresh
-    
-thresh_vals -= 28
-thresh_vals /= 10
 
 

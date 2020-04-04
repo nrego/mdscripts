@@ -94,7 +94,7 @@ def _enumerate_states_break(x, delta, i_round, all_states):
         x_cand[i] = x_trial
         x_trial[cand_idx] = 0
         trial_energies[i] = delta(x, x_trial)
-
+    embed()
     trial_energies = np.round(trial_energies, 5)
     traj_mask = trial_energies == trial_energies.max()
 
@@ -121,6 +121,7 @@ def _enumerate_states_build(x, delta, i_round, all_states):
         x_cand[i] = x_trial
         x_trial[cand_idx] = 1
         trial_energies[i] = delta(x, x_trial)
+
 
     trial_energies = np.round(trial_energies, 5)
     traj_mask = trial_energies == trial_energies.min()
