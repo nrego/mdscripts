@@ -112,7 +112,7 @@ Command-line options
         if self.do_conv:
             param_str += f"Convolutional filters: {self.n_conv_filters}\n\n"
 
-        param_str +=f"N hidden layers: {self.n_node_hidden}\n"\
+        param_str +=f"N hidden layers: {self.n_hidden_layer}\n"\
                     f"Nodes per hidden layer: {self.n_node_hidden}\n"\
                     f"Nodes per feature layer: {self.n_node_feature}\n"\
                     "\n"\
@@ -228,7 +228,7 @@ Command-line options
 
         sys.stdout.flush()
 
-        dataset = DatasetType(self.feat_vec, self.y, norm_target=True, y_min=emin, y_max=emax)
+        dataset = DatasetType(self.feat_vec, self.y, norm_target=False, y_min=emin, y_max=emax)
 
 
         trainer = Trainer(dataset, dataset, batch_size=self.batch_size,

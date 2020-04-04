@@ -32,13 +32,15 @@ class TestSAMNet(nn.Module):
     def intercept_(self):
         return self.fc1.bias.item()
 
-# One hidden layer net
+# Arbitrary number of hidden layers
 class SAMNet(nn.Module):
-    def __init__(self, n_patch_dim=36, n_hidden_layer=1, n_node_hidden=36, n_out=1, drop_out=0.0):
+    def __init__(self, n_patch_dim=36, n_hidden_layer=1, n_node_hidden=36, n_node_feature=0, n_out=1, drop_out=0.0):
         super(SAMNet, self).__init__()
 
         layers = []
 
+        # Number of nodes just before the output layer
+        n_node_pre_out = n_node_hidden
         for i in range(n_hidden_layer):
             if i == 0:
                 L = nn.Linear(n_patch_dim, n_node_hidden)
@@ -51,8 +53,12 @@ class SAMNet(nn.Module):
             if drop_out > 0:
                 layers.append(nn.Dropout(drop_out))
 
+        # Add feature layer, which might have a different number of nodes than the hidden layers, if we want
+        if n_node_feature > 0:
+            L = nn.Linear(n_node_hidden, n_node_feature)
+
         self.layers = nn.Sequential(*layers)
-        self.o = nn.Linear(n_node_hidden, n_out)
+        self.o = nn.Linear(n_node_pre_out, n_out)
 
     def forward(self, x):
 
@@ -85,7 +91,7 @@ class SAMConvNet(nn.Module):
         p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
         self.n_pool_out = np.prod(p(dummy).shape) * n_conv_filters
 
-        # Fully-connected layer(s)
+        # Fully-connected hidden layer(s), optional feature layer, and output layer
         self.fc = SAMNet(self.n_pool_out, n_hidden_layer, n_node_hidden, n_out, drop_out)
 
     def forward(self, x):
