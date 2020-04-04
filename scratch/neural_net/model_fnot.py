@@ -14,11 +14,16 @@ import argparse
 from sklearn import linear_model
 import sys
 
-def loss_fnot(net_out, target, criterion, emin, erange):
+def loss_fnot_norm(net_out, target, criterion, emin, erange):
     pred = (net_out * erange) + emin
     act = (target * erange) + emin
 
     loss = criterion(pred, act)
+
+    return loss
+
+def loss_fnot(net_out, target, criterion):
+    loss = criterion(net_out, target)
 
     return loss
 
@@ -93,6 +98,8 @@ Command-line options
         self.pos_ext = pos_ext
         self.patch_indices = patch_indices
 
+        self.n_patch_dim = feat_vec.shape[1]
+
     def run(self):
         print(
               '''
@@ -107,6 +114,7 @@ Command-line options
 
         param_str +=f"N hidden layers: {self.n_node_hidden}\n"\
                     f"Nodes per hidden layer: {self.n_node_hidden}\n"\
+                    f"Nodes per feature layer: {self.n_node_feature}\n"\
                     "\n"\
                     f"learning rate: {self.learning_rate:1.1e}\n"\
                     f"max epochs: {self.n_epochs}\n"\
@@ -135,15 +143,20 @@ Command-line options
         emax = self.y.max()
         erange = emax - emin
 
-        ## Split up input data into training and validation sets
+        ## Split up input data into training and validation sets, and set up our loss function
         mses = np.zeros(self.n_valid)
         criterion = nn.MSELoss()
         data_partitions = partition_data(self.feat_vec, self.y, n_groups=self.n_valid)
 
-        loss_fn_kwargs = {'emin': emin,
-                          'erange': erange}
+        #loss_fn_kwargs = {'emin': emin,
+        #                  'erange': erange}
+
+        loss_fn_kwargs = {}
                           
-        ## Train and validate for each round (n_valid rounds)
+        ## BEGIN TRAINING ##
+        ####################
+
+        ## DO CROSS VALIDATION ##
         for i_round, (train_X, train_y, test_X, test_y) in enumerate(data_partitions):
             if self.skip_cv:
                 print("\nSkipping CV...")
@@ -155,9 +168,10 @@ Command-line options
             
             if self.do_conv:
                 net = NetType(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
-                                 n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
+                                 n_node_hidden=self.n_node_hidden, n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
             else:
-                net = SAMNet(n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
+                net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, 
+                             drop_out=self.drop_out)
 
             if torch.cuda.is_available():
                 print("\n(GPU detected)")
@@ -165,8 +179,8 @@ Command-line options
             else:
                 print("\n(No GPU detected)")
 
-            train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=emin, y_max=emax)
-            test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=emin, y_max=emax)
+            train_dataset = DatasetType(train_X, train_y, norm_target=False, y_min=emin, y_max=emax)
+            test_dataset = DatasetType(test_X, test_y, norm_target=False, y_min=emin, y_max=emax)
 
             trainer = Trainer(train_dataset, test_dataset, batch_size=self.batch_size,
                               learning_rate=self.learning_rate, n_patience=self.n_patience, 
@@ -203,7 +217,8 @@ Command-line options
             net = SAMConvNet(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
                              n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
         else:
-            net = SAMNet(n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
+            net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, 
+                         drop_out=self.drop_out)
 
         if torch.cuda.is_available():
             print("\n(GPU detected)")

@@ -34,16 +34,16 @@ class TestSAMNet(nn.Module):
 
 # One hidden layer net
 class SAMNet(nn.Module):
-    def __init__(self, n_patch_dim=36, n_hidden=36, n_hidden_layer=1, n_out=1, drop_out=0.0):
+    def __init__(self, n_patch_dim=36, n_hidden_layer=1, n_node_hidden=36, n_out=1, drop_out=0.0):
         super(SAMNet, self).__init__()
 
         layers = []
 
         for i in range(n_hidden_layer):
             if i == 0:
-                L = nn.Linear(n_patch_dim, n_hidden)
+                L = nn.Linear(n_patch_dim, n_node_hidden)
             else:
-                L = nn.Linear(n_hidden, n_hidden)
+                L = nn.Linear(n_node_hidden, n_node_hidden)
             
             layers.append(L)
             layers.append(nn.ReLU())
@@ -52,7 +52,7 @@ class SAMNet(nn.Module):
                 layers.append(nn.Dropout(drop_out))
 
         self.layers = nn.Sequential(*layers)
-        self.o = nn.Linear(n_hidden, n_out)
+        self.o = nn.Linear(n_node_hidden, n_out)
 
     def forward(self, x):
 
@@ -68,7 +68,7 @@ class SAMNet(nn.Module):
 
 class SAMConvNet(nn.Module):
 
-    def __init__(self, n_conv_filters=4, n_hidden=36, n_hidden_layer=1, n_out=1, drop_out=0.0, ny=13, nz=13):
+    def __init__(self, n_conv_filters=4, n_hidden_layer=1, n_node_hidden=36, n_node_feature=0, n_out=1, drop_out=0.0, ny=13, nz=13):
         super(SAMConvNet, self).__init__()
 
         self.n_conv_filters = n_conv_filters
@@ -86,7 +86,7 @@ class SAMConvNet(nn.Module):
         self.n_pool_out = np.prod(p(dummy).shape) * n_conv_filters
 
         # Fully-connected layer(s)
-        self.fc = SAMNet(self.n_pool_out, n_hidden, n_hidden_layer, n_out, drop_out)
+        self.fc = SAMNet(self.n_pool_out, n_hidden_layer, n_node_hidden, n_out, drop_out)
 
     def forward(self, x):
 

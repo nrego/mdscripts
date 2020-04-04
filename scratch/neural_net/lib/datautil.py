@@ -83,7 +83,7 @@ class OLDSAMConvDataset(SAMDataset):
 
         self.X = torch.from_numpy(self.X)
 
-
+## Needed to recast flattened pattern arrays into p x q 'images' to convolve
 class SAMConvDataset(SAMDataset):
 
     def __init__(self, X, y, norm_target=False, y_min=None, y_max=None, ny=13, nz=13):
