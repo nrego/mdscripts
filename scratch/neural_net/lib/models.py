@@ -97,7 +97,7 @@ class SAMConvNet(nn.Module):
         return out
 
 # Conv filters, but one output node (no hidden layers)
-# Only learned weights are the filters
+# Only learned weights are the filter weights
 class SAMFixedConvNet(nn.Module):
 
     def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=13):

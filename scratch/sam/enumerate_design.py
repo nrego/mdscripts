@@ -207,6 +207,8 @@ Command-line options
             ## For each of the (possibly multiple) new states, 
             self.update_state_count(trial_states[sel_mask], mult)
 
+            del trial_states, trial_ener
+
         # We're done enumerating where the prev states lead. now output
         print("finished !")
 

@@ -13,6 +13,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from IPython import embed
 ## Miscellaneous helper functions ##
 
+## For plotting pretty pattern pictures - site colors, etc
 colors = [(0,0,1), (0.85,0.85,0.85)]
 mymap = LinearSegmentedColormap.from_list('mymap', colors, N=100)
 

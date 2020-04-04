@@ -55,8 +55,15 @@ class EarlyStopping:
         self.val_loss_min = val_loss
 
 ## wrapper to handle all training shenanigans
-#    Given the training and testing datasets, and all training parameters
-#      Will run for specified number of epochs and keep track of training and validation performance
+#    Given the training and testing (validation) datasets, and all training parameters,
+#      a trainer object of this class will run for specified number of epochs and 
+#      keep track of training and validation performance
+
+# Idea is you initialize it with training info: training dataset, valiation set, number of training
+#   Epochs, when to break out of training (acceptable performance threshold... well a little more
+#.    sophisticated than that - see above), etc
+#
+#. The '__call__' method, then, takes in a net that's been set up and trains it.
 class Trainer:
 
     def __init__(self, train_dataset, test_dataset, batch_size=200, shuffle=True,
