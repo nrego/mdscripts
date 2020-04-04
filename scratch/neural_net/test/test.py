@@ -115,7 +115,7 @@ def test_Trainer():
 
     trainer = Trainer(train_dataset, test_dataset, batch_size=200, epochs=10, learning_rate=0.01, n_patience=100)
 
-    net = SAMNet(n_hidden=18, n_layers=2, dropout=0)
+    net = SAMNet(n_hidden=18, n_hidden_layer=2, dropout=0)
     criterion = torch.nn.MSELoss()
 
     trainer(net, criterion)

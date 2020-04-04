@@ -71,21 +71,25 @@ class Core:
 
     def add_args(self, parser):
         '''Add some default arguments'''
-        group = parser.add_argument_group('general training options')
+        group = parser.add_argument_group('General training options')
         group.add_argument("--infile", "-f", type=str, default="sam_pattern_pooled.npz",
-                           help="Input file name (Default: %(default)s)")
+                           help="Input file name containing SAM pattern dataset (Default: %(default)s)")
         group.add_argument("--augment-data", action="store_true",
-                           help="Augment data by flipping every input pattern (Default: Do not augment data)")
+                           help="Augment data by flipping every input pattern over all 6-fold symetries (Default: Do not augment data)")
         group.add_argument("--batch-size", type=int, default=200,
                            help="Size of training batches. There will be (N_data//batch_size + N_data mod batch_size) batches in each "\
                                 "training epoch.  (Default: %(default)s)")
         group.add_argument("--n-valid", type=int, default=5,
                            help="Number of partitions for cross-validation (Default: split data into %(default)s groups")
+        group.add_argument("--skip-cv", action="store_true",
+                           help="If true, do not perform cross-validation (Default: %(default)s).")
         group.add_argument("--learning-rate", type=float, default=0.001,
                            help="Learning rate for training (Default: %(default)s)")
         group.add_argument("--n-patience", type=int, default=None,
                            help="Maximum number of epochs to tolerate where CV performance decreases before breaking out of training."\
                                 "Default: No break-out.")
+        group.add_argument("--n-epochs", type=int, default=2000,
+                           help="Number of training epochs (Default: %(default)s)")
         group.add_argument("--break-out", type=float, default=None,
                            help="Break out of training if CV MSE falls below this value."\
                                 "Default: No break-out.")
@@ -96,6 +100,10 @@ class Core:
         self.infile = args.infile
         self.augment_data = args.augment_data
         self.cv_nets = []
+
+        self.n_epochs = args.n_epochs
+        self.break_out = args.break_out
+        self.skip_cv = args.skip_cv
 
         self.n_patience = args.n_patience
         self.batch_size = args.batch_size
@@ -135,6 +143,7 @@ class Core:
         self.make_parser_and_process()
         self.run()
 
+
 ## All command-line tools for training ANNs should subclass this!
 class NNDriver(Core):
     ''' Basic class for command line tools that train NN's.  This guy encapsulates NN architecture, including whether we want a CNN'''
@@ -169,6 +178,7 @@ class NNDriver(Core):
     def process_args(self, args):
         self.n_hidden_layer = args.n_hidden_layer
         self.n_node_hidden = args.n_node_hidden if self.n_hidden_layer > 0 else 0
+        self.n_node_feature = args.n_node_feature
         self.drop_out = args.drop_out
 
         self.do_conv = args.do_conv

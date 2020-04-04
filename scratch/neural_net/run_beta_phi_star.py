@@ -24,9 +24,9 @@ Parameters:
           ''')
     param_str = "Net architecture:\n"
     if args.do_conv:
-        param_str += f"Convolutional filters: {args.n_out_channels}\n\n"
+        param_str += f"Convolutional filters: {args.n_conv_filters}\n\n"
 
-    param_str +=f"N hidden layers: {args.n_layers}\n"\
+    param_str +=f"N hidden layers: {args.n_hidden_layer}\n"\
                 f"Nodes per hidden layer: {args.n_hidden}\n"\
                 "\n"\
                 f"learning rate: {args.learning_rate:1.1e}\n"\
@@ -60,10 +60,10 @@ Parameters:
         print("\nCV ROUND {} of {}\n".format(i_round+1, args.n_valid))
         
         if args.do_conv:
-            net = SAMConvNet(n_out_channels=args.n_out_channels, n_layers=args.n_layers, 
+            net = SAMConvNet(n_conv_filters=args.n_conv_filters, n_hidden_layer=args.n_hidden_layer, 
                              n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
         else:
-            net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
+            net = SAMNet(n_hidden_layer=args.n_hidden_layer, n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
 
         train_dataset = DatasetType(train_X, train_y)
         test_dataset = DatasetType(test_X, test_y)
@@ -91,10 +91,10 @@ Parameters:
     print("================================\n")
     
     if args.do_conv:
-        net = SAMConvNet(n_out_channels=args.n_out_channels, n_layers=args.n_layers, 
+        net = SAMConvNet(n_conv_filters=args.n_conv_filters, n_hidden_layer=args.n_hidden_layer, 
                          n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
     else:
-        net = SAMNet(n_layers=args.n_layers, n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
+        net = SAMNet(n_hidden_layer=args.n_hidden_layer, n_hidden=args.n_hidden, n_out=36, drop_out=args.drop_out)
 
     dataset = DatasetType(feat_vec, beta_phi_stars)
 

@@ -34,12 +34,12 @@ class TestSAMNet(nn.Module):
 
 # One hidden layer net
 class SAMNet(nn.Module):
-    def __init__(self, n_patch_dim=36, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0):
+    def __init__(self, n_patch_dim=36, n_hidden=36, n_hidden_layer=1, n_out=1, drop_out=0.0):
         super(SAMNet, self).__init__()
 
         layers = []
 
-        for i in range(n_layers):
+        for i in range(n_hidden_layer):
             if i == 0:
                 L = nn.Linear(n_patch_dim, n_hidden)
             else:
@@ -62,31 +62,31 @@ class SAMNet(nn.Module):
         return out
 
     @property
-    def n_layers(self):
+    def n_hidden_layer(self):
         return len(self.layers)
 
 
 class SAMConvNet(nn.Module):
 
-    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=13):
+    def __init__(self, n_conv_filters=4, n_hidden=36, n_hidden_layer=1, n_out=1, drop_out=0.0, ny=13, nz=13):
         super(SAMConvNet, self).__init__()
 
-        self.n_out_channels = n_out_channels
+        self.n_conv_filters = n_conv_filters
         # INPUT: (1 x ny x nz)
         # Conv Output: (1 x ny x nz)
         # Pool Output: (1 x ny/2 x nz/2) (check!)
         self.layer1 = nn.Sequential(
-            hexagdly.Conv2d(1, n_out_channels, kernel_size=1, stride=1, bias=True),
+            hexagdly.Conv2d(1, n_conv_filters, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
         # Determine pooling output size (ugh, hackish)
         dummy = torch.rand((1,1,nz,ny))
         p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
-        self.n_pool_out = np.prod(p(dummy).shape) * n_out_channels
+        self.n_pool_out = np.prod(p(dummy).shape) * n_conv_filters
 
         # Fully-connected layer(s)
-        self.fc = SAMNet(self.n_pool_out, n_hidden, n_layers, n_out, drop_out)
+        self.fc = SAMNet(self.n_pool_out, n_hidden, n_hidden_layer, n_out, drop_out)
 
     def forward(self, x):
 
@@ -100,22 +100,22 @@ class SAMConvNet(nn.Module):
 # Only learned weights are the filter weights
 class SAMFixedConvNet(nn.Module):
 
-    def __init__(self, n_out_channels=4, n_hidden=36, n_layers=1, n_out=1, drop_out=0.0, ny=13, nz=13):
+    def __init__(self, n_conv_filters=4, n_hidden=36, n_hidden_layer=1, n_out=1, drop_out=0.0, ny=13, nz=13):
         super(SAMFixedConvNet, self).__init__()
 
-        self.n_out_channels = n_out_channels
+        self.n_conv_filters = n_conv_filters
         # INPUT: (1 x 6 x 6)
         # Conv Output: (1 x 6 x 6)
         # Pool Output: (1 x 3 x 3)
         self.layer1 = nn.Sequential(
-            hexagdly.Conv2d(1, n_out_channels, kernel_size=1, stride=1, bias=True),
+            hexagdly.Conv2d(1, n_conv_filters, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
         # Determine pooling output size (ugh, hackish)
         dummy = torch.rand((1,1,nz,ny))
         p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
-        self.n_pool_out = np.prod(p(dummy).shape) * n_out_channels
+        self.n_pool_out = np.prod(p(dummy).shape) * n_conv_filters
 
         # Fully-connected layer(s)
         self.o = nn.Linear(self.n_pool_out, n_out, bias=True)

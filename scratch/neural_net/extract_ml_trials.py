@@ -24,9 +24,9 @@ def extract_info(basename):
 
     return (n_layer, n_hidden, n_conv_channel)
 
-def extract_n_params(n_layers, n_hidden, n_channels):
+def extract_n_params(n_hidden_layer, n_hidden, n_channels):
 
-    net = SAMConvNet(n_out_channels=n_channels, n_layers=n_layers, n_hidden=n_hidden, n_out=1)
+    net = SAMConvNet(n_conv_filters=n_channels, n_hidden_layer=n_hidden_layer, n_hidden=n_hidden, n_out=1)
 
     n_param = 0
     for param in net.parameters():

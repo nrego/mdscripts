@@ -53,11 +53,7 @@ Command-line options
         super(FnotDriver, self).__init__()
 
     def add_args(self, parser):
-        tgroup = parser.add_argument_group("Training Options")
-        tgroup.add_argument("--n-epochs", type=int, default=2000,
-                           help="Number of training epochs (Default: %(default)s)")
-        tgroup.add_argument("--break-out", type=float, 
-                           help="Stop training if CV MSE goes below this (Default: No break-out)")
+        tgroup = parser.add_argument_group("f-model specific options (including epsilon or delta training on OLS residuals)")
         tgroup.add_argument("--eps-m1", action="store_true",
                            help="If true, perform epsilon training on errors from linear regression on k_ch3, rather than actual energies (default: False)")
         tgroup.add_argument("--eps-m2", action="store_true",
@@ -66,16 +62,15 @@ Command-line options
                            help="If true, skip the N-fold CV and just fit on entire dataset (default: False, perform CV)")
 
     def process_args(self, args):
-        # 5 polynomial coefficients for 4th degree polynomial
-        self.n_epochs = args.n_epochs
-        self.break_out = args.break_out
-        self.skip_cv = args.skip_cv
 
+        ## Extract our sam datasets (plus a bunch of extra info that might or might not be used)
         feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
         
-        feat_idx = np.array([2,3,4])
+        
         y = delta_e
 
+        # Only used for epsilon training 
+        feat_idx = np.array([2,3,4])
         if args.eps_m1:
             err = get_err(ols_feat[:,feat_idx[0]].reshape(-1,1), delta_e, weights)
             mse = np.mean(err**2)
@@ -108,10 +103,10 @@ Command-line options
               ''')
         param_str = "Net architecture:\n"
         if self.do_conv:
-            param_str += f"Convolutional filters: {self.n_out_channels}\n\n"
+            param_str += f"Convolutional filters: {self.n_conv_filters}\n\n"
 
-        param_str +=f"N hidden layers: {self.n_layers}\n"\
-                    f"Nodes per hidden layer: {self.n_hidden}\n"\
+        param_str +=f"N hidden layers: {self.n_node_hidden}\n"\
+                    f"Nodes per hidden layer: {self.n_node_hidden}\n"\
                     "\n"\
                     f"learning rate: {self.learning_rate:1.1e}\n"\
                     f"max epochs: {self.n_epochs}\n"\
@@ -124,12 +119,14 @@ Command-line options
         print(param_str)
         sys.stdout.flush()
 
+        # The datasets simply add empty dimensions to make compatible with CNNs
         DatasetType = SAMConvDataset if self.do_conv else SAMDataset
+
+
         if self.do_conv:
-            NetType = SAMConvNet if self.n_layers > 0 else SAMFixedConvNet
+            NetType = SAMConvNet #if self.n_node_hidden_layer > 0 else SAMFixedConvNet
         else:
             NetType = SAMNet
-
 
         if self.no_run:
             return
@@ -157,10 +154,10 @@ Command-line options
             sys.stdout.flush()
             
             if self.do_conv:
-                net = NetType(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
-                                 n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
+                net = NetType(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
+                                 n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
             else:
-                net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
+                net = SAMNet(n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
 
             if torch.cuda.is_available():
                 print("\n(GPU detected)")
@@ -188,13 +185,13 @@ Command-line options
             mses[i_round] = test_loss
 
             # Save this net
-            torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}_rd_{}.pkl'.format(self.n_layers, self.n_hidden, self.n_out_channels, i_round))
+            torch.save(net.state_dict(), 'model_n_layer_{}_n_node_hidden_{:02d}_n_channel_{:02d}_rd_{}.pkl'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters, i_round))
 
             del net, trainer, train_dataset, test_dataset, train_X, train_y, test_X, test_y
 
         print("\n\nFinal average MSE: {:.2f}".format(mses.mean()))
 
-        #np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
+        #np.savez_compressed('perf_model_n_layer_{}_n_node_hidden_{:02d}_n_channel_{:02d}'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters),
         #        mses_cv=mses)
         ## Final Model: Train on all ##
         print("\n\nFinal Training on Entire Dataset\n")
@@ -203,10 +200,10 @@ Command-line options
         print("\nBegin training\n")
         
         if self.do_conv:
-            net = SAMConvNet(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
-                             n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
+            net = SAMConvNet(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
+                             n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
         else:
-            net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=1, drop_out=self.drop_out)
+            net = SAMNet(n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, n_out=1, drop_out=self.drop_out)
 
         if torch.cuda.is_available():
             print("\n(GPU detected)")
@@ -234,10 +231,10 @@ Command-line options
         if torch.cuda.is_available():
             test_loss = test_loss.cpu()
             
-        np.savez_compressed('perf_model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}'.format(self.n_layers, self.n_hidden, self.n_out_channels),
+        np.savez_compressed('perf_model_n_layer_{}_n_node_hidden_{:02d}_n_channel_{:02d}'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters),
                 mses_cv=mses, mse_tot=test_loss)
 
-        torch.save(net.state_dict(), 'model_n_layer_{}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(self.n_layers, self.n_hidden, self.n_out_channels))
+        torch.save(net.state_dict(), 'model_n_layer_{}_n_node_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters))
 
 if __name__ == "__main__":
 

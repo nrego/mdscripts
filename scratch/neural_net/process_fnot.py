@@ -21,11 +21,11 @@ home = os.environ['HOME']
 ## Hyper params
 
 maindir='dg_bind'
-n_out_channels = 6
+n_conv_filters = 6
 n_hidden = 16
-n_layers = 1
+n_hidden_layer = 1
 
-headdir = '{}/n_layer_{:1d}/n_filter_{:02d}'.format(maindir, n_layers, n_out_channels)
+headdir = '{}/n_layer_{:1d}/n_filter_{:02d}'.format(maindir, n_hidden_layer, n_conv_filters)
 
 
 pattern_idx = 4200
@@ -107,11 +107,11 @@ x, y = dataset[:]
 k_c = (aug_feat_vec == 1).sum(axis=1)
 k_o = (aug_feat_vec == -1).sum(axis=1)
 
-net = SAMConvNet(n_out_channels=n_out_channels, n_layers=n_layers, n_hidden=n_hidden, n_out=1)
+net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_hidden=n_hidden, n_out=1)
 
 
-fnamemodel = '{}/model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(headdir, n_layers, n_hidden, n_out_channels)
-fnameperf = '{}/perf_model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.npz'.format(headdir, n_layers, n_hidden, n_out_channels)
+fnamemodel = '{}/model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
+fnameperf = '{}/perf_model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.npz'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
 
 state_dict = torch.load(fnamemodel, map_location="cpu")
 net.load_state_dict(state_dict)
@@ -136,7 +136,7 @@ arr = kernel_rep(k0, k1)
 plt.close('all')
 
 # Get largest weight for each of the filters (channels)
-rng_pt = np.abs(arr[0].reshape(n_out_channels,9)).max(axis=1)
+rng_pt = np.abs(arr[0].reshape(n_conv_filters,9)).max(axis=1)
 
 norms = []
 
@@ -147,8 +147,8 @@ print('max kernel weight: {:.2f}'.format(rng_pt.max()))
 kernel_rep(k0, k1, norm=norm, cmap='RdBu')
 ax = plt.gca()
 
-plt.savefig('{}/Desktop/{}_filters_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.png'.format(homedir, maindir, n_layers, n_hidden, n_out_channels), transparent=True)
+plt.savefig('{}/Desktop/{}_filters_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.png'.format(homedir, maindir, n_hidden_layer, n_hidden, n_conv_filters), transparent=True)
 
-title = '{}_idx_{}_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}'.format(maindir, pattern_idx, n_layers, n_hidden, n_out_channels)
+title = '{}_idx_{}_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}'.format(maindir, pattern_idx, n_hidden_layer, n_hidden, n_conv_filters)
 construct_pvn_images(pattern_idx, net, x, title=title)
 

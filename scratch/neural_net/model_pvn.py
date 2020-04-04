@@ -105,9 +105,9 @@ Command-line options
               ''')
         param_str = "Net architecture:\n"
         if self.do_conv:
-            param_str += f"Convolutional filters: {self.n_out_channels}\n\n"
+            param_str += f"Convolutional filters: {self.n_conv_filters}\n\n"
 
-        param_str +=f"N hidden layers: {self.n_layers}\n"\
+        param_str +=f"N hidden layers: {self.n_hidden_layer}\n"\
                     f"Nodes per hidden layer: {self.n_hidden}\n"\
                     "\n"\
                     f"learning rate: {self.learning_rate:1.1e}\n"\
@@ -145,10 +145,10 @@ Command-line options
             print("\nCV ROUND {} of {}\n".format(i_round+1, self.n_valid))
             
             if self.do_conv:
-                net = SAMConvNet(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
+                net = SAMConvNet(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
                                  n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
             else:
-                net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
+                net = SAMNet(n_hidden_layer=self.n_hidden_layer, n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
 
             train_dataset = DatasetType(train_X, train_y, norm_target=True, y_min=p_min, y_max=p_max)
             test_dataset = DatasetType(test_X, test_y, norm_target=True, y_min=p_min, y_max=p_max)
@@ -190,10 +190,10 @@ Command-line options
         print("================================\n")
         
         if self.do_conv:
-            net = SAMConvNet(n_out_channels=self.n_out_channels, n_layers=self.n_layers, 
+            net = SAMConvNet(n_conv_filters=self.n_conv_filters, n_hidden_layer=self.n_hidden_layer, 
                              n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
         else:
-            net = SAMNet(n_layers=self.n_layers, n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
+            net = SAMNet(n_hidden_layer=self.n_hidden_layer, n_hidden=self.n_hidden, n_out=self.poly.shape[1], drop_out=self.drop_out)
 
         dataset = DatasetType(self.feat_vec, self.poly, norm_target=True, y_min=p_min, y_max=p_max)
 
