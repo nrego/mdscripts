@@ -172,7 +172,7 @@ Command-line options
             else:
                 net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, 
                              n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
-            
+
             if torch.cuda.is_available():
                 print("\n(GPU detected)")
                 net = net.cuda()
@@ -246,10 +246,10 @@ Command-line options
         if torch.cuda.is_available():
             test_loss = test_loss.cpu()
             
-        np.savez_compressed('perf_model_n_layer_{}_n_node_hidden_{:02d}_n_channel_{:02d}'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters),
+        np.savez_compressed('perf_model_n_hidden_layer_{}_n_node_hidden_{:02d}_n_conv_filters_{:02d}'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters),
                 mses_cv=mses, mse_tot=test_loss)
 
-        torch.save(net.state_dict(), 'model_n_layer_{}_n_node_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters))
+        torch.save(net.state_dict(), 'model_n_hidden_layer_{}_n_node_hidden_{:02d}_n_conv_filters_{:02d}_all.pkl'.format(self.n_hidden_layer, self.n_node_hidden, self.n_conv_filters))
 
 if __name__ == "__main__":
 

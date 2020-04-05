@@ -20,13 +20,13 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
-maindir='dg_bind'
-n_conv_filters = 6
-n_hidden = 16
-n_hidden_layer = 1
+maindir = 'dg_bind'
+n_conv_filters = 4
+n_hidden = 8
+n_hidden_layer = 2
 
-headdir = '{}/n_layer_{:1d}/n_filter_{:02d}'.format(maindir, n_hidden_layer, n_conv_filters)
-
+#headdir = '{}/n_layer_{:1d}/n_filter_{:02d}'.format(maindir, n_hidden_layer, n_conv_filters)
+headdir = '.'
 
 pattern_idx = 4200
 #pattern_idx = 8401
@@ -59,7 +59,7 @@ def kernel_rep(k0, k1, norm=None, cmap=None):
 #  Save CNN filters for pattern
 def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir), title=None):
     
-    c, r, p = net.layer1.children()
+    c, r, p = net.conv1.children()
     this_pattern = x_pattern[idx][None,:]
     
     # Apply conv filters to pattern
@@ -85,7 +85,9 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
 
     plot_hextensor(pool, cmap='Greys', norm=Normalize(0,max0))
     plt.savefig('{}/fnot_{}_filter_pool'.format(path, title), transparent=True)
-
+    embed()
+    ## Now do layer 2
+    c, r, p = net.conv2.children()
 
 homedir = os.environ['HOME']
 
@@ -107,11 +109,11 @@ x, y = dataset[:]
 k_c = (aug_feat_vec == 1).sum(axis=1)
 k_o = (aug_feat_vec == -1).sum(axis=1)
 
-net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_hidden=n_hidden, n_out=1)
+net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_node_hidden=n_hidden, n_out=1)
 
 
-fnamemodel = '{}/model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
-fnameperf = '{}/perf_model_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.npz'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
+fnamemodel = '{}/model_n_layer_{:1d}_n_node_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
+fnameperf = '{}/perf_model_n_layer_{:1d}_n_node_hidden_{:02d}_n_channel_{:02d}.npz'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
 
 state_dict = torch.load(fnamemodel, map_location="cpu")
 net.load_state_dict(state_dict)
@@ -126,7 +128,7 @@ print("Tot MSE: {:0.2f}".format(tot_perf))
 
 
 # Contains the conv layer, relu, and max pool
-l1 = net.layer1
+l1 = net.conv1
 c, r, p = l1.children()
 
 k0 = c.kernel0

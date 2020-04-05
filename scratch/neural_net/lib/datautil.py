@@ -86,7 +86,7 @@ class OLDSAMConvDataset(SAMDataset):
 ## Needed to recast flattened pattern arrays into p x q 'images' to convolve
 class SAMConvDataset(SAMDataset):
 
-    def __init__(self, X, y, norm_target=False, y_min=None, y_max=None, ny=13, nz=13):
+    def __init__(self, X, y, norm_target=False, y_min=None, y_max=None, ny=14, nz=13):
         super(SAMConvDataset, self).__init__(X, y, norm_target, y_min, y_max)
 
         old_X = self.X.cpu().numpy()

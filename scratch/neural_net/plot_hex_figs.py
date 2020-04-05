@@ -48,7 +48,7 @@ ds = np.load("sam_pattern_data.dat.npz", allow_pickle=True)
 k_oh = 36 - methyl_pos.sum(axis=1)
 idx = 700
 
-pos_ext = gen_pos_grid(8, 8, z_offset=True, shift_y=-1, shift_z=-1)
+pos_ext = gen_pos_grid(13, 13, z_offset=True, shift_y=-1, shift_z=-1)
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 
 nn, nn_ext, _, _ = construct_neighbor_dist_lists(positions, pos_ext)

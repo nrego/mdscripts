@@ -204,7 +204,7 @@ def load_and_prep(fname='sam_pattern_pooled.npz'):
 
     n_data = dg_bind.size
 
-    pos_ext = gen_pos_grid(ny=13, nz=13, shift_z=-4, shift_y=-4, z_offset=True)
+    pos_ext = gen_pos_grid(ny=14, nz=13, shift_z=-4, shift_y=-4, z_offset=True)
 
     # shape: (n_data_points, 12*12)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small

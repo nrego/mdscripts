@@ -34,7 +34,7 @@ def plt_errorbars(bb, vals, errs, **kwargs):
     ax.fill_between(bb, vals-errs, vals+errs, alpha=0.5, **kwargs)
 
 
-ds = np.load("sam_pattern_data.dat.npz")
+#ds = np.load("sam_pattern_data.dat.npz")
 feat_vec, energies, poly, beta_phi_stars, positions, patch_indices, methyl_pos, adj_mat = load_and_prep()
 n_dat = feat_vec.shape[0]
 
