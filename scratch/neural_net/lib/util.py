@@ -196,7 +196,7 @@ def load_and_prep(fname='sam_pattern_pooled.npz'):
 
     ds = np.load(fname)
     energies = ds['energies']
-    delta_e = ds['delta_e']
+    delta_e = ds['delta_f']
     dg_bind = ds['dg_bind']
     ols_feat = ds['feat_vec']
     states = ds['states']
@@ -206,10 +206,11 @@ def load_and_prep(fname='sam_pattern_pooled.npz'):
 
     pos_ext = gen_pos_grid(ny=14, nz=13, shift_z=-4, shift_y=-4, z_offset=True)
 
-    # shape: (n_data_points, 12*12)
+    # shape: (n_data_points, ny*nz)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small
     patch_indices = np.zeros(n_data, dtype=object)
     
+    # Embed each pattern on pos_ext
     for i_dat, state in enumerate(states):
         this_pos = state.positions.copy()
         center_pos(this_pos, pos_ext)
@@ -217,11 +218,13 @@ def load_and_prep(fname='sam_pattern_pooled.npz'):
         d, patch_idx = cKDTree(pos_ext).query(this_pos, k=1)
         assert np.unique(patch_idx).size == this_pos.shape[0]
         
+        patch_indices[i_dat] = patch_idx
+
+        # Replace methyls with 1's, hydroxyls with -1's
         tmp_mask = np.zeros_like(state.methyl_mask, dtype=int)
         tmp_mask[state.methyl_mask] = 1
         tmp_mask[~state.methyl_mask] = -1
         feat_vec[i_dat, patch_idx] = tmp_mask
-        patch_indices[i_dat] = patch_idx
 
 
     return feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states
