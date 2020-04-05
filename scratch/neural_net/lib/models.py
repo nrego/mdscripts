@@ -94,7 +94,7 @@ class SAMConvNet(nn.Module):
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
         self.conv2 = nn.Sequential(
-            hexagdly.Conv2d(n_conv_filters, n_conv_filters, kernel_size=1, stride=1, bias=True),
+            hexagdly.Conv2d(n_conv_filters, n_conv_filters**2, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
@@ -102,7 +102,7 @@ class SAMConvNet(nn.Module):
         dummy = torch.rand((1,1,ny,nz))
         p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
 
-        self.n_pool_out = np.prod(p(p(dummy)).shape) * n_conv_filters
+        self.n_pool_out = np.prod(p(p(dummy)).shape) * n_conv_filters**2
 
         # Fully-connected hidden layer(s), optional feature layer, and output layer
         self.fc = SAMNet(self.n_pool_out, n_hidden_layer, n_node_hidden, n_node_feature, n_out, drop_out)

@@ -28,7 +28,7 @@ n_node_hidden = 12
 #headdir = '{}/n_layer_{:1d}/n_filter_{:02d}'.format(maindir, n_hidden_layer, n_conv_filters)
 headdir = '.'
 
-pattern_idx = 4200
+pattern_idx = 700
 #pattern_idx = 8401
 #pattern_idx = 10000
 
@@ -55,39 +55,55 @@ def kernel_rep(k0, k1, norm=None, cmap=None):
 
     return arr
 
+
 # Given a pattern, save its PvN as well as predicted
 #  Save CNN filters for pattern
 def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir), title=None):
-    
+
     c, r, p = net.conv1.children()
     this_pattern = x_pattern[idx][None,:]
     
-    # Apply conv filters to pattern
+    # Apply conv filters to all patterns to find max vals
     out_all = r(c(x_pattern).detach())
     max0 = out_all[:,0].max()
-    #max1 = out_all[:,1].max()
-    #max2 = out_all[:,2].max()
-    #max3 = out_all[:,3].max()
-    mynorm = Normalize(0,max0)
-    filter_norm = [mynorm for i in range(out_all.shape[1])]
+
+    mynorm1 = Normalize(0,max0)
+    #filter_norm = [mynorm for i in range(out_all.shape[1])]
+
+    c, r, p = net.conv2.children()
+    out_all = r(c(out_all).detach())
+    max1 = out_all[:,0].max()
+
+    mynorm2 = Normalize(0,max1)
 
     # Convolve and max-pool this particular pattern at index idx
-    conv = r(c(this_pattern).detach())
-    pool = p(conv)
+    c, r, p = net.conv1.children()
+    conv1 = r(c(this_pattern).detach())
+    pool1 = p(conv1).detach()
 
     plot_hextensor(this_pattern, norm=Normalize(-1,1))
     plt.savefig('{}/fig_idx_{}_pattern'.format(path, title), transparent=True)
     plt.close('all')
 
     #plot_hextensor(conv, cmap='Greys', norm=filter_norm)
-    plot_hextensor(conv, cmap="Greys", norm=Normalize(0,max0))
-    plt.savefig('{}/fig_{}_filter_conv'.format(path, title), transparent=True)
+    plot_hextensor(conv1, cmap="Greys", norm=mynorm1)
+    plt.savefig('{}/fig_{}_filter_conv1'.format(path, title), transparent=True)
 
-    plot_hextensor(pool, cmap='Greys', norm=Normalize(0,max0))
-    plt.savefig('{}/fnot_{}_filter_pool'.format(path, title), transparent=True)
-    embed()
+    plot_hextensor(pool1, cmap='Greys', norm=mynorm1)
+    plt.savefig('{}/fig_{}_filter_pool1'.format(path, title), transparent=True)
+
     ## Now do layer 2
     c, r, p = net.conv2.children()
+    conv2 = r(c(pool1).detach())
+    pool2 = p(conv2).detach()
+
+    plot_hextensor(conv2, cmap="Greys", norm=mynorm2)
+    plt.savefig('{}/fig_{}_filter_conv2'.format(path, title), transparent=True)
+
+    plot_hextensor(pool2, cmap="Greys", norm=mynorm2)
+    plt.savefig('{}/fig_{}_filter_pool2'.format(path, title), transparent=True)
+
+
 
 homedir = os.environ['HOME']
 
@@ -103,17 +119,19 @@ emax = y.max()
 n_dat = y.size
 
 aug_feat_vec, aug_y = hex_augment_data(feat_vec, y, pos_ext, patch_indices)
-dataset = SAMConvDataset(aug_feat_vec, aug_y, norm_target=True, y_min=emin, y_max=emax)
+
+#dataset = SAMConvDataset(aug_feat_vec, aug_y, norm_target=True, y_min=emin, y_max=emax)
+dataset = SAMConvDataset(feat_vec, y, norm_target=False)
 x, y = dataset[:]
 
 k_c = (aug_feat_vec == 1).sum(axis=1)
 k_o = (aug_feat_vec == -1).sum(axis=1)
 
-net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_node_hidden=n_hidden, n_out=1)
+net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_node_hidden=n_node_hidden, n_out=1)
 
 
-fnamemodel = '{}/model_n_layer_{:1d}_n_node_hidden_{:02d}_n_channel_{:02d}_all.pkl'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
-fnameperf = '{}/perf_model_n_layer_{:1d}_n_node_hidden_{:02d}_n_channel_{:02d}.npz'.format(headdir, n_hidden_layer, n_hidden, n_conv_filters)
+fnamemodel = '{}/model_n_hidden_layer_{:1d}_n_node_hidden_{:02d}_n_conv_filters_{:02d}_all.pkl'.format(headdir, n_hidden_layer, n_node_hidden, n_conv_filters)
+fnameperf = '{}/perf_model_n_hidden_layer_{:1d}_n_node_hidden_{:02d}_n_conv_filters_{:02d}.npz'.format(headdir, n_hidden_layer, n_node_hidden, n_conv_filters)
 
 state_dict = torch.load(fnamemodel, map_location="cpu")
 net.load_state_dict(state_dict)
@@ -149,8 +167,35 @@ print('max kernel weight: {:.2f}'.format(rng_pt.max()))
 kernel_rep(k0, k1, norm=norm, cmap='RdBu')
 ax = plt.gca()
 
-plt.savefig('{}/Desktop/{}_filters_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}.png'.format(homedir, maindir, n_hidden_layer, n_hidden, n_conv_filters), transparent=True)
+plt.savefig('{}/Desktop/cnn_filter1.png'.format(homedir), transparent=True)
 
-title = '{}_idx_{}_n_layer_{:1d}_n_hidden_{:02d}_n_channel_{:02d}'.format(maindir, pattern_idx, n_hidden_layer, n_hidden, n_conv_filters)
+### Now for filters in layer 2
+l2 = net.conv2
+c, r, p = l2.children()
+
+k0 = c.kernel0
+k1 = c.kernel1
+
+arr = kernel_rep(k0, k1)
+plt.close('all')
+
+# Get largest weight for each of the filters (channels)
+rng_pt = np.abs(arr[0].reshape(n_conv_filters,9)).max(axis=1)
+
+norms = []
+
+norm = plt.Normalize(-rng_pt.max(), rng_pt.max())
+print('max kernel weight: {:.2f}'.format(rng_pt.max()))
+
+
+kernel_rep(k0, k1, norm=norm, cmap='RdBu')
+ax = plt.gca()
+
+plt.savefig('{}/Desktop/cnn_filter2'.format(homedir), transparent=True)
+
+
+
+
+title = 'idx_{}'.format(pattern_idx)
 construct_pvn_images(pattern_idx, net, x, title=title)
 
