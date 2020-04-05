@@ -97,7 +97,7 @@ from matplotlib.colors import Normalize
 feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep()
 feat_idx = np.array([2,3,4])
 
-y = delta_e
+y = dg_bind
 emin = y.min()
 emax = y.max()
 n_dat = y.size
