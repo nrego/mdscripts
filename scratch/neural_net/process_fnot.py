@@ -20,10 +20,10 @@ from matplotlib.colors import Normalize
 home = os.environ['HOME']
 ## Hyper params
 
-maindir = 'dg_bind'
-n_conv_filters = 4
-n_hidden = 8
+
+n_conv_filters = 6
 n_hidden_layer = 2
+n_node_hidden = 12
 
 #headdir = '{}/n_layer_{:1d}/n_filter_{:02d}'.format(maindir, n_hidden_layer, n_conv_filters)
 headdir = '.'
