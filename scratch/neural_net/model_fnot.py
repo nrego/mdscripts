@@ -72,7 +72,7 @@ Command-line options
         feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
         
         
-        y = delta_e
+        y = dg_bind
 
         # Only used for epsilon training 
         feat_idx = np.array([2,3,4])
