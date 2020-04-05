@@ -71,7 +71,6 @@ Command-line options
         ## Extract our sam datasets (plus a bunch of extra info that might or might not be used)
         feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
         
-        
         y = dg_bind
 
         # Only used for epsilon training 
