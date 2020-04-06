@@ -85,11 +85,14 @@ parser.add_argument('--equil-vals', type=str,
                     help='path to file with equilibrium values - will calc denstty')
 parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z), in **Angstroms**. ')
 parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. ')
+parser.add_argument('--rmax', default=30, type=float, help='Maximum distance r (in A), to calc rho(z,r)')
 args = parser.parse_args()
 
 
 do_calc_rho = False
 
+
+## Hard (nooo!) coded dimensions of big probe V (large cubic box)
 xmin = 28.0
 ymin = 15.0
 zmin = 15.0
@@ -121,7 +124,7 @@ if args.equil_vals is not None:
     dx = args.dx
     xvals = np.arange(xmin, xmax+dx, dx)
     dr = args.dr
-    rvals = np.arange(0, 20+dr, dr)
+    rvals = np.arange(0, args.rmax+dr, dr)
 
 
 
