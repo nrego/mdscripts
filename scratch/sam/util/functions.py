@@ -116,6 +116,46 @@ def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000, weights=None):
 
     return (boot_inter, boot_coef)
 
+
+# Perform block bootstrapping on data to estimate errors in linear regression coefficients
+def fit_block(X, y, fit_intercept=True, n_block=5, weights=None):
+
+    np.random.seed()
+    assert y.ndim == 1
+    n_dat = y.size
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+
+    if weights is None:
+        weights = np.ones_like(y)
+    
+    # For plotting fit...
+    boot_inter = np.zeros(n_block)
+    boot_coef = np.zeros((n_block, X.shape[1]))
+
+    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+
+    rand = np.random.choice(n_dat, size=n_dat, replace=False)
+    y_rand = y[rand]
+    X_rand = X[rand]
+
+    block_size = n_dat // n_block
+
+    for i_boot in range(n_block):
+        dat_indices = slice(i_boot*block_size, (i_boot+1)*block_size)
+
+        this_boot_y = y[dat_indices]
+        this_boot_X = X[dat_indices, ...]
+        this_boot_w = weights[dat_indices]
+
+        reg.fit(this_boot_X, this_boot_y, sample_weight=this_boot_w)
+
+        boot_inter[i_boot] = reg.intercept_
+        boot_coef[i_boot] = reg.coef_ 
+
+    return (boot_inter, boot_coef)
+
 def plot_3d(x, y, z, **kwargs):
     fig = plt.figure()
     ax = fig.gca(projection='3d')

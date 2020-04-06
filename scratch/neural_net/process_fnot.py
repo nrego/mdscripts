@@ -199,3 +199,8 @@ plt.savefig('{}/Desktop/cnn_filter2'.format(homedir), transparent=True)
 title = 'idx_{}'.format(pattern_idx)
 construct_pvn_images(pattern_idx, net, x, title=title)
 
+k_o = (feat_vec == -1).sum(axis=1)
+pred = net(x[:884]).detach().numpy().squeeze()
+err = dg_bind[:884] - pred
+
+

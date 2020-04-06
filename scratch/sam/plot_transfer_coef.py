@@ -117,9 +117,13 @@ if do_constr:
 else:
     perf_mse, err, xvals, fit, reg = fit_leave_one(feat_06_06[:,indices], dg_bind_06_06, fit_intercept=True)
     boot_intercept, boot_coef = fit_bootstrap(feat_06_06[:,indices], dg_bind_06_06, fit_intercept=True)
+    block_intercept, block_coef = fit_block(feat_06_06[:,indices], dg_bind_06_06, fit_intercept=True)
 
 print("\nDOING 6x6... (N={:02d})".format(energies_06_06.size))
 print_data(reg, boot_intercept, boot_coef)
+
+coef_06_06 = reg.coef_.copy()
+err_coef_06_06 = np.array([boot_coef.std(axis=0, ddof=1), block_coef.std(axis=0, ddof=1)])
 
 rsq = 1 - (perf_mse.mean() / dg_bind_06_06.var())
 
@@ -150,9 +154,13 @@ if do_constr:
 else:
     perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_09[:,indices], dg_bind_04_09, fit_intercept=True)
     boot_intercept, boot_coef = fit_bootstrap(feat_04_09[:,indices], dg_bind_04_09, fit_intercept=True)    
+    block_intercept, block_coef = fit_block(feat_04_09[:,indices], dg_bind_04_09, fit_intercept=True)
 
 print("\nDOING 4x9... (N={:02d})".format(energies_04_09.size))
 print_data(reg, boot_intercept, boot_coef)
+
+coef_04_09 = reg.coef_.copy()
+err_coef_04_09 = np.array([boot_coef.std(axis=0, ddof=1), block_coef.std(axis=0, ddof=1)])
 
 rsq = 1 - (perf_mse.mean() / dg_bind_04_09.var())
 
@@ -183,9 +191,13 @@ if do_constr:
 else:
     perf_mse, err, xvals, fit, reg = fit_leave_one(feat_04_04[:,indices], dg_bind_04_04, fit_intercept=True)
     boot_intercept, boot_coef = fit_bootstrap(feat_04_04[:,indices], dg_bind_04_04, fit_intercept=True)    
+    block_intercept, block_coef = fit_block(feat_04_04[:,indices], dg_bind_04_04, fit_intercept=True)
 
 print("\nDOING 4x4... (N={:02d})".format(energies_04_04.size))
 print_data(reg, boot_intercept, boot_coef)
+
+coef_04_04 = reg.coef_.copy()
+err_coef_04_04 = np.array([boot_coef.std(axis=0, ddof=1), block_coef.std(axis=0, ddof=1)])
 
 rsq = 1 - (perf_mse.mean() / dg_bind_04_04.var())
 
@@ -227,4 +239,18 @@ print("  (MSE: {:0.2f})".format(perf_mse.mean()))
 
 np.save('sam_reg_coef', reg)
 np.savez_compressed('sam_pattern_pooled', energies=e_all, dg_bind=dg_bind_all, delta_f=delta_f_all, weights=w_all, states=states_all, feat_vec=feat_all)
+
+fig, ax = plt.subplots()
+blah = np.arange(3)
+
+ax.bar(blah, coef_06_06, yerr=err_coef_06_06[0])
+ax.bar(blah, coef_06_06, yerr=err_coef_06_06[1])
+
+ax.bar(blah, coef_04_09, yerr=err_coef_04_09[0], fmt='D', markersize=12)
+ax.bar(blah, coef_04_09, yerr=err_coef_04_09[1], fmt='D', markersize=12, label='4 9')
+
+ax.bar(blah, coef_04_04, yerr=err_coef_04_04[0], fmt='X', markersize=12)
+ax.bar(blah, coef_04_04, yerr=err_coef_04_04[1], fmt='X', markersize=12, label='4 4')
+
+
 

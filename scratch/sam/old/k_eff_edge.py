@@ -21,11 +21,7 @@ from sklearn import datasets, linear_model
 
 from scipy.integrate import cumtrapz
 
-from util import gen_pos_grid, construct_neighbor_dist_lists, enumerate_edges
-from util import plot_pattern, plot_3d, plot_graph, plot_annotate, plot_edges, plot_edge_list
-from util import gen_w_graph
-from util import find_keff, find_keff_kernel, get_keff_all
-from util import fit_general_linear_model, aic_ols
+from scratch.sam.util import *
 
 import itertools
 
@@ -169,7 +165,7 @@ k_eff_all_shape = k_eff_all.reshape((n_configs, n_edges, 5))
 # Compare to k_eff computed the other way (i.e. in fit_keff) - more sanity
 k_eff_prev = np.loadtxt('k_eff_all.dat')
 
-assert np.array_equal(k_eff_prev, k_eff_all_shape.sum(axis=1))
+#assert np.array_equal(k_eff_prev, k_eff_all_shape.sum(axis=1))
 
 
 # n_mm  n_oo  n_mo  n_me   n_oe
@@ -187,7 +183,7 @@ k_eff_all_shape = np.dstack((mm, oo, mo))
 n_connection_type = k_eff_all_shape.shape[2]
 k_eff_all = k_eff_all_shape.reshape((n_configs, n_edges*n_connection_type))
 
-perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(k_eff_all, energies, do_ridge=True)
+perf_mse, err, xvals, fit, reg = fit_leave_one(k_eff_all, energies)
 coefs = reg.coef_.reshape((n_edges, n_connection_type))
 
 # distance matrix between coefs
@@ -295,7 +291,7 @@ for i_round, (m_i, m_j) in enumerate(clust.children_):
 
     # Fit new model to merged struct
     merged_keff = gen_merged_keff(k_eff_all_shape, clust_labels_curr)
-    perf_r2, perf_mse, err, xvals, fit, reg = fit_general_linear_model(merged_keff, energies, do_ridge=True)
+    perf_mse, err, xvals, fit, reg = fit_leave_one(merged_keff, energies)
 
     print("  N features: {}".format(merged_keff.shape[1]))
     print("  MSE, fit: {}".format(np.mean(err**2)))

@@ -126,3 +126,12 @@ ax.set_xticks([0,12,24,36])
 fig.tight_layout()
 fig.savefig('{}/Desktop/m1_err_comp.pdf'.format(homedir), transparent=True)
 
+from matplotlib import pyplot as plt
+import numpy as np
+
+# create dummy invisible image
+# (use the colormap you want to have on the colorbar)
+img = plt.imshow(np.array([[0,1]]), cmap="RdBu")
+img.set_visible(False)
+
+plt.colorbar(orientation="vertical")
