@@ -6,7 +6,6 @@ import argparse
 import logging
 import shutil
 import MDAnalysis
-#from MDAnalysis.coordinates.xdrfile.libxdrfile2 import read_xtc_natoms, xdrfile_open
 
 from IPython import embed
 
@@ -57,13 +56,11 @@ beta_phi_vals = ds['beta_phi_vals']
 
 # At bphistar=0.7
 
+# Convert to nm, shift x (z) vals to bottom of small v cyl probe vol
 rr = rr / 10.0
 xx = (xx - 28.5) / 10.0
 
-new_r = np.arange(0, 1.6, 0.005)
-new_x = np.arange(0, 0.5, 0.005)
-new_rr, new_xx = np.meshgrid(new_r, new_x, indexing='ij')
-
+## Isocontour options for plotting
 levels = np.linspace(0,1,3)
 norm = plt.Normalize(0,1)
 cmap = 'bwr_r'
@@ -73,10 +70,6 @@ homedir = os.environ['HOME']
 def plot_it(idx):
     this_rho = rhoz[idx]
     this_rho /= expt_waters
-    
-    # Interpolate
-    #f = interp2d(rr, xx, this_rho.T, kind='cubic')
-    #smooth_rho = f(new_r, new_x)
 
     plt.close('all')
     fig, ax = plt.subplots(figsize=(10,6))
@@ -85,8 +78,10 @@ def plot_it(idx):
     fig.colorbar(pc)
     ax.contour(rr, xx, this_rho.T, levels=[0.5], color='k')
     
+    # z
     ax.set_ylim(0, 0.4)
-    ax.set_xlim(0, 1.5)
+    # R
+    ax.set_xlim(0, 3.0) 
     ax.plot([0,1.5], [0.3,0.3], 'g--', linewidth=4)
     ax.set_xlabel(r'$r$ (nm)')
     ax.set_ylabel(r'$z$ (nm)')

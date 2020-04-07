@@ -94,12 +94,12 @@ do_calc_rho = False
 
 ## Hard (nooo!) coded dimensions of big probe V (large cubic box)
 xmin = 28.0
-ymin = 15.0
-zmin = 15.0
+ymin = 5.0
+zmin = 5.0
 
 xmax = 38.5
-ymax = 55.0
-zmax = 55.0
+ymax = 65.0
+zmax = 65.0
 
 box_vol = (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 

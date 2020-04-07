@@ -102,6 +102,9 @@ all_data_rhoz = []
 rhoz_dat_fnames = sorted(glob.glob("Nstar_*/rhoz.dat.npz"))
 if len(rhoz_dat_fnames) > 0:
     print("Doing rhoz...")
+else:
+    print("Done. Goodbye.")
+    sys.exit()
 
 xvals = None
 rvals = None
