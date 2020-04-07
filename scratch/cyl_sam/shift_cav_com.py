@@ -97,7 +97,7 @@ xmin = 28.0
 ymin = 5.0
 zmin = 5.0
 
-xmax = 38.5
+xmax = 48.5
 ymax = 65.0
 zmax = 65.0
 
@@ -178,7 +178,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
         shift_vector = np.array([0,ycom,zcom]) - cavity_com
         shift_vector[0] = 0
-        
+        #shift_vector = np.array([0,0,0])
         # Shift *all* water positions in this frame 
         water_pos_shift = water_pos + shift_vector
         waters.positions = water_pos_shift

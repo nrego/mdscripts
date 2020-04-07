@@ -90,8 +90,17 @@ all_neglogpdist, all_neglogpdist_comx, all_avg, all_chi, all_avg_comx, all_chi_c
 all_neglogpdist, all_neglogpdist_comy, all_avg, all_chi, all_avg_comy, all_chi_comy, all_cov_comy = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,1], bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comz, all_avg, all_chi, all_avg_comz, all_chi_comz, all_cov_comz = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,2], bins, beta_phi_vals)
 
+# Find chi_v max! (small probe)
+max_idx = np.argmax(all_chi)
+bphistar = beta_phi_vals[max_idx]
+print("beta phi star: {:.2f}".format(bphistar))
+plt.plot(beta_phi_vals, all_chi)
+
 # Save out the average 
+
 avg_com = np.array([all_avg_comx[0], all_avg_comy[0], all_avg_comz[0]])
+print("Average com: {}".format(avg_com))
+print("<N>_0: {:.2f}".format(all_avg_cube[0]))
 np.savez_compressed("cube_data_equil.dat", avg_com=avg_com, n0=all_avg_cube[0])
 
 
@@ -154,7 +163,7 @@ for i, beta_phi_val in enumerate(beta_phi_vals):
     all_rho[i] = this_rho
 
 # Save total density profile
-np.savez_compressed('rhoz_final.dat', rhoz=all_rho, beta_phi_vals=beta_phi_vals, 
+np.savez_compressed('rhoz_final.dat', rhoz=all_rho, beta_phi_vals=beta_phi_vals, max_idx=max_idx,
                     xvals=xvals, rvals=rvals, xx=xx, rr=rr)
 
 

@@ -28,13 +28,15 @@ mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 30})
 
+# height of cyl probe, in A
+w = 9
 xmin = 28.0
-ymin = 15.0
-zmin = 15.0
+ymin = 5.0
+zmin = 5.0
 
 xmax = 38.5
-ymax = 55.0
-zmax = 55.0
+ymax = 65.0
+zmax = 65.0
 
 box_vol = (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 
@@ -52,7 +54,11 @@ xvals = ds['xvals']
 rvals = ds['rvals']
 xx = ds['xx']
 rr = ds['rr']
+max_idx = ds['max_idx'] # Index of beta phi star, for *cyl* vol, v
 beta_phi_vals = ds['beta_phi_vals']
+beta_phi_star = beta_phi_vals[max_idx]
+
+print("beta phi * (for cylv v): {:.2f}".format(beta_phi_star))
 
 # At bphistar=0.7
 
@@ -68,8 +74,8 @@ cmap = 'bwr_r'
 homedir = os.environ['HOME']
 
 def plot_it(idx):
-    this_rho = rhoz[idx]
-    this_rho /= expt_waters
+    this_rho = rhoz[idx] / expt_waters
+
 
     plt.close('all')
     fig, ax = plt.subplots(figsize=(10,6))
@@ -79,13 +85,15 @@ def plot_it(idx):
     ax.contour(rr, xx, this_rho.T, levels=[0.5], color='k')
     
     # z
-    ax.set_ylim(0, 0.4)
+    ax.set_ylim(0, w/10.+0.1)
     # R
     ax.set_xlim(0, 3.0) 
-    ax.plot([0,1.5], [0.3,0.3], 'g--', linewidth=4)
+    ax.plot([0,3], [w/10.,w/10.], 'g--', linewidth=4)
     ax.set_xlabel(r'$r$ (nm)')
     ax.set_ylabel(r'$z$ (nm)')
-    if idx == 35:
+
+    # Label beta phi star
+    if idx == max_idx:
         label = r'$\beta \phi^*={:.2f}$'.format(beta_phi_vals[idx])
         ax.set_title(label)
 
@@ -100,7 +108,7 @@ def plot_it(idx):
         plt.tight_layout()
         plt.savefig('{}/Desktop/snap_{:03d}'.format(homedir, idx))
 
-for i in range(40):
+for i in range(max_idx+20):
     plot_it(i)
 
 
