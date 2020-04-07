@@ -200,8 +200,9 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
 
 # Output number of waters in V at each frame, as well as their COM's
 #   Note: *non* shifted positions - just directly from trajectory
-np.savetxt("phiout_cube.dat", n_waters, fmt='%3d')
-np.save("com_cube.dat", water_com)
+if not do_calc_rho:
+    np.savetxt("phiout_cube.dat", n_waters, fmt='%3d')
+    np.save("com_cube.dat", water_com)
 
 if do_calc_rho:
     np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
