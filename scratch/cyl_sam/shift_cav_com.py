@@ -171,14 +171,18 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
     ## Center cavity COM in V's COM (in y,z)
     if do_calc_rho:
         
+        n_cav = avg_0 - this_n_waters
         #First, find com of cavity
         # Found from a weighted difference of water COM at bphi=0 and at this ensemble
         cavity_com = (avg_0*com_0 - this_n_waters*this_water_com) / (avg_0 - this_n_waters)
         
+        # Assume no cav if sys has lost less than 10 % of its waters
+        if (n_cav / avg_0) < 0.1:
+            cavity_com = box_com
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
         shift_vector = np.array([0,ycom,zcom]) - cavity_com
         shift_vector[0] = 0
-        #shift_vector = np.array([0,0,0])
+        
         # Shift *all* water positions in this frame 
         water_pos_shift = water_pos + shift_vector
         waters.positions = water_pos_shift

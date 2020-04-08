@@ -101,7 +101,7 @@ plt.plot(beta_phi_vals, all_chi)
 avg_com = np.array([all_avg_comx[0], all_avg_comy[0], all_avg_comz[0]])
 print("Average com: {}".format(avg_com))
 print("<N>_0: {:.2f}".format(all_avg_cube[0]))
-np.savez_compressed("cube_data_equil.dat", avg_com=avg_com, n0=all_avg_cube[0])
+np.savez_compressed("cube_data_equil.dat", avg_com=avg_com, n0=all_avg_cube[0], chi0=all_chi_N[0])
 
 
 ## If 2d density profiles are ready - reweight them, too, to find the unbiased rho(z,r) ###
