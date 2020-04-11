@@ -85,18 +85,21 @@ parser.add_argument('--equil-vals', type=str,
                     help='path to file with equilibrium values - will calc denstty')
 parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z), in **Angstroms**. ')
 parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. ')
+parser.add_argument('--rmax', default=30, type=float, help='Maximum distance r (in A), to calc rho(z,r)')
 args = parser.parse_args()
 
 
 do_calc_rho = False
 
-xmin = 28.0
-ymin = 15.0
-zmin = 15.0
 
-xmax = 38.5
-ymax = 55.0
-zmax = 55.0
+## Hard (nooo!) coded dimensions of big probe V (large cubic box)
+xmin = 28.0
+ymin = 5.0
+zmin = 5.0
+
+xmax = 48.5
+ymax = 65.0
+zmax = 65.0
 
 box_vol = (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 
@@ -121,7 +124,7 @@ if args.equil_vals is not None:
     dx = args.dx
     xvals = np.arange(xmin, xmax+dx, dx)
     dr = args.dr
-    rvals = np.arange(0, 20+dr, dr)
+    rvals = np.arange(0, args.rmax+dr, dr)
 
 
 
@@ -168,10 +171,14 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
     ## Center cavity COM in V's COM (in y,z)
     if do_calc_rho:
         
+        n_cav = avg_0 - this_n_waters
         #First, find com of cavity
         # Found from a weighted difference of water COM at bphi=0 and at this ensemble
         cavity_com = (avg_0*com_0 - this_n_waters*this_water_com) / (avg_0 - this_n_waters)
         
+        # Assume no cav if sys has lost less than 10 % of its waters
+        if (n_cav / avg_0) < 0.1:
+            cavity_com = box_com
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
         shift_vector = np.array([0,ycom,zcom]) - cavity_com
         shift_vector[0] = 0
@@ -197,8 +204,9 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
 
 # Output number of waters in V at each frame, as well as their COM's
 #   Note: *non* shifted positions - just directly from trajectory
-np.savetxt("phiout_cube.dat", n_waters, fmt='%3d')
-np.save("com_cube.dat", water_com)
+if not do_calc_rho:
+    np.savetxt("phiout_cube.dat", n_waters, fmt='%3d')
+    np.save("com_cube.dat", water_com)
 
 if do_calc_rho:
     np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
