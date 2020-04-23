@@ -48,7 +48,7 @@ dat = np.load('boot_fn_payload.dat.npy')
 n_iter = boot_indices.shape[0]
 
 max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
-bins = np.arange(0, max_val+1, 1)
+bins = np.arange(0, max_val+1, 1).astype(int)
 
 ## In kT!
 beta_phi_vals = np.arange(0,6.02,0.02)
@@ -162,9 +162,38 @@ for i, beta_phi_val in enumerate(beta_phi_vals):
 
     all_rho[i] = this_rho
 
+    del bias_logweights, bias_weights
+
+
+
+max_n = np.ceil(all_data.max()) + 1
+n_bins = np.arange(max_n, dtype=int)
+
+assign = np.digitize(all_data, n_bins) - 1
+all_rho_n = np.zeros((n_bins.size-1, nx, nr))
+
+for i, n_val in enumerate(n_bins[:-1]):
+    print("  doing {} of {}".format(i, n_bins.size-1))
+    mask = (assign == i)
+
+    if mask.sum() == 0:
+        all_rho_n[i,...] = np.nan
+        continue
+
+    this_logweights = all_logweights[mask]
+    this_logweights -= this_logweights.max()
+    norm = np.log(np.sum(np.exp(this_logweights)))
+    this_logweights -= norm
+
+    this_weights = np.exp(this_logweights)
+
+    this_rho = np.dot(this_weights, all_data_rhoz[mask]).reshape(nx,nr)
+
+    all_rho_n[i] = this_rho
+
+    del this_weights, this_logweights
+
 # Save total density profile
-np.savez_compressed('rhoz_final.dat', rhoz=all_rho, beta_phi_vals=beta_phi_vals, max_idx=max_idx,
-                    xvals=xvals, rvals=rvals, xx=xx, rr=rr)
-
-
+np.savez_compressed('rhoz_final.dat', rhoz=all_rho, beta_phi_vals=beta_phi_vals, max_idx=max_idx, all_avg=all_avg,
+                    xvals=xvals, rvals=rvals, xx=xx, rr=rr, rhoz_n=all_rho_n, n_bins=n_bins)
 

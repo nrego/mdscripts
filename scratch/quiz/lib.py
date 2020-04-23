@@ -40,11 +40,13 @@ class QuizzMaster:
         self.quizzers[quizzer.name] = quizzer
 
     # Load in round 0, init quizzers
-    def init_quizzers(self, infile):
-        txt = np.loadtxt(infile, dtype=str)
+    def init_quizzers(self, infile, sep=','):
+        #txt = np.loadtxt(infile, dtype=str)
+        with open(infile, 'r') as fin:
+            lines = fin.readlines()
 
-        for in_str in txt:
-            in_str = in_str[0]
+        for in_str in lines[1:]:
+            #in_str = in_str[0]
             splits = in_str.split(sep)
             team_name = splits[1]
             print("found team name : {}. adding...".format(team_name))
@@ -56,10 +58,11 @@ class QuizzMaster:
 
         this_qs = questions[round]
 
-        txt = np.loadtxt(infile, dtype=str)
+        with open(infile, 'r') as fin:
+            lines = fin.readlines()
 
-        for in_str in txt:
-            in_str = in_str[0]
+        for in_str in lines[1:]:
+            #in_str = in_str[0]
             splits = in_str.split(sep)
             team_name = splits[1]
             self.print_names()
@@ -101,3 +104,4 @@ class QuizzMaster:
         ax.set_xticklabels(this_quizzers[sort_idx])
 
         plt.show()
+

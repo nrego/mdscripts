@@ -6,8 +6,8 @@ proc make_rotation_animated_gif {} {
 		incr frame
 		rotate y by 10
 	}
-	exec convert -delay 10 -loop 4 snap.*.rgb movie.gif
-	eval file delete [ glob snap*rgb ]
+	exec convert -delay 20 -loop 4 snap.*.rgb movie.gif
+	#eval file delete [ glob snap*rgb ]
 }
 
 proc make_mov {} {

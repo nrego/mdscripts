@@ -23,18 +23,55 @@ import argparse, os
 from scipy.interpolate import interp2d
 
 import matplotlib as mpl
+
+from skimage import measure
+from scipy.optimize import curve_fit
+
+# Fits a circle, centered at (r,z) = (0,-a), to r2 = b2 - (z - a)^2
+fn_fit = lambda rvals, a, b: a + np.sqrt(b**2 - rvals**2)
+param_lb = np.array([-np.inf, 0])
+param_ub = np.array([0, np.inf])
+bounds = (param_lb, param_ub)
+p0 = np.array([-1, 2])
+
+def get_contour_verts(cn):
+    contours = []
+
+    # for each contour line
+    assert len(cn.collections) == 1
+    cc = cn.collections[0]
+    paths = []
+    max_len = 0
+    max_path = None
+    # for each separate section of the contour line
+    for pp in cc.get_paths():
+        xy = []
+        # for each segment of that section
+        for vv in pp.iter_segments():
+            xy.append(vv[0])
+
+        xy = np.vstack(xy)
+        if xy.shape[0] > max_len:
+            max_len = xy.shape[0]
+            max_path = xy
+
+        paths.append(np.vstack(xy))
+
+    return max_path
+
+
 mpl.rcParams.update({'axes.labelsize': 30})
 mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 30})
 
 # height of cyl probe, in A
-w = 9
+w = 3
 xmin = 28.0
 ymin = 5.0
 zmin = 5.0
 
-xmax = 38.5
+xmax = 48.5
 ymax = 65.0
 zmax = 65.0
 
@@ -61,29 +98,40 @@ beta_phi_star = beta_phi_vals[max_idx]
 print("beta phi * (for cylv v): {:.2f}".format(beta_phi_star))
 
 # At bphistar=0.7
-
+dr = np.diff(rvals)[0]
+dx = np.diff(xvals)[0]
 # Convert to nm, shift x (z) vals to bottom of small v cyl probe vol
 rr = rr / 10.0
 xx = (xx - 28.5) / 10.0
+r_small = np.unique(rr) < 1.5
 
 ## Isocontour options for plotting
 levels = np.linspace(0,1,3)
 norm = plt.Normalize(0,1)
-cmap = 'bwr_r'
+cmap = 'coolwarm_r'
 
 homedir = os.environ['HOME']
 
 def plot_it(idx):
-    this_rho = rhoz[idx] / expt_waters
 
+    print("\nBeta phi: {:.2f}".format(beta_phi_vals[idx]))
+    this_rho = rhoz[idx] / expt_waters
 
     plt.close('all')
     fig, ax = plt.subplots(figsize=(10,6))
 
     pc = ax.pcolormesh(rr, xx, this_rho.T, cmap=cmap, norm=norm, shading='gourand')
     fig.colorbar(pc)
-    ax.contour(rr, xx, this_rho.T, levels=[0.5], color='k')
+    cn = ax.contour(rr, xx, this_rho.T, levels=[0.5], color='k')
     
+    # Now let's fit our contour....
+    contour = get_contour_verts(cn)
+    mask = contour[:,0] < 1.5
+    #ax.plot(contour[:,0], contour[:,1], 'x')
+    a, b = curve_fit(fn_fit, contour[mask,0], contour[mask,1], p0=p0, maxfev=5000, bounds=bounds)[0]
+    fitvals = fn_fit(np.unique(rr), a, b)
+    ax.plot(np.unique(rr), fitvals, 'k--', linewidth=3)
+
     # z
     ax.set_ylim(0, w/10.+0.1)
     # R

@@ -23,11 +23,12 @@ questions = {
         "Name as many animals as you can that have the word 'gray' in their name (up to 3)",
         "Gray-scale pixels are encoded by one number - color by 3. what are the 3 numbers?",
         "Dogs can only see in black and white: true or false?",
-        "Name a type of cloud."
+        "Name The type of cloud associated with storms."
         ],
+
     # "General" knowledge
     2: ["In the punic wars, which general suprised romans...",
-        "Name as many us companies as you can that have the word 'general' in them (up to 3)",
+        "Name as many US companies as you can that have the word 'general' in them (up to 3)",
         "Complete the sentence: 'Hello there!'  'General ____!'",
         "Latin root of 'general' means 'origin, type, group', or 'race'. what is the root?",
         "Famous French generals (or war leaders)",
@@ -36,10 +37,11 @@ questions = {
 
     # "FOOOD"
     3: ["Shakshuka",
-        "Durian",
         "Mex natl dish",
+        "Durian",
         "masala refers to what?",
         "This famous italian dish is prepared with capers, anchovies, and olives",
+        "French mother sauces - what are they??",
         "'Vindaloo' comes from the Portueguese - 'vin' and 'aloo' - what does it mean? one pt each"
         ],
 
@@ -63,4 +65,7 @@ qm = QuizzMaster()
 
 
 qm.init_quizzers('responses.csv')
+#for q in qm.quizzers.values():
+#    q.scores[0] = 5
 
+qm.collect_and_assign(questions, 0, 'responses.csv')
