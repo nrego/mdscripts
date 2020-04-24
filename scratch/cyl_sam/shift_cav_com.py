@@ -74,6 +74,7 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
             rhoz[ix, ir] = tot_mask.sum() #/ expt_waters
             rho_vols[ix, ir] = this_vol
 
+
     return rhoz, rho_vols
 
 
@@ -176,7 +177,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # Found from a weighted difference of water COM at bphi=0 and at this ensemble
         cavity_com = (avg_0*com_0 - this_n_waters*this_water_com) / (avg_0 - this_n_waters)
         
-        # Assume no cav if sys has lost less than 10 % of its waters
+        # Assume no cav if sys has lost fewer than 10 % of its waters
         if (n_cav / avg_0) < 0.1:
             cavity_com = box_com
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
