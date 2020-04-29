@@ -28,72 +28,32 @@ mpl.rcParams.update({'ytick.labelsize': 35})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':30})
 
-# If true, enforce endpoint constraints ('pure' patterns constrained to f_0)
-do_constr = False
+
 ### PLOT SIMPLE REG ON k_O for 6 x 6 ####
 #########################################
 
-ds = np.load('sam_pattern_06_06.npz')
-ds_bulk = np.load('sam_pattern_bulk_pure.npz')
+energies, feat_vec, states = extract_from_ds("data/sam_pattern_06_06.npz")
 
+k_o = feat_vec[:,0]
 
 print('\nExtracting sam data...')
 p = q = 6
-bulk_idx = np.where((ds_bulk['pq'] == (p,q)).all(axis=1))[0].item()
-bulk_e = ds_bulk['energies'][bulk_idx]
-
-print('  bulk energy: {:.2f}'.format(bulk_e))
-
-states = ds['states']
-energies = ds['energies']
-errs = ds['err_energies']
-
-dg_bind = energies - bulk_e
-
-# Sanity
-for state in states:
-    assert state.P == p and state.Q == q
-print('  ...Done\n')
-
-shape_arr = np.array([p*q, p, q])
-
-print('\nExtracting pure models...')
-reg_c = np.load('sam_reg_inter_c.npz')['reg'].item()
-reg_o = np.load('sam_reg_inter_o.npz')['reg'].item()
-
-f_c = reg_c.predict(shape_arr.reshape(1,-1)).item()
-f_o = reg_o.predict(shape_arr.reshape(1,-1)).item()
 
 
 print('  ...Done\n')
 
-delta_f = dg_bind - f_c
 
-n_dat = delta_f.size
+n_dat = energies.size
 indices = np.arange(n_dat)
 
-# Gen feat vec 
-myfeat = np.zeros((energies.size, 1))
-
-for i, state in enumerate(states):
-    myfeat[i] = state.k_o
-
-constraint = lambda alpha, X, y, f_c, f_o: (alpha*36).item() + (f_c - f_o)
-args = (f_c, f_o)
 
 
-# Fit model - LOO CV, constrained so that a pure hydroxyl group gives 
-#   delta f = fo - fc
-if do_constr:
-    perf_mse, err, xvals, fit, reg = fit_leave_one_constr(myfeat, delta_f, eqcons=[constraint], args=args)
-    boot_int, boot_coef = fit_bootstrap(myfeat, delta_f, fit_intercept=False)
-    
-else:
-    perf_mse, err, xvals, fit, reg = fit_leave_one(myfeat, dg_bind, weights=np.ones_like(errs), fit_intercept=True)
-    boot_int, boot_coef = fit_bootstrap(myfeat, dg_bind, fit_intercept=True)
 
-poly_feat = np.hstack((myfeat**2, myfeat))
-perf_mse_poly, err_poly, xvals2, fit_poly, reg_poly = fit_leave_one(poly_feat, dg_bind, weights=np.ones_like(errs), fit_intercept=True)
+perf_mse, err, xvals, fit, reg = fit_leave_one(k_o, energies, fit_intercept=True)
+boot_int, boot_coef = fit_bootstrap(k_o, energies, fit_intercept=True)
+
+poly_feat = np.vstack((k_o**2, k_o)).T
+perf_mse_poly, err_poly, xvals2, fit_poly, reg_poly = fit_leave_one(poly_feat, energies, fit_intercept=True)
 
 
 coef_err = boot_coef.std(axis=0, ddof=1).item()
@@ -108,13 +68,13 @@ fig = plt.figure(figsize=(7,6))
 ax = fig.gca()
 norm = plt.Normalize(-15,15)
 err_kwargs = {"lw":.5, "zorder":0, "color":'k'}
-if do_constr:
-    ax.errorbar(myfeat[:,0], delta_f+f_c, fmt='o', color='gray', yerr=errs)
-    ax.plot(xvals, fit+f_c, 'k-', linewidth=4)
-else:
-    sc = ax.scatter(myfeat[:,0], dg_bind, s=50, c=norm(err), cmap='coolwarm_r', zorder=100)
-    ax.errorbar(myfeat[:,0], dg_bind, errs, fmt='none', **err_kwargs)
-    ax.plot(xvals, fit, 'k-', linewidth=2, zorder=200)    
+
+#sc = ax.scatter(k_o, energies, s=50, c=norm(err), cmap='coolwarm_r', zorder=100)
+sc = ax.scatter(k_o, energies, s=50, zorder=100, color='k')
+#ax.errorbar(k_o, energies, errs, fmt='none', **err_kwargs)
+ax.plot(xvals, fit, '-', linewidth=4, zorder=200)    
+
+ax.plot(xvals, fit_poly, '-', linewidth=4, zorder=300)
 
 ax.set_xticks([0,12,24,36])
 

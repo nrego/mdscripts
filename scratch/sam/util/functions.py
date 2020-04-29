@@ -31,6 +31,25 @@ mpl.rcParams.update({'ytick.labelsize': 20})
 mpl.rcParams.update({'axes.titlesize': 30})
 
 
+# For given patch size (p,q),
+#   extract energies, errors, and states from 
+def extract_from_ds(infile):
+
+    ds = np.load(infile)
+
+    energies = ds['energies']
+    states = ds['states']
+    n_states = len(states)
+
+    feat_vec = np.zeros((n_states, 3))
+
+    for i in range(n_states):
+        state = states[i]
+        feat_vec[i] = state.k_o, state.n_oo, state.n_oe
+
+    return (energies, feat_vec, states)
+
+
 # regress y on set of n_dim features, X.
 #   Do leave-one-out CV
 def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
