@@ -51,17 +51,10 @@ mpl.rcParams.update({'legend.fontsize':30})
 ### PLOT Transferability of coefs for 4x4, 6x6, 4x9 ####
 #########################################
 
-ds_06_06 = np.load('sam_pattern_06_06.npz')
-ds_04_04 = np.load('sam_pattern_04_04.npz')
-ds_04_09 = np.load('sam_pattern_04_09.npz')
+ds_06_06 = np.load('data/sam_pattern_06_06.npz')
+ds_04_04 = np.load('data/sam_pattern_04_04.npz')
+ds_04_09 = np.load('data/sam_pattern_04_09.npz')
 
-ds_bulk = np.load('sam_pattern_bulk_pure.npz')
-e_bulk_06_06, e_bulk_04_09, e_bulk_04_04 = ds_bulk['energies'][-3:]
-err_bulk_06_06, err_bulk_04_09, err_bulk_04_04 = ds_bulk['err_energies'][-3:]
-
-assert np.array_equal(ds_bulk['pq'][-3], np.array([6,6]))
-assert np.array_equal(ds_bulk['pq'][-2], np.array([4,9]))
-assert np.array_equal(ds_bulk['pq'][-1], np.array([4,4]))
 
 energies_06_06 = ds_06_06['energies']
 energies_04_04 = ds_04_04['energies']

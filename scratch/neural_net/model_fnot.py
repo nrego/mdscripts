@@ -69,9 +69,9 @@ Command-line options
     def process_args(self, args):
 
         ## Extract our sam datasets (plus a bunch of extra info that might or might not be used)
-        feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
-        
-        y = dg_bind
+        #feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
+        feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep(args.infile)
+        y = energies
 
         # Only used for epsilon training 
         feat_idx = np.array([2,3,4])

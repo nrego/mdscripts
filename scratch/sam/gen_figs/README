@@ -1,0 +1,19 @@
+4/23/20
+
+All data extraction, storage, and plotting in one place!
+
+
+Start from sam_patterns/ directory...
+
+
+Everything will be dumped in the ./data/ directory
+
+
+1) Extract data for each patch
+================================
+
+Run 'extract_patterned_data.py', setting p=q= to whatever (have to repeat once for each patch...)
+
+This script will extract dg cav from each pattern, as well as pattern, and save it in a large key-value compressed numpy array
+
+at a min, we need: each 'state', each f

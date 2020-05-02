@@ -196,14 +196,15 @@ def load_and_prep(fname='sam_pattern_pooled.npz'):
 
     ds = np.load(fname)
     energies = ds['energies']
-    delta_e = ds['delta_f']
-    dg_bind = ds['dg_bind']
-    ols_feat = ds['feat_vec']
+    #delta_e = ds['delta_f']
+    #dg_bind = ds['dg_bind']
+    #ols_feat = ds['feat_vec']
     states = ds['states']
-    weights = ds['weights']
+    #weights = ds['weights']
 
-    n_data = dg_bind.size
-
+    n_data = energies.size
+    
+    ols_feat = np.zeros((n_data, 3))
     pos_ext = gen_pos_grid(ny=14, nz=13, shift_z=-4, shift_y=-4, z_offset=True)
 
     # shape: (n_data_points, ny*nz)
@@ -226,8 +227,10 @@ def load_and_prep(fname='sam_pattern_pooled.npz'):
         tmp_mask[~state.methyl_mask] = -1
         feat_vec[i_dat, patch_idx] = tmp_mask
 
+        ols_feat[i_dat, ...] = state.k_o, state.n_oo, state.n_oe
 
-    return feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states
+
+    return feat_vec, patch_indices, pos_ext, energies, ols_feat, states
 
 
 def save_net(net, foutname='net.pkl'):

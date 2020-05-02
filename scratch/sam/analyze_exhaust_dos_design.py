@@ -37,18 +37,19 @@ COLOR_BUILD = '#7f7f7f'
 ## Analysze entropy from exhaustive search over greedy trajectory design
 homedir = os.environ['HOME']
 
-p = 3
-q = 12
+p = 6
+q = 6
 
 n = p*q
 
 indices = np.arange(n)
 
 dummy_state = State(indices, ny=p, nz=q)
+state_po = State(np.array([], dtype=int))
 adj_mat = dummy_state.adj_mat
 ext_count = dummy_state.ext_count
 
-reg = np.load("sam_reg_coef.npy").item()
+reg = np.load("sam_reg_m3.npy").item()
 
 # ko, noo, noe
 alpha1, alpha2, alpha3 = reg.coef_
@@ -57,11 +58,12 @@ alpha_kc = -alpha1 - 6*alpha2
 alpha_n_cc = alpha2
 alpha_n_ce = alpha2 - alpha3
 
-base_e = alpha_kc * dummy_state.k_c + alpha_n_cc * dummy_state.n_mm + alpha_n_ce * dummy_state.n_me
+e_min = reg.intercept_
+e_max = reg.intercept_ + state_po.k_o*alpha1 + state_po.n_oo*alpha2 + state_po.n_oe*alpha3
 
-e_max = np.ceil(-base_e) + 2
-de = 1
-e_bins = np.arange(0, e_max+de, de)
+
+de = 0.1
+e_bins = np.arange(0, 400, 0.1)
 
 headdir = 'p_{:02d}_q_{:02d}'.format(p,q)
 
@@ -104,14 +106,10 @@ for i in range(n+1):
     n_ce_break = np.dot(x_break, ext_count)
     n_ce_build = np.dot(x_build, ext_count)
 
-    d_energy_break = (alpha_kc * kc + alpha_n_cc * n_cc_break + alpha_n_ce * n_ce_break) - base_e
-    d_energy_build = (alpha_kc * kc + alpha_n_cc * n_cc_build + alpha_n_ce * n_ce_build) - base_e
+    energy_break = (alpha_kc * kc + alpha_n_cc * n_cc_break + alpha_n_ce * n_ce_break) + e_max
+    energy_build = (alpha_kc * kc + alpha_n_cc * n_cc_build + alpha_n_ce * n_ce_build) + e_max
 
-    e_min = np.floor(min(d_energy_build.min(), d_energy_break.min()))
-    e_max = np.ceil(max(d_energy_build.max(), d_energy_break.max())) + 1
-    #de = 0.1
-    #e_bins = np.arange(e_min, e_max+de, de)
-    #print("k_c: {}. n states: {}".format(i, n_state))
+
 
     n_accessible_states_break[i] = n_state_break
     n_accessible_states_build[i] = n_state_build
@@ -131,8 +129,8 @@ for i in range(n+1):
     s_break = np.log(dos_break) 
     s_build = np.log(dos_build) 
 
-    avg_e_break[i] = np.dot(np.exp(s_break), d_energy_break)
-    avg_e_build[i] = np.dot(np.exp(s_build), d_energy_build)
+    avg_e_break[i] = np.dot(np.exp(s_break), energy_break)
+    avg_e_build[i] = np.dot(np.exp(s_build), energy_build)
 
     #hist_break, bb = np.histogram(d_energy_break, bins=e_bins, weights=np.exp(s_break))
     #hist_build, bb = np.histogram(d_energy_build, bins=e_bins, weights=np.exp(s_build))
@@ -147,8 +145,6 @@ for i in range(n+1):
     #ax.set_title('ko: {}'.format(n - i))
     #plt.savefig('{}/Desktop/fig_{:02d}.png'.format(homedir, n-i))
 
-
-
 assert n_accessible_states_build[0] == n_accessible_states_build[-1] == n_accessible_states_break[0] == n_accessible_states_break[-1] == 1
 
 plt.close('all')
@@ -158,9 +154,32 @@ plt.plot(ko, np.log(n_accessible_states_build), '-o', color=COLOR_BUILD)
 plt.savefig('{}/Desktop/n_states_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
 
 plt.close('all')
-plt.plot(ko, avg_e_break, '-o', color=COLOR_BREAK)
-plt.plot(ko, avg_e_build, '-o', color=COLOR_BUILD)
+
+plt.plot(ko, avg_e_break, '-o', color=COLOR_BREAK, markersize=10)
+plt.plot(ko, avg_e_build, '-o', color=COLOR_BUILD, markersize=10)
 plt.savefig('{}/Desktop/avg_e_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
 
+ds = np.load('sam_dos_f_min_max.npz')
+min_f = ds['min_f']
+max_f = ds['max_f']
+f_vals = ds['f_vals']
+ener_hist = ds['ener_hist']
 
+#kk, ff = np.meshgrid(ko[::-1]+0.5, f_vals+0.05, indexing='ij')
+#plt.pcolormesh(kk, ff, ener_hist, cmap='jet', norm=plt.Normalize(0, ener_hist.max()))
+norm_cst = np.log(np.exp(ener_hist).sum())
+max_val = ener_hist.max() - norm_cst
+for i in range(n+1):
+    this_hist = ener_hist[i]
+    ones = np.ones_like(this_hist)*i
+    norm = np.log(np.exp(this_hist).sum())
+    occ = this_hist >= 0
+
+    blah = this_hist - norm_cst
+    #print(blah.max())
+    plt.scatter(ones[occ], f_vals[occ], marker='.', cmap='jet', c=this_hist[occ], norm=plt.Normalize(0, 20))
+plt.colorbar()
+
+ax = plt.gca()
+ax.set_xticks([0,9,18,27,36])
 

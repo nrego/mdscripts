@@ -29,7 +29,7 @@ from sklearn.cluster import AgglomerativeClustering
 
 homedir = os.environ['HOME']
 
-plot_it = False
+plot_it = True
 
 def gen_merged_keff(k_eff_shape, labels):
     
@@ -122,20 +122,22 @@ mpl.rcParams.update({'axes.titlesize': 30})
 ### run from pooled_pattern_sample directory, after linking in ~/mdscripts/scratch/sam/util/ ###
 
 ds = np.load('sam_pattern_data.dat.npz')
+#states = ds['states']
 energies = ds['energies']
 # 2d positions (in y, z) of all 36 patch head groups (For plotting schematic images, calculating order params, etc)
 # Shape: (N=36, 2)
+#positions = ds['states'][0].positions
 positions = ds['positions']
-
+methyl_pos = ds['methyl_pos']
 pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
 # patc_idx is list of patch indices
 d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
-
+#nn_ext = ds['states'][0].nn_ext
 
 nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 
-methyl_pos = ds['methyl_pos']
-n_configs = methyl_pos.shape[0]
+#methyl_pos = ds['methyl_pos']
+n_configs = energies.shape[0]
 
 edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
 n_edges = edges.shape[0]
@@ -152,7 +154,9 @@ plt.close('all')
 ## Find k_eff for each point - this each config now has a 131x5 length feature vector!
 k_eff_all = np.zeros((n_configs, n_edges*5))
 
+#for i, state in enumerate(states):
 for i, methyl_mask in enumerate(methyl_pos):
+    #methyl_mask = state.methyl_mask
     this_keff = get_keff_all(methyl_mask, edges, patch_indices)
 
     k_eff_all[i] = this_keff.ravel()
@@ -163,7 +167,7 @@ for i, methyl_mask in enumerate(methyl_pos):
 k_eff_all_shape = k_eff_all.reshape((n_configs, n_edges, 5))
 
 # Compare to k_eff computed the other way (i.e. in fit_keff) - more sanity
-k_eff_prev = np.loadtxt('k_eff_all.dat')
+#k_eff_prev = np.loadtxt('k_eff_all.dat')
 
 #assert np.array_equal(k_eff_prev, k_eff_all_shape.sum(axis=1))
 
@@ -183,7 +187,9 @@ k_eff_all_shape = np.dstack((mm, oo, mo))
 n_connection_type = k_eff_all_shape.shape[2]
 k_eff_all = k_eff_all_shape.reshape((n_configs, n_edges*n_connection_type))
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(k_eff_all, energies)
+#perf_mse, err, xvals, fit, reg = fit_leave_one(k_eff_all, energies, do_ridge=True)
+reg = linear_model.Ridge()
+reg.fit(k_eff_all, energies)
 coefs = reg.coef_.reshape((n_edges, n_connection_type))
 
 # distance matrix between coefs
@@ -221,7 +227,6 @@ aics = np.zeros_like(mses)
 # Iterate thru each step of hierarchical clustering
 for i_round, (m_i, m_j) in enumerate(clust.children_):
     print("round: {}".format(i_round))
-
 
     assert n_singleton == (clust_labels_curr==-1).sum()
     assert np.unique(clust_labels_curr[clust_labels_curr!=-1]).size == n_non_singleton

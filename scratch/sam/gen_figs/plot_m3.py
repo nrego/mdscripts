@@ -31,17 +31,12 @@ mpl.rcParams.update({'legend.fontsize':30})
 ### PLOT Final model for 6x6 - on ko, noo, noe ####
 #########################################
 # If true, enforce endpoint constraints ('pure' patterns constrained to f_0)
-do_constr = False
 
-ds = np.load('sam_pattern_06_06.npz')
-ds_bulk = np.load('sam_pattern_bulk_pure.npz')
+ds = np.load('data/sam_pattern_06_06.npz')
+
 
 print('\nExtracting sam data...')
 p = q = 6
-bulk_idx = np.where((ds_bulk['pq'] == (p,q)).all(axis=1))[0].item()
-bulk_e = ds_bulk['energies'][bulk_idx]
-
-print('  bulk energy: {:.2f}'.format(bulk_e))
 
 shape_arr = np.array([p*q, p, q])
 
@@ -49,34 +44,27 @@ states = ds['states']
 energies = ds['energies']
 errs = ds['err_energies']
 
-dg_bind = energies - bulk_e
 
 # Sanity
 for state in states:
     assert state.P == p and state.Q == q
 print('  ...Done\n')
 
-print('\nExtracting pure models...')
-reg_c = np.load('sam_reg_inter_c.npz')['reg'].item()
-reg_o = np.load('sam_reg_inter_o.npz')['reg'].item()
 
-f_c = reg_c.predict(shape_arr.reshape(1,-1)).item()
-f_o = reg_o.predict(shape_arr.reshape(1,-1)).item()
 
-print('  ...Done\n')
-
-delta_f = dg_bind - f_c
-
-n_dat = delta_f.size
+n_dat = energies.size
 indices = np.arange(n_dat)
 
 
 # Gen feat vec 
 myfeat = np.zeros((energies.size, 3))
 
+myfeat_meth = np.zeros_like(myfeat)
+
 # k_o, n_oo, n_oe
 for i, state in enumerate(states):
     myfeat[i] = state.k_o, state.n_oo, state.n_oe
+    myfeat_meth[i] = state.k_c, state.n_mm, state.n_me
 
 myfeat_m2 = np.zeros((myfeat.shape[0], 2))
 myfeat_m2[:,0] = myfeat[:,0]
@@ -88,18 +76,18 @@ x_o = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
 idx_state = 689
 state_sample = states[idx_state]
 # Fit model - LOO CV
-constraint = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o) + (f_c - f_o)
-c1 = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o[0]).item() + (f_c - f_o)
-args = (x_o, f_c, f_o)
+#constraint = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o) + (f_c - f_o)
+#c1 = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o[0]).item() + (f_c - f_o)
+#args = (x_o, f_c, f_o)
 
-if do_constr:
-    perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one_constr(myfeat[:,0], delta_f, eqcons=[c1], args=args)
-    perf_mse_m2, err, xvals, fit, reg = fit_leave_one_constr(myfeat_m2, delta_f, eqcons=[constraint], args=args)
-else:
-    perf_mse_m1, err_m1, xvals, fit, reg_m1 = fit_leave_one(myfeat[:,0], dg_bind, fit_intercept=True)
-    perf_mse_m2, err_m2, xvals, fit, reg_m2 = fit_leave_one(myfeat_m2, dg_bind, fit_intercept=True)
-    perf_mse_m3, err_m3, xvals, fit, reg_m3 = fit_leave_one(myfeat, dg_bind, fit_intercept=True)
-
+#if do_constr:
+#    perf_mse, err_m1, xvals, fit, reg_m1 = fit_leave_one_constr(myfeat[:,0], delta_f, eqcons=[c1], args=args)
+#    perf_mse_m2, err, xvals, fit, reg = fit_leave_one_constr(myfeat_m2, delta_f, eqcons=[constraint], args=args)
+#else:
+perf_mse_m1, err_m1, xvals, fit, reg_m1 = fit_leave_one(myfeat[:,0], energies, fit_intercept=True)
+perf_mse_m2, err_m2, xvals, fit, reg_m2 = fit_leave_one(myfeat_m2, energies, fit_intercept=True)
+perf_mse_m3, err_m3, xvals, fit, reg_m3 = fit_leave_one(myfeat, energies, fit_intercept=True)
+_, _, _, _, reg_m3_meth = fit_leave_one(myfeat_meth, energies, fit_intercept=True)
 
 k_vals = myfeat[:,0]
 
@@ -157,7 +145,6 @@ fig.tight_layout()
 fig.savefig('{}/Desktop/res_comparison_noe.pdf'.format(homedir), transparent=True)
 
 
-
 # Find errors of each model with k
 sq_err_m1 = err_m1**2
 sq_err_m2 = err_m2**2
@@ -189,10 +176,10 @@ plt.close('all')
 
 fig = plt.figure(figsize=(7,6.5))
 ax = fig.gca()
-ax.plot(np.array([1,2,3]), np.sqrt([np.mean(err_m1**2), np.mean(err_m2**2), np.mean(err_m3**2)]), 'o-', linewidth=2, markersize=12)
+ax.plot(np.array([1,2,3]), [np.mean(perf_mse_m1), np.mean(perf_mse_m2), np.mean(perf_mse_m3)], 'o-', linewidth=2, markersize=12)
 
 xvals = np.array([0.5, 3.5])
-ax.plot(xvals, [np.mean(errs), np.mean(errs)], 'k-', linewidth=2)
+ax.plot(xvals, [np.mean(errs**2), np.mean(errs**2)], 'k-', linewidth=2)
 ax.plot(xvals, [errs.max(), errs.max()], 'k--', linewidth=2)
 ax.plot(xvals, [errs.min(), errs.min()], 'k--', linewidth=2)
 
@@ -201,3 +188,8 @@ ax.set_xticklabels([])
 ax.set_xlim(0.5, 3.5)
 fig.tight_layout()
 fig.savefig('{}/Desktop/model_comp.pdf'.format(homedir), transparent=True)
+
+np.save('data/sam_reg_m1.npy', reg_m1)
+np.save('data/sam_reg_m2.npy', reg_m2)
+np.save('data/sam_reg_m3.npy', reg_m3)
+np.save('data/sam_reg_m3_meth.npy', reg_m3_meth)

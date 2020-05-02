@@ -47,8 +47,6 @@ n_dat = energies.size
 indices = np.arange(n_dat)
 
 
-
-
 perf_mse, err, xvals, fit, reg = fit_leave_one(k_o, energies, fit_intercept=True)
 boot_int, boot_coef = fit_bootstrap(k_o, energies, fit_intercept=True)
 

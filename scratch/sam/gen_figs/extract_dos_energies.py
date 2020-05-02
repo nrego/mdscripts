@@ -16,6 +16,8 @@ import numpy as np
 
 from scratch.sam.util import *
 
+from scipy.special import binom
+
 
 plt.close('all')
 homedir = os.environ['HOME']
@@ -32,11 +34,9 @@ mpl.rcParams.update({'legend.fontsize':30})
 ###
 #########################################
 
-ds = np.load('sam_dos.npz')
+ds = np.load('data/sam_dos.npz')
 
-reg = np.load('sam_reg_total.npy').item()
-reg_int_c = np.load('sam_reg_inter_c.npz')['reg'].item()
-reg_int_o = np.load('sam_reg_inter_o.npz')['reg'].item()
+reg = np.load('data/sam_reg_m3.npy').item()
 
 # p,q combos we're considering
 vals_pq = ds['vals_pq']
@@ -46,16 +46,11 @@ vals_ko = ds['vals_ko']
 vals_noo = ds['vals_noo']
 vals_noe = ds['vals_noe']
 
-# Minimum f=dg_bind
-min_dg = np.floor(np.dot(feat_pq, reg_int_c.coef_).min() - 1)
-max_dg = np.ceil(np.dot(feat_pq, reg_int_o.coef_).max() + 1)
-
 x_ko, x_noo, x_noe = np.meshgrid(vals_ko, vals_noo, vals_noe, indexing='ij')
 
 # shape: (n_ko, n_noo, n_noe)
-delta_f = reg.coef_[3]*x_ko + reg.coef_[4]*x_noo + reg.coef_[5]*x_noe
-# Shape: (n_pq)
-f0 = np.dot(feat_pq, reg.coef_[:3])
+energies = reg.coef_[0]*x_ko + reg.coef_[1]*x_noo + reg.coef_[2]*x_noe + reg.intercept_
+
 
 # Shape
 dos = ds['dos']
@@ -64,7 +59,8 @@ assert dos.min() == 0
 tot_min_e = np.inf
 tot_max_e = -np.inf
 
-f_vals = np.arange(min_dg, max_dg, 0.1)
+#f_vals = np.arange(energies.min(), energies.max(), 0.1)
+f_vals = np.arange(0, 400, 0.1)
 
 # Density of states for each volume, k_o, energy value
 #    shape: (n_pq, n_ko, n_fvals)
@@ -76,7 +72,7 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
     assert q == vals_pq[i_pq,1]
 
     print('doing: p={}  q={}'.format(p,q))
-    this_fnot = f0[i_pq]
+    #this_fnot = f0[i_pq]
 
     for i_ko in range(pq+1):
         # Shape: (n_ko, n_noo, n_noe)
@@ -84,10 +80,12 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
 
         occ = this_dos > 0
         # Shape same as this_dos
-        this_f = this_fnot + delta_f[i_ko]
+        this_f = energies[i_ko]
 
         occ_f = this_f[occ]
         occ_dos = this_dos[occ]
+
+        assert np.isclose(occ_dos.sum(), binom(pq, i_ko))
 
         #f_all[i_pq, i_ko] = this_f
 
@@ -97,40 +95,22 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
         for mult, f_assign_idx in zip(occ_dos, f_bin_assign):
             f_dos[i_pq, i_ko, f_assign_idx] += mult
 
-    #min_e = this_f[occ].min()
-    #max_e = this_f[occ].max()
+#get average f, as well as min,max, with ko
+f_dos = f_dos[0]
+max_f = np.zeros(f_dos.shape[0])
+min_f = np.zeros_like(max_f)
+mean_f = np.zeros_like(max_f)
+ener_hist = np.zeros((f_dos.shape[0], f_vals.size))
 
-    #if min_e < tot_min_e:
-    #    tot_min_e = min_e
-    #if max_e > tot_max_e:
-    #    tot_max_e = max_e
+for i_ko in range(f_dos.shape[0]):
+    this_dos = f_dos[i_ko]
 
-    #print('p: {}  q: {}  min_e: {:.2f}  max_e: {:.2f}'.format(p,q,min_e,max_e))
+    occ = this_dos > 0
 
-new_ds = dict()
+    max_f[i_ko] = f_vals[occ].max()
+    min_f[i_ko] = f_vals[occ].min()
 
-for k, v in ds.items():
-    new_ds[k] = v
+    ener_hist[i_ko] = np.log(this_dos)
 
-new_ds['dos_f'] = f_dos
-new_ds['vals_f'] = f_vals
+np.savez_compressed("sam_dos_f_min_max", ko=np.arange(37), f_vals=f_vals, max_f=max_f, min_f=min_f, ener_hist=ener_hist)
 
-np.savez_compressed('sam_dos', **new_ds)
-
-'''
-## Test
-import itertools
-
-# Expected dos for f vals for 2x2 system
-expt_f = np.zeros_like(f_vals)
-
-for k_c in range(5):
-    for idx in itertools.combinations(np.arange(4), k_c):
-        idx = np.array(idx).astype(int)
-        state = State(idx, 2, 2)
-
-        this_e = f0[0] + reg.coef_[3]*state.k_o + reg.coef_[4]*state.n_oo + reg.coef_[5]*state.n_oe
-
-        e_assign = np.digitize(this_e, f_vals) - 1
-        expt_f[e_assign] += 1
-'''

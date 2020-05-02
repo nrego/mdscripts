@@ -51,7 +51,7 @@ def unnormalize(normed_poly, y_min, y_max):
     return (normed_poly) * (y_max-y_min) + y_min
 
 
-class PvNModel(NNModel):
+class PvNModel(NNDriver):
 
     xvals = np.arange(0,124)
     xvals = np.array([xvals**4,
@@ -88,10 +88,10 @@ Command-line options
         self.n_epochs_refinement = args.n_epochs_refinement
         self.break_out = args.break_out
 
-        feat_vec, energies, poly, beta_phi_stars, pos_ext, patch_indices, methyl_pos, adj_mat = load_and_prep(args.infile)
         
+        feat_vec, patch_indices, pos_ext, energies, weights, ols_feat, states = load_and_prep(args.infile)
         self.feat_vec = feat_vec
-        self.poly = poly
+        #self.poly = poly
         self.pos_ext = pos_ext
         self.patch_indices = patch_indices
 
