@@ -27,7 +27,7 @@ def loss_fnot(net_out, target, criterion):
 
     return loss
 
-def get_err(X, y, weights=None, fit_intercept=False):
+def get_err(X, y, weights=None, fit_intercept=True):
     
     if weights is None:
         weights = np.ones_like(y)
@@ -42,7 +42,6 @@ def get_err(X, y, weights=None, fit_intercept=False):
 
 
 class FnotDriver(NNDriver):
-
 
     prog='Predict delta_f from pattern'
     description = '''\
@@ -74,19 +73,27 @@ Command-line options
         y = energies
 
         # Only used for epsilon training 
-        feat_idx = np.array([2,3,4])
+        
         if args.eps_m1:
-            err = get_err(ols_feat[:,feat_idx[0]].reshape(-1,1), delta_e, weights)
+            this_feat = ols_feat[:,0].reshape(-1,1)
+            err = get_err(this_feat, energies)
             mse = np.mean(err**2)
             print("Doing epsilon on M1 with MSE: {:.2f}".format(mse))
             y = err
 
         if args.eps_m2:
-            err = get_err(ols_feat[:,feat_idx], delta_e, weights)
+            this_feat = np.vstack((ols_feat[:,0], ols_feat[:,1:].sum(axis=1))).T
+            err = get_err(this_feat, energies)
             mse = np.mean(err**2)
             print("Doing epsilon on M2 with MSE: {:.2f}".format(mse))
             y = err
 
+        if args.eps_m3:
+            this_feat = ols_feat
+            err = get_err(this_feat, energies)
+            mse = np.mean(err**2)
+            print("Doing epsilon on M3 with MSE: {:.2f}".format(mse))
+            y = err
 
         if self.augment_data:
             feat_vec, y = hex_augment_data(feat_vec, y, pos_ext, patch_indices)
