@@ -20,7 +20,10 @@ def extract_info(basename):
 
     n_layer = int(splits[4])
     n_hidden = int(splits[7])
-    n_conv_channel = int(splits[10].split('.')[0])
+    try:
+        n_conv_channel = int(splits[10].split('.')[0])
+    except IndexError:
+        n_conv_channel = 0
 
     return (n_layer, n_hidden, n_conv_channel)
 
@@ -39,7 +42,7 @@ def extract_n_params(n_hidden_layer, n_hidden, n_channels):
 homdir = os.environ['HOME']
 tmp_n_layer = 1
 headdir = 'eps2'
-fnames = sorted(glob.glob("{}/n_layer_{}/n_filter_*/perf_model_*".format(headdir, tmp_n_layer)))
+fnames = sorted(glob.glob("{}/n_hidden_layer{}/perf_model_*".format(headdir, tmp_n_layer)))
 
 # All combos of hyper params: n_layer, n_hidden_nodes, n_channels
 hyp_param_array = np.zeros((len(fnames), 3))

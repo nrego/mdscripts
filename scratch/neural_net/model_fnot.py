@@ -59,9 +59,11 @@ Command-line options
     def add_args(self, parser):
         tgroup = parser.add_argument_group("f-model specific options (including epsilon or delta training on OLS residuals)")
         tgroup.add_argument("--eps-m1", action="store_true",
-                           help="If true, perform epsilon training on errors from linear regression on k_ch3, rather than actual energies (default: False)")
+                           help="If true, perform epsilon training on errors from linear regression on k_o, rather than actual energies (default: False)")
         tgroup.add_argument("--eps-m2", action="store_true",
-                           help="If true, perform epsilon training on errors from linear regression on (k_ch3, n_mm) rather than actual energies (default: False)")
+                           help="If true, perform epsilon training on errors from linear regression on (k_o, n_oo') rather than actual energies (default: False)")
+        tgroup.add_argument("--eps-m3", action="store_true",
+                           help="If true, perform epsilon training on errors from linear regression on (k_o, n_oo, n_oe) rather than actual energies (default: False)")        
         tgroup.add_argument("--skip-cv", action="store_true", 
                            help="If true, skip the N-fold CV and just fit on entire dataset (default: False, perform CV)")
 

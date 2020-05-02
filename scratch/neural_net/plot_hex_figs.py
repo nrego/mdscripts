@@ -69,8 +69,6 @@ for i, methyl_mask in enumerate(methyl_pos):
 # n_mm n_oo n_mo n_me n_oe
 k_eff = k_eff.sum(axis=1)
 
-
-
 mynorm = plt.Normalize(-1,1)
 plt.close('all')
 idx = 693
