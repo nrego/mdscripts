@@ -100,9 +100,8 @@ class SAMConvNet(nn.Module):
 
         # Determine pooling output size (ugh, hackish)
         dummy = torch.rand((1,1,nz,ny))
-        p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
+        self.n_pool_out = np.prod(self.conv2(self.conv1(dummy).detach()).detach().shape)
 
-        self.n_pool_out = np.prod(p(p(dummy)).shape) * n_conv_filters
 
         # Fully-connected hidden layer(s), optional feature layer, and output layer
         self.fc = SAMNet(self.n_pool_out, n_hidden_layer, n_node_hidden, n_node_feature, n_out, drop_out)
@@ -136,9 +135,9 @@ class SAMConvNetSimple(nn.Module):
 
         # Determine pooling output size (ugh, hackish)
         dummy = torch.rand((1,1,nz,ny))
-        p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
-
-        self.n_pool_out = np.prod(p(dummy).shape) * n_conv_filters
+        #p = hexagdly.MaxPool2d(kernel_size=1, stride=2)
+        #embed()
+        self.n_pool_out = np.prod(self.conv1(dummy).detach().shape)
 
         # Fully-connected hidden layer(s), optional feature layer, and output layer
         self.fc = SAMNet(self.n_pool_out, n_hidden_layer, n_node_hidden, n_node_feature, n_out, drop_out)

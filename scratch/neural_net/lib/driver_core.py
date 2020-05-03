@@ -170,6 +170,8 @@ class NNDriver(Core):
                            help="Dropout probability per node during training. Can assist with model robustness. (Default %(default)s)")
         group.add_argument("--do-conv", action="store_true",
                            help="Do a convolutional neural net (default: false)")
+        group.add_argument("--double-conv", action="store_true",
+                           help="Add another conv layer w/ single filter (default: false)")
         group.add_argument("--n-conv-filters", type=int, default=4,
                            help="Number of convolutional filters to apply; ignored if not doing CNN (Default: %(default)s)")
         group.add_argument("--no-run", action="store_true",
@@ -182,6 +184,7 @@ class NNDriver(Core):
         self.drop_out = args.drop_out
 
         self.do_conv = args.do_conv
+        self.double_conv = args.double_conv
         self.n_conv_filters = args.n_conv_filters
 
         self.no_run = args.no_run

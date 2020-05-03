@@ -140,7 +140,10 @@ Command-line options
 
 
         if self.do_conv:
-            NetType = SAMConvNet #if self.n_node_hidden_layer > 0 else SAMFixedConvNet
+            if self.double_conv:
+                NetType = SAMConvNet #if self.n_node_hidden_layer > 0 else SAMFixedConvNet
+            else:
+                NetType = SAMConvNetSimple
         else:
             NetType = SAMNet
 
@@ -181,6 +184,8 @@ Command-line options
                 net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, 
                              n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
 
+            print("\nNet: {}\n".format(net))
+            
             if torch.cuda.is_available():
                 print("\n(GPU detected)")
                 net = net.cuda()
@@ -228,6 +233,7 @@ Command-line options
             net = SAMNet(n_patch_dim=self.n_patch_dim, n_hidden_layer=self.n_hidden_layer, n_node_hidden=self.n_node_hidden, 
                          n_node_feature=self.n_node_feature, n_out=1, drop_out=self.drop_out)
 
+        print("\nNet: {}\n".format(net))
         if torch.cuda.is_available():
             print("\n(GPU detected)")
             net = net.cuda()
