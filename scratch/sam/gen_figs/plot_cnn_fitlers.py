@@ -48,7 +48,7 @@ def kernel_rep(k0, k1, norm=None, cmap=None):
 #  Save CNN filters for pattern
 def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir), title=None):
 
-    c, r = net.conv1.children()
+    c, r, p = net.conv1.children()
     this_pattern = x_pattern[idx][None,:]
     
     # Apply conv filters to all patterns to find max vals
@@ -65,10 +65,10 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
     mynorm2 = Normalize(0,max1)
 
     # Convolve and max-pool this particular pattern at index idx
-    c, r = net.conv1.children()
+    c, r, p = net.conv1.children()
     k0, k1 = c.kernel0, c.kernel1
     conv1 = r(c(this_pattern).detach())
-    #pool1 = p(conv1).detach()
+    pool1 = p(conv1).detach()
 
     plot_hextensor(this_pattern, norm=Normalize(-1,1))
     plt.savefig('{}/fig_idx_{}_pattern'.format(path, title), transparent=True)
@@ -78,8 +78,8 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
     plot_hextensor(conv1, cmap="Greys", norm=mynorm1)
     plt.savefig('{}/fig_{}_filter_conv1'.format(path, title), transparent=True)
 
-    #plot_hextensor(pool1, cmap='Greys', norm=mynorm1)
-    #plt.savefig('{}/fig_{}_filter_pool1'.format(path, title), transparent=True)
+    plot_hextensor(pool1, cmap='Greys', norm=mynorm1)
+    plt.savefig('{}/fig_{}_filter_pool1'.format(path, title), transparent=True)
 
     ## Now do layer 2
     c, r, p = net.conv2.children()
@@ -93,13 +93,13 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
     plt.savefig('{}/fig_{}_filter_pool2'.format(path, title), transparent=True)
 
 n_hidden_layer = 1
-n_node_hidden = 8
+n_node_hidden = 2
 n_conv_filters = 4
 
-net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_node_hidden=n_node_hidden)
+net = SAMConvNetSimple(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_node_hidden=n_node_hidden)
 
 #state_dict = torch.load("model_n_hidden_layer_1_n_node_hidden_{:02d}_n_conv_filters_04_all.pkl".format(n_node_hidden), map_location='cpu')
-state_dict = torch.load("model_n_layer_1_n_node_hidden_{:02d}_n_channel_{:02d}_rd_0.pkl".format(n_node_hidden, n_conv_filters), map_location='cpu')
+state_dict = torch.load("model_n_layer_1_n_node_hidden_{:02d}_n_channel_{:02d}_rd_2.pkl".format(n_node_hidden, n_conv_filters), map_location='cpu')
 net.load_state_dict(state_dict)
 
 feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz')
@@ -125,7 +125,7 @@ plot_hextensor(x)
 plt.savefig('{}/Desktop/pattern_embed'.format(homedir), transparent=True)
 
 l1 = net.conv1
-c, r = l1.children()
+c, r, p = l1.children()
 
 k0 = c.kernel0
 k1 = c.kernel1
@@ -160,7 +160,7 @@ construct_pvn_images(841, net, dataset.X)
 
 plt.close('all')
 
-l1 = net.conv1
-c, r = l1.children()
-out = r(c(x))
-plt.close('all')
+#l1 = net.conv1
+#c, r, p = l1.children()
+#out = r(c(x))
+#plt.close('all')

@@ -89,12 +89,12 @@ class SAMConvNet(nn.Module):
         # Conv Output: (1 x ny x nz)
         # Pool Output: (1 x ny/2 x nz/2) (check!)
         self.conv1 = nn.Sequential(
-            hexagdly.Conv2d(1, 1, kernel_size=1, stride=1, bias=True),
+            hexagdly.Conv2d(1, n_conv_filters, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
         self.conv2 = nn.Sequential(
-            hexagdly.Conv2d(1, n_conv_filters, kernel_size=1, stride=1, bias=True),
+            hexagdly.Conv2d(n_conv_filters, 1, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
