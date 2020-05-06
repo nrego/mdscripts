@@ -192,7 +192,7 @@ def augment_data(feat_vec, y):
     return (aug_feat_vec, aug_y)
 
 # Load in data (energies and methyl positions)
-def load_and_prep(fname='sam_pattern_pooled.npz'):
+def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True):
 
     ds = np.load(fname)
     energies = ds['energies']
@@ -205,8 +205,11 @@ def load_and_prep(fname='sam_pattern_pooled.npz'):
     n_data = energies.size
     
     ols_feat = np.zeros((n_data, 3))
-    pos_ext = gen_pos_grid(ny=14, nz=13, shift_z=-4, shift_y=-4, z_offset=True)
-
+    if embed_pos_ext:
+        pos_ext = gen_pos_grid(ny=14, nz=13, shift_z=-4, shift_y=-4, z_offset=True)
+    else:
+        pos_ext = states[0].positions
+        
     # shape: (n_data_points, ny*nz)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small
     patch_indices = np.zeros(n_data, dtype=object)

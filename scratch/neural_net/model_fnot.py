@@ -71,7 +71,11 @@ Command-line options
 
         ## Extract our sam datasets (plus a bunch of extra info that might or might not be used)
         #feat_vec, patch_indices, pos_ext, energies, delta_e, dg_bind, weights, ols_feat, states = load_and_prep(args.infile)
-        feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep(args.infile)
+        
+        # Don't embed patterns in larger grid if we're not augmenting the data
+        do_embed = self.augment_data
+
+        feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep(args.infile, embed_pos_ext=do_embed)
         y = energies
 
         # Only used for epsilon training 

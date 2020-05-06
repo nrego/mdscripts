@@ -32,11 +32,14 @@ mpl.rcParams.update({'legend.fontsize':30})
 #########################################
 # If true, enforce endpoint constraints ('pure' patterns constrained to f_0)
 
-ds = np.load('data/sam_pattern_06_06.npz')
+p = 4
+q = 9
+
+ds = np.load('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))
 
 
 print('\nExtracting sam data...')
-p = q = 6
+
 
 shape_arr = np.array([p*q, p, q])
 
@@ -73,8 +76,8 @@ myfeat_m2[:,1] = myfeat[:,1:].sum(axis=1)
 state_pure = State(np.array([],dtype=int), ny=p, nz=q)
 x_o = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
 
-idx_state = 689
-state_sample = states[idx_state]
+#idx_state = 689
+#state_sample = states[idx_state]
 # Fit model - LOO CV
 #constraint = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o) + (f_c - f_o)
 #c1 = lambda alpha, X, y, x_o, f_c, f_o: np.dot(alpha, x_o[0]).item() + (f_c - f_o)
