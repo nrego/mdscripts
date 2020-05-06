@@ -12,6 +12,9 @@ import torch.nn.functional as F
 from torch import optim
 
 import os, glob, pathlib
+
+import itertools
+
 homedir=os.environ['HOME']
 mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 50})
@@ -20,6 +23,26 @@ mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':14})
 
 ## TODO: Move out of here
+
+## Need to initialize and load in states for CNNs manually...
+def make_nets(all_state_dict, all_hyp_param_array):
+    all_nets = np.empty_like(all_state_dict)
+
+    d1, d2, d3 = all_state_dict.shape
+    
+    for (i_x, i_y, i_z) in itertools.product(np.arange(d1), np.arange(d2), np.arange(d3)):
+        this_state_dict = all_state_dict[i_x,i_y,i_z]
+        n_conv_filters, n_hidden_layer, n_node_hidden = all_hyp_param_array[i_x, i_y, i_z]
+
+        net = SAMConvNetSimple(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, 
+                               n_node_hidden=n_node_hidden)
+        net.load_state_dict(this_state_dict)
+
+        all_nets[i_x, i_y, i_z] = net
+
+
+    return all_nets 
+
 
 def kernel_rep(k0, k1, norm=None, cmap=None):
     k0 = k0.detach()[:,0,...]
@@ -93,18 +116,36 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
     plt.savefig('{}/fig_{}_filter_pool2'.format(path, title), transparent=True)
 
 n_hidden_layer = 1
-n_node_hidden = 2
-n_conv_filters = 4
+n_node_hidden = 4
+n_conv_filters = 2
 
-net = SAMConvNetSimple(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, n_node_hidden=n_node_hidden)
+##
+ds = np.load('data/sam_cnn_ml_trials.npz')
+all_state_dict = ds['all_state_dict']
+# n_conv_filters, n_hidden_layer, n_node_hidden
+all_hyp_param_array = ds['all_hyp_param_array']
 
-#state_dict = torch.load("model_n_hidden_layer_1_n_node_hidden_{:02d}_n_conv_filters_04_all.pkl".format(n_node_hidden), map_location='cpu')
-state_dict = torch.load("model_n_layer_1_n_node_hidden_{:02d}_n_channel_{:02d}_rd_2.pkl".format(n_node_hidden, n_conv_filters), map_location='cpu')
-net.load_state_dict(state_dict)
+all_nets = make_nets(all_state_dict, all_hyp_param_array)
 
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz')
+trial_n_conv_filters = ds['trial_n_conv_filters']
+trial_n_hidden_layer = ds['trial_n_hidden_layer']
+trial_n_node_hidden = ds['trial_n_node_hidden']
+n_sample = ds['n_sample'].item()
+
+i_conv_filters = np.digitize(n_conv_filters, trial_n_conv_filters) - 1
+i_hidden_layer = np.digitize(n_hidden_layer, trial_n_hidden_layer) - 1
+i_node_hidden = np.digitize(n_node_hidden, trial_n_node_hidden) - 1
+
+
+net = all_nets[i_conv_filters, i_hidden_layer, i_node_hidden]
+
+
+#Get feat vec and augment to get right dimensions
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz')
 n_patch_dim = feat_vec.shape[1]
-state = states[841]
+
+homedir = os.environ['HOME']
+
 
 dataset = SAMConvDataset(feat_vec, energies)
 

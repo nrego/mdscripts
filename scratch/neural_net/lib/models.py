@@ -94,7 +94,7 @@ class SAMConvNet(nn.Module):
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
         self.conv2 = nn.Sequential(
-            hexagdly.Conv2d(n_conv_filters, 1, kernel_size=1, stride=1, bias=True),
+            hexagdly.Conv2d(n_conv_filters, 2*n_conv_filters, kernel_size=1, stride=1, bias=True),
             nn.ReLU(),
             hexagdly.MaxPool2d(kernel_size=1, stride=2))
 
