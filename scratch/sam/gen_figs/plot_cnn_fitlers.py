@@ -15,6 +15,16 @@ import os, glob, pathlib
 
 import itertools
 
+
+## Plot CNN filters (first layer, possibly second layer, too)
+##   For a cnn with a given set of hyper params (set below)
+n_hidden_layer = 1
+n_node_hidden = 4
+n_conv_filters = 2
+
+# Are there two convolutions?
+is_double = False
+
 homedir=os.environ['HOME']
 mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 50})
@@ -69,7 +79,7 @@ def kernel_rep(k0, k1, norm=None, cmap=None):
 
 # Given a pattern, plot filters, filtering operations, and pooling
 #  Save CNN filters for pattern
-def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir), title=None):
+def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir), title=None, is_double=False):
 
     c, r, p = net.conv1.children()
     this_pattern = x_pattern[idx][None,:]
@@ -81,11 +91,6 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
     mynorm1 = Normalize(0,max0)
     #filter_norm = [mynorm for i in range(out_all.shape[1])]
 
-    c, r, p = net.conv2.children()
-    out_all = r(c(out_all).detach())
-    max1 = out_all[:,0].max()
-
-    mynorm2 = Normalize(0,max1)
 
     # Convolve and max-pool this particular pattern at index idx
     c, r, p = net.conv1.children()
@@ -105,19 +110,22 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
     plt.savefig('{}/fig_{}_filter_pool1'.format(path, title), transparent=True)
 
     ## Now do layer 2
-    c, r, p = net.conv2.children()
-    conv2 = r(c(conv1).detach())
-    pool2 = p(conv2).detach()
+    if is_double:
+        c, r, p = net.conv2.children()
+        out_all = r(c(out_all).detach())
+        max1 = out_all[:,0].max()
 
-    plot_hextensor(conv2, cmap="Greys", norm=mynorm2)
-    plt.savefig('{}/fig_{}_filter_conv2'.format(path, title), transparent=True)
+        mynorm2 = Normalize(0,max1)
+        conv2 = r(c(pool1).detach())
+        pool2 = p(conv2).detach()
 
-    plot_hextensor(pool2, cmap="Greys", norm=mynorm2)
-    plt.savefig('{}/fig_{}_filter_pool2'.format(path, title), transparent=True)
+        plot_hextensor(conv2, cmap="Greys", norm=mynorm2)
+        plt.savefig('{}/fig_{}_filter_conv2'.format(path, title), transparent=True)
 
-n_hidden_layer = 1
-n_node_hidden = 4
-n_conv_filters = 2
+        plot_hextensor(pool2, cmap="Greys", norm=mynorm2)
+        plt.savefig('{}/fig_{}_filter_pool2'.format(path, title), transparent=True)
+
+
 
 ##
 ds = np.load('data/sam_cnn_ml_trials.npz')
@@ -165,6 +173,7 @@ plt.close('all')
 plot_hextensor(x)
 plt.savefig('{}/Desktop/pattern_embed'.format(homedir), transparent=True)
 
+
 l1 = net.conv1
 c, r, p = l1.children()
 
@@ -178,26 +187,27 @@ plt.close('all')
 kernel_rep(k0, k1, norm=norm, cmap='RdBu')
 plt.savefig('{}/Desktop/kernel_l1'.format(homedir), transparent=True)
 
+
 ## Conv layer 2
+if is_double:
+    plt.close('all')
+    l2 = net.conv2
+    c, r, p = l2.children()
 
-plt.close('all')
-l2 = net.conv2
-c, r, p = l2.children()
+    k0 = c.kernel0
+    k1 = c.kernel1
 
-k0 = c.kernel0
-k1 = c.kernel1
+    arr = kernel_rep(k0, k1)
+    plt.close('all')
 
-arr = kernel_rep(k0, k1)
-plt.close('all')
+    kernel_rep(k0, k1, norm=norm, cmap='RdBu')
+    plt.savefig('{}/Desktop/kernel_l2'.format(homedir), transparent=True)
 
-kernel_rep(k0, k1, norm=norm, cmap='RdBu')
-plt.savefig('{}/Desktop/kernel_l2'.format(homedir), transparent=True)
-
-plt.close('all')
+    plt.close('all')
 
 ## Now, make all images
 
-construct_pvn_images(841, net, dataset.X)
+construct_pvn_images(841, net, dataset.X, is_double=is_double)
 
 plt.close('all')
 
