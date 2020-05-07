@@ -39,7 +39,7 @@ def extract_info(basename):
 # Constructs net (with given hyper params) and returns it and its number of params
 def extract_n_params(n_conv_filters, n_hidden_layer, n_node_hidden):
 
-    net = SAMConvNetSimple(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, 
+    net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, 
                      n_node_hidden=n_node_hidden, n_out=1)
 
     n_param = 0
@@ -50,7 +50,7 @@ def extract_n_params(n_conv_filters, n_hidden_layer, n_node_hidden):
     return n_param, net
 
 
-def find_best_trial(path, choices=['cnn_energy1', 'cnn_energy2']):
+def find_best_trial(path, choices=['double_cnn_energy1', 'double_cnn_energy2']):
 
     min_mse_tot = np.inf
     min_mses_cv = None
@@ -84,7 +84,7 @@ feat_vec_conv = dataset.X
 
 ##
 
-fnames = sorted(glob.glob("cnn_energy1/n_layer_*/n_filter_*/perf_model_*"))
+fnames = sorted(glob.glob("double_cnn_energy1/n_layer_*/n_filter_*/perf_model_*"))
 
 
 # n_filter, n_hidden_layer, n_node_hidden

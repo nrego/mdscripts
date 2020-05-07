@@ -639,4 +639,18 @@ def fit_leave_one_constr(X, y, weights=None, sort_axis=0, eqcons=(), f_eqcons=No
 
     return (perf_mse, err, xvals[:,sort_axis], fit, reg)
 
+# Finds outliers along given axis; returns mask of their locations
+def mask_outliers(data, axis=0, m = 100.):
+
+    # Deviations from median...
+    d = np.abs(data - np.median(data, axis=axis))
+    mdev = np.median(d)
+    s = d/mdev if mdev else 0.
+
+    mask = s > m
+    arr = np.ma.masked_array(data, mask=mask)
+
+
+    return arr
     
+

@@ -48,10 +48,12 @@ trial_n_hidden_layer = ds['trial_n_hidden_layer']
 trial_n_node_hidden = ds['trial_n_node_hidden']
 n_sample = ds['n_sample'].item()
 
-aic = n_sample*np.log(all_perf_tot) + 2*all_n_params
+min_perf_cv = all_perf_cv.min(axis=0)
+
+aic = n_sample*np.log(min_perf_cv) + 2*all_n_params
 aic -= aic.min()
 
-min_perf_cv = all_perf_cv.min(axis=0)
+
 
 for i_hidden_layer in range(trial_n_hidden_layer.size):
 

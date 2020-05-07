@@ -19,11 +19,11 @@ import itertools
 ## Plot CNN filters (first layer, possibly second layer, too)
 ##   For a cnn with a given set of hyper params (set below)
 n_hidden_layer = 2
-n_node_hidden = 4
-n_conv_filters = 3
+n_node_hidden = 12
+n_conv_filters = 4
 
 # Are there two convolutions?
-is_double = False
+is_double = True
 
 homedir=os.environ['HOME']
 mpl.rcParams.update({'axes.labelsize': 45})
@@ -44,7 +44,7 @@ def make_nets(all_state_dict, all_hyp_param_array):
         this_state_dict = all_state_dict[i_x,i_y,i_z]
         n_conv_filters, n_hidden_layer, n_node_hidden = all_hyp_param_array[i_x, i_y, i_z]
 
-        net = SAMConvNetSimple(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, 
+        net = SAMConvNet(n_conv_filters=n_conv_filters, n_hidden_layer=n_hidden_layer, 
                                n_node_hidden=n_node_hidden)
         net.load_state_dict(this_state_dict)
 

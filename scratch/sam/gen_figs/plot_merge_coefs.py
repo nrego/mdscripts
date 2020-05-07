@@ -72,7 +72,7 @@ def get_edge_from_state(state, edges):
 
 
 
-energies, feat_vec, states = extract_from_ds("sam_pattern_06_06.npz")
+energies, feat_vec, states = extract_from_ds("data/sam_pattern_06_06.npz")
 
 temp_state = states[-1]
 

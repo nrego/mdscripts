@@ -212,16 +212,17 @@ class State:
         if noedge:
             feat[feat==0] = -1
 
-        new_kwargs = dict()
-        if kwargs is not None:
+        #new_kwargs = dict()
+        #if kwargs is not None:
 
-            for k, v in kwargs.items():
-                if v is None:
-                    continue
-                tmp = np.ones(64, dtype=v.dtype)
-                tmp[self.patch_indices] = v
-                tmp = plot_feat(tmp).T.ravel()
-                new_kwargs[k] = tmp
-
+        #    for k, v in kwargs.items():
+        #        if v is None:
+        #            continue
+        #        tmp = np.ones(64, dtype=v.dtype)
+        #        tmp[self.patch_indices] = v
+        #        tmp = plot_feat(tmp).T.ravel()
+        #        new_kwargs[k] = tmp
+        new_kwargs = kwargs
+        
         plot_hextensor(feat, norm=norm, **new_kwargs)
 
