@@ -251,11 +251,16 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
 
     edges = []
     # Indices of edges to external OH's
-    ext_indices = []
+    ext_edge_indices = []
+
+    # For each local patch position...
     for i in range(positions.shape[0]):
+
         # Index of this patch point in pos_ext
         global_i = patch_indices[i]
+        # Global indices of all non-patch atoms that atom i forms edges with
         neighbor_idx = nn_ext[i]
+
         for j in neighbor_idx:
             # patch-patch edge that's already been seen
             if j in patch_indices and j <= global_i:
@@ -267,9 +272,8 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
 
             edges.append((global_i,j))
 
-    edges = np.array(edges)
 
-    return edges, np.array(ext_indices)
+    return np.array(edges), np.array(ext_edge_indices)
 
 def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None):
     if ax is None:
@@ -364,13 +368,15 @@ def construct_neighbor_dist_lists(positions, pos_ext):
 
     # Dict of nearest neighbor patch indices
     #   for patch index i, nn[i] = {j}; j is index of patch atom that is nearest neighbor to patch atom i
-    # Dict of nearest neighbor extended (non-patch) indices
-    #    for patch index i, nn_ext[i] = {k}; k is index of extended pos (non-patch) atom that is nearest neighbor to patch atom i
+    # Dict of nearest neighbor extended (global) indices
+    #    for patch index i, nn_ext[i] = {k}; k is global index of extended pos (non-patch) atom that is nearest neighbor to patch atom i
     nn = dict()
     nn_ext = dict()
     for i in range(n_positions):
         nn[i] = np.array([], dtype=int)
         nn_ext[i] = np.array(ext_neighbors[i], dtype=int)
+        # Each position must form 6 edges - add one since we include self here
+        assert nn_ext[i].size == 7
     for i,j in pairs:
         assert j>i
         nn[i] = np.sort(np.append(nn[i], j))

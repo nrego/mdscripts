@@ -106,10 +106,12 @@ class State:
 
         return self._avail_indices
 
+    # Local indices of peripheral patch atoms
     @property
     def ext_indices(self):
         return np.arange(self.N, dtype=int)[self.ext_count>0]
-        
+    
+    # Local indices of internal patch atoms
     @property
     def int_indices(self):
         return np.arange(self.N, dtype=int)[self.ext_count==0]
