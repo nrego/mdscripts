@@ -250,22 +250,27 @@ def plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext, ax=None):
 # i is always a (global) patch index
 # For internal edges, i,j are global patch indices, and j>i (so we don't double count)
 #
+# Periph nodes is a mask of all patch nodes that form external edges
 #
-def enumerate_edges(positions, nn_ext, patch_indices):
+def enumerate_edges(positions, nn_ext, patch_indices, periph_nodes=None):
     # nn_ext's are indexed by local patch index -> give global index of nn
     assert len(nn_ext.keys()) == positions.shape[0]
-
+    if periph_nodes is None:
+        periph_nodes = np.zeros(positions.shape[0], dtype=bool)
+    
     edges = []
-    # Indices of edges to external OH's
+    # Indices of (external) edges to external OH's
     ext_edge_indices = []
+    # Indices of (internal) edges between peripheral nodes
+    periph_edge_indices = []
 
     # For each local patch position...
-    for i in range(positions.shape[0]):
+    for local_i in range(positions.shape[0]):
 
         # Index of this patch point in pos_ext
-        global_i = patch_indices[i]
+        global_i = patch_indices[local_i]
         # Global indices of all atoms that atom i forms edges with (including itself)
-        neighbor_idx = nn_ext[i]
+        neighbor_idx = nn_ext[local_i]
         assert neighbor_idx.size == 7
 
         for global_j in neighbor_idx:
@@ -275,14 +280,19 @@ def enumerate_edges(positions, nn_ext, patch_indices):
                 continue
 
             # This is an external edge, so save this edge's index to ext_indices
-            if global_j not in patch_indices:
+            elif global_j not in patch_indices:
                 ext_edge_indices.append(len(edges))
 
             # global_i, global_j both in patch; global_j > global_i
+            else:
+                local_j = np.argwhere(patch_indices==global_j)[0].item()
+                # patch-patch edge, and both are peripheral nodes
+                if (periph_nodes[local_i] & periph_nodes[local_j]):
+                    periph_edge_indices.append(len(edges))
+
             edges.append((global_i,global_j))
 
-
-    return np.array(edges), np.array(ext_edge_indices)
+    return np.array(edges), np.array(ext_edge_indices), np.array(periph_edge_indices)
 
 # Go over each edge, and classify it as oo,mm, or mo
 #

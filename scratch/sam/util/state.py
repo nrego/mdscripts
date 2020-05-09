@@ -91,7 +91,7 @@ class State:
         self.methyl_mask[self.pt_idx] = True
 
         # Get all edges made by patch atoms (global indices), avoid double counting edges
-        self.edges, self.edges_ext_indices = enumerate_edges(self.positions, self.nn_ext, self.patch_indices)
+        self.edges, self.edges_ext_indices, self.edges_periph_indices = enumerate_edges(self.positions, self.nn_ext, self.patch_indices, self.nodes_peripheral)
         
         # Now identify what each edge is
         self.edge_oo, self.edge_cc, self.edge_oc = construct_edge_feature(self.edges, self.edges_ext_indices, self.patch_indices, self.methyl_mask)
@@ -141,6 +141,10 @@ class State:
     @property
     def Q(self):
         return self.q
+
+    @property
+    def N_tot(self):
+        return self.p*self.q
 
     @property
     def k_o(self):
@@ -214,7 +218,15 @@ class State:
     @property
     def n_edges(self):
         return self.edges.shape[0]
-    
+
+    # Returns the (local) mask of all buried nodes
+    @property
+    def nodes_buried(self):
+        return self.ext_count == 0
+
+    @property
+    def nodes_peripheral(self):
+        return self.ext_count > 0
 
     def add_child(self, child):
         child.parent = self

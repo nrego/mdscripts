@@ -60,11 +60,9 @@ def load_states(p=2, q=2):
 def get_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
-    n_feat = state.N_tot + state.M_int
-
     # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
-    feat_vec = np.zeros((n_sample, n_feat))
-
+    feat_vec = np.zeros((n_sample, 3*states[0].n_edges))
+    n_feat = feat_vec.shape[1]
 
     for i,state in enumerate(states):
 
@@ -73,6 +71,36 @@ def get_feat_vec(states):
         feat_vec[i,2*n_edge:3*n_edge] = state.edge_oc
 
     return feat_vec
+
+def get_p_q(fname):
+    name = fname.split('.')[0]
+    splits = name.split('_')
+    return int(splits[2]), int(splits[4])
+
+# Produce list of indices - corresponding to feat_vec
+#   - That are full-rank feature set (i.e. the min num of)
+#     independent features 
+def get_edge_indices(feat_vec, break_out=1):
+
+    rank = get_rank(feat_vec)
+    n_feat = feat_vec.shape[1]
+
+    ind_indices = []
+    i = 0
+    for c in itertools.combinations(np.arange(n_feat), rank):
+
+        this_feat = feat_vec[:,c]
+        this_rank = get_rank(this_feat)
+
+        if this_rank == rank:
+            ind_indices.append(c)
+            i += 1
+
+        if i > break_out:
+            return np.array(ind_indices)
+
+
+    return np.array(ind_indices)
 
 ### Merge edge types
 
