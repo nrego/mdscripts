@@ -6,8 +6,8 @@ import shutil
 ## Extracts all data from patterned dataset  ###
 
 ## Set this to taste ##
-p = 6
-q = 6
+p = 2
+q = 2
 
 fnames = sorted(glob.glob('P_{:02d}_Q_{:02d}/*/d_*/trial_0/PvN.dat'.format(p,q)))
 

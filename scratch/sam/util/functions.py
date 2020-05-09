@@ -245,7 +245,13 @@ def plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext, ax=None):
     return ax
 
 # Generates a list of all edges 
-def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
+# Edges are indexed by {i,j}, where i, j are *global* indices
+#
+# i is always a (global) patch index
+# For internal edges, i,j are global patch indices, and j>i (so we don't double count)
+#
+#
+def enumerate_edges(positions, nn_ext, patch_indices):
     # nn_ext's are indexed by local patch index -> give global index of nn
     assert len(nn_ext.keys()) == positions.shape[0]
 
@@ -258,22 +264,61 @@ def enumerate_edges(positions, pos_ext, nn_ext, patch_indices):
 
         # Index of this patch point in pos_ext
         global_i = patch_indices[i]
-        # Global indices of all non-patch atoms that atom i forms edges with
+        # Global indices of all atoms that atom i forms edges with (including itself)
         neighbor_idx = nn_ext[i]
+        assert neighbor_idx.size == 7
 
-        for j in neighbor_idx:
+        for global_j in neighbor_idx:
+
             # patch-patch edge that's already been seen
-            if j in patch_indices and j <= global_i:
+            if global_j in patch_indices and global_j <= global_i:
                 continue
 
             # This is an external edge, so save this edge's index to ext_indices
-            if j not in patch_indices:
-                ext_indices.append(len(edges))
+            if global_j not in patch_indices:
+                ext_edge_indices.append(len(edges))
 
-            edges.append((global_i,j))
+            # global_i, global_j both in patch; global_j > global_i
+            edges.append((global_i,global_j))
 
 
     return np.array(edges), np.array(ext_edge_indices)
+
+# Go over each edge, and classify it as oo,mm, or mo
+#
+# Returns (edge_oo, edge_mm, edge_mo): 
+#   shape of each: (n_edges,); edge_oo[i] = 1 if edge i is oo, etc.
+#
+def construct_edge_feature(edges, edges_ext_indices, patch_indices, methyl_mask):
+
+    n_edge = edges.shape[0]
+
+    edge_oo = np.zeros(n_edge)
+    edge_mm = np.zeros(n_edge)
+    edge_mo = np.zeros(n_edge)
+
+    for k_edge, (global_i, global_j) in enumerate(edges):
+        # Sanity - first index should *always* be in the patch
+        assert global_i in patch_indices
+
+        local_i = np.argwhere(patch_indices == global_i).item()
+        # is i a methyl?
+        meth_i = methyl_mask[local_i]
+
+        # is j a methyl? if it's outside the patch, then no.
+        if global_j not in patch_indices:
+            meth_j = False
+        else:
+            local_j = np.argwhere(patch_indices == global_j)
+            meth_j = methyl_mask[local_j]
+
+        edge_oo[k_edge] = ~meth_i & ~meth_j
+        edge_mm[k_edge] = meth_i & meth_j
+        edge_mo[k_edge] = np.logical_xor(meth_i, meth_j)
+
+
+    return edge_oo, edge_mm, edge_mo
+
 
 def plot_edge_list(pos_ext, edges, patch_indices, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None):
     if ax is None:

@@ -33,8 +33,8 @@ def make_feat(methyl_mask, pos_ext, patch_indices):
 
     return feat
 
-def plot_feat(feat, ny=8, nz=8):
-    this_feat = feat.reshape(ny, nz).T[::-1, :]
+def plot_feat(feat, p=8, q=8):
+    this_feat = feat.reshape(p, q).T[::-1, :]
 
     return this_feat[None, None, ...]
 
@@ -55,20 +55,23 @@ def get_energy(pt_idx, m_mask, nn, ext_count, reg):
 
 class State:
 
-    def __init__(self, pt_idx, ny=6, nz=6, shift_y=0, shift_z=0, parent=None, reg=None, e_func=None, mode='build_phob'):
+    def __init__(self, pt_idx, p=6, q=6, shift_y=0, shift_z=0, parent=None, reg=None, e_func=None, mode='build_phob'):
         #embed()
-        self.ny = ny
-        self.nz = nz
-        self.positions = gen_pos_grid(ny, nz, shift_y=shift_y, shift_z=shift_z)
-        self.pos_ext = gen_pos_grid(ny+2, nz+2, z_offset=True, shift_y=-1, shift_z=-1)
+        self.p = p
+        self.q = q
+        self.positions = gen_pos_grid(p, q, shift_y=shift_y, shift_z=shift_z)
+        self.pos_ext = gen_pos_grid(p+2, q+2, z_offset=True, shift_y=-1, shift_z=-1)
 
+        # Patch_indices is a mapping of local (patch) index to (global) patch index
+        #   patch_index[local_i] = global_i
         _, self.patch_indices = cKDTree(self.pos_ext).query(self.positions, k=1)
         self.non_patch_indices = np.setdiff1d(np.arange(self.pos_ext.shape[0]), self.patch_indices)
         self.nn, self.nn_ext, dd, dd_ext = construct_neighbor_dist_lists(self.positions, self.pos_ext)
 
-        self.N = self.ny*self.nz
+        self.N = self.p*self.q
+        # List, keyed by *local* indices, of all external edges made by local patch idx i
         self.ext_count = np.zeros(self.N, dtype=int)
-        
+
         # Shape (N, N): adj_mat[i,j] = 1 if i,j nearest neighbors, 0 otherwise
         #   Note: symmetric matrix with 0's on the diagonal
         self.adj_mat = np.zeros((self.N, self.N), dtype=int)
@@ -86,6 +89,22 @@ class State:
 
         self.methyl_mask = np.zeros(self.N, dtype=bool)
         self.methyl_mask[self.pt_idx] = True
+
+        # Get all edges made by patch atoms (global indices), avoid double counting edges
+        self.edges, self.edges_ext_indices = enumerate_edges(self.positions, self.nn_ext, self.patch_indices)
+        
+        # Now identify what each edge is
+        self.edge_oo, self.edge_cc, self.edge_oc = construct_edge_feature(self.edges, self.edges_ext_indices, self.patch_indices, self.methyl_mask)
+        assert self.edge_cc.sum() == self.n_cc
+        assert self.edge_oo.sum() == self.n_oo + self.n_oe
+        assert self.edge_oc.sum() == self.n_oc + self.n_ce
+
+        assert (self.edge_cc + self.edge_oo + self.edge_oc).sum() == self.n_edges
+        
+        assert self.M_ext == self.edges_ext_indices.size
+        assert self.M_ext + self.M_int == self.n_edges == self.edges.shape[0]
+
+        ## number of internal edges
 
         self.parent = parent
         self.children = list()
@@ -118,10 +137,10 @@ class State:
 
     @property
     def P(self):
-        return self.ny
+        return self.p
     @property
     def Q(self):
-        return self.nz
+        return self.q
 
     @property
     def k_o(self):
@@ -133,38 +152,46 @@ class State:
 
     @property
     def N_int(self):
-        return (self.ny-2)*(self.nz-2)
+        return self.p*self.q - 2*(self.p + self.q) + 4
 
     @property
     def N_ext(self):
-        return 2*(self.ny + self.nz) - 4
+        return 2*(self.p + self.q) - 4
 
     @property
-    def n_mm(self):
-        n_mm = 0
+    def M_int(self):
+        return 3*self.N_int + 2*self.N_ext - 3
+
+    @property
+    def M_ext(self):
+        return 2*self.N_ext + 6
+
+    @property
+    def n_cc(self):
+        n_cc = 0
         for i in self.pt_idx:
             for j in self.nn[i]:
                 if j > i and self.methyl_mask[j]:
-                    n_mm += 1
+                    n_cc += 1
 
-        return n_mm
+        return n_cc
 
     @property
-    def n_mo(self):
-        n_mo = 0
+    def n_oc(self):
+        n_oc = 0
         for i in self.pt_idx:
             for j in self.nn[i]:
-                n_mo += ~self.methyl_mask[j]
+                n_oc += ~self.methyl_mask[j]
 
-        return n_mo
+        return n_oc
 
     @property
-    def n_me(self):
-        n_me = 0
+    def n_ce(self):
+        n_ce = 0
         for i in self.pt_idx:
-            n_me += self.ext_count[i]
+            n_ce += self.ext_count[i]
 
-        return n_me
+        return n_ce
 
     @property
     def n_oo(self):
@@ -183,6 +210,11 @@ class State:
             n_oe += self.ext_count[i]
 
         return n_oe
+
+    @property
+    def n_edges(self):
+        return self.edges.shape[0]
+    
 
     def add_child(self, child):
         child.parent = self
@@ -204,13 +236,13 @@ class State:
                 idx = np.where(self.pt_idx == idx)[0].item()
                 new_pt_idx = np.delete(self.pt_idx, idx).astype(int)
             
-            yield State(new_pt_idx, parent=self, ny=self.ny, nz=self.nz, mode=self.mode)
+            yield State(new_pt_idx, parent=self, p=self.p, q=self.q, mode=self.mode)
 
 
     def plot(self, noedge=False, **kwargs):
 
         feat = make_feat(self.methyl_mask, self.pos_ext, self.patch_indices)
-        feat = plot_feat(feat, self.ny+2, self.nz+2)
+        feat = plot_feat(feat, self.p+2, self.q+2)
         if noedge:
             feat[feat==0] = -1
 
@@ -227,4 +259,55 @@ class State:
         new_kwargs = kwargs
         
         plot_hextensor(feat, norm=norm, **new_kwargs)
+
+
+    def plot_edges(self, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None):
+        if ax is None:
+            ax = plt.gca()
+
+        if annotation is None:
+            annotation = np.arange(self.edges.shape[0])
+
+        this_pos_ext = 2*self.pos_ext
+        #max_x = this_pos_ext[:,0].max()
+        max_y = this_pos_ext[:,1].max()
+        this_pos_ext += np.array([np.sqrt(3)/2, -max_y])
+
+        for i_edge, (global_i, global_j) in enumerate(self.edges):
+
+            assert global_i in self.patch_indices
+            local_i = np.where(self.patch_indices==global_i)[0].item()
+
+            # Is global point j within the patch??
+            j_int = global_j in self.patch_indices
+
+            ## Internal nodes get black dot,
+            #    external get red 'x'
+            i_symbol = 'ko' 
+            j_symbol = 'ko' if j_int else 'rx'
+
+            if line_styles is None:
+                edge_style = '-' 
+            else:
+                edge_style = line_styles[i_edge]
+
+            if line_widths is None:
+                line_width = 3
+            else:
+                line_width = line_widths[i_edge]
+
+            ax.plot(this_pos_ext[global_i,0], this_pos_ext[global_i,1], i_symbol, markersize=12, zorder=3)
+            ax.plot(this_pos_ext[global_j,0], this_pos_ext[global_j,1], j_symbol, markersize=12, zorder=3)
+
+            if colors is not None:
+                this_color = colors[i_edge]
+            else:
+                this_color = 'k'
+            ax.plot([this_pos_ext[global_i,0], this_pos_ext[global_j,0]], [this_pos_ext[global_i,1], this_pos_ext[global_j,1]], color=this_color, linestyle=edge_style, linewidth=line_width)
+
+            midpt = (this_pos_ext[global_i] + this_pos_ext[global_j]) / 2.0
+
+            if do_annotate:
+                ax.annotate(annotation[i_edge], xy=midpt-0.025, fontsize='xx-large', color='green')
+
 
