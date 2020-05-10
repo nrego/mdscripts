@@ -92,7 +92,8 @@ class State:
 
         # Get all edges made by patch atoms (global indices), avoid double counting edges
         self.edges, self.edges_ext_indices, self.edges_periph_indices = enumerate_edges(self.positions, self.nn_ext, self.patch_indices, self.nodes_peripheral)
-        
+        self.edges_int_indices = np.setdiff1d(np.arange(self.n_edges), self.edges_ext_indices)
+
         # Now identify what each edge is
         self.edge_oo, self.edge_cc, self.edge_oc = construct_edge_feature(self.edges, self.edges_ext_indices, self.patch_indices, self.methyl_mask)
         assert self.edge_cc.sum() == self.n_cc

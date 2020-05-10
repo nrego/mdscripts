@@ -101,6 +101,71 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
 
     return (perf_mse, err, xvals[:,sort_axis], fit, reg)
 
+# regress y on set of n_dim features, X.
+#   Do k-fold CV
+def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None):
+    np.random.seed()
+
+    assert y.ndim == 1
+    n_dat = y.size
+    indices = np.arange(n_dat)
+
+    clust_size = int(np.ceil(n_dat / k))
+    # Single feature (1d linear regression)
+    if X.ndim == 1:
+        X = X[:,None]
+    
+    if weights is None:
+        weights = np.ones_like(y)
+
+    # For plotting fit...
+    sort_idx = np.argsort(X[:,sort_axis])
+    xvals = X[sort_idx, ...]
+    if xvals[:,sort_axis].min() > 0:
+        xvals = np.vstack((np.zeros(xvals.shape[1]).reshape(1,-1), xvals))
+
+    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+
+    # R^2 and MSE for each train/validation round
+    perf_mse = np.zeros(k)
+
+    ## Shuffle the data
+    rand = np.random.choice(np.arange(n_dat), n_dat, replace=False)
+    rand_X = X[rand,...]
+    rand_y = y[rand]
+
+    # Choose one of the cohorts as validation set, train on remainder.
+    #   repeat for each cohort
+    for i_clust in range(k):
+
+        lb = i_clust*clust_size
+        ub = (i_clust+1)*clust_size
+
+        test_slice = slice(lb, ub)
+        
+        #print(test_slice)
+        test_indices = indices[test_slice]
+        train_indices = np.delete(indices, test_indices)
+
+        X_train = rand_X[train_indices, ...]
+        y_train = rand_y[train_indices]
+
+        X_validate = rand_X[test_indices]
+        y_validate = rand_y[test_indices]
+
+        reg.fit(X_train, y_train)
+        pred = reg.predict(X_validate)
+
+        mse = np.mean((y_validate-pred)**2)
+        perf_mse[i_clust] = mse
+
+    reg.fit(X, y, sample_weight=weights)
+    fit = reg.predict(xvals)
+
+    pred = reg.predict(X)
+    err = y - pred
+
+    return (perf_mse, err, xvals[:,sort_axis], fit, reg)
 
 # Perform bootstrapping on data to estimate errors in linear regression coefficients
 def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000, weights=None):

@@ -29,7 +29,7 @@ from sklearn.cluster import AgglomerativeClustering
 
 homedir = os.environ['HOME']
 
-plot_it = True
+plot_it = False
 
 def gen_merged_keff(k_eff_shape, labels):
     
@@ -121,25 +121,31 @@ mpl.rcParams.update({'axes.titlesize': 30})
 
 ### run from pooled_pattern_sample directory, after linking in ~/mdscripts/scratch/sam/util/ ###
 
-ds = np.load('sam_pattern_data.dat.npz')
-#states = ds['states']
+#ds = np.load('sam_pattern_data.dat.npz')
+ds = np.load('data/sam_pattern_06_06.npz')
+states = ds['states']
 energies = ds['energies']
 # 2d positions (in y, z) of all 36 patch head groups (For plotting schematic images, calculating order params, etc)
 # Shape: (N=36, 2)
-#positions = ds['states'][0].positions
-positions = ds['positions']
-methyl_pos = ds['methyl_pos']
-pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
+positions = ds['states'][0].positions
+#positions = ds['positions']
+#methyl_pos = ds['methyl_pos']
+methyl_pos = np.array([state.methyl_mask for state in states])
+#pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
 # patc_idx is list of patch indices
-d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
+#d, patch_indices = cKDTree(pos_ext).query(positions, k=1)
 #nn_ext = ds['states'][0].nn_ext
+pos_ext = states[0].pos_ext
+patch_indices = states[0].patch_indices
 
 nn, nn_ext, dd, dd_ext = construct_neighbor_dist_lists(positions, pos_ext)
 
 #methyl_pos = ds['methyl_pos']
 n_configs = energies.shape[0]
 
-edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
+#edges, ext_indices = enumerate_edges(positions, pos_ext, nn_ext, patch_indices)
+edges = states[0].edges
+ext_indices = states[0].ext_indices
 n_edges = edges.shape[0]
 
 ## Sanity check - plot edges ##

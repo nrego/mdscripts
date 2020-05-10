@@ -72,6 +72,22 @@ def get_feat_vec(states):
 
     return feat_vec
 
+def get_new_feat_vec(states):
+
+    n_sample = states.size
+    n_edge = states[0].n_edges
+    n_feat = states[0].N_tot + states[0].M_int
+
+    # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
+    feat_vec = np.zeros((n_sample, n_feat))
+
+    for i,state in enumerate(states):
+
+        feat_vec[i, :state.N_tot] = (~state.methyl_mask)
+        feat_vec[i, state.N_tot:] = state.edge_oo[state.edges_int_indices]
+
+    return feat_vec
+
 def get_p_q(fname):
     name = fname.split('.')[0]
     splits = name.split('_')
@@ -109,10 +125,12 @@ q = 3
 fnames = sorted(glob.glob('test_*npy'))
 
 for fname in fnames:
-    fname = 'test_p_{:02d}_q_{:02d}'.format(p,q)
-    #states = build_states(p, q)
-    p, q = get_p_q(fname)
-    states = load_states(p, q)
+    #fname = 'test_p_{:02d}_q_{:02d}'.format(p,q)
+    states = build_states(p, q)
+    #p, q = get_p_q(fname)
+    #states = load_states(p, q)
+
+    n_sample = len(states)
     feat_vec = get_feat_vec(states)
     n_feat = feat_vec.shape[1]
     rank = get_rank(feat_vec)
