@@ -86,6 +86,21 @@ def get_feat_vec(states):
 
     return feat_vec
 
+def test_get_feat_vec(states):
+    n_sample = states.size
+    n_edge = states[0].n_edges
+    # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
+    feat_vec = np.zeros((n_sample, 2*states[0].n_edges))
+    n_feat = feat_vec.shape[1]
+
+    for i,state in enumerate(states):
+
+        feat_vec[i,::2] = state.edge_oo
+        feat_vec[i,1::2] = state.edge_cc
+        #feat_vec[i,2::3] = state.edge_oc
+
+    return feat_vec
+
 def label_edges(labels, state):
 
     colors = ['k' if l==0 else 'r' for l in labels]
@@ -122,7 +137,7 @@ def merge_and_label(state):
 
 ### Merge edge types
 
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_02_02.npz')
+energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
 feat_vec = get_feat_vec(states)
 
 #perf_mse, err, xvals, fit, reg = fit_k_fold(new_feat_vec, energies)

@@ -52,7 +52,7 @@ def extract_from_ds(infile):
 
 # regress y on set of n_dim features, X.
 #   Do leave-one-out CV
-def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
+def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None, do_ridge=False):
 
     assert y.ndim == 1
     n_dat = y.size
@@ -69,7 +69,10 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
     if xvals[:,sort_axis].min() > 0:
         xvals = np.vstack((np.zeros(xvals.shape[1]).reshape(1,-1), xvals))
 
-    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+    if do_ridge:
+        reg = linear_model.Ridge(fit_intercept=fit_intercept)
+    else:
+        reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
 
     # R^2 and MSE for each train/validation round
     perf_mse = np.zeros(n_dat)
@@ -103,7 +106,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None):
 
 # regress y on set of n_dim features, X.
 #   Do k-fold CV
-def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None):
+def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridge=False):
     np.random.seed()
 
     assert y.ndim == 1
@@ -124,7 +127,10 @@ def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None):
     if xvals[:,sort_axis].min() > 0:
         xvals = np.vstack((np.zeros(xvals.shape[1]).reshape(1,-1), xvals))
 
-    reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
+    if do_ridge:
+        reg = linear_model.Ridge(fit_intercept=fit_intercept)
+    else:
+        reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
 
     # R^2 and MSE for each train/validation round
     perf_mse = np.zeros(k)
