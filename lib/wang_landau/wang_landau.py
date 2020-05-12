@@ -36,6 +36,7 @@ class WangLandau:
         self.positions = positions
 
         # List of the bin boundaries for each dimension of the progress coord
+        #   Shape: (n_dim, ) - list of bin boundaries for each dimension
         self.bins = list(bins)
 
         for i, this_bin in enumerate(self.bins):
@@ -164,7 +165,8 @@ class WangLandau:
             this_arr = self.sampled_pt_idx[bin_assign]
             if this_arr is None:
                 self.sampled_pt_idx[bin_assign] = np.array([pt_idx])
-            elif this_arr.shape[0] < 10:
+            #elif this_arr.shape[0] < 10:
+            else:
                 this_arr = np.vstack((this_arr, pt_idx))
                 self.sampled_pt_idx[bin_assign] = np.unique(this_arr, axis=0)
 

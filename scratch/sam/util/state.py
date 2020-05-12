@@ -116,6 +116,31 @@ class State:
         self.mode = mode
 
 
+        # List of each (local indexed) node to the edges it makes
+        nodes_to_int_edges = []
+        nodes_to_ext_edges = []
+        edge_indices = np.arange(self.n_edges)
+        # Mask of all external edges
+        edge_ext_mask = np.ones(self.n_edges, dtype=bool)
+        edge_ext_mask[self.edges_int_indices] = False
+        for i_local, i_global in enumerate(self.patch_indices):
+            # Mask of all edges made by node i
+            edge_mask = self.edges[:,0] == i_global
+
+            # Indices of edges made by this node (external and internal edges)
+            this_ext_edge_indices = edge_indices[(edge_mask & edge_ext_mask)]
+            this_int_edge_indices = edge_indices[(edge_mask & ~edge_ext_mask)]
+
+            nodes_to_int_edges.append(this_int_edge_indices)
+            nodes_to_ext_edges.append(this_ext_edge_indices)
+
+
+        # List of each node's external and internal edges
+        #.  key: node's (local) index
+        #.  value: indices of edges (external or internal) made by node i
+        self.nodes_to_int_edges = np.array(nodes_to_int_edges)
+        self.nodes_to_ext_edges = np.array(nodes_to_ext_edges)
+
     @property
     def avail_indices(self):
         if self._avail_indices is None:
