@@ -89,16 +89,21 @@ def get_feat_vec(states):
 def test_get_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
-    # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
-    feat_vec = np.zeros((n_sample, 2*states[0].n_edges))
-    n_feat = feat_vec.shape[1]
+    #n_feat = 2*states[0].M_int + states[0].M_ext
+    n_feat = 2*states[0].M_int + states[0].N_ext
+
+    idx1 = 2*states[0].M_int
+    feat_vec = np.zeros((n_sample, n_feat))
+
 
     for i,state in enumerate(states):
+        hydroxyl_mask = ~state.methyl_mask
 
-        feat_vec[i,::2] = state.edge_oo
-        feat_vec[i,1::2] = state.edge_cc
-        #feat_vec[i,2::3] = state.edge_oc
-
+        feat_vec[i,:idx1:2] = state.edge_oo[state.edges_int_indices]
+        feat_vec[i,1:idx1:2] = state.edge_cc[state.edges_int_indices]
+        #feat_vec[i, idx1:] = state.edge_oo[state.edges_ext_indices]
+        feat_vec[i, idx1:] = (state.ext_count * hydroxyl_mask)[state.nodes_peripheral]
+    
     return feat_vec
 
 def label_edges(labels, state):

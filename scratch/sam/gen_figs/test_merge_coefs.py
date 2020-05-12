@@ -120,8 +120,8 @@ def get_edge_indices(feat_vec, break_out=1):
 
 ### Merge edge types
 
-p = 3
-q = 3
+p = 2
+q = 2
 fnames = sorted(glob.glob('test_*npy'))
 
 for fname in fnames:
