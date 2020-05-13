@@ -156,6 +156,23 @@ state = states[10]
 
 coef = reg.coef_.reshape((state.n_edges, 3))
 
-clust = AgglomerativeClustering(n_clusters=2, linkage='ward', affinity='euclidean')
+clust = AgglomerativeClustering(n_clusters=4, linkage='ward', affinity='euclidean')
 clust.fit(coef)
+
+
+states = build_states(3,3)
+state = states[len(states)//2]
+test_feat = test_get_feat_vec(states)
+meta_feat = np.hstack((test_feat[:,:2*state.M_int:2], test_feat[:,2*state.M_int:]))
+#meta_feat = test_feat[:,2*state.M_int:]
+test_reg = linear_model.LinearRegression()
+scores = []
+for i in np.arange(1, 2*state.M_int, 2):
+    this_y = test_feat[:, i]
+    test_reg.fit(meta_feat, this_y)
+
+    r2 = test_reg.score(meta_feat, this_y)
+    scores.append(r2)
+
+scores = np.array(scores)
 
