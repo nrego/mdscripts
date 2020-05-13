@@ -75,14 +75,18 @@ def get_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
     # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
-    feat_vec = np.zeros((n_sample, 3*states[0].n_edges))
-    n_feat = feat_vec.shape[1]
+    idx = 2*states[0].n_edges
+    n_feat = 2*states[0].N_tot + idx
+    feat_vec = np.zeros((n_sample, n_feat))
 
     for i,state in enumerate(states):
 
-        feat_vec[i,::3] = state.edge_oo
-        feat_vec[i,1::3] = state.edge_cc
-        feat_vec[i,2::3] = state.edge_oc
+        feat_vec[i,:idx:2] = state.edge_oo
+        feat_vec[i,1:idx:2] = state.edge_oc
+        #feat_vec[i,2:idx:3] = state.edge_oc
+        feat_vec[i,idx::2] = ~state.methyl_mask
+        feat_vec[i,idx+1::2] = 0
+
 
     return feat_vec
 
@@ -104,6 +108,24 @@ def test_get_feat_vec(states):
         #feat_vec[i, idx1:] = state.edge_oo[state.edges_ext_indices]
         feat_vec[i, idx1:] = (state.ext_count * hydroxyl_mask)[state.nodes_peripheral]
     
+    return feat_vec
+
+def test_get_feat_vec2(states):
+    n_sample = states.size
+    n_edge = states[0].n_edges
+    #n_feat = 2*states[0].M_int + states[0].M_ext
+    n_feat = states[0].M_int + states[0].N_int + states[0].N_ext
+
+    feat_vec = np.zeros((n_sample, n_feat))
+
+
+    for i,state in enumerate(states):
+        hydroxyl_mask = ~state.methyl_mask
+
+        feat_vec[i,:state.M_int] = state.edge_oo[state.edges_int_indices]
+        feat_vec[i, state.M_int:state.M_int+state.N_int] = hydroxyl_mask[state.int_indices]
+        feat_vec[i, -state.N_ext:] = (state.ext_count * hydroxyl_mask)[state.nodes_peripheral]
+
     return feat_vec
 
 def label_edges(labels, state):
@@ -156,11 +178,11 @@ state = states[10]
 
 coef = reg.coef_.reshape((state.n_edges, 3))
 
-clust = AgglomerativeClustering(n_clusters=4, linkage='ward', affinity='euclidean')
+clust = AgglomerativeClustering(n_clusters=3, linkage='ward', affinity='euclidean')
 clust.fit(coef)
 
 
-states = build_states(3,3)
+states = build_states(3,2)
 state = states[len(states)//2]
 test_feat = test_get_feat_vec(states)
 meta_feat = np.hstack((test_feat[:,:2*state.M_int:2], test_feat[:,2*state.M_int:]))
@@ -175,4 +197,13 @@ for i in np.arange(1, 2*state.M_int, 2):
     scores.append(r2)
 
 scores = np.array(scores)
+
+cmap = mpl.cm.tab10
+norm = plt.Normalize(0,9)
+
+labels = np.zeros(state.n_edges)
+labels[state.edges_ext_indices] = 1
+
+colors = cmap(norm(labels))
+
 

@@ -93,6 +93,7 @@ class State:
         # Get all edges made by patch atoms (global indices), avoid double counting edges
         self.edges, self.edges_ext_indices, self.edges_periph_indices = enumerate_edges(self.positions, self.nn_ext, self.patch_indices, self.nodes_peripheral)
         self.edges_int_indices = np.setdiff1d(np.arange(self.n_edges), self.edges_ext_indices)
+        self.edges_buried_indices = np.setdiff1d(self.edges_int_indices, self.edges_periph_indices)
 
         # Now identify what each edge is
         self.edge_oo, self.edge_cc, self.edge_oc = construct_edge_feature(self.edges, self.edges_ext_indices, self.patch_indices, self.methyl_mask)
@@ -299,7 +300,7 @@ class State:
         plot_hextensor(feat, norm=norm, **new_kwargs)
 
 
-    def plot_edges(self, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None):
+    def plot_edges(self, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None, symbols=None):
         if ax is None:
             ax = plt.gca()
 
@@ -319,10 +320,11 @@ class State:
             # Is global point j within the patch??
             j_int = global_j in self.patch_indices
 
-            ## Internal nodes get black dot,
-            #    external get red 'x'
-            i_symbol = 'ko' 
-            j_symbol = 'ko' if j_int else 'rx'
+
+            if symbols is None:
+                i_symbol = 'ko'
+            else:
+                i_symbol = symbols[local_i]
 
             if line_styles is None:
                 edge_style = '-' 
@@ -335,7 +337,8 @@ class State:
                 line_width = line_widths[i_edge]
 
             ax.plot(this_pos_ext[global_i,0], this_pos_ext[global_i,1], i_symbol, markersize=12, zorder=3)
-            ax.plot(this_pos_ext[global_j,0], this_pos_ext[global_j,1], j_symbol, markersize=12, zorder=3)
+            if not j_int:
+                ax.plot(this_pos_ext[global_j,0], this_pos_ext[global_j,1], 'rx', markersize=12, zorder=3)
 
             if colors is not None:
                 this_color = colors[i_edge]
