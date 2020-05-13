@@ -207,3 +207,10 @@ labels[state.edges_ext_indices] = 1
 colors = cmap(norm(labels))
 
 
+
+legend_elements = [Line2D([0], [0], color='k', marker='o', markersize=12, lw=0, label='Buried Node'),
+                   Line2D([0], [0], color='y', marker='P', markersize=12, lw=0, label='Peripheral Node'),
+                   Line2D([0], [0], color='r', marker='x', markersize=12, lw=0, label='External node'),
+                   Line2D([0], [0], color='k', linestyle='-', lw=3, label='Internal Edge'),
+                   Line2D([0], [0], color='k', linestyle='--', lw=3, label='External Edge')
+                   ]

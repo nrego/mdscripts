@@ -349,6 +349,6 @@ class State:
             midpt = (this_pos_ext[global_i] + this_pos_ext[global_j]) / 2.0
 
             if do_annotate:
-                ax.annotate(annotation[i_edge], xy=midpt-0.025, fontsize='xx-large', color='green')
+                ax.annotate(annotation[i_edge], xy=midpt-0.025, fontsize='xx-large', color='purple')
 
 
