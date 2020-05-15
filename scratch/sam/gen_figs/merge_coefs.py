@@ -117,8 +117,8 @@ def test_get_feat_vec2(states):
     for i,state in enumerate(states):
         hydroxyl_mask = ~state.methyl_mask
 
-        #feat_vec[i,0] = hydroxyl_mask[state.int_indices].sum()
-        feat_vec[i,0] = hydroxyl_mask.sum()
+        feat_vec[i,0] = hydroxyl_mask[state.int_indices].sum()
+        #feat_vec[i,0] = hydroxyl_mask.sum()
         feat_vec[i,1] = np.dot(hydroxyl_mask, state.ext_count)
 
         #assert feat_vec[i].sum() == state.k_o
@@ -172,16 +172,21 @@ def aic(n_samples, mse, k_params, do_corr=False):
 
 ### Merge edge types
 
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
-feat_vec = get_feat_vec(states)
-test_feat = test_get_feat_vec(states)
+energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_02_02.npz')
+feat_vec1 = get_feat_vec(states)
+feat_vec2 = test_get_feat_vec(states)
+feat_vec3 = test_get_feat_vec2(states)
 
 
 #state = states[400]
 state = states[4]
 
-perf, err, _, _, reg = fit_k_fold(feat_vec, energies, do_ridge=True)
-perf2, err2, _, _, reg2 = fit_k_fold(test_feat, energies)
+# Full feature vector (edge type for each edge, 3*M_tot)
+perf1, err1, _, _, reg1 = fit_k_fold(feat_vec1, energies, k=4, do_ridge=True)
+# Constraints removed (indicator function for each patch node, plus internal edge types; M_int+N_tot)
+perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=4)
+perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=4)
+perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=4) 
 
 #coef = reg.coef_.reshape((state.n_edges, 3))
 coef = reg2.coef_.reshape((-1,1))
