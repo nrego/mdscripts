@@ -6,10 +6,10 @@ import shutil
 ## Extracts all data from patterned dataset  ###
 
 ## Set this to taste ##
-p = 2
-q = 2
+p = 3
+q = 3
 
-fnames = sorted(glob.glob('P_{:02d}_Q_{:02d}/*/d_*/trial_0/PvN.dat'.format(p,q)))
+fnames = sorted(glob.glob('P_{:02d}_Q_{:02d}/*/d_*/trial_*/PvN.dat'.format(p,q)))
 
 n_dat = len(fnames)
 

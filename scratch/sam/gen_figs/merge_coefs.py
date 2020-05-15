@@ -58,16 +58,18 @@ def get_rank(feat):
 # Construct a reduced feature set by summing over features
 #    with like labels
 def construct_red_feat(feat_vec, labels):
+
+    n_sample = feat_vec.shape[0]
+    # Number of unique features after merging based on labels
     n_clust = np.unique(labels).size
 
-    red_feat = np.zeros((feat_vec.shape[0], n_clust))
+    red_feat = np.zeros((n_sample, n_clust))
 
-    new_set = []
     for i_clust in range(n_clust):
-        mask = labels == i_clust
-        new_set.append(feat_vec[:,mask].sum(axis=1))
+        mask = (labels == i_clust)
+        red_feat[:, i_clust] = feat_vec[:,mask].sum(axis=1)
 
-    return np.vstack(new_set).T
+    return red_feat
 
 ## Get a full-edge specified feature vector
 #
@@ -75,58 +77,55 @@ def get_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
     # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
-    idx = 2*states[0].n_edges
-    n_feat = 2*states[0].N_tot + idx
+    idx = 3*states[0].n_edges
+    n_feat = idx
     feat_vec = np.zeros((n_sample, n_feat))
 
     for i,state in enumerate(states):
 
-        feat_vec[i,:idx:2] = state.edge_oo
-        feat_vec[i,1:idx:2] = state.edge_oc
-        #feat_vec[i,2:idx:3] = state.edge_oc
-        feat_vec[i,idx::2] = ~state.methyl_mask
-        feat_vec[i,idx+1::2] = 0
+        feat_vec[i, 0:idx:3] = state.edge_oo
+        feat_vec[i, 1:idx:3] = state.edge_cc
+        feat_vec[i, 2:idx:3] = state.edge_oc
+        #feat_vec[i, -1] = state.k_o
 
 
     return feat_vec
 
+
+
 def test_get_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
-    #n_feat = 2*states[0].M_int + states[0].M_ext
-    n_feat = 2*states[0].M_int + states[0].N_ext
+    n_feat = states[0].M_int + states[0].N_tot
 
-    idx1 = 2*states[0].M_int
     feat_vec = np.zeros((n_sample, n_feat))
-
 
     for i,state in enumerate(states):
         hydroxyl_mask = ~state.methyl_mask
+        feat_vec[i,:state.M_int] = state.edge_oo[state.edges_int_indices]
+        feat_vec[i,state.M_int:] = hydroxyl_mask
 
-        feat_vec[i,:idx1:2] = state.edge_oo[state.edges_int_indices]
-        feat_vec[i,1:idx1:2] = state.edge_cc[state.edges_int_indices]
-        #feat_vec[i, idx1:] = state.edge_oo[state.edges_ext_indices]
-        feat_vec[i, idx1:] = (state.ext_count * hydroxyl_mask)[state.nodes_peripheral]
-    
     return feat_vec
 
 def test_get_feat_vec2(states):
     n_sample = states.size
     n_edge = states[0].n_edges
-    #n_feat = 2*states[0].M_int + states[0].M_ext
-    n_feat = states[0].M_int + states[0].N_int + states[0].N_ext
-
+    # ko_int, ko_ext, n_oo [total number of oo internal edges], 
+    n_feat = 3
     feat_vec = np.zeros((n_sample, n_feat))
-
 
     for i,state in enumerate(states):
         hydroxyl_mask = ~state.methyl_mask
 
-        feat_vec[i,:state.M_int] = state.edge_oo[state.edges_int_indices]
-        feat_vec[i, state.M_int:state.M_int+state.N_int] = hydroxyl_mask[state.int_indices]
-        feat_vec[i, -state.N_ext:] = (state.ext_count * hydroxyl_mask)[state.nodes_peripheral]
+        #feat_vec[i,0] = hydroxyl_mask[state.int_indices].sum()
+        feat_vec[i,0] = hydroxyl_mask.sum()
+        feat_vec[i,1] = np.dot(hydroxyl_mask, state.ext_count)
+
+        #assert feat_vec[i].sum() == state.k_o
+        feat_vec[i,2] = state.n_oo
 
     return feat_vec
+
 
 def label_edges(labels, state):
 
@@ -159,6 +158,15 @@ def merge_and_label(state):
 
     return labels
 
+def aic(n_samples, mse, k_params, do_corr=False):
+
+    if do_corr:
+        corr = (2*k_params**2 + 2*k_params) / (n_samples-k_params-1)
+    else:
+        corr = 0
+
+    return n_samples*np.log(mse) + 2*k_params + corr
+
 # Partition data into k groups
 #def partition_feat(feat_vec, k=3)
 
@@ -166,20 +174,37 @@ def merge_and_label(state):
 
 energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
 feat_vec = get_feat_vec(states)
-
-#perf_mse, err, xvals, fit, reg = fit_k_fold(new_feat_vec, energies)
-#perf_mse, err, xvals, fit, reg = fit_leave_one(new_feat_vec, energies)
-reg = linear_model.Ridge()
-#reg = linear_model.Lasso()
-reg.fit(feat_vec, energies)
+test_feat = test_get_feat_vec(states)
 
 
-state = states[10]
+#state = states[400]
+state = states[4]
 
-coef = reg.coef_.reshape((state.n_edges, 3))
+perf, err, _, _, reg = fit_k_fold(feat_vec, energies, do_ridge=True)
+perf2, err2, _, _, reg2 = fit_k_fold(test_feat, energies)
+
+#coef = reg.coef_.reshape((state.n_edges, 3))
+coef = reg2.coef_.reshape((-1,1))
 
 clust = AgglomerativeClustering(n_clusters=3, linkage='ward', affinity='euclidean')
 clust.fit(coef)
+
+
+cmap = mpl.cm.tab10
+norm = plt.Normalize(0,9)
+colors = cmap(norm(clust.labels_))
+
+
+'''
+edge_labels = np.zeros(3*state.n_edges)
+edge_labels[0::3] = clust.labels_
+edge_labels[1::3] = clust.labels_ + state.n_edges
+edge_labels[2::3] = clust.labels_ + 2*state.n_edges
+
+#red_feat = construct_red_feat(feat_vec, edge_labels)
+plt.close()
+state.plot()
+state.plot_edges(do_annotate=False, colors=colors)
 
 
 states = build_states(3,2)
@@ -205,12 +230,4 @@ labels = np.zeros(state.n_edges)
 labels[state.edges_ext_indices] = 1
 
 colors = cmap(norm(labels))
-
-
-
-legend_elements = [Line2D([0], [0], color='k', marker='o', markersize=12, lw=0, label='Buried Node'),
-                   Line2D([0], [0], color='y', marker='P', markersize=12, lw=0, label='Peripheral Node'),
-                   Line2D([0], [0], color='r', marker='x', markersize=12, lw=0, label='External node'),
-                   Line2D([0], [0], color='k', linestyle='-', lw=3, label='Internal Edge'),
-                   Line2D([0], [0], color='k', linestyle='--', lw=3, label='External Edge')
-                   ]
+'''
