@@ -91,6 +91,18 @@ def get_feat_vec(states):
 
     return feat_vec
 
+def get_feat_vec_oo(states):
+    n_sample = states.size
+    n_edges = states[0].n_edges
+    n_feat = n_edges + 1
+
+    feat_vec = np.zeros((n_sample, n_feat))
+
+    for i, state in enumerate(states):
+        feat_vec[i, :n_edges] = state.edge_oo
+        feat_vec[i, -1] = state.k_o
+
+    return feat_vec
 
 def test_get_feat_vec(states):
     n_sample = states.size
@@ -176,25 +188,26 @@ def plot_1d(coef, labels=None):
 #def partition_feat(feat_vec, k=3)
 
 ### Merge edge types
-k_cv=5
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
+k_cv=16
+energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_02_02.npz')
 feat_vec1 = get_feat_vec(states)
-feat_vec2 = test_get_feat_vec(states)
+#feat_vec2 = test_get_feat_vec(states)
+feat_vec2 = get_feat_vec_oo(states)
 feat_vec3 = test_get_feat_vec2(states)
 
 
-state = states[200]
+state = states[2]
 
 # Full feature vector (edge type for each edge, 3*M_tot)
 perf1, err1, _, _, reg1 = fit_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True)
 # Constraints removed (indicator function for each patch node, plus internal edge types; M_int+N_tot)
-perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=k_cv)
+perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True)
 # ko, sum over all internal edges, sum over all external edges (miext edges for each peripheral node); shape: (M_int + N_periph + 1)
 perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=k_cv)
 perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=k_cv) 
 
 ## Cluster edge coefficients (leave ko coef alone)
-n_clust = 3
+n_clust = 2
 coef = reg3.coef_[:-1].reshape((-1,1))
 
 mask = reg3.coef_[:-1] > 0
