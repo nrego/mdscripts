@@ -92,7 +92,6 @@ def get_feat_vec(states):
     return feat_vec
 
 
-
 def test_get_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
@@ -102,6 +101,7 @@ def test_get_feat_vec(states):
 
     for i,state in enumerate(states):
         hydroxyl_mask = ~state.methyl_mask
+
         feat_vec[i,:state.M_int] = state.edge_oo[state.edges_int_indices]
         feat_vec[i,state.M_int:] = hydroxyl_mask
 
@@ -109,54 +109,53 @@ def test_get_feat_vec(states):
 
 def test_get_feat_vec2(states):
     n_sample = states.size
-    n_edge = states[0].n_edges
-    # ko_int, ko_ext, n_oo [total number of oo internal edges], 
-    n_feat = 3
+    n_feat = states[0].M_int + states[0].N_ext + 1
+
+    idx1 = states[0].M_int
+    idx2 = idx1 + states[0].N_ext
+
     feat_vec = np.zeros((n_sample, n_feat))
 
-    for i,state in enumerate(states):
+    for i, state in enumerate(states):
         hydroxyl_mask = ~state.methyl_mask
 
-        feat_vec[i,0] = hydroxyl_mask[state.int_indices].sum()
-        #feat_vec[i,0] = hydroxyl_mask.sum()
-        feat_vec[i,1] = np.dot(hydroxyl_mask, state.ext_count)
-
-        #assert feat_vec[i].sum() == state.k_o
-        feat_vec[i,2] = state.n_oo
+        feat_vec[i, :idx1] = state.edge_oo[state.edges_int_indices]
+        feat_vec[i, idx1:idx2] = state.ext_count[state.ext_indices] * hydroxyl_mask[state.ext_indices]
+        feat_vec[i, idx2:] = state.k_o
 
     return feat_vec
 
 
-def label_edges(labels, state):
 
-    colors = ['k' if l==0 else 'r' for l in labels]
-
-
-    return np.array(colors)
-
-
-# Merge each peripheral node's edges into single group
-#.  (label all external edges made by each peripheral node by its own label)
-def merge_and_label(state):
+# Extract edge labels from a list of edge labels
+#.  for each internal edge and for each peripheral node (since external edges only need to be specified once per peripheral node)
+#.  labels: shape (M_int + N_periph); first M_int labels refer to internal edges,
+#.   Next N_periph labels refer to the external edges made by each peripheral node
+#
+# Returns: a list of new labels, one per edge, shape: (n_edges)
+def merge_and_label(labels, state):
     # One unique label per peripheral node, plus
     #   one unique label per each internal edge
-    n_labels = state.N_ext + state.M_int
-    labels = np.zeros(state.n_edges)
-    labels[:] = -1
 
-    labels[state.edges_int_indices] = np.arange(state.M_int)
+    int_edge_labels = labels[:state.M_int]
+    periph_node_labels = labels[state.M_int:]
+    # Number of unique edge types
+    n_groups = np.unique(labels).size
 
-    curr_label = state.M_int
+    n_edges = state.n_edges
+    new_labels = np.ones(n_edges) * np.nan
 
-    for i, ext_idx in enumerate(state.nodes_to_ext_edges):
-        if ext_idx.size == 0:
-            continue
+    # Assign labels for all M_int internal edges
+    new_labels[state.edges_int_indices] = int_edge_labels
 
-        assert ext_idx.size == state.ext_count[i]
-        labels[ext_idx] = curr_label
-        curr_label += 1
+    # Now go over each peripheral node, find its label, and assign
+    #  this label to new_labels at each of the corresponding external edges
+    for i_periph_node, edge_ext_indices in enumerate(state.nodes_to_ext_edges[state.ext_indices]):
+        assert np.isnan(new_labels[edge_ext_indices]).all()
+        new_labels[edge_ext_indices] = periph_node_labels[i_periph_node]
 
-    return labels
+    return new_labels
+
 
 def aic(n_samples, mse, k_params, do_corr=False):
 
@@ -167,72 +166,53 @@ def aic(n_samples, mse, k_params, do_corr=False):
 
     return n_samples*np.log(mse) + 2*k_params + corr
 
+def plot_1d(coef, labels=None):
+    if labels is None:
+        labels = np.ones_like(coef)
+    plt.close()
+    plt.scatter(coef, np.ones_like(coef), c=labels)
+
 # Partition data into k groups
 #def partition_feat(feat_vec, k=3)
 
 ### Merge edge types
-
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_02_02.npz')
+k_cv=5
+energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
 feat_vec1 = get_feat_vec(states)
 feat_vec2 = test_get_feat_vec(states)
 feat_vec3 = test_get_feat_vec2(states)
 
 
-#state = states[400]
-state = states[4]
+state = states[200]
 
 # Full feature vector (edge type for each edge, 3*M_tot)
-perf1, err1, _, _, reg1 = fit_k_fold(feat_vec1, energies, k=4, do_ridge=True)
+perf1, err1, _, _, reg1 = fit_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True)
 # Constraints removed (indicator function for each patch node, plus internal edge types; M_int+N_tot)
-perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=4)
-perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=4)
-perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=4) 
+perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=k_cv)
+# ko, sum over all internal edges, sum over all external edges (miext edges for each peripheral node); shape: (M_int + N_periph + 1)
+perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=k_cv)
+perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=k_cv) 
 
-#coef = reg.coef_.reshape((state.n_edges, 3))
-coef = reg2.coef_.reshape((-1,1))
+## Cluster edge coefficients (leave ko coef alone)
+n_clust = 3
+coef = reg3.coef_[:-1].reshape((-1,1))
 
-clust = AgglomerativeClustering(n_clusters=3, linkage='ward', affinity='euclidean')
+mask = reg3.coef_[:-1] > 0
+
+clust = AgglomerativeClustering(n_clusters=n_clust, linkage='ward', affinity='euclidean')
 clust.fit(coef)
 
+# Presumably ko, n_oo1, n_oo2; where 1 and 2 indicate total number of oo edges of different classes,
+#   determined by clustering
+test_labels = np.zeros(mask.size)
+test_labels[mask] = 1
+red_feat = construct_red_feat(feat_vec3, np.append(clust.labels_, n_clust))
+perf_red, err_red, _, _, reg_red = fit_k_fold(red_feat, energies, k=k_cv)
+new_labels = merge_and_label(clust.labels_, state)
 
-cmap = mpl.cm.tab10
+cmap = mpl.cm.Set1
 norm = plt.Normalize(0,9)
-colors = cmap(norm(clust.labels_))
+colors = cmap(norm(new_labels))
 
 
-'''
-edge_labels = np.zeros(3*state.n_edges)
-edge_labels[0::3] = clust.labels_
-edge_labels[1::3] = clust.labels_ + state.n_edges
-edge_labels[2::3] = clust.labels_ + 2*state.n_edges
 
-#red_feat = construct_red_feat(feat_vec, edge_labels)
-plt.close()
-state.plot()
-state.plot_edges(do_annotate=False, colors=colors)
-
-
-states = build_states(3,2)
-state = states[len(states)//2]
-test_feat = test_get_feat_vec(states)
-meta_feat = np.hstack((test_feat[:,:2*state.M_int:2], test_feat[:,2*state.M_int:]))
-#meta_feat = test_feat[:,2*state.M_int:]
-test_reg = linear_model.LinearRegression()
-scores = []
-for i in np.arange(1, 2*state.M_int, 2):
-    this_y = test_feat[:, i]
-    test_reg.fit(meta_feat, this_y)
-
-    r2 = test_reg.score(meta_feat, this_y)
-    scores.append(r2)
-
-scores = np.array(scores)
-
-cmap = mpl.cm.tab10
-norm = plt.Normalize(0,9)
-
-labels = np.zeros(state.n_edges)
-labels[state.edges_ext_indices] = 1
-
-colors = cmap(norm(labels))
-'''

@@ -71,6 +71,9 @@ class State:
         self.N = self.p*self.q
         # List, keyed by *local* indices, of all external edges made by local patch idx i
         self.ext_count = np.zeros(self.N, dtype=int)
+        # List, keyed by *local* indices, of all internal edges made by local patch idx i 
+        #.  Note: if we sum this up, this will be 2*M_int, since we're double counting internal edges
+        self.int_count = np.zeros_like(self.ext_count)
 
         # Shape (N, N): adj_mat[i,j] = 1 if i,j nearest neighbors, 0 otherwise
         #   Note: symmetric matrix with 0's on the diagonal
@@ -78,7 +81,10 @@ class State:
         
         for i in range(self.N):
             self.ext_count[i] = np.intersect1d(self.non_patch_indices, self.nn_ext[i]).size
+            self.int_count[i] = self.nn[i].size
             self.adj_mat[i][self.nn[i]] = 1
+            # Sanity; each node must make 6 edges
+            assert self.ext_count[i] + self.int_count[i] == 6
 
         assert self.adj_mat.diagonal().max() == 0
         assert np.array_equal(self.adj_mat, self.adj_mat.T)
@@ -310,7 +316,7 @@ class State:
                 ax.annotate(i, xy=(x-0.025,y-0.025), fontsize='xx-large', color='darkorange')
 
 
-    def plot_edges(self, do_annotate=True, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None, symbols=None):
+    def plot_edges(self, do_annotate=False, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None, symbols=None):
         if ax is None:
             ax = plt.gca()
 

@@ -28,7 +28,9 @@ import shutil
 
 
 ## Re-initialize states for sam_pattern_[] dataset
-fnames = ['data/sam_pattern_06_06.npz', 'data/sam_pattern_04_09.npz', 'data/sam_pattern_04_04.npz', 'data/sam_pattern_02_02.npz', 'data/sam_pattern_03_03.npz']
+fnames = ['data/sam_pattern_06_06.npz', 'data/sam_pattern_04_09.npz', 
+          'data/sam_pattern_04_04.npz', 'data/sam_pattern_02_02.npz', 
+          'data/sam_pattern_03_03.npz']
 
 
 for fname in fnames:
