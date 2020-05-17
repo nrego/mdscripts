@@ -218,8 +218,10 @@ def find_sym_edges(state):
         # internal edge
         if j_int:
             local_j = np.argwhere(j==state.patch_indices)[0].item()
+            
+            # (local) index of j's sym node
             rev_local_j = rev_node_lut[local_j]
-            #rev_global_j = 
+            rev_global_j = state.patch_indices[rev_local_j]
 
 
     return rev_node_lut
