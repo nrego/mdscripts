@@ -284,7 +284,7 @@ class State:
             yield State(new_pt_idx, parent=self, p=self.p, q=self.q, mode=self.mode)
 
 
-    def plot(self, noedge=False, do_annotate=False, **kwargs):
+    def plot(self, noedge=False, do_annotate=False, annotation=None, **kwargs):
 
         feat = make_feat(self.methyl_mask, self.pos_ext, self.patch_indices)
         feat = plot_feat(feat, self.p+2, self.q+2)
@@ -306,6 +306,9 @@ class State:
         plot_hextensor(feat, norm=norm, **new_kwargs)
 
         if do_annotate:
+            if annotation is None:
+                annotation = np.arange(self.N_tot)
+            assert annotation.size == self.N_tot, "Error: annotations not right size"
             pos = 2*self.positions
             max_y = 2*self.pos_ext[:,1].max()
             pos += np.array([np.sqrt(3)/2, -max_y])
@@ -313,7 +316,7 @@ class State:
             ax = plt.gca()
 
             for i, (x,y) in enumerate(pos):
-                ax.annotate(i, xy=(x-0.025,y-0.025), fontsize='xx-large', color='darkorange')
+                ax.annotate(annotation[i], xy=(x-0.025,y-0.025), fontsize='xx-large', color='darkorange')
 
 
     def plot_edges(self, do_annotate=False, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None, symbols=None):

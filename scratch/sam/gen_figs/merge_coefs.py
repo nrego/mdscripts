@@ -184,6 +184,46 @@ def plot_1d(coef, labels=None):
     plt.close()
     plt.scatter(coef, np.ones_like(coef), c=labels)
 
+# For each edge k, find its equivalent edge (thru symmetry) l
+def find_sym_edges(state):
+    p, q = state.p, state.q
+    # Lut of symmetric nodes.
+    #    node (local) patch index i gives (local) patch index j, its equivalent node
+    #    This numbering is dependent on whether p is odd or even
+    rev_node_lut = np.zeros(state.N_tot, dtype=int)
+
+    # Even p, this is the easy case - can just reverse numbering
+    if p % 2 == 0:
+        rev_node_lut = state.N_tot - np.arange(state.N_tot) - 1
+
+    # odd p; vertical sym axis down middle. 
+    else:
+        indices = np.arange(state.N_tot)
+        for i_col in range(p):
+            # index of equivalent column
+            rev_col_idx = p-1-i_col
+            rev_node_lut[i_col*q:(i_col+1)*q] = indices[rev_col_idx*q:(rev_col_idx+1)*q]
+
+    # Edge lookup, indexed by edge k, gives sym edge l
+    rev_edge_lut = np.zeros_like(state.edges)
+
+    for idx, (i,j) in enumerate(state.edges):
+        local_i = np.argwhere(i==state.patch_indices)[0].item()
+        j_int = j in state.patch_indices
+
+        # (local) index of i's symmetric node
+        rev_local_i = rev_node_lut[local_i]
+        rev_global_i = state.patch_indices[rev_local_i]
+
+        # internal edge
+        if j_int:
+            local_j = np.argwhere(j==state.patch_indices)[0].item()
+            rev_local_j = rev_node_lut[local_j]
+            #rev_global_j = 
+
+
+    return rev_node_lut
+
 # Partition data into k groups
 #def partition_feat(feat_vec, k=3)
 
@@ -200,32 +240,55 @@ state = states[2]
 
 # Full feature vector (edge type for each edge, 3*M_tot)
 perf1, err1, _, _, reg1 = fit_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True)
-# Constraints removed (indicator function for each patch node, plus internal edge types; M_int+N_tot)
+# h_oo (one for each of M_tot edges), plus k_o. Has redundancies (periph edges)
 perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True)
 # ko, sum over all internal edges, sum over all external edges (miext edges for each peripheral node); shape: (M_int + N_periph + 1)
 perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=k_cv)
 perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=k_cv) 
 
+
+### CLUSTERING #######
+#######################
+
 ## Cluster edge coefficients (leave ko coef alone)
 n_clust = 2
+clust = AgglomerativeClustering(n_clusters=n_clust, linkage='ward', affinity='euclidean')
+
+
+# Merge based on feat_vec3 (i.e., external nodes already merged)
+
 coef = reg3.coef_[:-1].reshape((-1,1))
 
-mask = reg3.coef_[:-1] > 0
-
-clust = AgglomerativeClustering(n_clusters=n_clust, linkage='ward', affinity='euclidean')
 clust.fit(coef)
 
 # Presumably ko, n_oo1, n_oo2; where 1 and 2 indicate total number of oo edges of different classes,
 #   determined by clustering
-test_labels = np.zeros(mask.size)
-test_labels[mask] = 1
-red_feat = construct_red_feat(feat_vec3, np.append(clust.labels_, n_clust))
-perf_red, err_red, _, _, reg_red = fit_k_fold(red_feat, energies, k=k_cv)
-new_labels = merge_and_label(clust.labels_, state)
+red_feat1 = construct_red_feat(feat_vec3, np.append(clust.labels_, n_clust))
+perf_red1, err_red1, _, _, reg_red1 = fit_k_fold(red_feat1, energies, k=k_cv)
+# Labels for each edge 
+new_labels1 = merge_and_label(clust.labels_, state)
+
+
+# Merge based on feat_vec2 (i.e, each edge gets own coefficient)
+coef = reg2.coef_[:-1].reshape((-1,1))
+
+clust.fit(coef)
+
+# Presumably ko, n_oo1, n_oo2; where 1 and 2 indicate total number of oo edges of different classes,
+#   determined by clustering
+red_feat2 = construct_red_feat(feat_vec2, np.append(clust.labels_, n_clust))
+perf_red2, err_red2, _, _, reg_red2 = fit_k_fold(red_feat2, energies, k=k_cv)
+new_labels2 = clust.labels_
+
 
 cmap = mpl.cm.Set1
 norm = plt.Normalize(0,9)
-colors = cmap(norm(new_labels))
+#colors = cmap(norm(new_labels))
 
 
+rev_node_lut = find_sym_edges(state)
+labels = np.zeros(state.M_int+state.N_tot, dtype=int)
+
+for idx, (i,j) in enumerate(state.edges[state.edges_int_indices]):
+    pass
 
