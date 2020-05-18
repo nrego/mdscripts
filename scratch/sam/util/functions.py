@@ -324,30 +324,38 @@ def plot_edges(positions, methyl_mask, pos_ext, nn, nn_ext, ax=None):
 # Periph nodes is a mask of all patch nodes that form external edges
 #
 def enumerate_edges(positions, nn_ext, patch_indices, periph_nodes=None):
+    
     # nn_ext's are indexed by local patch index -> give global index of nn
     assert len(nn_ext.keys()) == positions.shape[0]
+    
     if periph_nodes is None:
         periph_nodes = np.zeros(positions.shape[0], dtype=bool)
     
     edges = []
     # Indices of (external) edges to external OH's
-    ext_edge_indices = []
+    edge_indices_ext = []
     # Indices of (internal) edges between peripheral nodes
-    periph_edge_indices = []
+    edge_indices_periph_periph = []
+    # Indices of (internal) edges between peripheral and buried nodes
+    edge_indices_periph_buried = []
+    # Indices of (internal) edges between buried nodes
+    edge_indices_buried_buried = []
 
     # For each local patch position...
     for local_i in range(positions.shape[0]):
 
         # Index of this patch point in pos_ext
         global_i = patch_indices[local_i]
-        # Global indices of all atoms that atom i forms edges with (including itself)
+        
+        # (Global) indices of all nodes to which node i forms edges (including itself)
         neighbor_idx = nn_ext[local_i]
+        # 6 edges, plus itself
         assert neighbor_idx.size == 7
 
         for global_j in neighbor_idx:
 
-            # patch-patch edge that's already been seen
-            if global_j in patch_indices and global_j <= global_i:
+            # patch-patch edge that's already been seen (or edge to itself)
+            if (global_j in patch_indices) and (global_j <= global_i):
                 continue
 
             # This is an external edge, so save this edge's index to ext_indices
