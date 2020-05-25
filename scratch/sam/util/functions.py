@@ -352,6 +352,9 @@ def enumerate_edges(positions, nn_ext, patch_indices, periph_nodes=None):
         # 6 edges, plus itself
         assert neighbor_idx.size == 7
 
+        # is node i a peripheral node?
+        periph_i = periph_nodes[local_i]
+
         for global_j in neighbor_idx:
 
             # patch-patch edge that's already been seen (or edge to itself)
@@ -359,19 +362,34 @@ def enumerate_edges(positions, nn_ext, patch_indices, periph_nodes=None):
                 continue
 
             # This is an external edge, so save this edge's index to ext_indices
-            elif global_j not in patch_indices:
-                ext_edge_indices.append(len(edges))
+            if global_j not in patch_indices:
+                edge_indices_ext.append(len(edges))
 
             # global_i, global_j both in patch; global_j > global_i
             else:
+                
                 local_j = np.argwhere(patch_indices==global_j)[0].item()
-                # patch-patch edge, and both are peripheral nodes
-                if (periph_nodes[local_i] & periph_nodes[local_j]):
-                    periph_edge_indices.append(len(edges))
+                periph_j = periph_nodes[local_j]
+
+                edge_flag = int(periph_i) + int(periph_j)
+
+                # buried-buried internal edge
+                if edge_flag == 0:
+                    edge_indices_buried_buried.append(len(edges))
+
+                # periph-buried edge
+                elif edge_flag == 1:
+                    edge_indices_periph_buried.append(len(edges))
+
+                # periph-periph edge
+                else:
+                    edge_indices_periph_periph.append(len(edges))
+
 
             edges.append((global_i,global_j))
 
-    return np.array(edges), np.array(ext_edge_indices), np.array(periph_edge_indices)
+    return np.array(edges), np.array(edge_indices_ext, dtype=int), np.array(edge_indices_periph_periph, dtype=int), np.array(edge_indices_periph_buried, dtype=int), np.array(edge_indices_buried_buried, dtype=int)
+
 
 # Go over each edge, and classify it as oo,mm, or mo
 #

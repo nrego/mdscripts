@@ -84,8 +84,8 @@ def get_feat_vec(states):
     for i,state in enumerate(states):
 
         feat_vec[i, 0:idx:3] = state.edge_oo
-        feat_vec[i, 1:idx:3] = state.edge_cc
-        feat_vec[i, 2:idx:3] = state.edge_oc
+        feat_vec[i, 1:idx:3] = state.edge_oc
+        feat_vec[i, 2:idx:3] = state.edge_cc
         #feat_vec[i, -1] = state.k_o
 
 
@@ -330,7 +330,7 @@ def get_sym_edge_labels(labels, sym_edge_labels, state):
 
 ### Merge edge types
 k_cv=5
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_04_04.npz')
+energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
 feat_vec1 = get_feat_vec(states)
 
 # Shape: M_tot+1 (hkoo for each edge, plus ko)
@@ -369,7 +369,16 @@ sym_feat_vec = construct_red_feat(feat_vec2, np.append(new_labels, new_labels.ma
 
 perf_sym, err_sym, _, _, reg_sym = fit_k_fold(sym_feat_vec, energies, k=k_cv)
 
+# 5 groups, periph-ext edges, periph-periph edges, periph-buried edges, buried-buried edges, and ko
+edge_type_labels = np.zeros(state.n_edges, dtype=int)
+edge_type_labels[state.edges_ext_indices] = 0
+edge_type_labels[state.edges_periph_periph_indices] = 1
+edge_type_labels[state.edges_periph_buried_indices] = 2
+edge_type_labels[state.edges_buried_buried_indices] = 3
+edge_type_labels = np.append(edge_type_labels, edge_type_labels.max()+1)
 
+test_feat_vec = construct_red_feat(feat_vec2, edge_type_labels)
+perf_test, err_test, _, _, reg_test = fit_k_fold(test_feat_vec, energies, k=k_cv)
 
 
 # Greedily merge coefficients #
