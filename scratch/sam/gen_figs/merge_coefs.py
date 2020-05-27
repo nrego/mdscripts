@@ -48,7 +48,6 @@ def build_states(p=2, q=2):
 
     return states
 
-
 def get_rank(feat):
     d = feat - feat.mean(axis=0)
     cov = np.dot(d.T, d)
@@ -72,8 +71,9 @@ def construct_red_feat(feat_vec, labels):
     return red_feat
 
 ## Get a full-edge specified feature vector
+#    (over-parameterized)
 #
-def get_feat_vec(states):
+def get_full_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
     # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
@@ -91,18 +91,26 @@ def get_feat_vec(states):
 
     return feat_vec
 
+# Shape: (M_int+1,)
+#   hoo_k of each edge (all M_int of them), plus ko
 def get_feat_vec_oo(states):
     n_sample = states.size
-    n_edges = states[0].n_edges
-    n_feat = n_edges + 1
-
+    n_edge = states[0].n_edges
+    # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
+    
+    n_feat = n_edge+1
     feat_vec = np.zeros((n_sample, n_feat))
 
-    for i, state in enumerate(states):
-        feat_vec[i, :n_edges] = state.edge_oo
+    for i,state in enumerate(states):
+
+        feat_vec[i, 0:n_edge] = state.edge_oo
         feat_vec[i, -1] = state.k_o
 
+
     return feat_vec
+
+# Shape (M_int+N_ext), hk_oo for each internal edge, followed by 
+#   hydroxyl mask for each peripheral node
 
 def test_get_feat_vec(states):
     n_sample = states.size
@@ -119,6 +127,10 @@ def test_get_feat_vec(states):
 
     return feat_vec
 
+# Shape: (M_int+N_ext+1)
+#    h_koo for each internal edge, followed by number of external oo edges for
+#.     each periph node (i.e., h_iooext times miext for each periph node i)
+#.     followed by number of total hydroxyls
 def test_get_feat_vec2(states):
     n_sample = states.size
     n_feat = states[0].M_int + states[0].N_ext + 1
@@ -139,35 +151,6 @@ def test_get_feat_vec2(states):
 
 
 
-# Extract edge labels from a list of edge labels
-#.  for each internal edge and for each peripheral node 
-#      (since external edges only need to be specified once per peripheral node)
-#.  labels: shape (M_int + N_periph); first M_int labels refer to internal edges,
-#.   Next N_periph labels refer to the external edges made by each peripheral node
-#
-# Returns: a list of new labels, one per edge, shape: (n_edges)
-def merge_and_label(labels, state):
-    # One unique label per peripheral node, plus
-    #   one unique label per each internal edge
-
-    int_edge_labels = labels[:state.M_int]
-    periph_node_labels = labels[state.M_int:]
-    # Number of unique edge types
-    n_groups = np.unique(labels).size
-
-    n_edges = state.n_edges
-    new_labels = np.ones(n_edges) * np.nan
-
-    # Assign labels for all M_int internal edges
-    new_labels[state.edges_int_indices] = int_edge_labels
-
-    # Now go over each peripheral node, find its label, and assign
-    #  this label to new_labels at each of the corresponding external edges
-    for i_periph_node, edge_ext_indices in enumerate(state.nodes_to_ext_edges[state.ext_indices]):
-        assert np.isnan(new_labels[edge_ext_indices]).all()
-        new_labels[edge_ext_indices] = periph_node_labels[i_periph_node]
-
-    return new_labels.astype(int)
 
 
 def aic(n_samples, mse, k_params, do_corr=False):
@@ -298,40 +281,37 @@ def find_sym_edges(state):
 
     return rev_node_lut, rev_edge_lut, labels
 
-# From a list of labels for each symmetric edge group,
-#   Expand to get one label per each edge
-#.   This time, labels is shape (n_unique_sym_edge_groups,)
-#
-#
-#.  labels: shape (n_unique_sym_edge_groups, ):   labels for each sym group after clustering
-#.  sym_edge_labels: shape (n_edges, ): label for each edge according to its sym group (pre-merge)
-#
-#
-#. Returns edge_labels (shape: (n_edges,))
-def get_sym_edge_labels(labels, sym_edge_labels, state):
-    n_edges = state.n_edges
-
-    assert sym_edge_labels.size == n_edges
-    assert np.unique(sym_edge_labels).size == labels.size
-
-    final_edge_labels = np.zeros_like(sym_edge_labels)
-
-    n_clust_final = np.unique(labels).size
-
-    for i, final_label in enumerate(labels):
-        # All the edges in this symmetry group
-        mask = (sym_edge_labels == i)
-        final_edge_labels[mask] = final_label
-
-    return final_edge_labels
 
 # Partition data into k groups
 #def partition_feat(feat_vec, k=3)
 
 ### Merge edge types
-k_cv=5
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
-feat_vec1 = get_feat_vec(states)
+k_cv=16
+energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_02_02.npz')
+n_dat = energies.size
+
+# grab a pure methyl state
+state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
+
+sym_node_lut, sym_edge_lut, sym_labels = find_sym_edges(state)
+
+aug_states = np.empty(2*n_dat, dtype=object)
+aug_energies = np.zeros(2*n_dat)
+
+for i, state in enumerate(states):
+    aug_states[i] = state
+    inv_state = State(sym_node_lut[state.pt_idx], p=state.p, q=state.q)
+
+    aug_states[i+n_dat] = inv_state
+
+    aug_energies[i] = energies[i]
+    aug_energies[i+n_dat] = energies[i]
+
+#states = aug_states.copy()
+#energies = aug_energies.copy()
+#ols_feat_vec = np.append(ols_feat_vec, ols_feat_vec, axis=0)
+
+feat_vec1 = get_full_feat_vec(states)
 
 # Shape: M_tot+1 (hkoo for each edge, plus ko)
 feat_vec2 = get_feat_vec_oo(states)
@@ -339,7 +319,7 @@ feat_vec2 = get_feat_vec_oo(states)
 feat_vec3 = test_get_feat_vec2(states)
 
 
-state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
+
 
 # Full feature vector (edge type for each edge, 3*M_tot)
 perf1, err1, _, _, reg1 = fit_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True)
@@ -350,130 +330,95 @@ perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=k_cv)
 perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=k_cv) 
 
 
-rev_node_lut, rev_edge_lut, labels = find_sym_edges(state)
 
-assert labels.min() == 0
-
-# Shape: (n_edges,); gives symmetry group label for each edge
-new_labels = merge_and_label(labels, state)
-assert labels.max() == new_labels.max()
-
-n_sym_group = np.unique(new_labels).size
-sym_group_indices = np.arange(n_sym_group)
-
-cmap = mpl.cm.tab10
-norm = plt.Normalize(0,labels.max())
-
-# Shape: (n_sym_edge_groups+1, ); number of oo edges for each edge sym group, plus ko
-sym_feat_vec = construct_red_feat(feat_vec2, np.append(new_labels, new_labels.max()+1))
-
-perf_sym, err_sym, _, _, reg_sym = fit_k_fold(sym_feat_vec, energies, k=k_cv)
-
-# 5 groups, periph-ext edges, periph-periph edges, periph-buried edges, buried-buried edges, and ko
-edge_type_labels = np.zeros(state.n_edges, dtype=int)
-edge_type_labels[state.edges_ext_indices] = 0
-edge_type_labels[state.edges_periph_periph_indices] = 1
-edge_type_labels[state.edges_periph_buried_indices] = 2
-edge_type_labels[state.edges_buried_buried_indices] = 3
-edge_type_labels = np.append(edge_type_labels, edge_type_labels.max()+1)
-
-test_feat_vec = construct_red_feat(feat_vec2, edge_type_labels)
-perf_test, err_test, _, _, reg_test = fit_k_fold(test_feat_vec, energies, k=k_cv)
-
-
-# Greedily merge coefficients #
-###############################
+### Merge and label classes of edges ###
+########################################
 
 n_clust = 2
+mgc_0 = MergeGroupCollection()
 
-merge_reg = linear_model.LinearRegression()
-this_labels = sym_group_indices.copy()
+# Each internal edge gets own group...
+[ mgc_0.add_group(MergeGroup(k, label='internal')) for k in state.edges_int_indices ]
 
-for i_round in range(0, sym_group_indices.size-n_clust):
-    print("merge round {}".format(i_round))
+for ext_k in state.nodes_to_ext_edges[state.ext_indices]:
+    mgc_0.add_group(MergeGroup(ext_k, label='external'))
 
-    this_min_mse = np.inf
-    this_min_labels = None
-    this_min_reg = linear_model.LinearRegression()
-    this_red_feat = None
+mgc = copy.deepcopy(mgc_0)
 
-    for idx in itertools.combinations(sym_group_indices, 2):
-        # Groups already merged
-        if this_labels[idx[0]] == this_labels[idx[1]]:
+all_mgc = []
+all_mse = []
+all_n_params = []
+
+reg = linear_model.LinearRegression()
+
+min_mgc = copy.deepcopy(mgc)
+temp_feat_vec = construct_red_feat(feat_vec2, np.append(min_mgc.labels, min_mgc.labels.max()+1))
+
+reg.fit(temp_feat_vec, energies)
+min_mse = np.mean((energies - reg.predict(temp_feat_vec))**2)
+
+i_merge = 0
+## Now perform merging until we have the requisite number of groups
+while len(mgc) >= n_clust:
+    print("merge round i:{}".format(i_merge))
+    
+    all_mgc.append(min_mgc)
+    all_mse.append(min_mse)
+    all_n_params.append(len(min_mgc)+1)
+
+    min_mse = np.inf
+    min_mgc = None
+    min_i = -1
+    min_j = -1
+
+    for i_grp, j_grp in itertools.combinations(np.arange(len(mgc)), 2):
+
+        if mgc.groups[i_grp].label != mgc.groups[j_grp].label:
             continue
 
-        # Indices of groups to merge
-        merge_idx = np.array(idx)
+        # Try this merge, test r2
+        temp_mgc = copy.deepcopy(mgc)
 
-        # These groups should not have been merged
-        assert np.unique((this_labels[merge_idx])).size == 2
+        temp_mgc.merge_groups(i_grp, j_grp)
 
-        mask = (this_labels == this_labels[merge_idx][0]) | (this_labels == this_labels[merge_idx][1])
-        
-        assert np.array_equal(np.intersect1d(sym_group_indices[mask], merge_idx), merge_idx)
-        merge_idx = sym_group_indices[mask]
+        temp_labels = temp_mgc.labels
+        temp_feat_vec = construct_red_feat(feat_vec2, np.append(temp_labels, temp_labels.max()+1))
 
-        # Indices of other groups
-        other_idx = np.delete(sym_group_indices, merge_idx)
-        
-        # Indices of other groups, maintaining any merged groups
-        other_grp_idx = []
+        reg.fit(temp_feat_vec, energies)
+        temp_mse = np.mean((energies - reg.predict(temp_feat_vec))**2)
 
-        for l in np.unique(this_labels[other_idx]):
-            mask = this_labels[other_idx] == l
-            other_grp_idx.append(other_idx[mask])
+        if temp_mse < min_mse:
+            min_mse = temp_mse
+            min_mgc = temp_mgc
+            min_i = i_grp
+            min_j = j_grp
 
 
-        test_labels = this_labels.copy()
-        # Label merged groups with 0's
-        test_labels[merge_idx] = 0
+        del temp_feat_vec, temp_mgc
 
-        # Now re-label the remaining groups
-        l = 1
-        for other_grp in other_grp_idx:
-            test_labels[other_grp] = l
-            l += 1
-
-        test_red_feat = construct_red_feat(sym_feat_vec, np.append(test_labels, test_labels.max()+1))
-        merge_reg.fit(test_red_feat, energies)
-        pred = merge_reg.predict(test_red_feat)
-        this_mse = np.mean((energies-pred)**2)
-
-        if this_mse < this_min_mse:
-            this_min_mse = this_mse
-
-            this_min_labels = test_labels.copy()
-            this_min_reg.fit(test_red_feat, energies)
-
-            this_red_feat = test_red_feat.copy()
-
-        #print("merging: {}. mse: {:.8f}".format(merge_idx, this_mse))
-
-    this_labels = this_min_labels.copy()
-
-assert this_labels.max() == n_clust - 1
-
-red_feat = construct_red_feat(sym_feat_vec, labels=np.append(this_labels, this_labels.max()+1))
-perf_red, err_red, _, _, reg_red = fit_k_fold(red_feat, energies, k=k_cv)
-
-final_edge_labels = get_sym_edge_labels(this_labels, new_labels, state)
+    ## Now merge 
+    if min_i == min_j == -1:
+        break
+    mgc.merge_groups(min_i, min_j)
+    i_merge += 1
 
 
-'''
-### CLUSTERING #######
-#######################
+all_mse = np.array(all_mse)
+all_n_params = np.array(all_n_params)
+all_cv_mse = np.zeros_like(all_mse)
 
-## Cluster edge coefficients (leave ko coef alone)
-n_clust = 2
-clust = AgglomerativeClustering(n_clusters=n_clust, linkage='ward', affinity='euclidean')
+for i, this_mgc in enumerate(all_mgc):
+    this_labels = np.append(this_mgc.labels, this_mgc.labels.max()+1)
 
-coef = reg_sym.coef_[:-1].reshape(-1,1)
-clust.fit(coef)
+    red_feat = construct_red_feat(feat_vec2, this_labels)
+    perf, err, _, _, this_reg = fit_k_fold(red_feat, energies, k=k_cv)
 
-red_feat = construct_red_feat(sym_feat_vec, labels=np.append(clust.labels_, clust.labels_.max()+1))
-perf_red, err_red, _, _, reg_red = fit_k_fold(red_feat, energies, k=k_cv)
+    all_cv_mse[i] = perf.mean()
 
 
-final_edge_labels = get_sym_edge_labels(clust.labels_, new_labels, state)
-'''
+
+cmap = mpl.cm.tab20
+norm = plt.Normalize(0,19)
+
+
 
