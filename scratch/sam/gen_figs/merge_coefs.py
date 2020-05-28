@@ -21,6 +21,22 @@ from sklearn import datasets, linear_model
 from sklearn.cluster import AgglomerativeClustering
 
 
+def bootstrap(dataset, fn, n_boot=1000):
+    np.random.seed()
+
+    assert dataset.ndim == 1
+    n_dat = dataset.size
+
+    boot_samples = np.zeros((n_boot))
+
+    for i_boot in range(n_boot):
+        this_boot = np.random.choice(dataset, n_dat)
+
+        boot_samples[i_boot] = fn(this_boot)
+
+
+    return boot_samples
+
 def unpackbits(x, num_bits):
   xshape = list(x.shape)
   x = x.reshape([-1, 1])
@@ -282,12 +298,53 @@ def find_sym_edges(state):
     return rev_node_lut, rev_edge_lut, labels
 
 
+# When merging from mgc0 to mgc1, find 
+#.   which groups are merged, what their coefs were,
+#.   and what the new coef is
+def check_merged_coef(mgc0, mgc1, feat_vec, energies):
+    
+    # find indices of merged groups
+    for t_idx1 in range(len(mgc0)):
+        for t_idx2 in range(t_idx1+1, len(mgc0)):
+            for t_idx_merge in range(len(mgc1)):
+                if np.array_equal(np.sort(np.append(mgc0.groups[t_idx1].indices, mgc0.groups[t_idx2].indices)), np.sort(mgc1.groups[t_idx_merge].indices)):
+                    idx1 = t_idx1
+                    idx2 = t_idx2
+                    idx_merge = t_idx_merge
+                    break
+
+    assert np.array_equal(np.sort(np.append(mgc0.groups[idx1].indices, mgc0.groups[idx2].indices)), np.sort(mgc1.groups[idx_merge].indices))
+
+    labels0 = mgc0.labels
+    labels1 = mgc1.labels
+
+    reg0 = linear_model.LinearRegression()
+    reg1 = linear_model.LinearRegression()
+
+    tmp_feat0 = construct_red_feat(feat_vec, np.append(labels0, labels0.max()+1))
+    tmp_feat1 = construct_red_feat(feat_vec, np.append(labels1, labels1.max()+1))
+
+    reg0.fit(tmp_feat0, energies)
+    reg1.fit(tmp_feat1, energies)
+
+    print("merging groups {} and {} to {}".format(idx1, idx2, idx_merge))
+    print("Merge groups {} and {}".format(mgc0.groups[idx1], mgc0.groups[idx2]))
+    print("Coefs: {:.2f} and {:.2f} -> {:.2f}".format(reg0.coef_[idx1], reg0.coef_[idx2], reg1.coef_[idx_merge]))
+
+
+    return (reg0, reg1)
+
+
+
 # Partition data into k groups
 #def partition_feat(feat_vec, k=3)
 
 ### Merge edge types
-k_cv=16
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_02_02.npz')
+k_cv=5
+fname = 'data/sam_pattern_06_06.npz'
+
+energies, ols_feat_vec, states = extract_from_ds(fname)
+err_energies = np.load(fname)['err_energies']
 n_dat = energies.size
 
 # grab a pure methyl state
@@ -298,9 +355,9 @@ sym_node_lut, sym_edge_lut, sym_labels = find_sym_edges(state)
 aug_states = np.empty(2*n_dat, dtype=object)
 aug_energies = np.zeros(2*n_dat)
 
-for i, state in enumerate(states):
-    aug_states[i] = state
-    inv_state = State(sym_node_lut[state.pt_idx], p=state.p, q=state.q)
+for i, tmp_state in enumerate(states):
+    aug_states[i] = tmp_state
+    inv_state = State(sym_node_lut[tmp_state.pt_idx], p=tmp_state.p, q=tmp_state.q)
 
     aug_states[i+n_dat] = inv_state
 
@@ -329,12 +386,12 @@ perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True)
 perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=k_cv)
 perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=k_cv) 
 
-
+perf_m1, err_m1, _, _, reg_m1 = fit_k_fold(ols_feat_vec[:,0].reshape(-1,1), energies, k=k_cv)
 
 ### Merge and label classes of edges ###
 ########################################
 
-n_clust = 2
+n_clust = 1
 mgc_0 = MergeGroupCollection()
 
 # Each internal edge gets own group...
@@ -344,6 +401,15 @@ for ext_k in state.nodes_to_ext_edges[state.ext_indices]:
     mgc_0.add_group(MergeGroup(ext_k, label='external'))
 
 mgc = copy.deepcopy(mgc_0)
+#tmp_labels = np.zeros_like(mgc_0.labels)
+#tmp_labels[state.edges_ext_indices] = 0
+#tmp_labels[state.edges_periph_periph_indices] = 1
+#tmp_labels[state.edges_periph_buried_indices] = 2
+#tmp_labels[state.edges_buried_buried_indices] = 3
+
+#mgc = MergeGroupCollection()
+#mgc.add_from_labels(tmp_labels)
+
 
 all_mgc = []
 all_mse = []
@@ -364,7 +430,8 @@ while len(mgc) >= n_clust:
     
     all_mgc.append(min_mgc)
     all_mse.append(min_mse)
-    all_n_params.append(len(min_mgc)+1)
+    # Number of edge classes, plus ko, plus intercept
+    all_n_params.append(len(min_mgc)+2)
 
     min_mse = np.inf
     min_mgc = None
@@ -372,6 +439,9 @@ while len(mgc) >= n_clust:
     min_j = -1
 
     for i_grp, j_grp in itertools.combinations(np.arange(len(mgc)), 2):
+
+        if len(mgc) == 2:
+            mgc.groups[i_grp].label = mgc.groups[j_grp].label = 'edge'
 
         if mgc.groups[i_grp].label != mgc.groups[j_grp].label:
             continue
@@ -416,9 +486,8 @@ for i, this_mgc in enumerate(all_mgc):
     all_cv_mse[i] = perf.mean()
 
 
+myaic = aic(n_dat, all_mse, all_n_params, do_corr=True)
 
-cmap = mpl.cm.tab20
-norm = plt.Normalize(0,19)
+np.savez_compressed('trial_0/sam_merge_coef_data', all_mse=all_mse, all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_mgc=all_mgc, feat_vec=feat_vec2)
 
-
-
+cmap = plt.cm.tab20

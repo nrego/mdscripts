@@ -60,6 +60,13 @@ class MergeGroupCollection:
     def add_group(self, grp):
         self.groups.append(grp)
 
+    def add_from_labels(self, labels):
+        edge_indices = np.arange(labels.size)
+
+        for i_label in np.unique(labels):
+            mask = labels == i_label
+            self.add_group(MergeGroup(edge_indices[mask]))
+
     ## Attempt to merge two groups; does nothing if 2 groups
     #     cannot be merged (e.g., if they're the same or )
     def merge_groups(self, idx1, idx2):
