@@ -63,8 +63,8 @@ def get_reg(feat_vec, energies, mgc):
     return reg, err
 
 
-p = 4
-q = 9
+p = 6
+q = 6
 
 mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 50})
@@ -117,12 +117,16 @@ ax2.plot(all_n_params-1, all_aic)
 
 
 
-tmp_labels = np.zeros_like(all_mgc[0].labels)
-tmp_labels[state.edges_int_indices] = 1
-tmp_labels[state.edges_periph_periph_indices] = 2
+## Exhaustively split by edge type ##
 
-red_feat = construct_red_feat(full_feat_vec, np.append(tmp_labels, tmp_labels.max()+1))
+grp_A = MergeGroup(state.edges_ext_indices, label='A')
+grp_B = MergeGroup(state.edges_periph_periph_indices, label='B')
+grp_C = MergeGroup(state.edges_periph_buried_indices, label='C')
+grp_D = MergeGroup(state.edges_buried_buried_indices, label='D')
 
-perf, err, _, _, reg = fit_k_fold(red_feat, energies)
-
-
+# 4 categories
+edge_mgc = MergeGroupCollection()
+edge_mgc.add_group(grp_A)
+edge_mgc.add_group(grp_B)
+edge_mgc.add_group(grp_C)
+edge_mgc.add_group(grp_D)
