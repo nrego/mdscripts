@@ -44,12 +44,27 @@ def construct_red_feat(feat_vec, labels):
 
     return red_feat
 
-def plot_edge_from_mgc(state, mgc, cmap=plt.cm.tab20):
+def plot_mgc(state, mgc, cmap=plt.cm.tab20):
     plt.close('all')
 
     state.plot()
     state.plot_edges(colors=cmap(mgc.labels))
 
+def get_reg(feat_vec, energies, mgc):
+    red_feat = construct_red_feat(feat_vec, np.append(mgc.labels, mgc.labels.max()+1))
+
+    reg = linear_model.LinearRegression()
+    reg.fit(red_feat, energies)
+
+    pred = reg.predict(red_feat)
+
+    err = energies - pred
+
+    return reg, err
+
+
+p = 4
+q = 9
 
 mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 50})
@@ -57,12 +72,16 @@ mpl.rcParams.update({'ytick.labelsize': 50})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':14})
 
-energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_06_06.npz')
+energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))
+err_energies = np.load('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))['err_energies']
+
+
+
 state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
 
 ## Plot ANN AIC as fn of hyperparams
 
-ds = np.load('data/sam_merge_coef_data.npz')
+ds = np.load('merge_data/sam_merge_coef_{:02d}_{:02d}.npz'.format(p,q))
 all_mse = ds['all_mse']
 all_cv_mse = ds['all_cv_mse']
 # Number of edge classes + 2 (for ko and the intercept)
@@ -91,5 +110,19 @@ fig, ax1 = plt.subplots(figsize=(7,6))
 
 ax2 = ax1.twinx()
 
+ax1.plot([0, all_n_params.max()+2], [np.mean(err_energies**2),np.mean(err_energies**2)], '--')
+ax1.set_xlim(0, all_n_params.max()+2)
 ax1.scatter(all_n_params-1, all_cv_mse)
 ax2.plot(all_n_params-1, all_aic)
+
+
+
+tmp_labels = np.zeros_like(all_mgc[0].labels)
+tmp_labels[state.edges_int_indices] = 1
+tmp_labels[state.edges_periph_periph_indices] = 2
+
+red_feat = construct_red_feat(full_feat_vec, np.append(tmp_labels, tmp_labels.max()+1))
+
+perf, err, _, _, reg = fit_k_fold(red_feat, energies)
+
+

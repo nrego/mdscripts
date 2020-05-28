@@ -341,7 +341,11 @@ def check_merged_coef(mgc0, mgc1, feat_vec, energies):
 
 ### Merge edge types
 k_cv=5
-fname = 'data/sam_pattern_06_06.npz'
+
+p = 4
+q = 9
+
+fname = 'data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q)
 
 energies, ols_feat_vec, states = extract_from_ds(fname)
 err_energies = np.load(fname)['err_energies']
@@ -488,6 +492,7 @@ for i, this_mgc in enumerate(all_mgc):
 
 myaic = aic(n_dat, all_mse, all_n_params, do_corr=True)
 
-np.savez_compressed('trial_0/sam_merge_coef_data', all_mse=all_mse, all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_mgc=all_mgc, feat_vec=feat_vec2)
+np.savez_compressed('merge_data/sam_merge_coef_{:02d}_{:02d}'.format(p,q), all_mse=all_mse, 
+                    all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_mgc=all_mgc, feat_vec=feat_vec2)
 
 cmap = plt.cm.tab20
