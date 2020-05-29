@@ -50,9 +50,30 @@ def extract_from_ds(infile):
     return (energies, feat_vec, states)
 
 
+def get_variance_inflation_factor(X):
+    n_feat = X.shape[1]
+
+    vifs = np.zeros(n_feat)
+
+    reg = linear_model.LinearRegression()
+
+    for i_feat in range(n_feat):
+        other_X = np.delete(X, i_feat, axis=1)
+        y = X[:,i_feat]
+        assert other_X.ndim == 2
+
+        reg.fit(other_X, y)
+
+        this_rsq = reg.score(other_X, y)
+
+        vifs[i_feat] = 1/(1-this_rsq)
+
+
+    return vifs
+
 # regress y on set of n_dim features, X.
 #   Do leave-one-out CV
-def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None, do_ridge=False):
+def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None, do_ridge=False, alpha=1.0):
 
     assert y.ndim == 1
     n_dat = y.size
@@ -70,7 +91,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None, do_ridge=
         xvals = np.vstack((np.zeros(xvals.shape[1]).reshape(1,-1), xvals))
 
     if do_ridge:
-        reg = linear_model.Ridge(fit_intercept=fit_intercept)
+        reg = linear_model.Ridge(fit_intercept=fit_intercept, alpha=alpha)
     else:
         reg = linear_model.LinearRegression(fit_intercept=fit_intercept)
 

@@ -67,9 +67,19 @@ class MergeGroupCollection:
             mask = labels == i_label
             self.add_group(MergeGroup(edge_indices[mask]))
 
+
+    def merge_groups(self, *idx):
+        if len(idx) == 2:
+            self._merge_2(*idx)
+        elif len(idx) == 3:
+            self._merge_3(*idx)
+
+        else:
+            raise ValueError("Can't merge more than 3 groups (or 1 group, ya noob)")
+    
     ## Attempt to merge two groups; does nothing if 2 groups
     #     cannot be merged (e.g., if they're the same or )
-    def merge_groups(self, idx1, idx2):
+    def _merge_2(self, idx1, idx2):
 
         try:
             grp1 = self.groups[idx1]
@@ -82,7 +92,27 @@ class MergeGroupCollection:
             self.add_group(new_grp)
 
         except:
-            return
+            raise ValueError('unable to merge groups...')
+
+    ## Attempt to merge 3 groups; does nothing if 3 groups
+    #     cannot be merged (e.g., if they're the same or )
+    def _merge_3(self, idx1, idx2, idx3):
+
+        try:
+            grp1 = self.groups[idx1]
+            grp2 = self.groups[idx2]
+            grp3 = self.groups[idx3]
+
+            tmp_grp = MergeGroup.merge_groups(grp1, grp2)
+            new_grp = MergeGroup.merge_groups(tmp_grp, grp3)
+
+            self.groups.remove(grp1)
+            self.groups.remove(grp2)
+            self.groups.remove(grp3)
+            self.add_group(new_grp)
+
+        except:
+            raise ValueError('unable to merge groups...')
 
     @property
     def n_indices(self):
