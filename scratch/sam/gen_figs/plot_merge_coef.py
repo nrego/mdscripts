@@ -53,16 +53,19 @@ def plot_mgc(state, mgc, cmap=plt.cm.tab20):
     state.plot()
     state.plot_edges(colors=cmap(mgc.labels))
 
-def get_reg(feat_vec, energies, mgc):
+def get_reg(feat_vec, energies, mgc, k=5):
     red_feat = construct_red_feat(feat_vec, np.append(mgc.labels, mgc.labels.max()+1))
 
-    perf, err, _, _, reg = fit_k_fold(red_feat, energies)
+    all_perf = np.zeros(100)
+    for i in range(100):
+        perf, err, _, _, reg = fit_k_fold(red_feat, energies, k=k)
+        all_perf[i] = perf.mean()
 
-    return perf, err, reg
+    return all_perf.mean(), err, reg
 
 
-p = 6
-q = 6
+p = 4
+q = 4
 
 mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 50})
