@@ -64,8 +64,8 @@ def get_reg(feat_vec, energies, mgc, k=5):
     return all_perf.mean(), err, reg
 
 
-p = 4
-q = 4
+p = 6
+q = 6
 
 mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 50})
@@ -128,7 +128,12 @@ this_labels[state.edges_periph_buried_indices] = 2
 this_labels[state.edges_buried_buried_indices] = 3
 
 edge_mgc = MergeGroupCollection()
-edge_mgc.add_from_labels(this_labels)
+edge_mgc.add_group(MergeGroup(state.edges_ext_indices))
+edge_mgc.add_group(MergeGroup(state.edges_periph_periph_indices))
+edge_mgc.add_group(MergeGroup(state.edges_periph_buried_indices))
+edge_mgc.add_group(MergeGroup(state.edges_buried_buried_indices))
+
+#edge_mgc.add_from_labels(this_labels)
 
 labels = {
     0: 'ext',
@@ -140,7 +145,7 @@ labels = {
 ## 4 categories ##
 this_mgc = copy.deepcopy(edge_mgc)
 
-perf_4, err_4, reg_4 = get_reg(full_feat_vec, energies, this_mgc)
+perf_4, err_4, reg_4 = get_reg(full_feat_vec, energies, edge_mgc)
 
 print("\n4 edge classes ")
 print("##############")
