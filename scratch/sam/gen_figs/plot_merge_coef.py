@@ -51,7 +51,8 @@ def plot_mgc(state, mgc, cmap=plt.cm.tab20):
     plt.close('all')
 
     state.plot()
-    state.plot_edges(colors=cmap(mgc.labels))
+    norm = plt.Normalize(0,19)
+    state.plot_edges(colors=cmap(norm(mgc.labels)))
 
 def get_reg(feat_vec, energies, mgc, k=5):
     red_feat = construct_red_feat(feat_vec, np.append(mgc.labels, mgc.labels.max()+1))
@@ -61,7 +62,7 @@ def get_reg(feat_vec, energies, mgc, k=5):
         perf, err, _, _, reg = fit_k_fold(red_feat, energies, k=k)
         all_perf[i] = perf.mean()
 
-    return all_perf.mean(), err, reg
+    return all_perf, err, reg
 
 
 p = 6
@@ -71,7 +72,9 @@ mpl.rcParams.update({'axes.labelsize': 45})
 mpl.rcParams.update({'xtick.labelsize': 50})
 mpl.rcParams.update({'ytick.labelsize': 50})
 mpl.rcParams.update({'axes.titlesize':40})
-mpl.rcParams.update({'legend.fontsize':14})
+mpl.rcParams.update({'legend.fontsize':34})
+
+homedir = os.environ['HOME']
 
 energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))
 err_energies = np.load('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))['err_energies']
@@ -80,9 +83,8 @@ perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies)
 
 state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
 
-## Plot ANN AIC as fn of hyperparams
 
-ds = np.load('merge_data/sam_merge_coef_{:02d}_{:02d}.npz'.format(p,q))
+ds = np.load('merge_data/sam_merge_coef_class_{:02d}_{:02d}.npz'.format(p,q))
 all_mse = ds['all_mse']
 all_cv_mse = ds['all_cv_mse']
 # Number of edge classes + 2 (for ko and the intercept)
@@ -105,18 +107,23 @@ norm = plt.Normalize(0,19)
 
 
 
-#plt.close('all')
+plt.close('all')
 
-#fig, ax1 = plt.subplots(figsize=(7,6))
+fig, ax1 = plt.subplots(figsize=(7,6))
 
-#ax2 = ax1.twinx()
+ax2 = ax1.twinx()
 
 #ax1.plot([0, all_n_params.max()+2], [np.mean(err_energies**2),np.mean(err_energies**2)], '--')
-#ax1.set_xlim(0, all_n_params.max()+2)
-#ax1.scatter(all_n_params-1, all_cv_mse)
-#ax2.plot(all_n_params-1, all_aic)
+ax1.set_xlim(0, all_n_params.max()+2)
+ax1.scatter(all_n_params-2, all_cv_mse)
+ax2.plot(all_n_params-2, all_aic)
 
 
+#### DO MERGING BY EDGE CLASSES: Automerge edges based on class:
+# periph-external edges
+# periph-periph edges
+# periph-buried edges
+# buried-buried edges
 
 ## Exhaustively split by edge type ##
 
@@ -226,5 +233,57 @@ for (i,j,k) in itertools.combinations(labels.keys(), 3):
 
     print("\n merged [{}, {}, and {}] in one category, [{}] in the other".format(labels[i], labels[j], labels[k], labels[l]))
     print(" perf: {:.2f}  cv: {:.2f}  reg: {}".format(np.mean(err**2), np.mean(perf), reg.coef_))
+
+
+## Plot patch with node types indicated ##
+###########################################
+
+plt.close('all')
+
+new_state = State(np.delete(state.pt_idx, [6,7,12,15,20]))
+new_state.plot(mask=[0,63])
+
+symbols = np.array(['' for i in range(state.N_tot)], dtype=object)
+symbols[state.nodes_buried] = 'ko'
+symbols[state.nodes_peripheral] = 'yP'
+
+styles = np.array(['' for i in range(state.n_edges)], dtype=object)
+styles[[31,51,52,54]] = ':'
+styles[33] = '-.'
+styles[32] = '--'
+styles[63] = '-'
+
+widths = np.array([0 for i in range(state.n_edges)])
+widths[[31,32,33,51,52,54,63]] = 3
+
+state.plot_edges(symbols=symbols, line_widths=widths, line_styles=styles)
+
+plt.savefig("{}/Desktop/fig_nodetype".format(homedir), transparent=True)
+
+
+## Do the legend ##
+plt.close('all')
+plt.plot([0,0], [0,0], 'ko', markersize=20, label='buried')
+plt.plot([0,0], [0,0], 'yP', markersize=20, label='peripheral')
+plt.plot([0,0], [0,0], 'rX', markersize=20, label='external')
+
+plt.xlim(100,200)
+plt.legend(loc='center')
+
+plt.axis('off')
+plt.savefig("{}/Desktop/leg".format(homedir), transparent=True)
+
+## Do the legend ##
+plt.close('all')
+plt.plot([0,0], [0,0], 'k:', linewidth=3, label='    edge')
+plt.plot([0,0], [0,0], 'k-.', linewidth=3, label='    edge')
+plt.plot([0,0], [0,0], 'k--', linewidth=3, label='    edge')
+plt.plot([0,0], [0,0], 'k-', linewidth=3, label='    edge')
+
+plt.xlim(100,200)
+plt.legend(loc='center')
+
+plt.axis('off')
+plt.savefig("{}/Desktop/leg_edge".format(homedir), transparent=True)
 
 

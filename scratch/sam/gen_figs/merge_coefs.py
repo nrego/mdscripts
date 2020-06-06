@@ -20,6 +20,12 @@ import itertools
 from sklearn import datasets, linear_model
 from sklearn.cluster import AgglomerativeClustering
 
+## Merge edge classes (h_k^oo for each edge k) into 'classes' of similar edges
+#   Using a greedy algorithm (Best R2 performance after merging)
+#   
+#   Initially, all external edges made by each peripheral node are merged (since they're equiv anyway)
+#
+#
 
 def bootstrap(dataset, fn, n_boot=1000):
     np.random.seed()
@@ -88,11 +94,12 @@ def construct_red_feat(feat_vec, labels):
 
 ## Get a full-edge specified feature vector
 #    (over-parameterized)
+#    shape: (3*M_tot, )
 #
 def get_full_feat_vec(states):
     n_sample = states.size
     n_edge = states[0].n_edges
-    # ko, nkoo, and nkcc, so a total of 2*M_tot + 1 coef's
+    
     idx = 3*states[0].n_edges
     n_feat = idx
     feat_vec = np.zeros((n_sample, n_feat))
@@ -342,8 +349,8 @@ def check_merged_coef(mgc0, mgc1, feat_vec, energies):
 ### Merge edge types
 k_cv=5
 
-p = 4
-q = 9
+p = 6
+q = 6
 
 fname = 'data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q)
 
@@ -372,10 +379,13 @@ for i, tmp_state in enumerate(states):
 #energies = aug_energies.copy()
 #ols_feat_vec = np.append(ols_feat_vec, ols_feat_vec, axis=0)
 
+## Over parameterized, shape: (3*M_tot, )
+#  h_oo, h_cc, h_oo for each edge location
 feat_vec1 = get_full_feat_vec(states)
 
 # Shape: M_tot+1 (hkoo for each edge, plus ko)
 feat_vec2 = get_feat_vec_oo(states)
+
 # shape: M_int+N_ext+1 (hkoo for each internal, number of external oo edges for each periph, plus ko)
 feat_vec3 = test_get_feat_vec2(states)
 
@@ -405,14 +415,6 @@ for ext_k in state.nodes_to_ext_edges[state.ext_indices]:
     mgc_0.add_group(MergeGroup(ext_k, label='external'))
 
 mgc = copy.deepcopy(mgc_0)
-#tmp_labels = np.zeros_like(mgc_0.labels)
-#tmp_labels[state.edges_ext_indices] = 0
-#tmp_labels[state.edges_periph_periph_indices] = 1
-#tmp_labels[state.edges_periph_buried_indices] = 2
-#tmp_labels[state.edges_buried_buried_indices] = 3
-
-#mgc = MergeGroupCollection()
-#mgc.add_from_labels(tmp_labels)
 
 
 all_mgc = []
@@ -428,6 +430,7 @@ reg.fit(temp_feat_vec, energies)
 min_mse = np.mean((energies - reg.predict(temp_feat_vec))**2)
 
 i_merge = 0
+
 ## Now perform merging until we have the requisite number of groups
 while len(mgc) >= n_clust:
     print("merge round i:{}".format(i_merge))
@@ -444,6 +447,7 @@ while len(mgc) >= n_clust:
 
     for i_grp, j_grp in itertools.combinations(np.arange(len(mgc)), 2):
 
+        # Only two groups remain - hack so they can be merged
         if len(mgc) == 2:
             mgc.groups[i_grp].label = mgc.groups[j_grp].label = 'edge'
 
@@ -461,6 +465,7 @@ while len(mgc) >= n_clust:
         reg.fit(temp_feat_vec, energies)
         temp_mse = np.mean((energies - reg.predict(temp_feat_vec))**2)
 
+        # Best merge so far this round
         if temp_mse < min_mse:
             min_mse = temp_mse
             min_mgc = temp_mgc
@@ -481,6 +486,7 @@ all_mse = np.array(all_mse)
 all_n_params = np.array(all_n_params)
 all_cv_mse = np.zeros_like(all_mse)
 
+# Do the CV here, as a final check
 for i, this_mgc in enumerate(all_mgc):
     this_labels = np.append(this_mgc.labels, this_mgc.labels.max()+1)
 
@@ -492,7 +498,7 @@ for i, this_mgc in enumerate(all_mgc):
 
 myaic = aic(n_dat, all_mse, all_n_params, do_corr=True)
 
-np.savez_compressed('merge_data/sam_merge_coef_{:02d}_{:02d}'.format(p,q), all_mse=all_mse, 
+np.savez_compressed('merge_data/sam_merge_coef_class_{:02d}_{:02d}'.format(p,q), all_mse=all_mse, 
                     all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_mgc=all_mgc, feat_vec=feat_vec2)
 
 cmap = plt.cm.tab20
