@@ -106,7 +106,36 @@ cmap = mpl.cm.tab20
 norm = plt.Normalize(0,19)
 
 
+## Plot edges as different colors, highlight external/internal edges ##
+#######################################################################
+#######################################################################
 
+plt.close('all')
+
+state.plot()
+
+labels = np.zeros(state.n_edges, dtype=int)
+labels[:] = -1
+labels[state.edges_int_indices] = np.arange(state.M_int)
+
+for i, indices in enumerate(state.nodes_to_ext_edges[state.nodes_peripheral]):
+    assert labels[indices].max() == -1
+    labels[indices] = i
+
+
+cmap1 = mpl.cm.nipy_spectral
+cmap2 = mpl.cm.tab20
+colors = np.zeros((state.n_edges, 4))
+colors[state.edges_int_indices] = cmap1(np.arange(state.M_int)/(state.M_int-1))
+colors[state.edges_ext_indices] = cmap2(labels[state.edges_ext_indices]/(state.N_ext-1))
+
+line_styles = np.array([':' for i in range(state.n_edges)])
+line_styles[state.edges_int_indices] = '-'
+
+state.plot_edges(colors=colors, line_styles=line_styles)
+
+
+#########################
 plt.close('all')
 
 fig, ax1 = plt.subplots(figsize=(7,6))
