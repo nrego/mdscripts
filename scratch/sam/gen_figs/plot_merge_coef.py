@@ -123,16 +123,63 @@ for i, indices in enumerate(state.nodes_to_ext_edges[state.nodes_peripheral]):
     labels[indices] = i
 
 
-cmap1 = mpl.cm.nipy_spectral
+cmap1 = mpl.cm.gist_ncar
 cmap2 = mpl.cm.tab20
 colors = np.zeros((state.n_edges, 4))
 colors[state.edges_int_indices] = cmap1(np.arange(state.M_int)/(state.M_int-1))
 colors[state.edges_ext_indices] = cmap2(labels[state.edges_ext_indices]/(state.N_ext-1))
 
-line_styles = np.array([':' for i in range(state.n_edges)])
+line_styles = np.array(['--' for i in range(state.n_edges)])
 line_styles[state.edges_int_indices] = '-'
 
-state.plot_edges(colors=colors, line_styles=line_styles)
+state.plot_edges(colors=colors, line_styles=line_styles, line_widths=np.ones(state.n_edges)*6)
+
+
+plt.close('all')
+plt.plot([0,0], [0,0], 'ko', markersize=20, label='internal node')
+plt.plot([0,0], [0,0], 'rX', markersize=20, label='external node')
+plt.plot([0,0], [0,0], 'k-', linewidth=6, label='internal edge')
+plt.plot([0,0], [0,0], 'k--', linewidth=6, label='external edge')
+
+plt.xlim(-100, -90)
+plt.legend(loc='center')
+plt.axis('off')
+plt.savefig('/Users/nickrego/Desktop/multi_color_legend_fig', transparent=True)
+
+
+
+
+## After merger number 1 ##
+#######################################################################
+#######################################################################
+
+plt.close('all')
+
+state.plot()
+
+labels = np.zeros(state.n_edges, dtype=int)
+labels[:] = -1
+labels[state.edges_int_indices] = np.arange(state.M_int)
+
+for i, indices in enumerate(state.nodes_to_ext_edges[state.nodes_peripheral]):
+    assert labels[indices].max() == -1
+    labels[indices] = i
+
+
+cmap1 = mpl.cm.gist_ncar
+cmap2 = mpl.cm.tab20
+colors = np.zeros((state.n_edges, 4))
+colors[state.edges_int_indices] = cmap1(np.arange(state.M_int)/(state.M_int-1))
+colors[state.edges_ext_indices] = cmap2(labels[state.edges_ext_indices]/(state.N_ext-1))
+
+line_styles = np.array(['--' for i in range(state.n_edges)])
+line_styles[state.edges_int_indices] = '-'
+
+state.plot_edges(colors=colors, line_styles=line_styles, line_widths=np.ones(state.n_edges)*6)
+
+#########################
+#########################
+
 
 
 #########################
