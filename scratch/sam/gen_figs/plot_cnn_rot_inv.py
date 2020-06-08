@@ -16,11 +16,12 @@ import os, glob, pathlib
 import itertools
 
 
-## Plot CNN filters (first layer, possibly second layer, too)
-##   For a cnn with a given set of hyper params (set below)
+## Plot patterns, illustrating rotational invariance
+#
+#
 n_hidden_layer = 2
 n_node_hidden = 4
-n_conv_filters = 4
+n_conv_filters = 3
 
 # Are there two convolutions?
 is_double = True
@@ -52,30 +53,6 @@ def make_nets(all_state_dict, all_hyp_param_array):
 
 
     return all_nets 
-
-
-def kernel_rep(k0, k1, norm=None, cmap=None):
-    k0 = k0.detach()[:,0,...]
-    k1 = k1.detach()[:,0,...]
-
-    n_filters = k0.shape[0]
-    assert n_filters == k1.shape[0]
-
-    arr = np.zeros((n_filters, 3, 3))
-
-    for i_filter in range(n_filters):
-        this_k0 = k0[i_filter]
-        this_k1 = k1[i_filter]
-
-        arr[i_filter][1:, 0] = this_k1[:,0]
-        arr[i_filter][1:, 2] = this_k1[:,1]
-        arr[i_filter][:, 1] = this_k0[:,0]
-
-    arr = arr.reshape(1, n_filters, 3, 3)
-
-    plot_hextensor(arr, norm=norm, cmap=cmap, mask=[0,6])
-
-    return arr
 
 # Given a pattern, plot filters, filtering operations, and pooling
 #  Save CNN filters for pattern
@@ -126,7 +103,6 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
         plt.savefig('{}/fig_{}_filter_pool2'.format(path, title), transparent=True)
 
 
-
 ##
 ds = np.load('data/sam_cnn_ml_trials.npz')
 all_state_dict = ds['all_state_dict']
@@ -150,6 +126,8 @@ net = all_nets[i_conv_filters, i_hidden_layer, i_node_hidden]
 
 #Get feat vec and augment to get right dimensions
 feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz')
+feat_vec, energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices)
+
 n_patch_dim = feat_vec.shape[1]
 
 homedir = os.environ['HOME']
@@ -160,58 +138,25 @@ dataset = SAMConvDataset(feat_vec, energies)
 pred = net(dataset.X).detach().numpy().squeeze()
 mse = np.mean((energies - pred)**2)
 
-x = dataset.X[841]
-x = x.reshape(-1,*x.shape)
-
-## Plot conv kernels
-
-norm = plt.Normalize(-1,1)
-
-## conv layer 1
-
-plt.close('all')
-plot_hextensor(x)
-plt.savefig('{}/Desktop/pattern_embed'.format(homedir), transparent=True)
+X = dataset.X.reshape(dataset.X.shape[0], 1, *dataset.X.shape[1:])
 
 
-l1 = net.conv1
-c, r, p = l1.children()
+idx = 841
 
-k0 = c.kernel0
-k1 = c.kernel1
+x_rot = np.zeros((6, *X.shape[1:]))
 
-arr = kernel_rep(k0, k1)
-plt.close('all')
+# Collect each rotated image x
+for i in range(6):
 
 
-kernel_rep(k0, k1, norm=norm, cmap='RdBu')
-plt.savefig('{}/Desktop/kernel_l1'.format(homedir), transparent=True)
-
-
-## Conv layer 2
-if is_double:
-    plt.close('all')
-    l2 = net.conv2
-    c, r, p = l2.children()
-
-    k0 = c.kernel0
-    k1 = c.kernel1
-
-    arr = kernel_rep(k0, k1)
-    plt.close('all')
-
-    kernel_rep(k0, k1, norm=norm, cmap='RdBu')
-    plt.savefig('{}/Desktop/kernel_l2'.format(homedir), transparent=True)
+    x_rot[i] = X[idx*6 + i]
 
     plt.close('all')
+    plot_hextensor(x_rot[i])
+    plt.savefig('{}/Desktop/pattern_embed_{:d}'.format(homedir, i), transparent=True)
 
-## Now, make all images
 
-construct_pvn_images(841, net, dataset.X, is_double=is_double)
+    construct_pvn_images(idx*6+i, net, dataset.X, is_double=True, title=i)
 
-plt.close('all')
 
-#l1 = net.conv1
-#c, r, p = l1.children()
-#out = r(c(x))
-#plt.close('all')
+

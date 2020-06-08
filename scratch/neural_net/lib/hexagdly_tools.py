@@ -26,6 +26,7 @@ def plot_hextensor(
     edgecolors='k',
     zorder=None,
     figname="figure",
+    size=(5,5),
     mask=[]
 ):
     r"""Plot the hexagonal representation of a 4D tensor according to the 
@@ -61,7 +62,7 @@ def plot_hextensor(
     nimages = max(inexamples, inchannels)
     hexagons = [[] for i in range(nimages)]
     intensities = [[] for i in range(nimages)]
-    fig = plt.figure(figname, (5, 5))
+    fig = plt.figure(figname, size)
     fig.clear()
     nrows = int(np.ceil(np.sqrt(nimages)))
     gs = gridspec.GridSpec(nrows, nrows)
