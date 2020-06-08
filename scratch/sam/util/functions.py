@@ -155,6 +155,7 @@ def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridg
 
     # R^2 and MSE for each train/validation round
     perf_mse = np.zeros(k)
+    perf_r2 = np.zeros(k)
 
     ## Shuffle the data
     rand = np.random.choice(np.arange(n_dat), n_dat, replace=False)
@@ -185,6 +186,7 @@ def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridg
 
         mse = np.mean((y_validate-pred)**2)
         perf_mse[i_clust] = mse
+        perf_r2[i_clust] = reg.score(X_validate, y_validate)
 
     reg.fit(X, y, sample_weight=weights)
     fit = reg.predict(xvals)
@@ -192,7 +194,20 @@ def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridg
     pred = reg.predict(X)
     err = y - pred
 
-    return (perf_mse, err, xvals[:,sort_axis], fit, reg)
+    return (perf_mse, perf_r2, err, reg)
+
+# Run k-fold regression multiple times to get errors on cv'd mse
+def fit_multi_k_fold(X, y, k=5, fit_intercept=True, n_boot=100, **kwargs):
+    all_perf_mse = np.zeros(n_boot)
+    all_perf_r2 = np.zeros(n_boot)
+
+    for i in range(n_boot):
+        perf_mse, perf_r2, err, reg = fit_k_fold(X, y, k=k, fit_intercept=fit_intercept, **kwargs)
+        all_perf_mse[i] = perf_mse.mean()
+        all_perf_r2[i] = perf_r2.mean()
+
+    return all_perf_mse, all_perf_r2, err, reg
+
 
 # Perform bootstrapping on data to estimate errors in linear regression coefficients
 def fit_bootstrap(X, y, fit_intercept=True, n_bootstrap=1000, weights=None):

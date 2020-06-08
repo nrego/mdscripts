@@ -54,16 +54,7 @@ def plot_mgc(state, mgc, cmap=plt.cm.tab20):
     norm = plt.Normalize(0,19)
     state.plot_edges(colors=cmap(norm(mgc.labels)))
 
-def get_reg(feat_vec, energies, mgc, k=5):
-    red_feat = construct_red_feat(feat_vec, np.append(mgc.labels, mgc.labels.max()+1))
-
-    all_perf = np.zeros(100)
-    for i in range(100):
-        perf, err, _, _, reg = fit_k_fold(red_feat, energies, k=k)
-        all_perf[i] = perf.mean()
-
-    return all_perf, err, reg
-
+# Get colors for each label
 def get_label_colors(labels, state):
 
     # Unique labels for each internal or external edge
@@ -112,14 +103,21 @@ homedir = os.environ['HOME']
 energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))
 err_energies = np.load('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))['err_energies']
 
-perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies)
+perf_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_feat_vec, energies)
 
 state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
 
 
 ds = np.load('merge_data/sam_merge_coef_class_{:02d}_{:02d}.npz'.format(p,q))
+
 all_mse = ds['all_mse']
+
 all_cv_mse = ds['all_cv_mse']
+all_cv_r2 = ds['all_cv_r2']
+
+all_cv_mse_se = ds['all_cv_mse_se']
+all_cv_r2_se = ds['all_cv_r2_se']
+
 # Number of edge classes + 2 (for ko and the intercept)
 all_n_params = ds['all_n_params']
 all_mgc = ds['all_mgc']
@@ -152,7 +150,7 @@ line_styles = np.array(['--' for i in range(state.n_edges)])
 line_styles[state.edges_int_indices] = '-'
 
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=np.ones(state.n_edges)*6)
-plt.savefig('/Users/nickrego/Desktop/fig_merge_0', transparent=True)
+plt.savefig('{}/Desktop/fig_merge_0'.format(homedir), transparent=True)
 
 plt.close('all')
 plt.plot([0,0], [0,0], 'ko', markersize=20, label='internal node')
@@ -163,7 +161,7 @@ plt.plot([0,0], [0,0], 'k--', linewidth=6, label='external edge')
 plt.xlim(-100, -90)
 plt.legend(loc='center')
 plt.axis('off')
-plt.savefig('/Users/nickrego/Desktop/multi_color_legend_fig', transparent=True)
+plt.savefig('{}/Desktop/multi_color_legend_fig'.format(homedir), transparent=True)
 
 
 
@@ -184,7 +182,7 @@ line_widths=np.ones(state.n_edges)*6
 line_widths[fresh_merge_mask] = 12
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
-plt.savefig('/Users/nickrego/Desktop/fig_merge_1', transparent=True)
+plt.savefig('{}/Desktop/fig_merge_1'.format(homedir), transparent=True)
 
 ##################################################
 ##################################################
@@ -205,7 +203,7 @@ line_widths=np.ones(state.n_edges)*6
 
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
-plt.savefig('/Users/nickrego/Desktop/fig_merge_half', transparent=True)
+plt.savefig('{}/Desktop/fig_merge_half'.format(homedir), transparent=True)
 
 
 ###########################
@@ -231,7 +229,7 @@ colors[state.edges_ext_indices] = '#ffa200'
 colors[state.edges_int_indices] = '#ff00bf'
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
-plt.savefig('/Users/nickrego/Desktop/fig_merge_m3', transparent=True)
+plt.savefig('{}/Desktop/fig_merge_m3'.format(homedir), transparent=True)
 
 
 ###########################
@@ -257,5 +255,5 @@ ax1.set_ylim(3.8, 5.9)
 
 fig.tight_layout()
 
-plt.savefig('/Users/nickrego/Desktop/merge_perf', transparent=True)
+plt.savefig('{}/Desktop/merge_perf'.format(homedir), transparent=True)
 

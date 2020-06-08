@@ -27,21 +27,7 @@ from sklearn.cluster import AgglomerativeClustering
 #
 #
 
-def bootstrap(dataset, fn, n_boot=1000):
-    np.random.seed()
 
-    assert dataset.ndim == 1
-    n_dat = dataset.size
-
-    boot_samples = np.zeros((n_boot))
-
-    for i_boot in range(n_boot):
-        this_boot = np.random.choice(dataset, n_dat)
-
-        boot_samples[i_boot] = fn(this_boot)
-
-
-    return boot_samples
 
 def unpackbits(x, num_bits):
   xshape = list(x.shape)
@@ -391,16 +377,16 @@ feat_vec3 = test_get_feat_vec2(states)
 
 
 
-
 # Full feature vector (edge type for each edge, 3*M_tot)
-perf1, err1, _, _, reg1 = fit_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True)
+perf_mse1, perf_r21, err1, reg1 = fit_multi_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True)
 # h_oo (one for each of M_tot edges), plus k_o. Has redundancies (periph edges)
-perf2, err2, _, _, reg2 = fit_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True)
+perf_mse2, perf_r22, err2, reg2 = fit_multi_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True)
 # ko, sum over all internal edges, sum over all external edges (miext edges for each peripheral node); shape: (M_int + N_periph + 1)
-perf3, err3, _, _, reg3 = fit_k_fold(feat_vec3, energies, k=k_cv)
-perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies, k=k_cv) 
+perf_mse3, perf_r23, err3, reg3 = fit_multi_k_fold(feat_vec3, energies, k=k_cv)
 
-perf_m1, err_m1, _, _, reg_m1 = fit_k_fold(ols_feat_vec[:,0].reshape(-1,1), energies, k=k_cv)
+perf_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_feat_vec, energies, k=k_cv) 
+
+perf_mse_m1, perf_r2_m1, err_m1, reg_m1 = fit_multi_k_fold(ols_feat_vec[:,0].reshape(-1,1), energies, k=k_cv)
 
 ### Merge and label classes of edges ###
 ########################################
@@ -485,20 +471,30 @@ while len(mgc) >= n_clust:
 all_mse = np.array(all_mse)
 all_n_params = np.array(all_n_params)
 all_cv_mse = np.zeros_like(all_mse)
+all_cv_mse_se = np.zeros_like(all_mse)
+all_cv_r2 = np.zeros_like(all_mse)
+all_cv_r2_se = np.zeros_like(all_mse)
+
+print("...done, now doing CV")
 
 # Do the CV here, as a final check
 for i, this_mgc in enumerate(all_mgc):
     this_labels = np.append(this_mgc.labels, this_mgc.labels.max()+1)
 
     red_feat = construct_red_feat(feat_vec2, this_labels)
-    perf, err, _, _, this_reg = fit_k_fold(red_feat, energies, k=k_cv)
+    perf_mse, perf_r2, err, this_reg = fit_multi_k_fold(red_feat, energies, k=k_cv)
 
-    all_cv_mse[i] = perf.mean()
+    all_cv_mse[i] = perf_mse.mean()
+    all_cv_mse_se[i] = perf_mse.std(ddof=1)
+
+    all_cv_r2[i] = perf_r2.mean()
+    all_cv_r2_se[i] = perf_r2.std(ddof=1)
 
 
 myaic = aic(n_dat, all_mse, all_n_params, do_corr=True)
 
 np.savez_compressed('merge_data/sam_merge_coef_class_{:02d}_{:02d}'.format(p,q), all_mse=all_mse, 
-                    all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_mgc=all_mgc, feat_vec=feat_vec2)
+                    all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_cv_r2=all_cv_r2, all_mgc=all_mgc, 
+                    all_cv_mse_se=all_cv_mse_se, all_cv_r2_se=all_cv_r2_se, feat_vec=feat_vec2)
 
 cmap = plt.cm.tab20
