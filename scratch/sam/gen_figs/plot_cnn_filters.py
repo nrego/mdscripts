@@ -20,7 +20,7 @@ import itertools
 ##   For a cnn with a given set of hyper params (set below)
 n_hidden_layer = 2
 n_node_hidden = 4
-n_conv_filters = 4
+n_conv_filters = 3
 
 # Are there two convolutions?
 is_double = True
@@ -184,7 +184,7 @@ arr = kernel_rep(k0, k1)
 plt.close('all')
 
 
-kernel_rep(k0, k1, norm=norm, cmap='RdBu')
+kernel_rep(k0, k1, norm=norm, cmap='PiYG')
 plt.savefig('{}/Desktop/kernel_l1'.format(homedir), transparent=True)
 
 
@@ -200,7 +200,7 @@ if is_double:
     arr = kernel_rep(k0, k1)
     plt.close('all')
 
-    kernel_rep(k0, k1, norm=norm, cmap='RdBu')
+    kernel_rep(k0, k1, norm=norm, cmap='PiYG')
     plt.savefig('{}/Desktop/kernel_l2'.format(homedir), transparent=True)
 
     plt.close('all')

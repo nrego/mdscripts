@@ -235,6 +235,31 @@ plt.savefig('{}/Desktop/fig_merge_m3'.format(homedir), transparent=True)
 ###########################
 ###########################
 
+## One edge class: M2 ##
+#######################################################################
+#######################################################################
+
+plt.close('all')
+
+state.plot(size=figsize)
+
+labels = all_mgc[-1].labels
+assert np.unique(labels).size == 1
+assert np.unique(labels[state.edges_int_indices]).size == 1
+
+line_widths=np.ones(state.n_edges)*6
+
+colors = np.empty(state.n_edges, dtype=object)
+colors[:] = '#bfa80f'
+#colors[state.edges_int_indices] = '#ff00bf'
+state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
+
+plt.savefig('{}/Desktop/fig_merge_m2'.format(homedir), transparent=True)
+
+
+###########################
+###########################
+
 
 #########################
 plt.close('all')
@@ -244,14 +269,15 @@ fig, ax1 = plt.subplots(figsize=(7,6))
 ax2 = ax1.twinx()
 
 ax1.set_xlim(-5, all_n_params.max()+2)
-ax1.plot(all_n_params[:-1]-2, all_cv_mse[:-1], 'bo')
+ax1.plot(all_n_params[:]-2, all_cv_mse[:], 'bo', markersize=12)
 ax1.plot(all_n_params[-2]-2, all_cv_mse[-2], 'rD', markersize=20)
-ax2.plot(all_n_params[:-1]-2, all_aic[:-1], 'k-', linewidth=4)
+ax1.plot(all_n_params[-1]-2, all_cv_mse[-1], 'yD', markersize=20)
+ax2.plot(all_n_params[:]-2, all_aic[:], 'k-', linewidth=4)
 
 ax1.set_zorder(1)
 ax1.patch.set_visible(False)
 
-ax1.set_ylim(3.8, 5.9)
+#ax1.set_ylim(3.8, 10)
 
 fig.tight_layout()
 

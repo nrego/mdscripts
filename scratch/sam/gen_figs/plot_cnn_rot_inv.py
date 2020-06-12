@@ -152,11 +152,70 @@ for i in range(6):
     x_rot[i] = X[idx*6 + i]
 
     plt.close('all')
-    plot_hextensor(x_rot[i])
-    plt.savefig('{}/Desktop/pattern_embed_{:d}'.format(homedir, i), transparent=True)
+    #plot_hextensor(x_rot[i])
+    #plt.savefig('{}/Desktop/pattern_embed_{:d}'.format(homedir, i), transparent=True)
 
 
-    construct_pvn_images(idx*6+i, net, dataset.X, is_double=True, title=i)
+    #construct_pvn_images(idx*6+i, net, dataset.X, is_double=True, title=i)
 
+plt.close('all')
+cust_color = (1,0.5,0,0.6)
+arr = np.zeros((1,1,3,3))
+lw = np.ones(6)*6
+#lw[3] = 12
+plot_hextensor(arr, cust_color=cust_color, linewidth=lw, mask=(0,6))
+plt.savefig('{}/Desktop/conv_filter'.format(homedir), transparent=True)
+
+state = states[idx]
+plt.close('all')
+state.plot()
+plt.savefig('{}/Desktop/pattern'.format(homedir), transparent=True)
+
+
+### Plot first convolutional filter ###
+
+plt.close('all')
+
+c, r, p = net.conv1.children()
+
+x = plot_feat(make_feat(state.methyl_mask, state.pos_ext, state.patch_indices))
+x = torch.from_numpy(np.ascontiguousarray(x)).float()
+c_out = c(x).detach()[:,0,...].reshape(1,1,8,8)
+
+norm = plt.Normalize(0, np.ceil(c_out.max()))
+plot_hextensor(c_out, cmap="Greys", norm=norm)
+plt.savefig('{}/Desktop/conv'.format(homedir), transparent=True)
+plt.close('all')
+
+
+arr = np.zeros((1,1,1,1))
+plot_hextensor(arr, cust_color=(0,0,0,0), linewidth=30)
+plt.savefig('{}/Desktop/hex_fig'.format(homedir), transparent=True)
+
+plt.close('all')
+
+
+## Now for pooling
+plt.close('all')
+cust_color = (0.5,1.0,0,0.2)
+arr = np.zeros((1,1,3,3))
+lw = np.ones(6)*12
+#lw[3] = 12
+plot_hextensor(arr, cust_color=cust_color, linewidth=lw, mask=(0,6))
+plt.savefig('{}/Desktop/pool_filter'.format(homedir), transparent=True)
+
+
+plt.close('all')
+x = make_feat(state.methyl_mask, state.pos_ext, state.patch_indices)
+x = np.append(np.zeros(8), x)
+x = plot_feat(x, 9, 8)
+x = torch.from_numpy(np.ascontiguousarray(x)).float()
+c_out = c(x).detach()[:,0,...].reshape(1,1,9,8)
+
+p_out = p(r(c_out))
+norm = plt.Normalize(0, np.ceil(p_out.max()))
+plot_hextensor(p_out, cmap="Greys", norm=norm)
+plt.savefig('{}/Desktop/pool'.format(homedir), transparent=True)
+plt.close('all')
 
 

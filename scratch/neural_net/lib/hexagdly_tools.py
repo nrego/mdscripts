@@ -27,6 +27,7 @@ def plot_hextensor(
     zorder=None,
     figname="figure",
     size=(5,5),
+    cust_color=None,
     mask=[]
 ):
     r"""Plot the hexagonal representation of a 4D tensor according to the 
@@ -103,15 +104,17 @@ def plot_hextensor(
         )
         ax.set_axis_off()
         
-        p = PatchCollection(
-            np.array(hexagons[i]), cmap=cmap, norm=norm, alpha=0.9, edgecolors="k", linewidth=linewidth
-        )
+        if cust_color is not None:
+            p = PatchCollection(
+                np.array(hexagons[i]), facecolor=cust_color, edgecolor="k", linewidth=linewidth
+            )     
+        else:       
+            p = PatchCollection(
+                np.array(hexagons[i]), cmap=cmap, norm=norm, alpha=0.9, edgecolors="k", linewidth=linewidth
+            )
 
-        p.set_array(np.array(np.array(intensities[i])))
-        p.set_linewidth(linewidth)
-        p.set_cmap(cmap)
-        #p.set_norm(norm)
-        p.set_edgecolors(edgecolors)
+            p.set_array(np.array(np.array(intensities[i])))
+
         p.set_zorder(zorder)
         ax.add_collection(p)
         ax.set_aspect("equal")
