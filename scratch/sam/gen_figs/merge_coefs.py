@@ -333,7 +333,7 @@ def check_merged_coef(mgc0, mgc1, feat_vec, energies):
 #def partition_feat(feat_vec, k=3)
 
 ### Merge edge types
-k_cv=5
+k_cv = 5
 
 p = 6
 q = 6
@@ -375,18 +375,20 @@ feat_vec2 = get_feat_vec_oo(states)
 # shape: M_int+N_ext+1 (hkoo for each internal, number of external oo edges for each periph, plus ko)
 feat_vec3 = test_get_feat_vec2(states)
 
-
+#weights = np.ones(n_dat)
+weights = 1 / (err_energies**2)
+weights /= weights
 
 # Full feature vector (edge type for each edge, 3*M_tot)
-perf_mse1, perf_r21, err1, reg1 = fit_multi_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True)
+perf_mse1, perf_wt_mse1, perf_r21, err1, reg1 = fit_multi_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True, weights=weights)
 # h_oo (one for each of M_tot edges), plus k_o. Has redundancies (periph edges)
-perf_mse2, perf_r22, err2, reg2 = fit_multi_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True)
+perf_mse2, perf_wt_mse2, perf_r22, err2, reg2 = fit_multi_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True, weights=weights)
 # ko, sum over all internal edges, sum over all external edges (miext edges for each peripheral node); shape: (M_int + N_periph + 1)
-perf_mse3, perf_r23, err3, reg3 = fit_multi_k_fold(feat_vec3, energies, k=k_cv)
+perf_mse3, perf_wt_mse3, perf_r23, err3, reg3 = fit_multi_k_fold(feat_vec3, energies, k=k_cv, weights=weights)
 
-perf_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_feat_vec, energies, k=k_cv) 
+perf_mse_m3, perf_wt_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_feat_vec, energies, k=k_cv, weights=weights) 
 
-perf_mse_m1, perf_r2_m1, err_m1, reg_m1 = fit_multi_k_fold(ols_feat_vec[:,0].reshape(-1,1), energies, k=k_cv)
+perf_mse_m1, perf_wt_mse_m1, perf_r2_m1, err_m1, reg_m1 = fit_multi_k_fold(ols_feat_vec[:,0].reshape(-1,1), energies, k=k_cv, weights=weights)
 
 ### Merge and label classes of edges ###
 ########################################
@@ -405,6 +407,7 @@ mgc = copy.deepcopy(mgc_0)
 
 all_mgc = []
 all_mse = []
+all_wt_mse = []
 all_n_params = []
 
 reg = linear_model.LinearRegression()
@@ -413,20 +416,23 @@ min_mgc = copy.deepcopy(mgc)
 temp_feat_vec = construct_red_feat(feat_vec2, np.append(min_mgc.labels, min_mgc.labels.max()+1))
 
 reg.fit(temp_feat_vec, energies)
-min_mse = np.mean((energies - reg.predict(temp_feat_vec))**2)
+err = energies - reg.predict(temp_feat_vec)
+min_wt_mse = np.mean(weights*(err**2))
+min_mse = np.mean(err**2)
 
 i_merge = 0
 
 ## Now perform merging until we have the requisite number of groups
 while len(mgc) >= n_clust:
-    print("merge round i:{}".format(i_merge))
+    print("merge round i: {:03d}".format(i_merge))
     
     all_mgc.append(min_mgc)
+    all_wt_mse.append(min_wt_mse)
     all_mse.append(min_mse)
     # Number of edge classes, plus ko, plus intercept
     all_n_params.append(len(min_mgc)+2)
 
-    min_mse = np.inf
+    min_wt_mse = np.inf
     min_mgc = None
     min_i = -1
     min_j = -1
@@ -448,11 +454,14 @@ while len(mgc) >= n_clust:
         temp_labels = temp_mgc.labels
         temp_feat_vec = construct_red_feat(feat_vec2, np.append(temp_labels, temp_labels.max()+1))
 
-        reg.fit(temp_feat_vec, energies)
-        temp_mse = np.mean((energies - reg.predict(temp_feat_vec))**2)
+        reg.fit(temp_feat_vec, energies, sample_weight=weights)
+        temp_err = (energies - reg.predict(temp_feat_vec))
+        temp_mse = np.mean(temp_err**2)
+        temp_wt_mse = np.mean(weights*(temp_err**2))
 
         # Best merge so far this round
-        if temp_mse < min_mse:
+        if temp_wt_mse < min_wt_mse:
+            min_wt_mse = temp_wt_mse
             min_mse = temp_mse
             min_mgc = temp_mgc
             min_i = i_grp
@@ -467,9 +476,12 @@ while len(mgc) >= n_clust:
     mgc.merge_groups(min_i, min_j)
     i_merge += 1
 
-
+all_wt_mse = np.array(all_wt_mse)
 all_mse = np.array(all_mse)
 all_n_params = np.array(all_n_params)
+
+all_cv_wt_mse = np.zeros_like(all_mse)
+all_cv_wt_mse_se = np.zeros_like(all_mse)
 all_cv_mse = np.zeros_like(all_mse)
 all_cv_mse_se = np.zeros_like(all_mse)
 all_cv_r2 = np.zeros_like(all_mse)
@@ -479,22 +491,26 @@ print("...done, now doing CV")
 
 # Do the CV here, as a final check
 for i, this_mgc in enumerate(all_mgc):
+    print("i {:03d}".format(i))
+
     this_labels = np.append(this_mgc.labels, this_mgc.labels.max()+1)
 
     red_feat = construct_red_feat(feat_vec2, this_labels)
-    perf_mse, perf_r2, err, this_reg = fit_multi_k_fold(red_feat, energies, k=k_cv)
+    perf_mse, perf_wt_mse, perf_r2, err, this_reg = fit_multi_k_fold(red_feat, energies, k=k_cv, weights=weights)
 
     all_cv_mse[i] = perf_mse.mean()
     all_cv_mse_se[i] = perf_mse.std(ddof=1)
+
+    all_cv_wt_mse[i] = perf_wt_mse.mean()
+    all_cv_wt_mse_se[i] = perf_wt_mse.std(ddof=1)
 
     all_cv_r2[i] = perf_r2.mean()
     all_cv_r2_se[i] = perf_r2.std(ddof=1)
 
 
-myaic = aic(n_dat, all_mse, all_n_params, do_corr=True)
 
-np.savez_compressed('merge_data/sam_merge_coef_class_{:02d}_{:02d}'.format(p,q), all_mse=all_mse, 
-                    all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_cv_r2=all_cv_r2, all_mgc=all_mgc, 
-                    all_cv_mse_se=all_cv_mse_se, all_cv_r2_se=all_cv_r2_se, feat_vec=feat_vec2)
+np.savez_compressed('merge_data/sam_merge_coef_class_{:02d}_{:02d}'.format(p,q), all_mse=all_mse, all_wt_mse=all_wt_mse,
+                    all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_cv_wt_mse=all_cv_wt_mse, all_mgc=all_mgc, 
+                    all_cv_mse_se=all_cv_mse_se, all_cv_wt_mse_se=all_cv_wt_mse_se, feat_vec=feat_vec2)
 
 cmap = plt.cm.tab20

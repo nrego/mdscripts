@@ -185,10 +185,8 @@ def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridg
         pred = reg.predict(X_validate)
         err_sq = (y_validate - pred)**2
 
-        weights_validate /= weights_validate.sum()
-
         perf_mse[i_clust] = np.mean(err_sq)
-        perf_wt_mse[i_clust] = np.dot(weights_validate, err_sq)
+        perf_wt_mse[i_clust] = np.mean(weights_validate*err_sq)
         perf_var[i_clust] = y_validate.var()
 
     reg.fit(X, y, sample_weight=weights)
