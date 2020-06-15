@@ -436,6 +436,7 @@ while len(mgc) >= n_clust:
     all_n_params.append(len(min_mgc)+2)
 
     min_wt_mse = np.inf
+    min_mse = np.inf
     min_mgc = None
     min_i = -1
     min_j = -1
