@@ -467,7 +467,9 @@ while len(mgc) >= n_clust:
         temp_wt_mse = np.mean(weights*(temp_err**2))
 
         # Best merge so far this round
-        if temp_wt_mse < min_wt_mse:
+        condition = (do_weighted and (temp_wt_mse < min_wt_mse)) or ((not do_weighted) and (temp_mse < min_mse))
+        
+        if condition:
             min_wt_mse = temp_wt_mse
             min_mse = temp_mse
             min_mgc = temp_mgc
@@ -516,7 +518,8 @@ for i, this_mgc in enumerate(all_mgc):
 
 
 outstr = 'weighted' if do_weighted else 'no_weighted'
-np.savez_compressed('merge_data/sam_merge_coef_class_weighted_{:02d}_{:02d}'.format(p,q), all_mse=all_mse, all_wt_mse=all_wt_mse,
+
+np.savez_compressed('merge_data/sam_merge_coef_class_{}_{:02d}_{:02d}'.format(outstr, p,q), all_mse=all_mse, all_wt_mse=all_wt_mse,
                     all_n_params=all_n_params, all_cv_mse=all_cv_mse, all_cv_wt_mse=all_cv_wt_mse, all_mgc=all_mgc, 
                     all_cv_mse_se=all_cv_mse_se, all_cv_wt_mse_se=all_cv_wt_mse_se, feat_vec=feat_vec2)
 
