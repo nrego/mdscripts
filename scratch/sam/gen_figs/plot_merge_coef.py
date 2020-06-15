@@ -103,16 +103,17 @@ homedir = os.environ['HOME']
 energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))
 err_energies = np.load('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))['err_energies']
 weights = 1 / err_energies**2
-#weights /= weights
+weights /= weights
 
 perf_mse_m3, perf_wt_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_feat_vec, energies, weights=weights)
 
 state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
 
 
-ds = np.load('merge_data/sam_merge_coef_class_weighted_{:02d}_{:02d}.npz'.format(p,q))
+ds = np.load('merge_data/sam_merge_coef_class_{:02d}_{:02d}.npz'.format(p,q))
 
 all_mse = ds['all_mse']
+all_wt_mse = ds['all_wt_mse']
 
 all_cv_mse = ds['all_cv_mse']
 all_cv_wt_mse = ds['all_cv_wt_mse']

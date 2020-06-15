@@ -126,7 +126,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None, do_ridge=
 
 # regress y on set of n_dim features, X.
 #   Do k-fold CV
-def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridge=False):
+def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridge=False, do_weighted=False):
     np.random.seed()
 
     assert y.ndim == 1
@@ -181,7 +181,11 @@ def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridg
         y_validate = rand_y[test_indices]
         weights_validate = rand_weights[test_indices]
 
-        reg.fit(X_train, y_train, sample_weight=weights_train)
+        if do_weighted:
+            reg.fit(X_train, y_train, sample_weight=weights_train)
+        else:
+            reg.fit(X_train, y_train)
+
         pred = reg.predict(X_validate)
         err_sq = (y_validate - pred)**2
 
@@ -189,7 +193,10 @@ def fit_k_fold(X, y, k=5, sort_axis=0, fit_intercept=True, weights=None, do_ridg
         perf_wt_mse[i_clust] = np.mean(weights_validate*err_sq)
         perf_var[i_clust] = y_validate.var()
 
-    reg.fit(X, y, sample_weight=weights)
+    if do_weighted:
+        reg.fit(X, y, sample_weight=weights)
+    else:
+        reg.fit(X, y)
 
     pred = reg.predict(X)
     err = y - pred
