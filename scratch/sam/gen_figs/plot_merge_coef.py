@@ -89,6 +89,8 @@ def get_label_colors(labels, state):
 p = 6
 q = 6
 
+do_weighted = False
+
 # For SAM schematic pattern plotting
 figsize = (10,10)
 
@@ -103,14 +105,18 @@ homedir = os.environ['HOME']
 energies, ols_feat_vec, states = extract_from_ds('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))
 err_energies = np.load('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))['err_energies']
 weights = 1 / err_energies**2
-weights /= weights
 
-perf_mse_m3, perf_wt_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_feat_vec, energies, weights=weights)
+perf_mse_m3, perf_wt_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_feat_vec, energies, weights=weights, do_weighted=do_weighted)
+
+m2_feat = np.append(ols_feat_vec[:,0][:,None], ols_feat_vec[:,1:].sum(axis=1)[:,None], axis=1)
+perf_mse_m2, perf_wt_mse_m2, perf_r2_m2, err_m2, reg_m2 = fit_multi_k_fold(m2_feat, energies, weights=weights, do_weighted=do_weighted)
+perf_mse_m1, perf_wt_mse_m1, perf_r2_m1, err_m1, reg_m1 = fit_multi_k_fold(ols_feat_vec[:,0].reshape(-1,1), energies, weights=weights, do_weighted=do_weighted)
+
 
 state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
 
-
-ds = np.load('merge_data/sam_merge_coef_class_{:02d}_{:02d}.npz'.format(p,q))
+instr = 'weighted' if do_weighted else 'no_weighted'
+ds = np.load('merge_data/sam_merge_coef_class_{}_{:02d}_{:02d}.npz'.format(instr,p,q))
 
 all_mse = ds['all_mse']
 all_wt_mse = ds['all_wt_mse']
@@ -139,7 +145,7 @@ homedir = os.environ['HOME']
 cmap = mpl.cm.tab20
 norm = plt.Normalize(0,19)
 
-
+line_widths=np.ones(state.n_edges)*10
 ## Plot edges as different colors, highlight external/internal edges ##
 #######################################################################
 #######################################################################
@@ -152,7 +158,7 @@ colors = get_label_colors(all_mgc[0].labels, state)
 line_styles = np.array(['--' for i in range(state.n_edges)])
 line_styles[state.edges_int_indices] = '-'
 
-state.plot_edges(colors=colors, line_styles=line_styles, line_widths=np.ones(state.n_edges)*6)
+state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 plt.savefig('{}/Desktop/fig_merge_0'.format(homedir), transparent=True)
 
 plt.close('all')
@@ -167,31 +173,6 @@ plt.axis('off')
 plt.savefig('{}/Desktop/multi_color_legend_fig'.format(homedir), transparent=True)
 
 
-
-
-## After merger number 1 ##
-#######################################################################
-#######################################################################
-
-plt.close('all')
-
-state.plot(size=figsize)
-
-colors = get_label_colors(all_mgc[1].labels, state)
-
-fresh_merge_mask = all_mgc[1].labels == all_mgc[1].labels.max()
-
-line_widths=np.ones(state.n_edges)*6
-line_widths[fresh_merge_mask] = 12
-state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
-
-plt.savefig('{}/Desktop/fig_merge_1'.format(homedir), transparent=True)
-
-##################################################
-##################################################
-
-
-
 ## After half are merged ##
 #######################################################################
 #######################################################################
@@ -201,8 +182,6 @@ plt.close('all')
 state.plot(size=figsize)
 
 colors = get_label_colors(all_mgc[53].labels, state)
-
-line_widths=np.ones(state.n_edges)*6
 
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
@@ -222,8 +201,6 @@ plt.close('all')
 state.plot(size=figsize)
 
 colors = get_label_colors(all_mgc[-6].labels, state)
-
-line_widths=np.ones(state.n_edges)*6
 
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
@@ -246,7 +223,6 @@ labels = all_mgc[-2].labels
 assert np.unique(labels).size == 2
 assert np.unique(labels[state.edges_int_indices]).size == 1
 
-line_widths=np.ones(state.n_edges)*6
 
 colors = np.empty(state.n_edges, dtype=object)
 colors[state.edges_ext_indices] = '#ffffff'
@@ -271,7 +247,6 @@ labels = all_mgc[-1].labels
 assert np.unique(labels).size == 1
 assert np.unique(labels[state.edges_int_indices]).size == 1
 
-line_widths=np.ones(state.n_edges)*6
 
 colors = np.empty(state.n_edges, dtype=object)
 colors[:] = '#000000'
@@ -307,4 +282,37 @@ ax1.patch.set_visible(False)
 fig.tight_layout()
 
 plt.savefig('{}/Desktop/merge_perf'.format(homedir), transparent=True)
+
+
+###########################
+###########################
+
+# BAR chart of selected
+
+#########################
+plt.close('all')
+
+fig, ax = plt.subplots(figsize=(6.2,6))
+
+indices = np.arange(4)
+
+# M1, M2, M3, and all edge types separate
+perfs = np.sqrt([np.mean(perf_mse_m1), all_cv_mse[-1], all_cv_mse[-2], all_cv_mse[0]])
+colors = ['#888888', 'r', '#888888']
+ax.bar(indices[1:], perfs[1:], color=colors)
+
+# Root mean squared error in f
+rms_obs = np.sqrt(np.mean(err_energies**2))
+
+ax.plot([0,4], [rms_obs, rms_obs], 'k--', linewidth=6)
+
+ax.set_xlim([0.4, 3.6])
+ax.set_ylim([1.3, 3.5])
+
+ax.set_xticks([])
+
+plt.savefig('{}/Desktop/bar_merge_perf'.format(homedir), transparent=True)
+
+
+
 
