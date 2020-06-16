@@ -32,8 +32,8 @@ mpl.rcParams.update({'legend.fontsize':30})
 #########################################
 # If true, enforce endpoint constraints ('pure' patterns constrained to f_0)
 
-p = 4
-q = 9
+p = 6
+q = 6
 
 ds = np.load('data/sam_pattern_{:02d}_{:02d}.npz'.format(p,q))
 
@@ -67,13 +67,13 @@ myfeat_meth = np.zeros_like(myfeat)
 # k_o, n_oo, n_oe
 for i, state in enumerate(states):
     myfeat[i] = state.k_o, state.n_oo, state.n_oe
-    myfeat_meth[i] = state.k_c, state.n_mm, state.n_me
+    myfeat_meth[i] = state.k_c, state.n_cc, state.n_ce
 
 myfeat_m2 = np.zeros((myfeat.shape[0], 2))
 myfeat_m2[:,0] = myfeat[:,0]
 myfeat_m2[:,1] = myfeat[:,1:].sum(axis=1)
 
-state_pure = State(np.array([],dtype=int), ny=p, nz=q)
+state_pure = State(np.array([],dtype=int), p=p, q=q)
 x_o = np.array([state_pure.k_o, state_pure.n_oo, state_pure.n_oe])
 
 #idx_state = 689

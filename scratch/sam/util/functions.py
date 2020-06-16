@@ -122,7 +122,7 @@ def fit_leave_one(X, y, sort_axis=0, fit_intercept=True, weights=None, do_ridge=
     pred = reg.predict(X)
     err = y - pred
 
-    return (perf_mse, err,  reg)
+    return (perf_mse, err, xvals, None, reg)
 
 # regress y on set of n_dim features, X.
 #   Do k-fold CV
