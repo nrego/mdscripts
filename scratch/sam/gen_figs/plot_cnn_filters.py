@@ -18,9 +18,9 @@ import itertools
 
 ## Plot CNN filters (first layer, possibly second layer, too)
 ##   For a cnn with a given set of hyper params (set below)
-n_hidden_layer = 2
+n_hidden_layer = 1
 n_node_hidden = 4
-n_conv_filters = 3
+n_conv_filters = 5
 
 # Are there two convolutions?
 is_double = True

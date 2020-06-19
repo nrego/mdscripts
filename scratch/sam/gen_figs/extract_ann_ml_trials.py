@@ -18,9 +18,10 @@ mpl.rcParams.update({'xtick.labelsize': 50})
 mpl.rcParams.update({'ytick.labelsize': 50})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':14})
+
+
 ## Extract NN training data (ANN, CNN, whatever)
 ##  Run from within ml_tests directory
-
 
 
 # Get hyperparams from file name
@@ -46,38 +47,53 @@ def extract_n_params(n_hidden_layer, n_node_hidden, n_patch_dim):
 
     return n_param, net
 
-def find_best_trial(path, choices=['ann1', 'ann2', 'ann3']):
+def find_best_trial(path, base_mse, thresh=0.01, choices=['ann1', 'ann2', 'ann3']):
 
     min_mse_tot = np.inf
     min_mses_cv = None
     best_headdir = None
 
+    mses_cv = np.array([])
+
     for headdir in choices:
+
         this_path = pathlib.Path(headdir, *path.parts)
         ds = np.load(this_path)
         this_mses_cv = ds['mses_cv']
         this_mse_tot = ds['mse_tot'].item()
 
+        # Mask CV'd values that are too large
+        mask_cv = (this_mses_cv / base_mse) < thresh
+
+        mses_cv = np.append(mses_cv, this_mses_cv[mask_cv])
+
         #print("headdir: {}  mse: {:.2f}".format(headdir, this_mse_tot))
         
         if this_mse_tot < min_mse_tot:
+
             min_mse_tot = this_mse_tot
             min_mses_cv = this_mses_cv
             best_headdir = headdir
 
 
-    return best_headdir, min_mse_tot, min_mses_cv
+    return best_headdir, min_mse_tot, mses_cv
 
+
+### EXTRACT PATTERN DATA ###
+############################ 
 
 #Get feat vec and augment to get right dimensions
 feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz', embed_pos_ext=False)
 n_patch_dim = feat_vec.shape[1]
 n_sample = feat_vec.shape[0]
 
-##
+dataset = SAMDataset(feat_vec, energies)
+
+
+### EXTRACT ANN HYPERPARAMS AND PERFS ###
+#########################################
 
 fnames = sorted(glob.glob("ann1/n_layer_*/perf_model_*"))
-
 
 hyp_param_array = np.zeros((len(fnames), 2), dtype=int)
 
@@ -86,17 +102,15 @@ for i, fname in enumerate(fnames):
     this_n_hidden_layer, this_n_node_hidden = extract_info(basename)
     hyp_param_array[i] = this_n_hidden_layer, this_n_node_hidden
 
-
 trial_n_hidden_layer = np.unique(hyp_param_array[:,0])
 trial_n_node_hidden = np.unique(hyp_param_array[:,1])
 
-n_cv = 5
 xx, yy = np.meshgrid(trial_n_hidden_layer, trial_n_node_hidden, indexing='ij')
 
-#n_sample = 6*1794 
 
-all_perf_cv = np.zeros((n_cv, xx.shape[0], xx.shape[1]))
-all_perf_tot = np.zeros((xx.shape[0], xx.shape[1]))
+all_perf_cv = np.zeros((xx.shape[0], xx.shape[1]))
+se_all_perf_cv = np.zeros_like(all_perf_cv)
+all_perf_tot = np.zeros_like(all_perf_cv)
 
 # Shape: (N_cv, n_channels, n_hidden_nodes)
 all_perf_cv[:] = np.inf
@@ -108,19 +122,32 @@ all_perf_test[:] = np.nan
 all_n_params = np.zeros_like(all_perf_tot)
 all_nets = np.zeros((xx.shape[0], xx.shape[1]), dtype=object)
 
+###################################################################
+
+
+###### FIND MINIMUM PERFORMANCE MODELS #########
+################################################
+
 for i, fname in enumerate(fnames):
+
     path = pathlib.Path(*pathlib.Path(fname).parts[1:])
 
     feat = n_hidden_layer, n_node_hidden = hyp_param_array[i]
     n_params, net = extract_n_params(*feat, n_patch_dim)
 
+    # Get a baseline performance
+    pred = net(dataset.X).detach().numpy().squeeze()
+    err = energies - pred
+    base_mse = np.mean(err**2)
+
     x_idx = np.digitize(n_hidden_layer, trial_n_hidden_layer) - 1
     y_idx = np.digitize(n_node_hidden, trial_n_node_hidden) - 1
 
     #for i_trial in range(n_trials):
-    best_trial_dir, mse_tot, mses_cv = find_best_trial(path)
+    best_trial_dir, mse_tot, mses_cv = find_best_trial(path, base_mse)
     
-    all_perf_cv[:, x_idx, y_idx] = mses_cv
+    all_perf_cv[x_idx, y_idx] = mses_cv.mean()
+    se_all_perf_cv[x_idx, y_idx] = mses_cv.std(ddof=1)
     all_perf_tot[x_idx, y_idx] = mse_tot
     all_n_params[x_idx, y_idx] = n_params
 
@@ -133,7 +160,7 @@ for i, fname in enumerate(fnames):
     mse = np.mean((energies - pred)**2)
     aic = n_sample*np.log(mse) + 2*n_params
 
-    print("n_hidden_layer: {}. n_node_hidden: {} mse: {:.2f} n_params: {} aic: {:.2f}".format(n_hidden_layer, n_node_hidden, mse, n_params, aic))
+    print("n_hidden_layer: {}. n_node_hidden: {} mse: {:.2f}  mse (CV'd): {:.2f} ({:.2}) n_params: {}".format(n_hidden_layer, n_node_hidden, mse, mses_cv.mean(), mses_cv.std(ddof=1), n_params))
 
     all_perf_test[x_idx, y_idx] = mse
 

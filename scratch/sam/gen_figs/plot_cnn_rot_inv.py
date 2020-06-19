@@ -146,17 +146,18 @@ idx = 841
 x_rot = np.zeros((6, *X.shape[1:]))
 
 # Collect each rotated image x
-for i in range(6):
+#for i in range(6):
+for i in [0, 2]:
 
 
     x_rot[i] = X[idx*6 + i]
 
     plt.close('all')
-    #plot_hextensor(x_rot[i])
-    #plt.savefig('{}/Desktop/pattern_embed_{:d}'.format(homedir, i), transparent=True)
+    plot_hextensor(x_rot[i])
+    plt.savefig('{}/Desktop/pattern_embed_{:d}'.format(homedir, i), transparent=True)
 
 
-    #construct_pvn_images(idx*6+i, net, dataset.X, is_double=True, title=i)
+    construct_pvn_images(idx*6+i, net, dataset.X, is_double=True, title=i)
 
 plt.close('all')
 cust_color = (1,0.5,0,0.6)

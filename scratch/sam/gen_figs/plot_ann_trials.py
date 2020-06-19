@@ -39,7 +39,7 @@ n_sample = ds['n_sample'].item()
 aic = n_sample*np.log(all_perf_tot) + 2*all_n_params
 aic -= aic.min()
 
-min_perf_cv = all_perf_cv.min(axis=0)
+min_perf_cv = all_perf_cv.mean(axis=0)
 
 ## Tot MSE 
 plt.close('all')
@@ -88,6 +88,8 @@ plt.colorbar(pc)
 plt.tight_layout()
 plt.savefig('{}/Desktop/ann_aic.png'.format(homedir), transparent=True)
 
+
+plt.close('all')
 
 
 

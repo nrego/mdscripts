@@ -274,15 +274,16 @@ def fit_block(X, y, fit_intercept=True, n_block=5, weights=None):
     rand = np.random.choice(n_dat, size=n_dat, replace=False)
     y_rand = y[rand]
     X_rand = X[rand]
+    weights_rand = weights[rand]
 
     block_size = n_dat // n_block
 
     for i_boot in range(n_block):
         dat_indices = slice(i_boot*block_size, (i_boot+1)*block_size)
 
-        this_boot_y = y[dat_indices]
-        this_boot_X = X[dat_indices, ...]
-        this_boot_w = weights[dat_indices]
+        this_boot_y = y_rand[dat_indices]
+        this_boot_X = X_rand[dat_indices, ...]
+        this_boot_w = weights_rand[dat_indices]
 
         reg.fit(this_boot_X, this_boot_y, sample_weight=this_boot_w)
 
@@ -290,6 +291,19 @@ def fit_block(X, y, fit_intercept=True, n_block=5, weights=None):
         boot_coef[i_boot] = reg.coef_ 
 
     return (boot_inter, boot_coef)
+
+def boot_block_error(X, y, fit_intercept=True, n_boot=100, n_block=5):
+    boot_inters = np.zeros(n_boot)
+    boot_coefs = np.zeros((n_boot, X.shape[1]))
+
+    for i in range(n_boot):
+        this_inter, this_coef = fit_block(X, y, fit_intercept=fit_intercept, n_block=n_block)
+
+        boot_inters[i] = this_inter.var(ddof=1)
+        boot_coefs[i] = this_coef.var(axis=0, ddof=1)
+
+    return boot_inters, boot_coefs
+
 
 def plot_3d(x, y, z, **kwargs):
     fig = plt.figure()

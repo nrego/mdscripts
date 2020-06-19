@@ -48,8 +48,9 @@ trial_n_hidden_layer = ds['trial_n_hidden_layer']
 trial_n_node_hidden = ds['trial_n_node_hidden']
 n_sample = ds['n_sample'].item()
 
-min_perf_cv = all_perf_cv.min(axis=0)
+min_perf_cv = all_perf_cv.mean(axis=0)
 
+#aic = n_sample*np.log(min_perf_cv) + 2*all_n_params
 aic = n_sample*np.log(min_perf_cv) + 2*all_n_params
 aic -= aic.min()
 
@@ -77,7 +78,7 @@ for i_hidden_layer in range(trial_n_hidden_layer.size):
     plt.close('all')
     fig, ax = plt.subplots(figsize=(10,10))
 
-    norm = plt.Normalize(0, 20)
+    norm = plt.Normalize(10, 20)
     pc = ax.imshow(min_perf_cv[:,i_hidden_layer,:], origin='lower', cmap='plasma', norm=norm)
 
     ax.set_xticks(np.arange(trial_n_node_hidden.size))
@@ -106,5 +107,5 @@ for i_hidden_layer in range(trial_n_hidden_layer.size):
     plt.savefig('{}/Desktop/cnn_mse_aic_n_hidden_layer_{}.png'.format(homedir, i_hidden_layer+1), transparent=True)
 
 
-
+plt.close('all')
 

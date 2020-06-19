@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import numpy as np
 import MDAnalysis
@@ -35,8 +35,8 @@ mpl.rcParams.update({'legend.fontsize':30})
 #  Also, compare to best performing ANN
 #########################################
 
-n_hidden_layer = 3
-n_node_hidden = 12
+n_hidden_layer = 2
+n_node_hidden = 2
 
 ds = np.load('data/sam_ann_ml_trials.npz')
 all_nets = ds['all_nets']
@@ -47,7 +47,6 @@ trial_n_hidden_layer = ds['trial_n_hidden_layer']
 trial_n_node_hidden = ds['trial_n_node_hidden']
 n_sample = ds['n_sample'].item()
 
-min_perf = all_perf_cv.min(axis=0)
 
 i_hidden_layer = np.digitize(n_hidden_layer, trial_n_hidden_layer) - 1
 i_node_hidden = np.digitize(n_node_hidden, trial_n_node_hidden) - 1
@@ -56,7 +55,7 @@ print("initializing ANN with n_hidden_layer: {:d}, n_node_hidden: {:d}".format(n
 
 net = all_nets[i_hidden_layer, i_node_hidden]
 #net_perf = all_perf_tot[i_hidden_layer, i_node_hidden]
-net_perf = min_perf[i_hidden_layer, i_node_hidden]
+net_perf = all_perf_cv[i_hidden_layer, i_node_hidden]
 net_n_params = all_n_params[i_hidden_layer, i_node_hidden]
 
 print('\nExtracting sam data...')
@@ -72,15 +71,20 @@ print('  ...Done\n')
 assert energies.size == n_sample
 indices = np.arange(n_sample)
 
-perf_mse, err, xvals, fit, reg = fit_leave_one(k_o, energies, fit_intercept=True)
-boot_int, boot_coef = fit_bootstrap(k_o, energies, fit_intercept=True)
+perf_mse, perf_wt_mse, all_perf_r2, err, reg = fit_multi_k_fold(k_o.reshape(-1,1), energies, fit_intercept=True)
+
+# Bootstrapped variance  
+boot_inter, boot_coef = boot_block_error(k_o.reshape(-1,1), energies, fit_intercept=True)
+
+inter_err = np.sqrt(boot_inter.mean())
+coef_err = np.sqrt(boot_coef.mean())
 
 poly_feat = np.vstack((k_o**2, k_o)).T
-perf_mse_poly, err_poly, xvals2, fit_poly, reg_poly = fit_leave_one(poly_feat, energies, fit_intercept=True)
+perf_mse_poly, perf_wt_mse_poly, all_perf_r2_poly, err_poly, reg_poly = fit_multi_k_fold(poly_feat, energies, fit_intercept=True)
 
-
-coef_err = boot_coef.std(axis=0, ddof=1).item()
-inter_err = boot_int.std(axis=0, ddof=1)
+xvals = np.arange(0, 37)
+fit = reg.predict(xvals[:,None])
+fit_poly = reg_poly.predict(np.vstack((xvals**2, xvals)).T)
 
 print('M1 Regression:')
 print('##############\n')
@@ -119,7 +123,7 @@ sc = ax.scatter(k_o, err)
 ax.scatter(k_o, err_poly)
 ax.set_xticks([0,12,24,36])
 fig.savefig('{}/Desktop/m1_err.pdf'.format(homedir), transparent=True)
-
+plt.close('all')
 
 ## Now plot linear, quad, and ANN
 
@@ -136,13 +140,14 @@ plt.close('all')
 fig = plt.figure(figsize=(6,5))
 ax = fig.gca()
 
-ax.bar(np.arange(3), aics, color=[def_colors[0], def_colors[1], 'gray'], width=0.8)
+ax.bar(np.arange(3), np.sqrt(mses), color=[def_colors[0], def_colors[1], 'gray'], width=0.8)
 ax.set_xticks([0,1,2])
 ax.set_xticklabels([])
+ax.set_ylim()
 
 y_min, y_max = ax.get_ylim()
-ax.set_ylim(2000,4200)
+#ax.set_ylim(2000,4200)
 fig.tight_layout()
 
 plt.savefig('{}/Desktop/bar_comparison'.format(homedir), transparent=True)
-
+plt.close('all')
