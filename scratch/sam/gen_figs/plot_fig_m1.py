@@ -36,7 +36,7 @@ mpl.rcParams.update({'legend.fontsize':30})
 #########################################
 
 n_hidden_layer = 2
-n_node_hidden = 2
+n_node_hidden = 12
 
 ds = np.load('data/sam_ann_ml_trials.npz')
 all_nets = ds['all_nets']
@@ -58,15 +58,25 @@ net = all_nets[i_hidden_layer, i_node_hidden]
 net_perf = all_perf_cv[i_hidden_layer, i_node_hidden]
 net_n_params = all_n_params[i_hidden_layer, i_node_hidden]
 
+
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', embed_pos_ext=True)
+aug_feat, aug_energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices)
+
+dataset = SAMDataset(aug_feat, aug_energies)
+net_pred = net(dataset.X).detach().numpy().squeeze()
+net_err = aug_energies - net_pred
+
 print('\nExtracting sam data...')
 feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', embed_pos_ext=False)
 n_patch_dim = feat_vec.shape[1]
+err_energies = np.load('data/sam_pattern_06_06.npz')['err_energies']
 
 k_o = ols_feat[:,0]
 
 p = q = 6
 
 print('  ...Done\n')
+
 
 assert energies.size == n_sample
 indices = np.arange(n_sample)
@@ -99,9 +109,14 @@ err_kwargs = {"lw":.5, "zorder":0, "color":'k'}
 #sc = ax.scatter(k_o, energies, s=50, c=norm(err), cmap='coolwarm_r', zorder=100)
 sc = ax.scatter(k_o, energies, s=50, zorder=100, color='k', label=r'$f$')
 #ax.errorbar(k_o, energies, errs, fmt='none', **err_kwargs)
-ax.plot(xvals, fit, '-', linewidth=4, zorder=200, label=r'$\hat{f}$, linear')    
+#ax.plot(xvals, fit, '-', linewidth=4, zorder=200, label=r'$\hat{f}$, linear')    
 
-ax.plot(xvals, fit_poly, '-', linewidth=4, zorder=300, label=r'$\hat{f}$, quadratic')
+#ax.plot(xvals, fit_poly, '-', linewidth=4, zorder=300, label=r'$\hat{f}$, quadratic')
+
+ax.plot(xvals, fit, '-', linewidth=4, zorder=200, label=r'M1, linear')    
+
+ax.plot(xvals, fit_poly, '-', linewidth=4, zorder=300, label=r'M1, quadratic')
+
 
 ax.set_xticks([0,12,24,36])
 
@@ -121,7 +136,15 @@ ax = fig.gca()
 sc = ax.scatter(k_o, err)
 
 ax.scatter(k_o, err_poly)
+
+#ax.scatter(k_o, net_err[::6], color='gray')
+xmin, xmax = ax.get_xlim()
+data_rmse = np.sqrt(np.mean(err_energies**2))
+ax.plot([-10, 46], [-data_rmse, -data_rmse], 'k--')
+ax.plot([-10, 46], [data_rmse, data_rmse], 'k--')
+
 ax.set_xticks([0,12,24,36])
+ax.set_xlim(xmin, xmax)
 fig.savefig('{}/Desktop/m1_err.pdf'.format(homedir), transparent=True)
 plt.close('all')
 
@@ -143,7 +166,7 @@ ax = fig.gca()
 ax.bar(np.arange(3), np.sqrt(mses), color=[def_colors[0], def_colors[1], 'gray'], width=0.8)
 ax.set_xticks([0,1,2])
 ax.set_xticklabels([])
-ax.set_ylim()
+#ax.set_ylim(0, 7.5)
 
 y_min, y_max = ax.get_ylim()
 #ax.set_ylim(2000,4200)
@@ -151,3 +174,6 @@ fig.tight_layout()
 
 plt.savefig('{}/Desktop/bar_comparison'.format(homedir), transparent=True)
 plt.close('all')
+
+
+

@@ -118,17 +118,17 @@ se_04_09 = np.append(np.sqrt(np.mean(boot_var_inter_04_09)), np.sqrt(np.mean(boo
 se_04_04 = np.append(np.sqrt(np.mean(boot_var_inter_04_04)), np.sqrt(np.mean(boot_var_coef_04_04, axis=0)))
 se_03_03 = np.append(np.sqrt(np.mean(boot_var_inter_03_03)), np.sqrt(np.mean(boot_var_coef_03_03, axis=0)))
 
-ses = np.vstack((se_06_06, se_04_09, se_04_04, se_03_03))
+ses = np.vstack((se_06_06, se_04_09, se_04_04))
 
 # now stack the coefs
-coefs = np.vstack((reg_06_06.coef_, reg_04_09.coef_, reg_04_04.coef_, reg_03_03.coef_))
-ints = np.array([reg_06_06.intercept_, reg_04_09.intercept_, reg_04_04.intercept_, reg_03_03.intercept_])
+coefs = np.vstack((reg_06_06.coef_, reg_04_09.coef_, reg_04_04.coef_))
+ints = np.array([reg_06_06.intercept_, reg_04_09.intercept_, reg_04_04.intercept_])
 
 reg_params = np.hstack((ints[:,None], coefs))
 
-n = 4
+n = 3
 # indices for inter, coef1, coef2, coef3
-indices = np.arange(4)
+indices = np.arange(n)
 width = 1
 
 plt.close('all')
@@ -150,5 +150,85 @@ plt.tight_layout()
 
 plt.savefig('{}/Desktop/transfer_plot_comparison'.format(homedir), transparent=True)
 plt.close('all')
+
+## Extract pure methyl patterns ##
+
+
+base_energy = 2.442375429221714356e+00
+ds = np.load('data/pure_nonpolar.npz')
+pure_energies = ds['energies']
+p = ds['p']
+q = ds['q']
+pq = p*q
+
+pure_feat_vec = np.vstack(((p+q),pq)).T
+
+all_perf_mse, all_perf_wt_mse, all_perf_r2, err, reg = fit_multi_k_fold(pure_feat_vec, pure_energies-base_energy, k=17, fit_intercept=False)
+
+reg.intercept_ = base_energy
+pred = reg.predict(pure_feat_vec)
+
+plt.close('all')
+fig, ax = plt.subplots(figsize=(6,6))
+ax.plot([0,312],[0,312], 'k-', linewidth=4)
+ax.plot(pure_energies, pred, 'mX', markersize=20)
+ax.set_xticks([0,100,200,300])
+ax.set_yticks([0,100,200,300])
+
+plt.savefig("{}/Desktop/parity_pure".format(homedir), transparent=True)
+plt.close('all')
+
+
+### Plot special patterns ####
+ds = np.load('data/sam_special_patterns.dat.npz')
+states = ds['states']
+names = ds['names']
+energies = ds['energies']
+err_energies = ds['err_energies']
+feat_vec = ds['feat_vec']
+
+pred = reg_06_06.predict(feat_vec)
+
+for name, state, this_e, this_pred in zip(names, states, energies, pred):
+    plt.close('all')
+    state.plot()
+    plt.savefig('{}/Desktop/{}'.format(homedir, name), transparent=True)
+    plt.close('all')
+
+    print("{}. act f: {:.2f}.  pred f: {:.2f}".format(name, this_e, this_pred))
+
+
+sort_idx = np.argsort(energies)
+plt.close('all')
+indices = np.arange(9)
+fig, ax = plt.subplots(figsize=(12,6))
+width = 0.35
+ax.bar(indices - width/2, energies[sort_idx], label=r'$f$', width=width)
+ax.bar(indices + width/2, pred[sort_idx], label=r'$\hat{f}$', width=width)
+#ax.legend()
+ax.set_xticks(indices)
+ax.set_xticklabels([])
+ax.set_ylim(0, 300)
+
+#ax.set_yticklabels([])
+plt.savefig('{}/Desktop/fig_special'.format(homedir), transparent=True)
+plt.close('all')
+
+## Plot 4x9 ###
+states_04_09[205].plot()
+plt.savefig('{}/Desktop/fig_04_09'.format(homedir), transparent=True)
+plt.close('all')
+
+## Plot 6 x 6 ##
+states_06_06[320].plot()
+plt.savefig('{}/Desktop/fig_06_06'.format(homedir), transparent=True)
+plt.close('all')
+
+# Plot 4 x 4 ##
+states_04_04[140].plot()
+plt.savefig('{}/Desktop/fig_04_04'.format(homedir), transparent=True)
+plt.close('all')
+
+
 
 

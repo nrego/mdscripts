@@ -39,7 +39,7 @@ n_sample = ds['n_sample'].item()
 aic = n_sample*np.log(all_perf_tot) + 2*all_n_params
 aic -= aic.min()
 
-min_perf_cv = all_perf_cv.mean(axis=0)
+#min_perf_cv = all_perf_cv.mean(axis=0)
 
 ## Tot MSE 
 plt.close('all')
@@ -61,8 +61,8 @@ plt.savefig('{}/Desktop/ann_mse_tot.png'.format(homedir), transparent=True)
 plt.close('all')
 fig, ax = plt.subplots()
 
-norm = plt.Normalize(10, 40)
-pc = ax.imshow(min_perf_cv.T, origin='lower', cmap='plasma', norm=norm)
+norm = plt.Normalize(10, 25)
+pc = ax.imshow(all_perf_cv.T, origin='lower', cmap='plasma', norm=norm)
 
 ax.set_xticks(np.arange(trial_n_hidden_layer.size))
 ax.set_xticklabels(trial_n_hidden_layer)

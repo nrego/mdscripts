@@ -21,7 +21,7 @@ import itertools
 #
 n_hidden_layer = 2
 n_node_hidden = 4
-n_conv_filters = 3
+n_conv_filters = 9
 
 # Are there two convolutions?
 is_double = True
@@ -147,7 +147,7 @@ x_rot = np.zeros((6, *X.shape[1:]))
 
 # Collect each rotated image x
 #for i in range(6):
-for i in [0, 2]:
+for i in [0, 2, 4]:
 
 
     x_rot[i] = X[idx*6 + i]
@@ -161,6 +161,7 @@ for i in [0, 2]:
 
 plt.close('all')
 cust_color = (1,0.5,0,0.6)
+cust_color = (0.5,0.5,0.5,0.5)
 arr = np.zeros((1,1,3,3))
 lw = np.ones(6)*6
 #lw[3] = 12
@@ -199,11 +200,24 @@ plt.close('all')
 ## Now for pooling
 plt.close('all')
 cust_color = (0.5,1.0,0,0.2)
+cust_color = (0.5,0.5,0.5,0.5)
 arr = np.zeros((1,1,3,3))
 lw = np.ones(6)*12
 #lw[3] = 12
 plot_hextensor(arr, cust_color=cust_color, linewidth=lw, mask=(0,6))
 plt.savefig('{}/Desktop/pool_filter'.format(homedir), transparent=True)
+
+##
+plt.close('all')
+
+arr = np.random.rand(1,1,3,3)
+arr[0,0,1,2] = 10
+lw = np.ones(6)*4
+#lw[3] = 12
+plot_hextensor(arr, norm=plt.Normalize(0,4.5), cmap='Oranges', linewidth=lw, mask=(0,6))
+plt.savefig('{}/Desktop/pool_illustration'.format(homedir), transparent=True)
+
+plot_hextensor(arr, norm=plt.Normalize(0,4.5), cmap='Oranges', linewidth=lw, mask=np.delete(np.arange(9),7))
 
 
 plt.close('all')

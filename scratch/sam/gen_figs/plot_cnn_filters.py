@@ -18,9 +18,9 @@ import itertools
 
 ## Plot CNN filters (first layer, possibly second layer, too)
 ##   For a cnn with a given set of hyper params (set below)
-n_hidden_layer = 1
+n_hidden_layer = 2
 n_node_hidden = 4
-n_conv_filters = 5
+n_conv_filters = 9
 
 # Are there two convolutions?
 is_double = True
@@ -211,7 +211,28 @@ construct_pvn_images(841, net, dataset.X, is_double=is_double)
 
 plt.close('all')
 
-#l1 = net.conv1
-#c, r, p = l1.children()
-#out = r(c(x))
-#plt.close('all')
+## Plot sample conv ##
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', embed_pos_ext=True, ny=8, nz=9)
+dataset = SAMConvDataset(feat_vec, energies, ny=8, nz=9)
+x = dataset.X[841][None, ...]
+
+plot_hextensor(x, mask=np.arange(0,64,9))
+plt.savefig('{}/Desktop/small_pattern'.format(homedir), transparent=True)
+plt.close('all')
+
+l1 = net.conv1
+c, r, p = l1.children()
+oc = r(c(x)).detach()[:,4,...][None,...]
+plot_hextensor(oc, norm=plt.Normalize(0, 4.5), cmap='Oranges', mask=np.arange(0,64,9))
+plt.savefig('{}/Desktop/small_pattern_conv'.format(homedir), transparent=True)
+
+op = p(oc)
+
+plt.close('all')
+
+plot_hextensor(op, norm=plt.Normalize(0, 4.5), cmap='Oranges', )
+plt.savefig('{}/Desktop/small_pattern_pool'.format(homedir), transparent=True)
+
+
+
+

@@ -47,7 +47,7 @@ def extract_n_params(n_hidden_layer, n_node_hidden, n_patch_dim):
 
     return n_param, net
 
-def find_best_trial(path, base_mse, thresh=0.01, choices=['ann1', 'ann2', 'ann3']):
+def find_best_trial(path, base_mse, thresh=0.01, choices=['aug_ann1', 'aug_ann2', 'aug_ann3']):
 
     min_mse_tot = np.inf
     min_mses_cv = None
@@ -83,17 +83,17 @@ def find_best_trial(path, base_mse, thresh=0.01, choices=['ann1', 'ann2', 'ann3'
 ############################ 
 
 #Get feat vec and augment to get right dimensions
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz', embed_pos_ext=False)
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz', embed_pos_ext=True)
 n_patch_dim = feat_vec.shape[1]
 n_sample = feat_vec.shape[0]
 
+feat_vec, energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices)
 dataset = SAMDataset(feat_vec, energies)
-
 
 ### EXTRACT ANN HYPERPARAMS AND PERFS ###
 #########################################
 
-fnames = sorted(glob.glob("ann1/n_layer_*/perf_model_*"))
+fnames = sorted(glob.glob("aug_ann1/n_layer_*/perf_model_*"))
 
 hyp_param_array = np.zeros((len(fnames), 2), dtype=int)
 
@@ -156,7 +156,7 @@ for i, fname in enumerate(fnames):
     state_path = pathlib.Path(best_trial_dir, path.parts[0], state_fname)
     net.load_state_dict(torch.load(state_path, map_location='cpu'))
 
-    pred = net(torch.tensor(feat_vec)).detach().numpy().squeeze()
+    pred = net(dataset.X).detach().numpy().squeeze()
     mse = np.mean((energies - pred)**2)
     aic = n_sample*np.log(mse) + 2*n_params
 

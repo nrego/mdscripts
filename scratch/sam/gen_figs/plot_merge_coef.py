@@ -111,6 +111,9 @@ perf_mse_m3, perf_wt_mse_m3, perf_r2_m3, err_m3, reg_m3 = fit_multi_k_fold(ols_f
 m2_feat = np.append(ols_feat_vec[:,0][:,None], ols_feat_vec[:,1:].sum(axis=1)[:,None], axis=1)
 perf_mse_m2, perf_wt_mse_m2, perf_r2_m2, err_m2, reg_m2 = fit_multi_k_fold(m2_feat, energies, weights=weights, do_weighted=do_weighted)
 perf_mse_m1, perf_wt_mse_m1, perf_r2_m1, err_m1, reg_m1 = fit_multi_k_fold(ols_feat_vec[:,0].reshape(-1,1), energies, weights=weights, do_weighted=do_weighted)
+ko = ols_feat_vec[:,0]
+quad_m1_feat = np.vstack((ko, ko**2)).T
+perf_mse_m1_quad, perf_wt_mse_m1_quad, perf_r2_m1_quad, err_m1_quad, reg_m1_quad = fit_multi_k_fold(quad_m1_feat, energies, weights=weights, do_weighted=do_weighted)
 
 
 state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
@@ -289,30 +292,78 @@ plt.savefig('{}/Desktop/merge_perf'.format(homedir), transparent=True)
 
 # BAR chart of selected
 
+# Grab ANN perf
+n_hidden_layer = 2
+n_node_hidden = 12
+
+ds = np.load('data/sam_ann_ml_trials.npz')
+all_perf_tot = ds['all_perf_tot']
+all_perf_cv = ds['all_perf_cv']
+all_n_params = ds['all_n_params']
+trial_n_hidden_layer = ds['trial_n_hidden_layer']
+trial_n_node_hidden = ds['trial_n_node_hidden']
+
+
+i_hidden_layer = np.digitize(n_hidden_layer, trial_n_hidden_layer) - 1
+i_node_hidden = np.digitize(n_node_hidden, trial_n_node_hidden) - 1
+
+perf_ann_cv = all_perf_cv[i_hidden_layer, i_node_hidden]
+perf_ann_tot = all_perf_tot[i_hidden_layer, i_node_hidden]
+n_params_ann = all_n_params[i_hidden_layer, i_node_hidden]
+
+##### DONE WITH ANN PERF #####
+
+# Grab CNN perf
+n_hidden_layer = 2
+n_node_hidden = 4
+n_conv_filters = 9
+
+ds = np.load('data/sam_cnn_ml_trials.npz')
+all_perf_tot = ds['all_perf_tot']
+all_perf_cv = ds['all_perf_cv']
+all_n_params = ds['all_n_params']
+trial_n_hidden_layer = ds['trial_n_hidden_layer']
+trial_n_node_hidden = ds['trial_n_node_hidden']
+trial_n_conv_filters = ds['trial_n_conv_filters']
+
+i_conv_filters = np.digitize(n_conv_filters, trial_n_conv_filters)
+i_hidden_layer = np.digitize(n_hidden_layer, trial_n_hidden_layer) - 1
+i_node_hidden = np.digitize(n_node_hidden, trial_n_node_hidden) - 1
+
+perf_cnn_cv = all_perf_cv[i_conv_filters, i_hidden_layer, i_node_hidden]
+perf_cnn_tot = all_perf_tot[i_conv_filters, i_hidden_layer, i_node_hidden]
+n_params_cnn = all_n_params[i_conv_filters, i_hidden_layer, i_node_hidden]
+
+##### DONE WITH CNN PERF #####
+
+
 #########################
 plt.close('all')
 
-fig, ax = plt.subplots(figsize=(6.2,6))
+fig, ax = plt.subplots(figsize=(16,7))
 
-indices = np.arange(4)
+indices = np.arange(7)
 
 # M1, M2, M3, and all edge types separate
-perfs = np.sqrt([np.mean(perf_mse_m1), all_cv_mse[-1], all_cv_mse[-2], all_cv_mse[0]])
-colors = ['#888888', 'r', '#888888']
-ax.bar(indices[1:], perfs[1:], color=colors)
+perfs = np.sqrt([np.mean(perf_mse_m1), np.mean(perf_mse_m1_quad), perf_ann_cv, perf_cnn_cv, all_cv_mse[0], all_cv_mse[-2], all_cv_mse[-1]])
+colors = ['#888888', '#888888', '#888888', '#888888', '#888888', 'r', '#888888']
+ax.bar(indices, perfs, color=colors)
 
 # Root mean squared error in f
 rms_obs = np.sqrt(np.mean(err_energies**2))
 
-ax.plot([0,4], [rms_obs, rms_obs], 'k--', linewidth=6)
+xmin, xmax = ax.get_xlim()
+ax.plot([xmin,xmax], [rms_obs, rms_obs], 'k--', linewidth=6)
 
-ax.set_xlim([0.4, 3.6])
-ax.set_ylim([1.3, 3.5])
+ax.set_xlim([xmin, xmax])
+ax.set_ylim([0, 7.2])
 
 ax.set_xticks([])
 
+fig.tight_layout()
+
 plt.savefig('{}/Desktop/bar_merge_perf'.format(homedir), transparent=True)
 
-
+plt.close('all')
 
 
