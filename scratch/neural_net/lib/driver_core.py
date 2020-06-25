@@ -76,6 +76,8 @@ class Core:
                            help="Input file name containing SAM pattern dataset (Default: %(default)s)")
         group.add_argument("--augment-data", action="store_true",
                            help="Augment data by flipping every input pattern over all 6-fold symetries (Default: Do not augment data)")
+        group.add_argument("--binary-encoding", action="store_true",
+                           help="If true, hydroxyls get a +1, methyls a 0")
         group.add_argument("--batch-size", type=int, default=200,
                            help="Size of training batches. There will be (N_data//batch_size + N_data mod batch_size) batches in each "\
                                 "training epoch.  (Default: %(default)s)")
@@ -99,6 +101,7 @@ class Core:
 
         self.infile = args.infile
         self.augment_data = args.augment_data
+        self.binary_encoding = args.binary_encoding
         self.cv_nets = []
 
         self.n_epochs = args.n_epochs

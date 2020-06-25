@@ -75,7 +75,7 @@ Command-line options
         # Don't embed patterns in larger grid if we're not augmenting the data
         do_embed = self.augment_data
 
-        feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep(args.infile, embed_pos_ext=do_embed)
+        feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep(args.infile, embed_pos_ext=do_embed, binary_encoding=args.binary_encoding)
         y = energies
 
         # Only used for epsilon training 

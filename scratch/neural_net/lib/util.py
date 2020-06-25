@@ -192,7 +192,7 @@ def augment_data(feat_vec, y):
     return (aug_feat_vec, aug_y)
 
 # Load in data (energies and methyl positions)
-def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, nz=13):
+def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, nz=13, binary_encoding=False):
 
     ds = np.load(fname)
     energies = ds['energies']
@@ -213,6 +213,9 @@ def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, 
         
     # shape: (n_data_points, ny*nz)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small
+    if binary_encoding:
+        feat_vec[:] = 1
+
     patch_indices = np.zeros(n_data, dtype=object)
     
     # Embed each pattern on pos_ext
@@ -227,9 +230,13 @@ def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, 
 
         # Replace methyls with 1's, hydroxyls with -1's
         tmp_mask = np.zeros_like(state.methyl_mask, dtype=int)
-        tmp_mask[state.methyl_mask] = 1
-        tmp_mask[~state.methyl_mask] = -1
-        feat_vec[i_dat, patch_idx] = tmp_mask
+        if not binary_encoding:
+            tmp_mask[state.methyl_mask] = 1
+            tmp_mask[~state.methyl_mask] = -1
+            feat_vec[i_dat, patch_idx] = tmp_mask
+        else:
+            tmp_mask[~state.methyl_mask] = 1
+            feat_vec[i_dat, patch_idx] = tmp_mask
 
         ols_feat[i_dat, ...] = state.k_o, state.n_oo, state.n_oe
 
