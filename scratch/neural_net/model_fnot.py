@@ -133,6 +133,8 @@ Command-line options
                     "\n"\
                     f"Number of CV groups: {self.n_valid}\n"\
                     f"patience: {self.n_patience} epochs"\
+                    f"augmented data? {self.augment_data}"\
+                    f"binary encoding? {self.binary_encoding}"\
                     "\n"\
                     "\n"
 
