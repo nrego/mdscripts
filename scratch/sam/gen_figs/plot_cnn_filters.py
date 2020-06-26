@@ -19,7 +19,7 @@ import itertools
 ## Plot CNN filters (first layer, possibly second layer, too)
 ##   For a cnn with a given set of hyper params (set below)
 n_hidden_layer = 2
-n_node_hidden = 4
+n_node_hidden = 8
 n_conv_filters = 9
 
 # Are there two convolutions?
@@ -149,7 +149,7 @@ net = all_nets[i_conv_filters, i_hidden_layer, i_node_hidden]
 
 
 #Get feat vec and augment to get right dimensions
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz')
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=True)
 n_patch_dim = feat_vec.shape[1]
 
 homedir = os.environ['HOME']

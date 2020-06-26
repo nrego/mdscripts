@@ -213,11 +213,11 @@ def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, 
         
     # shape: (n_data_points, ny*nz)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small
-    if binary_encoding:
-        feat_vec[:] = 1
+    #if binary_encoding:
+    #    feat_vec[:] = 1
 
     patch_indices = np.zeros(n_data, dtype=object)
-    
+    #embed()
     # Embed each pattern on pos_ext
     for i_dat, state in enumerate(states):
         this_pos = state.positions.copy()
@@ -235,7 +235,8 @@ def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, 
             tmp_mask[~state.methyl_mask] = -1
             feat_vec[i_dat, patch_idx] = tmp_mask
         else:
-            tmp_mask[~state.methyl_mask] = 1
+            #tmp_mask[~state.methyl_mask] = 1
+            tmp_mask[state.methyl_mask] = 1
             feat_vec[i_dat, patch_idx] = tmp_mask
 
         ols_feat[i_dat, ...] = state.k_o, state.n_oo, state.n_oe

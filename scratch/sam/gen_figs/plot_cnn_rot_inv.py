@@ -163,9 +163,9 @@ plt.close('all')
 cust_color = (1,0.5,0,0.6)
 cust_color = (0.5,0.5,0.5,0.5)
 arr = np.zeros((1,1,3,3))
-lw = np.ones(6)*6
+#lw = np.ones(6)*6
 #lw[3] = 12
-plot_hextensor(arr, cust_color=cust_color, linewidth=lw, mask=(0,6))
+plot_hextensor(arr, cust_color=cust_color, mask=(0,6))
 plt.savefig('{}/Desktop/conv_filter'.format(homedir), transparent=True)
 
 state = states[idx]
@@ -202,9 +202,9 @@ plt.close('all')
 cust_color = (0.5,1.0,0,0.2)
 cust_color = (0.5,0.5,0.5,0.5)
 arr = np.zeros((1,1,3,3))
-lw = np.ones(6)*12
+#lw = np.ones(6)*12
 #lw[3] = 12
-plot_hextensor(arr, cust_color=cust_color, linewidth=lw, mask=(0,6))
+plot_hextensor(arr, cust_color=cust_color, mask=(0,6))
 plt.savefig('{}/Desktop/pool_filter'.format(homedir), transparent=True)
 
 ##

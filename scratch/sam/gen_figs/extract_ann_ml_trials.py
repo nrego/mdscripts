@@ -22,7 +22,7 @@ mpl.rcParams.update({'legend.fontsize':14})
 
 ## Extract NN training data (ANN, CNN, whatever)
 ##  Run from within ml_tests directory
-
+binary_encoding = True
 
 # Get hyperparams from file name
 def extract_info(basename):
@@ -47,7 +47,7 @@ def extract_n_params(n_hidden_layer, n_node_hidden, n_patch_dim):
 
     return n_param, net
 
-def find_best_trial(path, base_mse, thresh=0.01, choices=['aug_ann1', 'aug_ann2', 'aug_ann3']):
+def find_best_trial(path, base_mse, thresh=0.01, choices=['bin_aug_ann1', 'bin_aug_ann2', 'bin_aug_ann3']):
 
     min_mse_tot = np.inf
     min_mses_cv = None
@@ -58,7 +58,12 @@ def find_best_trial(path, base_mse, thresh=0.01, choices=['aug_ann1', 'aug_ann2'
     for headdir in choices:
 
         this_path = pathlib.Path(headdir, *path.parts)
-        ds = np.load(this_path)
+        try:
+            ds = np.load(this_path)
+
+        except FileNotFoundError:
+            continue
+
         this_mses_cv = ds['mses_cv']
         this_mse_tot = ds['mse_tot'].item()
 
@@ -83,7 +88,7 @@ def find_best_trial(path, base_mse, thresh=0.01, choices=['aug_ann1', 'aug_ann2'
 ############################ 
 
 #Get feat vec and augment to get right dimensions
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz', embed_pos_ext=True)
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz', embed_pos_ext=True, binary_encoding=binary_encoding)
 n_patch_dim = feat_vec.shape[1]
 n_sample = feat_vec.shape[0]
 
@@ -93,7 +98,7 @@ dataset = SAMDataset(feat_vec, energies)
 ### EXTRACT ANN HYPERPARAMS AND PERFS ###
 #########################################
 
-fnames = sorted(glob.glob("aug_ann1/n_layer_*/perf_model_*"))
+fnames = sorted(glob.glob("bin_aug_ann1/n_layer_*/perf_model_*"))
 
 hyp_param_array = np.zeros((len(fnames), 2), dtype=int)
 

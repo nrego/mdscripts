@@ -27,7 +27,7 @@ mpl.rcParams.update({'legend.fontsize':14})
 
 
 #Get feat vec and augment to get right dimensions
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz')
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=True)
 n_patch_dim = feat_vec.shape[1]
 
 homedir = os.environ['HOME']

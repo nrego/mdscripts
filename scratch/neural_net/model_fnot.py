@@ -132,9 +132,9 @@ Command-line options
                     f"max epochs: {self.n_epochs}\n"\
                     "\n"\
                     f"Number of CV groups: {self.n_valid}\n"\
-                    f"patience: {self.n_patience} epochs"\
-                    f"augmented data? {self.augment_data}"\
-                    f"binary encoding? {self.binary_encoding}"\
+                    f"patience: {self.n_patience} epochs\n"\
+                    f"augmented data? {self.augment_data}\n"\
+                    f"binary encoding? {self.binary_encoding}\n"\
                     "\n"\
                     "\n"
 

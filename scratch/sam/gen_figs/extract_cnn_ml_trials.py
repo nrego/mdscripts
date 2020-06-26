@@ -22,6 +22,7 @@ mpl.rcParams.update({'legend.fontsize':14})
 ##  Run from within ml_tests directory
 
 
+binary_encoding = True
 
 # Get hyperparams from file name
 def extract_info(basename):
@@ -49,7 +50,7 @@ def extract_n_params(n_conv_filters, n_hidden_layer, n_node_hidden):
 
     return n_param, net
 
-def find_best_trial(path, base_mse, thresh=0.01, choices=['double_cnn_energy1', 'double_cnn_energy2', 'double_cnn_energy3']):
+def find_best_trial(path, base_mse, thresh=0.01, choices=['bin_double_cnn_energy1', 'bin_double_cnn_energy2', 'bin_double_cnn_energy3']):
 
     min_mse_tot = np.inf
     min_mses_cv = None
@@ -60,7 +61,12 @@ def find_best_trial(path, base_mse, thresh=0.01, choices=['double_cnn_energy1', 
     for headdir in choices:
 
         this_path = pathlib.Path(headdir, *path.parts)
-        ds = np.load(this_path)
+
+        try:
+            ds = np.load(this_path)
+        except FileNotFoundError:
+            continue
+
         this_mses_cv = ds['mses_cv']
         this_mse_tot = ds['mse_tot'].item()
 
@@ -85,7 +91,7 @@ def find_best_trial(path, base_mse, thresh=0.01, choices=['double_cnn_energy1', 
 #########################
 
 #Get feat vec and augment to get right dimensions
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz', embed_pos_ext=True)
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('sam_pattern_06_06.npz', embed_pos_ext=True, binary_encoding=binary_encoding)
 n_patch_dim = feat_vec.shape[1]
 n_sample = feat_vec.shape[0]
 
@@ -98,7 +104,7 @@ feat_vec_conv = dataset.X
 #########################################
 ##
 
-fnames = sorted(glob.glob("double_cnn_energy1/n_layer_*/n_filter_*/perf_model_*"))
+fnames = sorted(glob.glob("bin_double_cnn_energy1/n_layer_*/n_filter_*/perf_model_*"))
 
 
 # n_filter, n_hidden_layer, n_node_hidden
