@@ -1,3 +1,4 @@
+
 import numpy as np
 import MDAnalysis
 
@@ -59,17 +60,6 @@ weights_04_09 = 1 / err_energies_04_09**2
 
 feat_m2_04_09 = np.append(ols_feat_vec_04_09[:,0][:,None], ols_feat_vec_04_09[:,1:].sum(axis=1)[:,None], axis=1)
 
-perf_mse_04_09, perf_wt_mse_04_09, perf_r2_04_09, err_04_09, reg_04_09 = fit_multi_k_fold(ols_feat_vec_04_09, energies_04_09, weights=weights_04_09, do_weighted=False)
-
-state_04_09 = states_04_09[np.argwhere(ols_feat_vec_04_09[:,0] == 0).item()]
-
-yprime_04_09 = energies_04_09 - reg_04_09.intercept_
-reg2_04_09 = linear_model.LinearRegression(fit_intercept=False)
-reg2_04_09.fit(ols_feat_vec_04_09, yprime_04_09)
-
-## Bootstrap error bars on coefs
-boot_var_inter_04_09, boot_var_coef_04_09 = boot_block_error(ols_feat_vec_04_09, energies_04_09)
-
 
 ## 4 x 4 ##
 energies_04_04, ols_feat_vec_04_04, states_04_04 = extract_from_ds('data/sam_pattern_04_04.npz')
@@ -78,80 +68,12 @@ weights_04_04 = 1 / err_energies_04_04**2
 
 feat_m2_04_04 = np.append(ols_feat_vec_04_04[:,0][:,None], ols_feat_vec_04_04[:,1:].sum(axis=1)[:,None], axis=1)
 
-perf_mse_04_04, perf_wt_mse_04_04, perf_r2_04_04, err_04_04, reg_04_04 = fit_multi_k_fold(ols_feat_vec_04_04, energies_04_04, weights=weights_04_04, do_weighted=False)
 
-state_04_04 = states_04_04[np.argwhere(ols_feat_vec_04_04[:,0] == 0).item()]
+##################################
 
-yprime_04_04 = energies_04_04 - reg_04_04.intercept_
-reg2_04_04 = linear_model.LinearRegression(fit_intercept=False)
-reg2_04_04.fit(ols_feat_vec_04_04, yprime_04_04)
-
-## Bootstrap error bars on coefs
-boot_var_inter_04_04, boot_var_coef_04_04 = boot_block_error(ols_feat_vec_04_04, energies_04_04)
-
-
-# 3 x 3 ##
-energies_03_03, ols_feat_vec_03_03, states_03_03 = extract_from_ds('data/sam_pattern_03_03.npz')
-err_energies_03_03 = np.load('data/sam_pattern_03_03.npz')['err_energies']
-weights_03_03 = 1 / err_energies_03_03**2
-
-feat_m2_03_03 = np.append(ols_feat_vec_03_03[:,0][:,None], ols_feat_vec_03_03[:,1:].sum(axis=1)[:,None], axis=1)
-
-perf_mse_03_03, perf_wt_mse_03_03, perf_r2_03_03, err_03_03, reg_03_03 = fit_multi_k_fold(ols_feat_vec_03_03, energies_03_03, weights=weights_03_03, do_weighted=False)
-
-state_03_03 = states_03_03[np.argwhere(ols_feat_vec_03_03[:,0] == 0).item()]
-
-yprime_03_03 = energies_03_03 - reg_03_03.intercept_
-reg2_03_03 = linear_model.LinearRegression(fit_intercept=False)
-reg2_03_03.fit(ols_feat_vec_03_03, yprime_03_03)
-
-## Bootstrap error bars on coefs
-boot_var_inter_03_03, boot_var_coef_03_03 = boot_block_error(ols_feat_vec_03_03, energies_03_03)
-
-
-
-### Plot Intercepts, coefs, for each model plus error bars ###
-##############################################################
-
-se_06_06 = np.append(np.sqrt(np.mean(boot_var_inter_06_06)), np.sqrt(np.mean(boot_var_coef_06_06, axis=0)))
-se_04_09 = np.append(np.sqrt(np.mean(boot_var_inter_04_09)), np.sqrt(np.mean(boot_var_coef_04_09, axis=0)))
-se_04_04 = np.append(np.sqrt(np.mean(boot_var_inter_04_04)), np.sqrt(np.mean(boot_var_coef_04_04, axis=0)))
-se_03_03 = np.append(np.sqrt(np.mean(boot_var_inter_03_03)), np.sqrt(np.mean(boot_var_coef_03_03, axis=0)))
-
-ses = np.vstack((se_06_06, se_04_09, se_04_04))
-
-# now stack the coefs
-coefs = np.vstack((reg_06_06.coef_, reg_04_09.coef_, reg_04_04.coef_))
-ints = np.array([reg_06_06.intercept_, reg_04_09.intercept_, reg_04_04.intercept_])
-
-reg_params = np.hstack((ints[:,None], coefs))
-
-n = 3
-# indices for inter, coef1, coef2, coef3
-indices = np.arange(n)
-width = 1
-
-plt.close('all')
-fig, axes = plt.subplots(1, 4, figsize=(12,3))
-
-prop_cycle = plt.rcParams['axes.prop_cycle']
-colors = prop_cycle.by_key()['color'][:n]
-
-y_min = [30, 6, -1.2, -1.6]
-y_max = [140, 9.3, -0.5, -0.75]
-
-for i, ax in enumerate(axes):
-    ax.bar(indices, reg_params[:,i], yerr=ses[:,i], color=colors)
-    ax.set_xticks([])
-    ax.set_ylim(y_min[i], y_max[i])
-
-plt.subplots_adjust(wspace=1)
-plt.tight_layout()
-
-plt.savefig('{}/Desktop/transfer_plot_comparison'.format(homedir), transparent=True)
-plt.close('all')
 
 ## Extract pure methyl patterns ##
+##################################
 
 
 base_energy = 2.442375429221714356e+00
@@ -178,8 +100,69 @@ ax.set_yticks([0,100,200,300])
 plt.savefig("{}/Desktop/parity_pure".format(homedir), transparent=True)
 plt.close('all')
 
+##################################
+##################################
 
-### Plot special patterns ####
+## Plot expanded dataset ##
+
+int_06_06, int_04_09, int_04_04 = reg.predict([[12,36],[13,36],[8,16]])
+
+expand_feat_vec = np.vstack((ols_feat_vec_06_06, ols_feat_vec_04_09, ols_feat_vec_04_04))
+#expand_energies = np.hstack((energies_06_06-int_06_06, energies_04_09-int_04_09, energies_04_04-int_04_04))
+expand_energies = np.hstack((energies_06_06-energies_06_06.min(), energies_04_09-energies_04_09.min(), energies_04_04-energies_04_04.min()))
+
+expand_perf_mse, expand_perf_wt_mse, expand_perf_r2, expand_err, expand_reg = fit_multi_k_fold(expand_feat_vec, expand_energies, fit_intercept=False)
+
+boot_var_inter_expand, boot_var_coef_expand = boot_block_error(expand_feat_vec, expand_energies, fit_intercept=False)
+
+##############################################################
+### Plot Intercepts, coefs, for each model plus error bars ###
+##############################################################
+
+se_06_06 = np.append(np.sqrt(np.mean(boot_var_inter_06_06)), np.sqrt(np.mean(boot_var_coef_06_06, axis=0)))
+se_expanded = np.append(np.sqrt(np.mean(boot_var_inter_expand)), np.sqrt(np.mean(boot_var_coef_expand, axis=0)))
+ses = np.vstack((se_06_06, se_expanded))[:, 1:]
+
+# now stack the coefs
+coefs = np.vstack((reg_06_06.coef_, expand_reg.coef_))
+
+n = 2
+# indices for inter, coef1, coef2, coef3
+indices = np.arange(n)
+width = 1
+
+colors = [(1,0,0,1), (1,1,0,1)]
+
+plt.close('all')
+fig, (ax2, ax3) = plt.subplots(1, 2, figsize=(12,3))
+
+#ax1.bar(indices, coefs[:,0], yerr=ses[:,0], width=width, color=['r','y'])
+ax2.bar(indices, coefs[:,1], yerr=ses[:,1], width=width, color=['r','y'])
+ax3.bar(indices, coefs[:,2], yerr=ses[:,2], width=width, color=['r','y'])
+
+
+
+ax2.set_ylim(-0.8, -0.5)
+#ax2.set_yticks([])
+#ax2.set_yticklabels([])
+ax2.set_xticks([])
+
+ax3.set_ylim(-1.15, -0.75)
+#ax2.set_yticks([6, 6.5, 7.5])
+#ax3.set_yticklabels([])
+ax3.set_xticks([])
+
+#fig.tight_layout()
+plt.close('all')
+plt. ax1 = plt.subplots()
+ax1.set_ylim(6, 7.6)
+ax1.set_yticks([6, 6.5, 7.0])
+ax1.set_yticklabels([])
+ax1.set_xticks([])
+##################################
+### Plot special 6x6 patterns ####
+##################################
+
 ds = np.load('data/sam_special_patterns.dat.npz')
 states = ds['states']
 names = ds['names']
@@ -231,4 +214,6 @@ plt.close('all')
 
 
 
+plt.savefig('{}/Desktop/transfer_plot_comparison'.format(homedir), transparent=True)
+plt.close('all')
 

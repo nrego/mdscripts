@@ -21,7 +21,7 @@ import itertools
 #
 n_hidden_layer = 2
 n_node_hidden = 4
-n_conv_filters = 9
+n_conv_filters = 10
 
 # Are there two convolutions?
 is_double = True
@@ -125,7 +125,7 @@ net = all_nets[i_conv_filters, i_hidden_layer, i_node_hidden]
 
 
 #Get feat vec and augment to get right dimensions
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz')
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=True)
 feat_vec, energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices)
 
 n_patch_dim = feat_vec.shape[1]
@@ -200,12 +200,12 @@ plt.close('all')
 ## Now for pooling
 plt.close('all')
 cust_color = (0.5,1.0,0,0.2)
-cust_color = (0.5,0.5,0.5,0.5)
+cust_color = (0.5,0.5,0.5,0)
 arr = np.zeros((1,1,3,3))
-#lw = np.ones(6)*12
+lw = np.ones(6)*12
 #lw[3] = 12
-plot_hextensor(arr, cust_color=cust_color, mask=(0,6))
-plt.savefig('{}/Desktop/pool_filter'.format(homedir), transparent=True)
+plot_hextensor(arr, cust_color=cust_color, mask=(0,6), linewidth=lw)
+plt.savefig('{}/Desktop/pool_filter.svg'.format(homedir), transparent=True)
 
 ##
 plt.close('all')

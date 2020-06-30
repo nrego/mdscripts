@@ -19,8 +19,8 @@ import itertools
 ## Plot CNN filters (first layer, possibly second layer, too)
 ##   For a cnn with a given set of hyper params (set below)
 n_hidden_layer = 2
-n_node_hidden = 8
-n_conv_filters = 9
+n_node_hidden = 4
+n_conv_filters = 10
 
 # Are there two convolutions?
 is_double = True
@@ -87,7 +87,7 @@ def construct_pvn_images(idx, net, x_pattern, path='{}/Desktop'.format(homedir),
     # Apply conv filters to all patterns to find max vals
     out_all = r(c(x_pattern).detach())
     max0 = out_all[:,0].max()
-
+    #max0 = 2
     mynorm1 = Normalize(0,max0)
     #filter_norm = [mynorm for i in range(out_all.shape[1])]
 
@@ -187,6 +187,18 @@ plt.close('all')
 kernel_rep(k0, k1, norm=norm, cmap='PiYG')
 plt.savefig('{}/Desktop/kernel_l1'.format(homedir), transparent=True)
 
+# Plot each kernel individually
+try:
+    os.makedirs('{}/Desktop/kernels'.format(homedir))
+except FileExistsError:
+    print('directory kernels already exists...')
+for i in range(n_conv_filters):
+    this_hex = arr[:,i,...].reshape(1,1,3,3)
+    plt.close('all')
+
+    plot_hextensor(this_hex, norm=norm, cmap='PiYG', mask=(0,6))
+    plt.savefig('{}/Desktop/kernels/k{:02d}'.format(homedir,i), transparent=True)
+
 
 ## Conv layer 2
 if is_double:
@@ -212,7 +224,7 @@ construct_pvn_images(841, net, dataset.X, is_double=is_double)
 plt.close('all')
 
 ## Plot sample conv ##
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', embed_pos_ext=True, ny=8, nz=9)
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', embed_pos_ext=True, ny=8, nz=9, binary_encoding=True)
 dataset = SAMConvDataset(feat_vec, energies, ny=8, nz=9)
 x = dataset.X[841][None, ...]
 
@@ -222,7 +234,7 @@ plt.close('all')
 
 l1 = net.conv1
 c, r, p = l1.children()
-oc = r(c(x)).detach()[:,4,...][None,...]
+oc = r(c(x)).detach()[:,1,...][None,...]
 plot_hextensor(oc, norm=plt.Normalize(0, 4.5), cmap='Oranges', mask=np.arange(0,64,9))
 plt.savefig('{}/Desktop/small_pattern_conv'.format(homedir), transparent=True)
 
@@ -230,7 +242,7 @@ op = p(oc)
 
 plt.close('all')
 
-plot_hextensor(op, norm=plt.Normalize(0, 4.5), cmap='Oranges', )
+plot_hextensor(op, norm=plt.Normalize(0, 4.5), cmap='Oranges' )
 plt.savefig('{}/Desktop/small_pattern_pool'.format(homedir), transparent=True)
 
 
