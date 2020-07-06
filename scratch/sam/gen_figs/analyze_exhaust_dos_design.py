@@ -1,4 +1,3 @@
-from __future__ import division
 
 import numpy as np
 import MDAnalysis
@@ -110,8 +109,8 @@ def fill_in_wl(n, hist, vals, constr=False):
 #
 
 
-p = 6
-q = 6
+p = 2
+q = 18
 
 
 
@@ -119,14 +118,13 @@ n = p*q
 
 indices = np.arange(n)
 
-dummy_state = State(indices, ny=p, nz=q)
-state_po = State(np.array([], dtype=int))
+dummy_state = State(indices, p=p, q=q)
+state_po = State(np.array([], dtype=int), p=p, q=q)
 adj_mat = dummy_state.adj_mat
 ext_count = dummy_state.ext_count
 
-# Total number of internal, external edges
-max_n_internal = dummy_state.n_mm
-max_n_external = dummy_state.n_me
+max_n_internal = dummy_state.n_cc
+max_n_external = dummy_state.n_ce
 tot_edges = max_n_internal + max_n_external
 
 reg = np.load("sam_reg_m3.npy").item()
@@ -138,8 +136,9 @@ alpha_kc = -alpha1 - 6*alpha2
 alpha_n_cc = alpha2
 alpha_n_ce = alpha2 - alpha3
 
-e_min = reg.intercept_
-e_max = reg.intercept_ + state_po.k_o*alpha1 + state_po.n_oo*alpha2 + state_po.n_oe*alpha3
+
+e_min = 0
+e_max = state_po.k_o*alpha1 + state_po.n_oo*alpha2 + state_po.n_oe*alpha3
 
 
 de = 0.1
@@ -207,7 +206,7 @@ for i in range(n+1):
     energy_break = (alpha_kc * kc + alpha_n_cc * n_cc_break + alpha_n_ce * n_ce_break) + e_max
     energy_build = (alpha_kc * kc + alpha_n_cc * n_cc_build + alpha_n_ce * n_ce_build) + e_max
 
-    tmp = (alpha1 * (36-kc) + alpha2 * n_oo_break + alpha3 * n_oe_break) + e_min
+    tmp = (alpha1 * (n-kc) + alpha2 * n_oo_break + alpha3 * n_oe_break) + e_min
     assert np.allclose(tmp, energy_break)
 
     n_accessible_states_break[i] = n_state_break
@@ -236,11 +235,16 @@ for i in range(n+1):
     avg_noe_break[i] = np.dot(np.exp(s_break), n_oe_break)
     avg_noe_build[i] = np.dot(np.exp(s_build), n_oe_build)
 
+assert n_accessible_states_build[0] == n_accessible_states_build[-1] == n_accessible_states_break[0] == n_accessible_states_break[-1] == 1
 
 ko = n - np.arange(n+1)
+
+
 ds = np.load('sam_dos_f_min_max.npz')
 min_f = ds['min_f']
 max_f = ds['max_f']
+vals_pq = ds['vals_pq']
+vals_ko = ds['vals_ko']
 vals_f = ds['vals_f']
 vals_noo = ds['vals_noo']
 vals_noe = ds['vals_noe']
@@ -248,8 +252,7 @@ ener_hist = ds['ener_hist']
 noo_hist = ds['noo_hist']
 noe_hist = ds['noe_hist']
 
-assert n_accessible_states_build[0] == n_accessible_states_build[-1] == n_accessible_states_break[0] == n_accessible_states_break[-1] == 1
-
+i_pq = np.where((vals_pq[:,0]==p) & (vals_pq[:,1] == q))[0].item()
 plt.close('all')
 
 plt.plot(ko, np.log(n_accessible_states_break), '-o', color=COLOR_BREAK)
@@ -264,7 +267,8 @@ ax.plot(ko, avg_noo_break, '-o', color=COLOR_BREAK, markeredgecolor='k')
 ax.plot(ko, avg_noo_build, '-o', color=COLOR_BUILD, markeredgecolor='k')
 ax.set_xticks([0,9,18,27,36])
 fig.tight_layout()
-fill_in_wl(n, noo_hist, vals_noo, constr=True)
+fill_in_wl(n, noo_hist[i_pq, :n+1], vals_noo, constr=True)
+ax.set_ylim(-1, state_po.n_oo+2)
 plt.show()
 plt.savefig('{}/Desktop/avg_noo_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
 
@@ -278,7 +282,8 @@ plt.plot(ko, avg_noe_break, '-o', color=COLOR_BREAK, markeredgecolor='k')
 plt.plot(ko, avg_noe_build, '-o', color=COLOR_BUILD, markeredgecolor='k')
 ax.set_xticks([0,9,18,27,36])
 fig.tight_layout()
-fill_in_wl(n, noe_hist, vals_noe, constr=True)
+fill_in_wl(n, noe_hist[i_pq, :n+1], vals_noe, constr=True)
+ax.set_ylim(-1, state_po.n_oe+2)
 plt.show()
 plt.savefig('{}/Desktop/avg_noe_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
 
@@ -292,8 +297,8 @@ plt.plot(ko, avg_e_break, '-o', color=COLOR_BREAK, markeredgecolor='k')
 plt.plot(ko, avg_e_build, '-o', color=COLOR_BUILD, markeredgecolor='k')
 ax.set_xticks([0,9,18,27,36])
 
-fill_in_wl(n, ener_hist, vals_f, constr=True)
-ax.set_ylim(130,300)
+fill_in_wl(n, ener_hist[i_pq, :n+q], vals_f, constr=True)
+ax.set_ylim(-1, e_max+10)
 fig.tight_layout()
 plt.show()
 plt.savefig('{}/Desktop/avg_e_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)

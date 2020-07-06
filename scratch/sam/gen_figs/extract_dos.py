@@ -1,4 +1,3 @@
-from __future__ import division
 
 import numpy as np
 import MDAnalysis
@@ -27,10 +26,10 @@ def get_p_q(dname):
 ### Extract all sampled dos into big array
 #########################################
 
-p = q = 6
+#p = q = 6
 
-#dnames = sorted(glob.glob('p_*'))
-dnames = ['p_{:02d}_q_{:02d}'.format(p,q)]
+dnames = sorted(glob.glob('p_*'))
+#dnames = ['p_{:02d}_q_{:02d}'.format(p,q)]
 n_dir = len(dnames)
 
 print('N directories (p, q combos): {}'.format(n_dir))
@@ -46,7 +45,7 @@ vals_ko = np.arange(max_ko+1)
 # max n_oo and n_oe for each p,q
 edge_vals = np.zeros_like(vals_pq)
 for i, pq in enumerate(vals_pq):
-    state = State(np.array([],dtype=int), ny=pq[0], nz=pq[1])
+    state = State(np.array([],dtype=int), p=pq[0], q=pq[1])
 
     edge_vals[i] = state.n_oo, state.n_oe
 
@@ -57,6 +56,7 @@ vals_noe = np.arange(max_noe+1)
 # Fixed volume - will have to combine to get pressures
 x_ko, x_noo, x_noe = np.meshgrid(vals_ko, vals_noo, vals_noe, indexing='ij')
 
+# Shape: (p_q, vals_ko, vals_noo, vals_noe)
 dos = np.zeros((vals_pq.shape[0], *x_ko.shape))
 entropies = np.zeros_like(dos)
 entropies[:] = -np.inf
@@ -68,7 +68,7 @@ for dname in dnames:
     this_N = this_p*this_q
 
     assert len(glob.glob('{}/dos_*'.format(dname))) == this_N+1
-    this_state = State(np.array([], dtype=int), ny=this_p, nz=this_q)
+    this_state = State(np.array([], dtype=int), p=this_p, q=this_q)
     this_max_noo = this_state.n_oo
     this_max_noe = this_state.n_oe
 

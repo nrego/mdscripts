@@ -1,4 +1,3 @@
-from __future__ import division
 
 import numpy as np
 import MDAnalysis
@@ -18,7 +17,7 @@ from scratch.sam.util import *
 
 from scipy.special import binom
 
-#### RUN after 'extract_dos' (and after moving sam_dos to small_patterns/data)
+#### RUN after 'extract_dos' (and after moving sam_dos to sam_data/data)
 ###
 ### This routine extracts the actual energies from the dos (since the dos is a fn of ko,noo,noe)
 #
@@ -52,7 +51,7 @@ vals_noe = ds['vals_noe']
 x_ko, x_noo, x_noe = np.meshgrid(vals_ko, vals_noo, vals_noe, indexing='ij')
 
 # shape: (n_ko, n_noo, n_noe)
-energies = reg.coef_[0]*x_ko + reg.coef_[1]*x_noo + reg.coef_[2]*x_noe + reg.intercept_
+energies = reg.coef_[0]*x_ko + reg.coef_[1]*x_noo + reg.coef_[2]*x_noe #+ reg.intercept_
 
 
 # Shape
@@ -63,7 +62,7 @@ tot_min_e = np.inf
 tot_max_e = -np.inf
 
 #vals_f = np.arange(energies.min(), energies.max(), 0.1)
-vals_f = np.arange(0, 400, 0.1)
+vals_f = np.arange(0, 500.1, 0.1)
 
 # Density of states for each volume, k_o, energy value
 #    shape: (n_pq, n_ko, n_fvals)
@@ -78,7 +77,7 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
     #this_fnot = f0[i_pq]
 
     for i_ko in range(pq+1):
-        # Shape: (n_ko, n_noo, n_noe)
+        # Shape: (n_noo, n_noe)
         this_dos = dos[i_pq, i_ko]
 
         occ = this_dos > 0
@@ -86,6 +85,7 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
         this_f = energies[i_ko]
 
         occ_f = this_f[occ]
+        assert occ_f.min() >= 0
         occ_dos = this_dos[occ]
 
         assert np.isclose(occ_dos.sum(), binom(pq, i_ko))
@@ -99,40 +99,47 @@ for i_pq, (pq,p,q) in enumerate(feat_pq):
             f_dos[i_pq, i_ko, f_assign_idx] += mult
 
 
-i_pq = 0
-#get average f, as well as min,max, with ko
-f_dos = f_dos[0]
-max_f = np.zeros(f_dos.shape[0])
+## Get histograms of energies, noo's, and noe's with ko for each p,q
+####################################################################
+
+# Shape: (n_pq, n_ko, n_fvals)
+ener_hist = np.zeros((vals_pq.shape[0], vals_ko.size, vals_f.size))
+# Shape: (n_pq, n_ko, n_noo)
+noo_hist = np.zeros((vals_pq.shape[0], vals_ko.size, vals_noo.size))
+# Shape: (n_pq, n_ko, n_noe)
+noe_hist = np.zeros((vals_pq.shape[0], vals_ko.size, vals_noe.size))
+
+# Shape: (n_pq, n_ko)
+max_f = np.zeros((vals_pq.shape[0], vals_ko.size))
 min_f = np.zeros_like(max_f)
 mean_f = np.zeros_like(max_f)
 
+for i_pq in range(vals_pq.shape[0]):
+    for i_ko in range(vals_ko.size):
+        this_dos = dos[i_pq, i_ko]
+        this_f_dos = f_dos[i_pq, i_ko]
 
-# Shape: pq, vals_f.size
-#.  log(dos) of energies with each ko
-ener_hist = np.zeros((vals_ko.size, vals_f.size))
-# Shape: pq, noo.size
-noo_hist = np.zeros((vals_ko.size, vals_noo.size))
-#
-noe_hist = np.zeros((vals_ko.size, vals_noe.size))
+        # Integrate over noe's
+        this_noo_dos = this_dos.sum(axis=1)
+        # Integrate over noo's
+        this_noe_dos = this_dos.sum(axis=0)
 
-for i_ko in range(f_dos.shape[0]):
-    this_dos = dos[i_pq, i_ko]
-    this_f_dos = f_dos[i_ko]
+        occ_f = this_f_dos > 0
 
-    # Integrate over noe's
-    this_noo_dos = this_dos.sum(axis=1)
-    # integrate out noo's
-    this_noe_dos = this_dos.sum(axis=0)
+        if occ_f.sum() > 0:
+            max_f[i_pq, i_ko] = vals_f[occ_f].max()
+            min_f[i_pq, i_ko] = vals_f[occ_f].min()
+        # ko > pq
+        else:
+            max_f[i_pq, i_ko] = np.nan
+            min_f[i_pq, i_ko] = np.nan
 
-    occ_f = this_f_dos > 0
+        ener_hist[i_pq, i_ko] = np.log(this_f_dos)
+        noo_hist[i_pq, i_ko] = np.log(this_noo_dos)
+        noe_hist[i_pq, i_ko] = np.log(this_noe_dos)
 
-    max_f[i_ko] = vals_f[occ_f].max()
-    min_f[i_ko] = vals_f[occ_f].min()
 
-    ener_hist[i_ko] = np.log(this_f_dos)
-    noo_hist[i_ko] = np.log(this_noo_dos)
-    noe_hist[i_ko] = np.log(this_noe_dos)
 
-np.savez_compressed("sam_dos_f_min_max", ko=np.arange(37), vals_f=vals_f, vals_noo=vals_noo, vals_noe=vals_noe,
+np.savez_compressed("data/sam_dos_f_min_max", vals_pq=vals_pq, vals_ko=vals_ko, vals_f=vals_f, vals_noo=vals_noo, vals_noe=vals_noe,
                     max_f=max_f, min_f=min_f, ener_hist=ener_hist, noo_hist=noo_hist, noe_hist=noe_hist)
 

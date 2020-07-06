@@ -154,7 +154,9 @@ ax3.set_xticks([])
 
 #fig.tight_layout()
 plt.close('all')
-plt. ax1 = plt.subplots()
+
+plt, ax1 = plt.subplots()
+ax1.bar(indices, coefs[:,0], yerr=ses[:,0], width=width, color=['r','y'])
 ax1.set_ylim(6, 7.6)
 ax1.set_yticks([6, 6.5, 7.0])
 ax1.set_yticklabels([])
