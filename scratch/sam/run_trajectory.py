@@ -29,13 +29,13 @@ from scratch.sam.enumerate_design import GetDelta
 import os, glob
 
 
-parser = argparse.ArgumentParser('run greedy monomer design')
-parser.add_argument('-p', default=6)
-parser.add_argument('-q', default=6)
+parser = argparse.ArgumentParser('Run greedy monomer design')
+parser.add_argument('-p', default=6, type=int)
+parser.add_argument('-q', default=6, type=int)
 parser.add_argument('--do-plot', action='store_true')
-parser.add_argument('--n-trials', default=1000)
-parser.add_argument('--idx', default=0)
-parser.add_argument('--reg-file', default='data/sam_reg_coef.npy')
+parser.add_argument('--n-trials', default=1000, type=int)
+parser.add_argument('--idx', default=0, type=int)
+parser.add_argument('--reg-file', default='data/sam_reg_coef.npy', type=str)
 
 args = parser.parse_args()
 
