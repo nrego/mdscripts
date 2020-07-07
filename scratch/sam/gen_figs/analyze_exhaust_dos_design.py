@@ -105,203 +105,158 @@ def fill_in_wl(n, hist, vals, constr=False):
 #. SECOND: Run 'extract_dos_energies' from small_patterns to construct log(dos) over energies, noo, and noe,
 #.    all as fn's of ko (OUTPUT: 'sam_dos_f_min_max.npz')
 #
-#. FINALLY: Run this from 'sam_exhaust_greedy'
+#. FINALLY: Run this from 'sam_data'
 #
 
+pq_vals = [(4,4),(2,18), (3,12), (4, 9), (6,6), (10,10), (5, 20), (4, 25), (2, 50), (20,20)]
+ds_design = np.load("data/greedy_design_trials.npz")
 
-p = 2
-q = 18
+all_hyster = np.zeros(len(pq_vals), dtype=object)
+all_xstar = np.zeros(len(pq_vals), dtype=float)
+all_hstar = np.zeros_like(all_xstar)
+
+for i_pq, (p,q) in enumerate(pq_vals):
+
+    print("p: {} q: {}".format(p,q))
+    n = p*q
+
+    ko = np.arange(n+1)
+
+    indices = np.arange(n)
+
+    dummy_state = State(indices, p=p, q=q)
+    state_po = State(np.array([], dtype=int), p=p, q=q)
+    adj_mat = dummy_state.adj_mat
+    ext_count = dummy_state.ext_count
+
+    max_n_internal = dummy_state.n_cc
+    max_n_external = dummy_state.n_ce
+    tot_edges = max_n_internal + max_n_external
+
+    reg = np.load("data/sam_reg_m3.npy").item()
+
+    # ko, noo, noe
+    alpha1, alpha2, alpha3 = reg.coef_
+
+    alpha_kc = -alpha1 - 6*alpha2
+    alpha_n_cc = alpha2
+    alpha_n_ce = alpha2 - alpha3
 
 
-
-n = p*q
-
-indices = np.arange(n)
-
-dummy_state = State(indices, p=p, q=q)
-state_po = State(np.array([], dtype=int), p=p, q=q)
-adj_mat = dummy_state.adj_mat
-ext_count = dummy_state.ext_count
-
-max_n_internal = dummy_state.n_cc
-max_n_external = dummy_state.n_ce
-tot_edges = max_n_internal + max_n_external
-
-reg = np.load("sam_reg_m3.npy").item()
-
-# ko, noo, noe
-alpha1, alpha2, alpha3 = reg.coef_
-
-alpha_kc = -alpha1 - 6*alpha2
-alpha_n_cc = alpha2
-alpha_n_ce = alpha2 - alpha3
+    e_min = 0
+    e_max = state_po.k_o*alpha1 + state_po.n_oo*alpha2 + state_po.n_oe*alpha3
 
 
-e_min = 0
-e_max = state_po.k_o*alpha1 + state_po.n_oo*alpha2 + state_po.n_oe*alpha3
+    de = 0.1
+    e_bins = np.arange(0, 400, 0.1)
 
-
-de = 0.1
-e_bins = np.arange(0, 400, 0.1)
-
-headdir = 'p_{:02d}_q_{:02d}'.format(p,q)
-
-n_accessible_states_break = np.zeros(n+1)
-n_accessible_states_build = np.zeros(n+1)
-
-avg_e_break = np.zeros(n+1)
-avg_e_build = np.zeros(n+1)
-
-avg_noo_break = np.zeros_like(avg_e_break)
-avg_noo_build = np.zeros_like(avg_e_break)
-
-avg_noe_break = np.zeros_like(avg_e_break)
-avg_noe_build = np.zeros_like(avg_e_break)
-
-shutil.copy('{}/break_phob/kc_0000.pkl'.format(headdir), '{}/build_phob/'.format(headdir))
-shutil.copy('{}/build_phob/kc_{:04d}.pkl'.format(headdir, n), '{}/break_phob/'.format(headdir))
-
-e_landscape_break = np.zeros((n+1, e_bins.size-1))
-e_landscape_build = np.zeros((n+1, e_bins.size-1))
-e_landscape_tot = np.zeros_like(e_landscape_build)
-
-XX, YY = np.meshgrid(n-np.arange(n+1), e_bins[:-1], indexing='ij')
-
-for i in range(n+1):
-    kc = i
-    with open('{}/break_phob/kc_{:04d}.pkl'.format(headdir, i), 'rb') as fin:
-        state_count_break = pickle.load(fin)
-    with open('{}/build_phob/kc_{:04d}.pkl'.format(headdir, i), 'rb') as fin:
-        state_count_build = pickle.load(fin)
-
-    methyl_masks_break = np.array([np.fromstring(state_byte, bool) for state_byte in state_count_break.keys()])
-    methyl_masks_build = np.array([np.fromstring(state_byte, bool) for state_byte in state_count_build.keys()])
-
+    header = 'p_{:02d}_q_{:02d}'.format(p, q)
     
-    # Number of unique states at this step
-    n_state_break = methyl_masks_break.shape[0]
-    n_state_build = methyl_masks_build.shape[0]
-    print("i {} n_state break: {}".format(i, n_state_break))
+    design_f_build = ds_design['all_f_build'].item()[header]
+    design_f_break = ds_design['all_f_break'].item()[header]
 
-    if plot_state:
-        rand_break = np.random.choice(n_state_break)
-        rand_build = np.random.choice(n_state_build)
-        plot_it(n-kc, methyl_masks_break[rand_break], methyl_masks_build[rand_build])
+    ds = np.load('data/sam_dos_f_min_max.npz')
+    min_f = ds['min_f']
+    max_f = ds['max_f']
+    #vals_pq = ds['vals_pq']
+    vals_ko = ds['vals_ko']
+    vals_f = ds['vals_f']
+    vals_noo = ds['vals_noo']
+    vals_noe = ds['vals_noe']
+    ener_hist = ds['ener_hist']
+    noo_hist = ds['noo_hist']
+    noe_hist = ds['noe_hist']
 
-    x_break = methyl_masks_break.astype(int)
-    x_build = methyl_masks_build.astype(int)
+    #i_pq = np.where((vals_pq[:,0]==p) & (vals_pq[:,1] == q))[0].item()
+    plt.close('all')
 
-    n_cc_break = 0.5*np.linalg.multi_dot((x_break, adj_mat, x_break.T)).diagonal()
-    n_cc_build = 0.5*np.linalg.multi_dot((x_build, adj_mat, x_build.T)).diagonal()
+    avg_f_break = design_f_break.mean(axis=0)
+    avg_f_build = design_f_build.mean(axis=0)
 
-    n_ce_break = np.dot(x_break, ext_count)
-    n_ce_build = np.dot(x_build, ext_count)
+    # f 
+    plt.close('all')
+    fig, ax = plt.subplots(figsize=(6,6))
 
+    plt.plot(ko, avg_f_break, '-o', color=COLOR_BREAK, markeredgecolor='k')
+    plt.plot(ko, avg_f_build, '-o', color=COLOR_BUILD, markeredgecolor='k')
+    #ax.set_xticks([0,9,18,27,36])
 
-    n_oo_break = max_n_internal - 6*kc + n_cc_break + n_ce_break
-    n_oo_build = max_n_internal - 6*kc + n_cc_build + n_ce_build
-    n_oe_break = max_n_external - n_ce_break
-    n_oe_build = max_n_external - n_ce_build
+    #fill_in_wl(n, ener_hist[i_pq, :n+1], vals_f, constr=True)
+    ax.set_ylim(-1, e_max+10)
+    fig.tight_layout()
+    plt.show()
+    plt.savefig('{}/Desktop/avg_e_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
 
-    energy_break = (alpha_kc * kc + alpha_n_cc * n_cc_break + alpha_n_ce * n_ce_break) + e_max
-    energy_build = (alpha_kc * kc + alpha_n_cc * n_cc_build + alpha_n_ce * n_ce_build) + e_max
-
-    tmp = (alpha1 * (n-kc) + alpha2 * n_oo_break + alpha3 * n_oe_break) + e_min
-    assert np.allclose(tmp, energy_break)
-
-    n_accessible_states_break[i] = n_state_break
-    n_accessible_states_build[i] = n_state_build
-
-    ## Get density of states at each kc
-    dos_break = np.array([val for val in state_count_break.values()])
-    dos_break =  dos_break / dos_break.sum()
-    dos_break = dos_break.astype(float)
-    dos_build = np.array([val for val in state_count_build.values()])
-    dos_build = dos_build / dos_build.sum()
-    dos_build = dos_build.astype(float)
+    plt.close('all')
 
 
+    ## Hysteresis plots ##
 
-    # log of probability
-    s_break = np.log(dos_break) 
-    s_build = np.log(dos_build) 
+    hyster_f = (avg_f_break - avg_f_build) / e_max
+    fig, ax = plt.subplots(figsize=(6,6))
 
-    avg_e_break[i] = np.dot(np.exp(s_break), energy_break)
-    avg_e_build[i] = np.dot(np.exp(s_build), energy_build)
-
-    avg_noo_break[i] = np.dot(np.exp(s_break), n_oo_break)
-    avg_noo_build[i] = np.dot(np.exp(s_build), n_oo_build)
-
-    avg_noe_break[i] = np.dot(np.exp(s_break), n_oe_break)
-    avg_noe_build[i] = np.dot(np.exp(s_build), n_oe_build)
-
-assert n_accessible_states_build[0] == n_accessible_states_build[-1] == n_accessible_states_break[0] == n_accessible_states_break[-1] == 1
-
-ko = n - np.arange(n+1)
+    plt.plot(ko/n, hyster_f, 'k-o')
+    plt.tight_layout()
+    plt.show()
+    plt.savefig('{}/Desktop/hyster_p_{:02d}_q_{:02d}'.format(homedir, p, q))
+    plt.close('all')
 
 
-ds = np.load('sam_dos_f_min_max.npz')
-min_f = ds['min_f']
-max_f = ds['max_f']
-vals_pq = ds['vals_pq']
-vals_ko = ds['vals_ko']
-vals_f = ds['vals_f']
-vals_noo = ds['vals_noo']
-vals_noe = ds['vals_noe']
-ener_hist = ds['ener_hist']
-noo_hist = ds['noo_hist']
-noe_hist = ds['noe_hist']
+    this_hyst = np.vstack((ko/n, hyster_f)).T  
+    max_idx = np.argmax(this_hyst[:,1])
+    all_hyster[i_pq] = this_hyst
 
-i_pq = np.where((vals_pq[:,0]==p) & (vals_pq[:,1] == q))[0].item()
-plt.close('all')
-
-plt.plot(ko, np.log(n_accessible_states_break), '-o', color=COLOR_BREAK)
-plt.plot(ko, np.log(n_accessible_states_build), '-o', color=COLOR_BUILD)
-plt.savefig('{}/Desktop/n_states_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
-
-## n_oo
-plt.close('all')
-fig, ax = plt.subplots(figsize=(6,6))
-
-ax.plot(ko, avg_noo_break, '-o', color=COLOR_BREAK, markeredgecolor='k')
-ax.plot(ko, avg_noo_build, '-o', color=COLOR_BUILD, markeredgecolor='k')
-ax.set_xticks([0,9,18,27,36])
-fig.tight_layout()
-fill_in_wl(n, noo_hist[i_pq, :n+1], vals_noo, constr=True)
-ax.set_ylim(-1, state_po.n_oo+2)
-plt.show()
-plt.savefig('{}/Desktop/avg_noo_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
+    all_xstar[i_pq] = this_hyst[max_idx,0]
+    all_hstar[i_pq] = this_hyst[max_idx,1]
 
 
+    del design_f_build, design_f_break 
 
-# n_oe
-plt.close('all')
-fig, ax = plt.subplots(figsize=(6,6))
+plt.close()
+#for i_pq in [0,1,2,3]:
+for i_pq in [5,6,7,8]:
+#for i_pq in [4,5,9]:
+    p,q = pq_vals[i_pq]
+    print("p: {} q: {}".format(p,q))
 
-plt.plot(ko, avg_noe_break, '-o', color=COLOR_BREAK, markeredgecolor='k')
-plt.plot(ko, avg_noe_build, '-o', color=COLOR_BUILD, markeredgecolor='k')
-ax.set_xticks([0,9,18,27,36])
-fig.tight_layout()
-fill_in_wl(n, noe_hist[i_pq, :n+1], vals_noe, constr=True)
-ax.set_ylim(-1, state_po.n_oe+2)
-plt.show()
-plt.savefig('{}/Desktop/avg_noe_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
+    x = all_hyster[i_pq]
+    plt.plot(x[:,0], x[:,1], 'o-', label='{} by {}'.format(p,q))
+
+plt.legend()
+
+plt.close()
+
+plt.scatter()
+
+## Plot out trajectory
+p = 2
+q = 50
+n = p*q
+indices = np.arange(n, dtype=int)
+header = 'p_{:02d}_q_{:02d}'.format(p, q)
+
+states_break = ds_design['all_states_break'].item()[header]
+states_build = ds_design['all_states_build'].item()[header]
+
+i_trial = 100
+
+this_build = states_build[i_trial]
+this_break = states_break[i_trial]
+
+del states_break, states_build
 
 
+for i_ko in range(n+1):
+    print("doing i_ko: {}".format(i_ko))
+    plt.close('all')
 
-# f 
-plt.close('all')
-fig, ax = plt.subplots(figsize=(6,6))
+    state_build = State(indices[this_build[i_ko].astype(bool)], p=p, q=q)
+    state_break = State(indices[this_break[i_ko].astype(bool)], p=p, q=q)
 
-plt.plot(ko, avg_e_break, '-o', color=COLOR_BREAK, markeredgecolor='k')
-plt.plot(ko, avg_e_build, '-o', color=COLOR_BUILD, markeredgecolor='k')
-ax.set_xticks([0,9,18,27,36])
-
-fill_in_wl(n, ener_hist[i_pq, :n+q], vals_f, constr=True)
-ax.set_ylim(-1, e_max+10)
-fig.tight_layout()
-plt.show()
-plt.savefig('{}/Desktop/avg_e_p_{:02d}_q_{:02d}'.format(homedir, p, q), transparent=True)
-
-
+    state_build.plot()
+    plt.savefig('{}/Desktop/build_p_{:02d}_q_{:02d}_rd_{:04d}'.format(homedir, p, q, n-i_ko))
+    plt.close('all')
+    state_break.plot()
+    plt.savefig('{}/Desktop/break_p_{:02d}_q_{:02d}_rd_{:04d}'.format(homedir, p, q, i_ko))
+    plt.close('all')
 

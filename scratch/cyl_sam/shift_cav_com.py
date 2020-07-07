@@ -77,16 +77,21 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
 
     return rhoz, rho_vols
 
+extract_float_from_str = lambda instr: np.array(instr.split(), dtype=float)
 
 parser = argparse.ArgumentParser('Output cavity voxels for each frame', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-c', '--top', type=str, default='ofile.gro', help='input structure file')
 parser.add_argument('-f', '--traj', type=str, default='ofile.xtc', help='Input trajectory')
 parser.add_argument('-b', '--start', default=500, type=int, help='start time, in ps')
 parser.add_argument('--equil-vals', type=str, 
-                    help='path to file with equilibrium values - will calc denstty')
+                    help='path to file with equilibrium values - will calc density')
 parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z), in **Angstroms**. ')
 parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. ')
 parser.add_argument('--rmax', default=30, type=float, help='Maximum distance r (in A), to calc rho(z,r)')
+parser.add_argument('--V-min', default="28.0 10.0 10.0", type=str,
+                    help="Coordinates of big V's minimum, inputted as a string of three values")
+parser.add_argument('--V-max', default="48.5 60.0 60.0", type=str,
+                    help="Coordinates of big V's minimum, inputted as a string of three values")
 args = parser.parse_args()
 
 
@@ -94,13 +99,10 @@ do_calc_rho = False
 
 
 ## Hard (nooo!) coded dimensions of big probe V (large cubic box)
-xmin = 28.0
-ymin = 5.0
-zmin = 5.0
+xmin, ymin, zmin = extract_float_from_str(args.V_min)
+xmax, ymax, zmax = extract_float_from_str(args.V_max)
 
-xmax = 48.5
-ymax = 65.0
-zmax = 65.0
+print('Vmin: ({:.2f} {:.2f} {:.2f}) Vmax: ({:.2f} {:.2f} {:.2f})'.format(xmin, ymin, zmin, xmax, ymax, zmax))
 
 box_vol = (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 
@@ -206,7 +208,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
 # Output number of waters in V at each frame, as well as their COM's
 #   Note: *non* shifted positions - just directly from trajectory
 if not do_calc_rho:
-    np.savetxt("phiout_cube.dat", n_waters, fmt='%3d')
+    np.savetxt("phiout_cube.dat", n_waters, fmt='%3d', header='Vmin: ({:.2f} {:.2f} {:.2f}) A Vmax: ({:.2f} {:.2f} {:.2f}) A'.format(xmin, ymin, zmin, xmax, ymax, zmax))
     np.save("com_cube.dat", water_com)
 
 if do_calc_rho:
