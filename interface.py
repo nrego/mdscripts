@@ -209,6 +209,18 @@ Command-line options
                             help='Consider *all* waters (not just those close to solute) - default is false')
         sgroup.add_argument('--sspec', default=SEL_SPEC_HEAVIES, type=str,
                             help='Selection spec for chosing solute atoms (default: all protein heavies)')
+        sgroup.add_argument('--xmin', type=float,
+                            help='If specified, all grid points below this are assigned a rho of 1')
+        sgroup.add_argument('--ymin', type=float,
+                            help='If specified, all grid points below this are assigned a rho of 1')
+        sgroup.add_argument('--zmin', type=float,
+                            help='If specified, all grid points below this are assigned a rho of 1')
+        sgroup.add_argument('--xmax', type=float,
+                            help='If specified, all grid points above this are assigned a rho of 1')
+        sgroup.add_argument('--ymax', type=float,
+                            help='If specified, all grid points above this are assigned a rho of 1')
+        sgroup.add_argument('--zmax', type=float,
+                            help='If specified, all grid points above this are assigned a rho of 1')
         agroup = parser.add_argument_group('other options')
         agroup.add_argument('-odx', '--outdx', default='interface.dx',
                         help='Output file to write instantaneous interface')
@@ -256,8 +268,31 @@ Command-line options
 
         self.grid_dl = args.grid_dl
 
+        self.xmin = -np.inf
+        self.ymin = -np.inf
+        self.zmin = -np.inf
+
+        self.xmax = np.inf
+        self.ymax = np.inf
+        self.zmax = np.inf
+
+        if args.xmin is not None:
+            self.xmin = args.xmin
+        if args.ymin is not None:
+            self.ymin = args.ymin
+        if args.zmin is not None:
+            self.zmin = args.zmin
+        if args.xmax is not None:
+            self.xmax = args.xmax
+        if args.ymax is not None:
+            self.ymax = args.ymax
+        if args.zmax is not None:
+            self.zmax = args.zmax
+
         self._setup_grid()
 
+        self.grid_mask = (self.gridpts[:,0] < self.xmin) | (self.gridpts[:,0] > self.xmax) | (self.gridpts[:,1] < self.ymin) | (self.gridpts[:,1] > self.ymax) | (self.gridpts[:,2] < self.zmin) | (self.gridpts[:,2] > self.zmax)
+        
     #@profile
     def calc_rho(self):
 
@@ -309,6 +344,7 @@ Command-line options
         for future in self.work_manager.submit_as_completed(task_gen(), queue_size=n_workers):
             #import pdb; pdb.set_trace()
             rho_slice, frame_idx = future.get_result(discard=True)
+            rho_slice[self.grid_mask] = 1
             self.rho[frame_idx-self.start_frame, :] = rho_slice
             del rho_slice
         #for (fn, args, kwargs) in task_gen():
