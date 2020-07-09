@@ -23,6 +23,14 @@ import sys
 import argparse
 
 
+def pbc(pos, box_dim):
+
+    for i, box_len in enumerate(box_dim):
+        pos[pos[:,i] > box_len, i] -= box_len
+        pos[pos[:,i] < 0, i] += box_len
+
+    return pos
+
 ## Get rho as a function of x (renamed to z) and r
 #
 # water_pos: Positions of all water O's in V 
@@ -88,10 +96,13 @@ parser.add_argument('--equil-vals', type=str,
 parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z), in **Angstroms**. ')
 parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. ')
 parser.add_argument('--rmax', default=30, type=float, help='Maximum distance r (in A), to calc rho(z,r)')
-parser.add_argument('--V-min', default="28.0 10.0 10.0", type=str,
+parser.add_argument('--V-min', default="28.5 10.0 10.0", type=str,
                     help="Coordinates of big V's minimum, inputted as a string of three values")
 parser.add_argument('--V-max', default="48.5 60.0 60.0", type=str,
                     help="Coordinates of big V's minimum, inputted as a string of three values")
+parser.add_argument('--print-out', action='store_true',
+                    help='If true, print out shifted data')
+
 args = parser.parse_args()
 
 
@@ -103,6 +114,7 @@ xmin, ymin, zmin = extract_float_from_str(args.V_min)
 xmax, ymax, zmax = extract_float_from_str(args.V_max)
 
 print('Vmin: ({:.2f} {:.2f} {:.2f}) Vmax: ({:.2f} {:.2f} {:.2f})'.format(xmin, ymin, zmin, xmax, ymax, zmax))
+sys.stdout.flush()
 
 box_vol = (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 
@@ -141,6 +153,9 @@ water_com = np.zeros((n_frames-start_frame, 3))
 if do_calc_rho:
     # Shape: (n_frames, n_x, n_r)
     rho_z = np.zeros((n_frames-start_frame, xvals.size-1, rvals.size-1))
+
+if args.print_out:
+    W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
 
 for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
     if i_frame % 100 == 0:
@@ -185,9 +200,11 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
         shift_vector = np.array([0,ycom,zcom]) - cavity_com
         shift_vector[0] = 0
-        
+        #print("frame: {} shift: {}".format(i_frame, shift_vector))
         # Shift *all* water positions in this frame 
         water_pos_shift = water_pos + shift_vector
+        
+        pbc(water_pos_shift, univ.dimensions[:3])
         waters.positions = water_pos_shift
         
         # Find waters that are in V after shifting 
@@ -205,6 +222,14 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
 
         rho_z[i] = this_rho_z
 
+        if args.print_out:
+            W.write(univ.atoms)
+            if i_frame == n_frames - 1:
+                univ.atoms.write("shift.gro")
+
+if args.print_out:
+    W.close()
+
 # Output number of waters in V at each frame, as well as their COM's
 #   Note: *non* shifted positions - just directly from trajectory
 if not do_calc_rho:
@@ -214,4 +239,9 @@ if not do_calc_rho:
 if do_calc_rho:
     np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
     np.save('rho_vols.dat', rho_vols)
+
+
+
+
+
 

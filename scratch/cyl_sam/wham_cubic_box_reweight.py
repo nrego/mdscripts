@@ -60,7 +60,7 @@ print('Extracting cubic probe volume data\'s...')
 sys.stdout.flush()
 
 # Number of waters in V for each frame of each traj - collect them
-cube_dat_fnames = sorted(glob.glob("Nstar_*/phiout_cube.dat"))
+cube_dat_fnames = sorted(glob.glob("*/phiout_cube.dat"))
 
 # Final shape: (n_total_data,)
 # Number of waters in cubic probe volume V, all frames from all simulations
@@ -90,10 +90,14 @@ all_neglogpdist, all_neglogpdist_comx, all_avg, all_chi, all_avg_comx, all_chi_c
 all_neglogpdist, all_neglogpdist_comy, all_avg, all_chi, all_avg_comy, all_chi_comy, all_cov_comy = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,1], bins, beta_phi_vals)
 all_neglogpdist, all_neglogpdist_comz, all_avg, all_chi, all_avg_comz, all_chi_comz, all_cov_comz = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,2], bins, beta_phi_vals)
 
+all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_N, all_chi_N, all_cov_N = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, beta_phi_vals)
+
+
 # Find chi_v max! (small probe)
 max_idx = np.argmax(all_chi)
 bphistar = beta_phi_vals[max_idx]
 print("beta phi star: {:.2f}".format(bphistar))
+print("<N>_phistar: {:.2f}".format(all_avg[max_idx]))
 plt.plot(beta_phi_vals, all_chi)
 
 # Save out the average 
@@ -108,7 +112,7 @@ np.savez_compressed("cube_data_equil.dat", avg_com=avg_com, n0=all_avg_cube[0], 
 
 # Now check to see if rho_z data is ready
 all_data_rhoz = []
-rhoz_dat_fnames = sorted(glob.glob("Nstar_*/rhoz.dat.npz"))
+rhoz_dat_fnames = sorted(glob.glob("*/rhoz.dat.npz"))
 if len(rhoz_dat_fnames) > 0:
     print("Doing rhoz...")
 else:
@@ -165,13 +169,12 @@ for i, beta_phi_val in enumerate(beta_phi_vals):
     del bias_logweights, bias_weights
 
 
-
 max_n = np.ceil(all_data.max()) + 1
 n_bins = np.arange(max_n, dtype=int)
 
 assign = np.digitize(all_data, n_bins) - 1
 all_rho_n = np.zeros((n_bins.size-1, nx, nr))
-
+'''
 for i, n_val in enumerate(n_bins[:-1]):
     print("  doing {} of {}".format(i, n_bins.size-1))
     mask = (assign == i)
@@ -192,8 +195,9 @@ for i, n_val in enumerate(n_bins[:-1]):
     all_rho_n[i] = this_rho
 
     del this_weights, this_logweights
+'''
 
 # Save total density profile
 np.savez_compressed('rhoz_final.dat', rhoz=all_rho, beta_phi_vals=beta_phi_vals, max_idx=max_idx, all_avg=all_avg,
-                    xvals=xvals, rvals=rvals, xx=xx, rr=rr, rhoz_n=all_rho_n, n_bins=n_bins)
+                    xvals=xvals, rvals=rvals, xx=xx, rr=rr,  n_bins=n_bins)
 

@@ -66,20 +66,20 @@ mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 30})
 
 # height of cyl probe, in A
-w = 3
+w = 9
 xmin = 28.0
-ymin = 5.0
-zmin = 5.0
+ymin = 10.0
+zmin = 10.0
 
-xmax = 48.5
-ymax = 65.0
-zmax = 65.0
+xmax = 40.0
+ymax = 60.0
+zmax = 60.0
 
 box_vol = (xmax-xmin)*(ymax-ymin)*(zmax-zmin)
 
 avg_n0 = np.load("cube_data_equil.dat.npz")['n0'].item()
 rho_0 = avg_n0 / box_vol
-rho_vols = np.load("rho_vols.dat.npy") 
+rho_vols = np.load("Equil/rho_vols.dat.npy") 
 expt_waters = rho_0 * rho_vols
 
 print("{:.2f} waters in V ({} A); density: {:.4e}\n".format(avg_n0, box_vol, rho_0))
@@ -92,6 +92,7 @@ rvals = ds['rvals']
 xx = ds['xx']
 rr = ds['rr']
 max_idx = ds['max_idx'] # Index of beta phi star, for *cyl* vol, v
+#max_idx = 35
 beta_phi_vals = ds['beta_phi_vals']
 beta_phi_star = beta_phi_vals[max_idx]
 
@@ -135,7 +136,7 @@ def plot_it(idx):
     # z
     ax.set_ylim(0, w/10.+0.1)
     # R
-    ax.set_xlim(0, 3.0) 
+    ax.set_xlim(0, 2.4) 
     ax.plot([0,3], [w/10.,w/10.], 'g--', linewidth=4)
     ax.set_xlabel(r'$r$ (nm)')
     ax.set_ylabel(r'$z$ (nm)')
@@ -156,7 +157,7 @@ def plot_it(idx):
         plt.tight_layout()
         plt.savefig('{}/Desktop/snap_{:03d}'.format(homedir, idx))
 
-for i in range(max_idx+20):
+for i in range(max_idx-2, max_idx+3):
     plot_it(i)
 
 
