@@ -135,7 +135,7 @@ else:
 xvals = None
 rvals = None
 for fname in rhoz_dat_fnames:
-
+    print(fname)
     ds = np.load(fname)
 
     if xvals is None:

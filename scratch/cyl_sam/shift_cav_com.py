@@ -39,8 +39,9 @@ def pbc(pos, box_dim):
 #
 # Returns: rhoz;   Shape: (xvals.size-1, rvals.size-1)
 #
-def get_rhoz(water_pos, box_com, xvals, rvals):
+def get_rhoz(water, box_com, xvals, rvals):
 
+    water_pos = water.positions
     # x component of each box water
     water_pos_x = water_pos[:,0]
 
@@ -78,7 +79,8 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
             rmask = (water_distances >= rval_lb) & (water_distances < rval_ub)
 
             tot_mask = xmask & rmask
-
+            if tot_mask.sum() > 0:
+                water[tot_mask].write("water_{:02d}_{:02d}.gro".format(ix, ir))
             rhoz[ix, ir] = tot_mask.sum() #/ expt_waters
             rho_vols[ix, ir] = this_vol
 
@@ -218,7 +220,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         
         # Finally - get instantaneous (un-normalized) density
         #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
-        this_rho_z, rho_vols = get_rhoz(this_waters_shift.positions, box_com, xvals, rvals)
+        this_rho_z, rho_vols = get_rhoz(this_waters_shift, box_com, xvals, rvals)
 
         rho_z[i] = this_rho_z
 
