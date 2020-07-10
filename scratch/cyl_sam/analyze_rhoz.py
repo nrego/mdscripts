@@ -66,12 +66,12 @@ mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 30})
 
 # height of cyl probe, in A
-w = 9
-xmin = 28.0
+w = 3
+xmin = 28.5
 ymin = 10.0
 zmin = 10.0
 
-xmax = 40.0
+xmax = 33.0
 ymax = 60.0
 zmax = 60.0
 
@@ -82,11 +82,14 @@ rho_0 = avg_n0 / box_vol
 rho_vols = np.load("Equil/rho_vols.dat.npy") 
 expt_waters = rho_0 * rho_vols
 
+
+
 print("{:.2f} waters in V ({} A); density: {:.4e}\n".format(avg_n0, box_vol, rho_0))
 
 ds = np.load('rhoz_final.dat.npz')
 
 rhoz = ds['rhoz']
+expt_waters = rhoz[0]
 xvals = ds['xvals']
 rvals = ds['rvals']
 xx = ds['xx']

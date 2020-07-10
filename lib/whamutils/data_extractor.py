@@ -34,7 +34,8 @@ class WHAMDataExtractor:
                 log.info("loading {}th input: {}".format(i, infile))
 
                 if self.fmt == 'phi': 
-                    self.dr.loadPhi(infile) 
+                    ds = self.dr.loadPhi(infile) 
+                    log.info("  kappa: {:.4f}  Nstar: {:.2f}  phi: {:.2f}".format(ds.kappa, ds.Nstar, ds.phi))
                 elif self.fmt == 'simple':
                     this_auxfile = None
                     if auxinfiles is not None:

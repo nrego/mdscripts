@@ -23,6 +23,19 @@ def plot_errorbar(bb, dat, err, **kwargs):
     plt.plot(bb, dat, **kwargs)
     plt.fill_between(bb, dat-err, dat+err, alpha=0.5)
 
+def bootstrap_nvphi(boot_payload, beta_phi_vals, bins):
+
+    n_boot = boot_payload.shape[0]
+    out = np.zeros((n_boot, beta_phi_vals.size))
+
+    for i, (boot_logweights, boot_data, boot_data_N) in enumerate(boot_payload):
+        neglogpdist, neglogpdist_N, avg, chi, avg_N, chi_N, cov_N = extract_and_reweight_data(boot_logweights, boot_data, boot_data_N, bins, beta_phi_vals)
+        print(i)
+        out[i] = chi
+
+
+    return out
+
 print('Constructing Nv v phi, chi v phi...')
 sys.stdout.flush()
 temp = 300
