@@ -298,7 +298,7 @@ Command-line options
 
         #water_dist_cutoff = int(np.sqrt(3*self.cutoff**2))
         #water_dist_cutoff += 1
-        water_dist_cutoff = 14
+        water_dist_cutoff = 30
 
         rho_water = np.zeros((self.n_frames, self.npts), dtype=RHO_DTYPE)
         rho_prot = np.zeros((self.n_frames, self.npts), dtype=RHO_DTYPE)
@@ -325,7 +325,7 @@ Command-line options
                     water_ow = self.univ.select_atoms('name OW')
                     water_dist_cutoff = np.inf
                 else:
-                    water_dist_cutoff = 14
+                    water_dist_cutoff = 30
                     water_ow = self.univ.select_atoms("(name OW and around {} ({}))".format(water_dist_cutoff, self.mol_sel_spec))
 
                 prot_heavies_pos = prot_heavies.positions
