@@ -196,9 +196,11 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # Found from a weighted difference of water COM at bphi=0 and at this ensemble
         cavity_com = (avg_0*com_0 - this_n_waters*this_water_com) / (avg_0 - this_n_waters)
         
-        # Assume no cav if sys has lost fewer than 10 % of its waters
-        if (n_cav / avg_0) < 0.1:
+        # Assume no cav if sys has lost fewer than 1 % of its waters
+        if (n_cav / avg_0) < 0.01 or cavity_com.min() < 0:
+            print("skipping...")
             cavity_com = box_com
+
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
         shift_vector = np.array([0,ycom,zcom]) - cavity_com
         shift_vector[0] = 0
@@ -241,9 +243,3 @@ if not do_calc_rho:
 if do_calc_rho:
     np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
     np.save('rho_vols.dat', rho_vols)
-
-
-
-
-
-
