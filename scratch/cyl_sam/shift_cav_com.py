@@ -79,8 +79,8 @@ def get_rhoz(water, box_com, xvals, rvals):
             rmask = (water_distances >= rval_lb) & (water_distances < rval_ub)
 
             tot_mask = xmask & rmask
-            if tot_mask.sum() > 0:
-                water[tot_mask].write("water_{:02d}_{:02d}.gro".format(ix, ir))
+            #if tot_mask.sum() > 0:
+            #    water[tot_mask].write("water_{:02d}_{:02d}.gro".format(ix, ir))
             rhoz[ix, ir] = tot_mask.sum() #/ expt_waters
             rho_vols[ix, ir] = this_vol
 
