@@ -56,9 +56,9 @@ all_logweights = all_data_ds['logweights']
 all_data = all_data_ds['data']
 all_data_N = all_data_ds['data_aux']
 
-boot_indices = np.load('boot_indices.dat.npy')
-dat = np.load('boot_fn_payload.dat.npy')
-n_iter = boot_indices.shape[0]
+#boot_indices = np.load('boot_indices.dat.npy')
+#dat = np.load('boot_fn_payload.dat.npy')
+#n_iter = boot_indices.shape[0]
 
 max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 bins = np.arange(0, max_val+1, 1).astype(int)
@@ -104,6 +104,9 @@ all_neglogpdist, all_neglogpdist_comy, all_avg, all_chi, all_avg_comy, all_chi_c
 all_neglogpdist, all_neglogpdist_comz, all_avg, all_chi, all_avg_comz, all_chi_comz, all_cov_comz = extract_and_reweight_data(all_logweights, all_data, all_data_com[:,2], bins, beta_phi_vals)
 
 all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_N, all_chi_N, all_cov_N = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, beta_phi_vals)
+
+this_dat = np.vstack((beta_phi_vals, all_avg, all_chi)).T
+np.savetxt("NvPhi.dat", this_dat)
 
 
 # Find chi_v max! (small probe)
