@@ -148,7 +148,7 @@ homedir = os.environ['HOME']
 cmap = mpl.cm.tab20
 norm = plt.Normalize(0,19)
 
-line_widths=np.ones(state.n_edges)*10
+line_widths=np.ones(state.n_edges)*8
 ## Plot edges as different colors, highlight external/internal edges ##
 #######################################################################
 #######################################################################
@@ -158,9 +158,10 @@ plt.close('all')
 state.plot(size=figsize)
 
 colors = get_label_colors(all_mgc[0].labels, state)
-line_styles = np.array(['--' for i in range(state.n_edges)])
+line_styles = np.array([':' for i in range(state.n_edges)])
 line_styles[state.edges_int_indices] = '-'
 
+state.plot_edges(colors=['white' for i in range(state.n_edges)], line_widths=line_widths)
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 plt.savefig('{}/Desktop/fig_merge_0'.format(homedir), transparent=True)
 
@@ -168,7 +169,7 @@ plt.close('all')
 plt.plot([0,0], [0,0], 'ko', markersize=20, label='internal node')
 plt.plot([0,0], [0,0], 'rX', markersize=20, label='external node')
 plt.plot([0,0], [0,0], 'k-', linewidth=6, label='internal edge')
-plt.plot([0,0], [0,0], 'k--', linewidth=6, label='external edge')
+plt.plot([0,0], [0,0], 'k:', linewidth=6, label='external edge')
 
 plt.xlim(-100, -90)
 plt.legend(loc='center')
@@ -186,6 +187,7 @@ state.plot(size=figsize)
 
 colors = get_label_colors(all_mgc[53].labels, state)
 
+state.plot_edges(colors=['white' for i in range(state.n_edges)], line_widths=line_widths)
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
 plt.savefig('{}/Desktop/fig_merge_half'.format(homedir), transparent=True)
@@ -205,6 +207,7 @@ state.plot(size=figsize)
 
 colors = get_label_colors(all_mgc[-6].labels, state)
 
+state.plot_edges(colors=['white' for i in range(state.n_edges)], line_widths=line_widths)
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
 plt.savefig('{}/Desktop/fig_merge_final_10'.format(homedir), transparent=True)
@@ -228,8 +231,10 @@ assert np.unique(labels[state.edges_int_indices]).size == 1
 
 
 colors = np.empty(state.n_edges, dtype=object)
-colors[state.edges_ext_indices] = '#ffffff'
-colors[state.edges_int_indices] = '#000000'
+colors[:] = '#000000'
+#colors[state.edges_int_indices] = '#888888'
+
+state.plot_edges(colors=['white' for i in range(state.n_edges)], line_widths=line_widths)
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
 plt.savefig('{}/Desktop/fig_merge_m3'.format(homedir), transparent=True)
@@ -254,8 +259,9 @@ assert np.unique(labels[state.edges_int_indices]).size == 1
 colors = np.empty(state.n_edges, dtype=object)
 colors[:] = '#000000'
 #colors[state.edges_int_indices] = '#ff00bf'
-state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
-
+#state.plot_edges(colors=['white' for i in range(state.n_edges)], line_widths=line_widths)
+#state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
+state.plot_edges(colors=['black' for i in range(state.n_edges)], line_widths=line_widths)
 plt.savefig('{}/Desktop/fig_merge_m2'.format(homedir), transparent=True)
 
 

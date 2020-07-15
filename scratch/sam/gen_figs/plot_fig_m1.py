@@ -113,9 +113,9 @@ sc = ax.scatter(k_o, energies, s=50, zorder=100, color='k', label=r'$f$')
 
 #ax.plot(xvals, fit_poly, '-', linewidth=4, zorder=300, label=r'$\hat{f}$, quadratic')
 
-ax.plot(xvals, fit, '-', linewidth=4, zorder=200, label=r'M1, linear')    
+ax.plot(xvals, fit, '-', linewidth=4, zorder=200, label=r'M1')    
 
-ax.plot(xvals, fit_poly, '-', linewidth=4, zorder=300, label=r'M1, quadratic')
+ax.plot(xvals, fit_poly, '-', linewidth=4, zorder=300, label=r'M1/Q')
 
 
 ax.set_xticks([0,12,24,36])
@@ -137,14 +137,18 @@ sc = ax.scatter(k_o, err)
 
 ax.scatter(k_o, err_poly)
 
+ax.scatter(k_o, net_err[::6], color='gray')
+
 #ax.scatter(k_o, net_err[::6], color='gray')
 xmin, xmax = ax.get_xlim()
 data_rmse = np.sqrt(np.mean(err_energies**2))
-ax.plot([-10, 46], [-data_rmse, -data_rmse], 'k--')
-ax.plot([-10, 46], [data_rmse, data_rmse], 'k--')
+#ax.plot([-10, 46], [-data_rmse, -data_rmse], 'k--')
+#ax.plot([-10, 46], [data_rmse, data_rmse], 'k--')
+ax.fill_between([-10, 46], -data_rmse, data_rmse, alpha=0.5)
 
 ax.set_xticks([0,12,24,36])
 ax.set_xlim(xmin, xmax)
+ax.set_ylim(-25, 25)
 fig.savefig('{}/Desktop/m1_err.pdf'.format(homedir), transparent=True)
 plt.close('all')
 

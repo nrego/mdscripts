@@ -103,7 +103,7 @@ mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 30})
 
 # height of cyl probe, in A
-w = 3
+w = 9
 # Radius of cylinder, in A
 Rv = 20
 # Box V
@@ -111,7 +111,7 @@ xmin = 28.5
 ymin = 10.0
 zmin = 10.0
 
-xmax = 33.0
+xmax = 40.0
 ymax = 60.0
 zmax = 60.0
 
@@ -229,7 +229,7 @@ def plot_it(idx):
 
     plt.close('all')
 
-for i in range(max_idx-2, max_idx+6):
+for i in range(max_idx-2, max_idx+9):
     plot_it(i)
 
 
