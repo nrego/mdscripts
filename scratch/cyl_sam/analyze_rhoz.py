@@ -141,7 +141,7 @@ max_idx = ds['max_idx'] # Index of beta phi star, for *cyl* vol, v
 beta_phi_vals = ds['beta_phi_vals']
 beta_phi_star = beta_phi_vals[max_idx]
 
-print("beta phi * (for cylv v): {:.2f}".format(beta_phi_star))
+print("beta phi * (for cylv v): {:.4f}".format(beta_phi_star))
 
 assert np.unique(np.diff(rvals)).size == 1
 assert np.unique(np.diff(xvals)).size == 1
@@ -229,8 +229,8 @@ def plot_it(idx):
 
     plt.close('all')
 
-for i in range(max_idx-2, max_idx+9):
-    plot_it(i)
+#for i in range(max_idx-2, max_idx+9):
+#    plot_it(i)
 
 
 

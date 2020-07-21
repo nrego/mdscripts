@@ -19,6 +19,17 @@ from scratch.neural_net.lib import *
 
 from IPython import embed
 
+def_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+def plot_dashed_lines(x, ymin, ymax=None, ax=None, **kwargs):
+    if ax is None:
+        ax = plt.gca()
+    if ymax is None:
+        ymax = - ymin
+
+    ax.plot(x, np.ones_like(x)*ymin, **kwargs)
+    ax.plot(x, np.ones_like(x)*ymax, **kwargs)
+
 plt.close('all')
 
 homedir = os.environ['HOME']
@@ -145,6 +156,9 @@ data_rmse = np.sqrt(np.mean(err_energies**2))
 #ax.plot([-10, 46], [-data_rmse, -data_rmse], 'k--')
 #ax.plot([-10, 46], [data_rmse, data_rmse], 'k--')
 ax.fill_between([-10, 46], -data_rmse, data_rmse, alpha=0.5)
+plot_dashed_lines([-10, 46], -np.sqrt(np.mean(net_err[::6]**2)), color='gray', linestyle='--', linewidth=2)
+plot_dashed_lines([-10, 46], -np.sqrt(np.mean(err_poly**2)), color=def_colors[1], linestyle='--', linewidth=2)
+plot_dashed_lines([-10, 46], -np.sqrt(np.mean(err**2)), color=def_colors[0], linestyle='--', linewidth=2)
 
 ax.set_xticks([0,12,24,36])
 ax.set_xlim(xmin, xmax)

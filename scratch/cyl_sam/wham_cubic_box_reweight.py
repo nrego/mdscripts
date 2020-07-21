@@ -65,6 +65,7 @@ bins = np.arange(0, max_val+1, 1).astype(int)
 
 ## In kT!
 beta_phi_vals = np.arange(0,6.02,0.02)
+beta_phi_vals = np.unique(np.round(np.append(beta_phi_vals, np.arange(0.4, 0.5, 0.005)), 4))
 
 ## EXTRACT DATA TO REWEIGHT ##
 ### Extract all N_V's (number of waters in cube vol V)
