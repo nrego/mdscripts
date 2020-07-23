@@ -39,9 +39,9 @@ def pbc(pos, box_dim):
 #
 # Returns: rhoz;   Shape: (xvals.size-1, rvals.size-1)
 #
-def get_rhoz(water, box_com, xvals, rvals):
+def get_rhoz(water_pos, box_com, xvals, rvals):
 
-    water_pos = water.positions
+    #water_pos = water.positions
     # x component of each box water
     water_pos_x = water_pos[:,0]
 
@@ -87,6 +87,18 @@ def get_rhoz(water, box_com, xvals, rvals):
 
     return rhoz, rho_vols
 
+
+# Get instantaneous density profile in x,y,z voxels
+#
+# Returns a 3d array of shape: (xvals.size-1, yvals.size-1, zvals.size-1)
+def get_rhoxyz(water_pos, xbounds, ybounds, zbounds):
+    
+    bounds = [xvals, yvals, zvals]
+
+    return np.histogramdd(water_pos, bounds)[0]
+
+
+
 extract_float_from_str = lambda instr: np.array(instr.split(), dtype=float)
 
 parser = argparse.ArgumentParser('Output cavity voxels for each frame', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -95,8 +107,10 @@ parser.add_argument('-f', '--traj', type=str, default='ofile.xtc', help='Input t
 parser.add_argument('-b', '--start', default=500, type=int, help='start time, in ps')
 parser.add_argument('--equil-vals', type=str, 
                     help='path to file with equilibrium values - will calc density')
-parser.add_argument('-dx', default=0.4, type=float, help='spacing in x (z), in **Angstroms**. ')
-parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. ')
+parser.add_argument('-dx', default=0.5, type=float, help='spacing in x (z), in **Angstroms**. ')
+parser.add_argument('-dy', default=0.5, type=float, help='spacing in y, in **angstroms**.')
+parser.add_argument('-dz', default=0.5, type=float, help='spacing in y, in **angstroms**.')
+#parser.add_argument('-dr', default=0.5, type=float, help='spacing in r, in **Angstroms**. ')
 parser.add_argument('--rmax', default=30, type=float, help='Maximum distance r (in A), to calc rho(z,r)')
 parser.add_argument('--V-min', default="28.5 10.0 10.0", type=str,
                     help="Coordinates of big V's minimum, inputted as a string of three values")
@@ -140,9 +154,10 @@ if args.equil_vals is not None:
 
     dx = args.dx
     xvals = np.arange(xmin, xmax+dx, dx)
-    dr = args.dr
-    rvals = np.arange(0, args.rmax+dr, dr)
-
+    dy = args.dy
+    yvals = np.arange(ymin, ymax+dy, dy)    
+    dz = args.dz
+    zvals = np.arange(zmin, zmax+dz, dz)
 
 
 univ = MDAnalysis.Universe(args.top, args.traj)
@@ -154,7 +169,7 @@ water_com = np.zeros((n_frames-start_frame, 3))
 
 if do_calc_rho:
     # Shape: (n_frames, n_x, n_r)
-    rho_z = np.zeros((n_frames-start_frame, xvals.size-1, rvals.size-1))
+    rho_xyz = np.zeros((n_frames-start_frame, xvals.size-1, yvals.size-1, zvals.size-1))
 
 if args.print_out:
     W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
@@ -208,10 +223,11 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # Shift *all* water positions in this frame 
         water_pos_shift = water_pos + shift_vector
         
+        # Fix any waters that have been shifted outside of the box
         pbc(water_pos_shift, univ.dimensions[:3])
         waters.positions = water_pos_shift
         
-        # Find waters that are in V after shifting 
+        # Find waters that are in V after shifting cavity C.O.M.
         selx = (water_pos_shift[:,0] >= xmin) & (water_pos_shift[:,0] < xmax)
         sely = (water_pos_shift[:,1] >= ymin) & (water_pos_shift[:,1] < ymax)
         selz = (water_pos_shift[:,2] >= zmin) & (water_pos_shift[:,2] < zmax)
@@ -222,10 +238,11 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         
         # Finally - get instantaneous (un-normalized) density
         #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
-        this_rho_z, rho_vols = get_rhoz(this_waters_shift, box_com, xvals, rvals)
+        this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
 
-        rho_z[i] = this_rho_z
+        rho_xyz[i, ...] = this_rho_xyz
 
+        ## Optionally print out shifted frame
         if args.print_out:
             W.write(univ.atoms)
             if i_frame == n_frames - 1:
@@ -241,5 +258,5 @@ if not do_calc_rho:
     np.save("com_cube.dat", water_com)
 
 if do_calc_rho:
-    np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
-    np.save('rho_vols.dat', rho_vols)
+    np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals)
+    
