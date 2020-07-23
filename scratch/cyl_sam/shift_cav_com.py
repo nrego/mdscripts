@@ -169,7 +169,7 @@ water_com = np.zeros((n_frames-start_frame, 3))
 
 if do_calc_rho:
     # Shape: (n_frames, n_x, n_r)
-    rho_xyz = np.zeros((n_frames-start_frame, xvals.size-1, yvals.size-1, zvals.size-1))
+    rho_xyz = np.zeros((n_frames-start_frame, xvals.size-1, yvals.size-1, zvals.size-1), dtype=np.float32)
 
 if args.print_out:
     W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
@@ -213,7 +213,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         
         # Assume no cav if sys has lost fewer than 1 % of its waters
         if (n_cav / avg_0) < 0.01 or cavity_com.min() < 0:
-            print("skipping...")
+            print("no cav; not centering...")
             cavity_com = box_com
 
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
@@ -241,6 +241,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
 
         rho_xyz[i, ...] = this_rho_xyz
+        del this_rho_xyz
 
         ## Optionally print out shifted frame
         if args.print_out:
