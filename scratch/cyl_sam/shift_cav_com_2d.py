@@ -154,15 +154,9 @@ if args.equil_vals is not None:
 
     dx = args.dx
     xvals = np.arange(xmin, xmax+dx, dx)
-    dy = args.dy
-    yvals = np.arange(ymin, ymax+dy, dy)    
-    dz = args.dz
-    zvals = np.arange(zmin, zmax+dz, dz)
+    dr = args.dr
+    rvals = np.arange(0, args.rmax+dr, dr)
 
-    print("Doing rho calculation (and shifting cav COM)...")
-    print("dx: {:0.2f} (from {:.2f} to {:.2f})".format(dx, xmin, xmax))
-    print("dy: {:0.2f} (from {:.2f} to {:.2f})".format(dy, ymin, ymax))
-    print("dz: {:0.2f} (from {:.2f} to {:.2f})".format(dz, zmin, zmax))
 
 
 univ = MDAnalysis.Universe(args.top, args.traj)
@@ -174,7 +168,7 @@ water_com = np.zeros((n_frames-start_frame, 3))
 
 if do_calc_rho:
     # Shape: (n_frames, n_x, n_r)
-    rho_xyz = np.zeros((n_frames-start_frame, xvals.size-1, yvals.size-1, zvals.size-1), dtype=np.float32)
+    rho_z = np.zeros((n_frames-start_frame, xvals.size-1, rvals.size-1))
 
 if args.print_out:
     W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
@@ -218,7 +212,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         
         # Assume no cav if sys has lost fewer than 1 % of its waters
         if (n_cav / avg_0) < 0.01 or cavity_com.min() < 0:
-            print("no cav; not centering...")
+            print("skipping...")
             cavity_com = box_com
 
         # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
@@ -228,7 +222,6 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # Shift *all* water positions in this frame 
         water_pos_shift = water_pos + shift_vector
         
-        # Fix any waters that have been shifted outside of the box
         pbc(water_pos_shift, univ.dimensions[:3])
         waters.positions = water_pos_shift
         
@@ -243,12 +236,10 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         
         # Finally - get instantaneous (un-normalized) density
         #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
-        this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
+        this_rho_z, rho_vols = get_rhoz(this_waters_shift.positions, box_com, xvals, rvals)
 
-        rho_xyz[i, ...] = this_rho_xyz
-        del this_rho_xyz
+        rho_z[i] = this_rho_z
 
-        ## Optionally print out shifted frame
         if args.print_out:
             W.write(univ.atoms)
             if i_frame == n_frames - 1:
@@ -264,5 +255,5 @@ if not do_calc_rho:
     np.save("com_cube.dat", water_com)
 
 if do_calc_rho:
-    np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals)
-    
+    np.savez_compressed("rhoz.dat", rho_z=rho_z, xvals=xvals, rvals=rvals)
+    np.save('rho_vols.dat', rho_vols)
