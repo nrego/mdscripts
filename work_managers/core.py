@@ -8,6 +8,7 @@ import uuid, threading, signal
 from itertools import islice
 from contextlib import contextmanager
 log = logging.getLogger(__name__)
+from IPython import embed
 
 class WorkManager:
     '''Base class for all work managers. At a minimum, work managers must provide a 
@@ -112,7 +113,7 @@ class WorkManager:
         expected by ``submit``. The method also accepts an int ``queue_size`` that dictates the
         maximum number of Futures that should be pending at any given time. The default value of
         ``None`` submits all of the tasks at once.'''
-
+        
         futures = [self.submit(fn,args,kwargs) for (fn,args,kwargs) in islice(task_generator, queue_size)]
         pending = set(futures)
 

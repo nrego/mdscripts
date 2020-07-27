@@ -23,3 +23,24 @@ proc animate_mov {fileformat} {
     
 
 }
+
+#
+
+proc animate_inter {start inc end fileformat} {
+
+
+    set filename [format $fileformat [expr $start]]
+    
+    puts "Loading initial frame in PDB sequence $filename"
+    mol load gro $filename
+
+    for {set i $start} {$i <= $end} {incr i $inc} {
+        puts "Loading frame $i"
+        set filename [format $fileformat [expr $i]]
+        
+        animate read gro $filename
+        
+    }
+    
+}
+

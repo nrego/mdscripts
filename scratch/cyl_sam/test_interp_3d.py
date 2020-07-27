@@ -28,6 +28,7 @@ from skimage import measure
 from scipy.optimize import curve_fit
 from mpl_toolkits.mplot3d import Axes3D
 
+homedir = os.environ['HOME']
 
 # Find xs, point where line between (xlo, ylo) and (xhi, yhi) crosses ys
 def interp1d(xlo, xhi, ylo, yhi, ys=0.5):
@@ -142,34 +143,67 @@ def get_interp_points(rho, xvals, yvals, zvals, iso=0.5):
     return np.array(pts)
 
 
-ds = np.load('rhoxyz.dat.npz')
+
+ds = np.load('rho_bphi.dat.npz')
+#ds = np.load('rhoxyz_dx_10.dat.npz')
 xbins = ds['xbins']
 ybins = ds['ybins']
 zbins = ds['zbins']
 
-xvals = xbins[:-1] #+ 0.5*np.diff(xbins)
-yvals = ybins[:-1] #+ 0.5*np.diff(ybins)
-zvals = zbins[:-1] #+ 0.5*np.diff(zbins)
+xvals = xbins[:-1] + 0.5*np.diff(xbins)
+yvals = ybins[:-1] + 0.5*np.diff(ybins)
+zvals = zbins[:-1] + 0.5*np.diff(zbins)
 
-rho = ds['rho'].mean(axis=0)
+#rho = ds['rho'].mean(axis=0)
+rho0 = ds['rho0']
+rho_bphi = ds['rho_bphi']
+beta_phi_vals = ds['beta_phi_vals']
 
 xx, yy = np.meshgrid(xbins, ybins, indexing='ij')
 dx = np.diff(xvals)[0]
 dy = np.diff(yvals)[0]
 dz = np.diff(zvals)[0]
 
+max_atms = -np.inf
+for i, bphi in enumerate(beta_phi_vals):
 
-avg_rho = rho / (0.033*dx*dy*dz)
-avg_rho = np.clip(avg_rho, 0, 1)
-mask_rho = (avg_rho > 0.5).astype(int)
+    rho = rho_bphi[i]
+    #avg_rho = rho / (0.033*dx*dy*dz)
+    avg_rho = rho / rho0
+    #avg_rho = np.clip(avg_rho, 0, 1)
+    mask_rho = (avg_rho > 0.5).astype(int)
 
-pts = get_interp_points(avg_rho, xvals, yvals, zvals)
+    pts = get_interp_points(avg_rho, xvals, yvals, zvals)
 
-plt.close()
-ax = plt.gca(projection='3d')
-ax.scatter(pts[:,0], pts[:,1], pts[:,2])
+    #plt.close()
+    #ax = plt.gca(projection='3d')
+    #ax.scatter(pts[:,0], pts[:,1], pts[:,2])
 
-univ = MDAnalysis.Universe.empty(n_atoms=pts.shape[0], trajectory=True)
-univ.atoms.positions = pts
+    univ = MDAnalysis.Universe.empty(n_atoms=pts.shape[0], trajectory=True)
+    if univ.atoms.n_atoms > max_atms:
+        max_atms = univ.atoms.n_atoms
+    univ.atoms.positions = pts
 
-univ.atoms.write("avg_inter.gro")
+    #univ.atoms.write("{}/Desktop/avg_inter_{:04d}.gro".format(homedir, int(bphi*100)))
+
+univ = MDAnalysis.Universe.empty(n_atoms=max_atms, trajectory=True)
+
+with MDAnalysis.Writer("traj.xtc", univ.atoms.n_atoms) as W:
+
+    for i, bphi in enumerate(beta_phi_vals):
+        univ.atoms.positions[:] = 0
+        rho = rho_bphi[i]
+        avg_rho = rho / rho0
+
+        mask_rho = (avg_rho > 0.5).astype(int)
+
+        pts = get_interp_points(avg_rho, xvals, yvals, zvals)
+        blah = univ.atoms.positions.copy()
+        blah[:pts.shape[0]] = pts
+        univ.atoms.positions = blah
+
+        W.write(univ.atoms)
+
+        if i == 0:
+            univ.atoms.write("base.gro")
+
