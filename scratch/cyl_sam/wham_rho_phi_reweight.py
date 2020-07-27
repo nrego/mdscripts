@@ -171,14 +171,18 @@ ds = np.load(fnames_rhoxyz[0])
 
 ### FIRST UNBIASED ####
 print("\nCalculating rho, (equil)...\n")
+sys.stdout.flush()
 _, rho0 = load_and_weight(-1, fnames_rhoxyz, all_logweights)
+print("...done\n")
 
-rho0 = np.zeros((ds['xbins'].size-1, ds['ybins'].size-1, ds['zbins'].size-1))
+
 ## Next, rho(x,y,z) for each of the beta phi values...
+print("\nCalculating rho for different bphi values...\n")
+sys.stdout.flush()
+
+
 rho_bphi = np.zeros((beta_phi_vals.size, *rho0.shape))
 
-
-print("\nCalculating rho for different bphi values...\n")
 # Generator for reweighting w/ bphi
 def task_gen_bphi():
     
@@ -203,6 +207,8 @@ for future in wm.submit_as_completed(task_gen_bphi(), queue_size=wm.n_workers):
     rho_bphi[idx] = rho
 
     del rho
+
+print("...done\n")
 
 ### CALCULATE RHO(x,y,z) with different n vals
 ################################################
@@ -240,6 +246,7 @@ for future in wm.submit_as_completed(task_gen_bphi(), queue_size=wm.n_workers):
     del rho
 
 print("Finished, saving...")
+
 np.savez_compressed('rho_final.dat', rho_bphi=rho_bphi, beta_phi_vals=beta_phi_vals, rho_n=rho_n, nvals=nvals,
                     rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
 
