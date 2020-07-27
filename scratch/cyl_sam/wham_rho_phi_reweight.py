@@ -87,6 +87,34 @@ def load_and_weight(idx, fnames, logweights):
 
     return idx, all_rhoxzy.sum(axis=0)
 
+# IDX: index of filename
+# logweights consists of *only* those weights associated with datapoints from fname
+def load_and_weight_file(idx, fname, logweights, nx, ny, nz, xbins, ybins, zbins):
+
+    ## No weight for this sample; return zero density array
+    if logweights.max() == -np.inf:
+        return idx, np.zeros((nx, ny, nz))
+
+    ## Non-zero weight associated with this fname; normalize...
+    weights = np.exp(logweights)
+
+    #print(fname)
+    ds = np.load(fname)
+
+
+    assert np.array_equal(ds['xbins'], xbins)
+    assert np.array_equal(ds['ybins'], ybins)
+    assert np.array_equal(ds['zbins'], zbins)
+
+
+    this_rhoxyz = ds['rho']
+    assert this_rhoxyz.shape[1:] == (nx, ny, nz)
+    assert weights.size == this_rhoxyz.shape[0]
+
+    this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
+
+
+    return idx, this_weight_rho
 
 ### SET THIS TO TASTE AROUND BPHI *
 ## LOAD IN N v Phi
@@ -162,8 +190,13 @@ else:
     print("Done. Goodbye.")
     sys.exit()
 
-ds = np.load(fnames_rhoxyz[0])
+print("\nDetermining number of points for each file...")
+n_frames_per_file = np.zeros(len(fnames_rhoxyz), dtype=int)
 
+for i, fname in enumerate(fnames_rhoxyz):
+    print("checking {}".format(fname))
+    ds = np.load(fname)
+    n_frames_per_file[i] = ds['rho'].shape[0]
 
 ### CALCULATE RHO(x,y,z) with differnt BPHI vals
 ################################################
@@ -172,7 +205,11 @@ ds = np.load(fnames_rhoxyz[0])
 ### FIRST UNBIASED ####
 print("\nCalculating rho, (equil)...\n")
 sys.stdout.flush()
-_, rho0 = load_and_weight(-1, fnames_rhoxyz, all_logweights)
+
+
+
+
+
 print("...done\n")
 
 
@@ -230,7 +267,7 @@ def task_gen_nvals():
 
         args = (i, fnames_rhoxyz, bias_logweights)
         kwargs = dict()
-        print("sending nval {} ({} of {})".format(nval, i, nvals.size))
+        print("sending nval {} ({} of {})".format(nval, i+1, nvals.size))
 
 
         yield load_and_weight, args, kwargs

@@ -264,5 +264,5 @@ if not do_calc_rho:
     np.save("com_cube.dat", water_com)
 
 if do_calc_rho:
-    np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals)
+    np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals, nframes=rho_xyz.shape[0])
     
