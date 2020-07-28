@@ -99,20 +99,21 @@ def load_and_weight_file(idx, fname, logweights, nx, ny, nz, xbins, ybins, zbins
     weights = np.exp(logweights)
 
     #print(fname)
-    with np.load(fname) as ds:
+    ds = np.load(fname)
 
-        assert np.array_equal(ds['xbins'], xbins)
-        assert np.array_equal(ds['ybins'], ybins)
-        assert np.array_equal(ds['zbins'], zbins)
+    assert np.array_equal(ds['xbins'], xbins)
+    assert np.array_equal(ds['ybins'], ybins)
+    assert np.array_equal(ds['zbins'], zbins)
 
 
-        this_rhoxyz = ds['rho']
-        assert this_rhoxyz.shape[1:] == (nx, ny, nz)
-        assert weights.size == this_rhoxyz.shape[0]
+    this_rhoxyz = ds['rho']
+    assert this_rhoxyz.shape[1:] == (nx, ny, nz)
+    assert weights.size == this_rhoxyz.shape[0]
 
-        this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
-    
-    del this_rhoxyz, weights, ds
+    this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
+
+    del logweights, this_rhoxyz, weights, ds
+
 
     return idx, this_weight_rho
 
@@ -248,6 +249,7 @@ def rho_job(rho_avg, wm, fnames_rhoxyz, n_frames_per_file, logweights):
 
     return rho_avg
 
+ds = np.load(fnames_rhoxyz[0])
 ### FIRST: UNBIASED ####
 print("\nCalculating rho, (equil)...\n")
 sys.stdout.flush()
@@ -264,7 +266,7 @@ rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
 
 
 print("...done\n")
-
+np.savez_compressed('rho0.dat', rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
 
 ## Next, rho(x,y,z) for each of the beta phi values...
 
@@ -292,7 +294,7 @@ for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
     del this_rho
 
 print("...done\n")
-
+embed()
 np.savez_compressed('rho_bphi.dat', rho_bphi=rho_beta_phi, beta_phi_vals=beta_phi_vals,
                     rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
 
