@@ -23,6 +23,7 @@ import argparse
 
 from work_managers.environment import default_env
 
+from memory_profiler import profile
 
 ## LOAD RHO (x,y,z) density profiles
 #
@@ -89,7 +90,8 @@ def load_and_weight(idx, fnames, logweights):
 
 # IDX: index of filename
 # logweights consists of *only* those weights associated with datapoints from fname
-def load_and_weight_file(idx, fname, logweights, nx, ny, nz, xbins, ybins, zbins):
+@profile
+def load_and_weight_file(idx, this_rhoxyz, logweights, nx, ny, nz, xbins, ybins, zbins):
 
     ## No weight for this sample; return zero density array
     if logweights.max() == -np.inf:
@@ -99,20 +101,20 @@ def load_and_weight_file(idx, fname, logweights, nx, ny, nz, xbins, ybins, zbins
     weights = np.exp(logweights)
 
     #print(fname)
-    ds = np.load(fname)
+    #ds = np.load(fname)
 
-    assert np.array_equal(ds['xbins'], xbins)
-    assert np.array_equal(ds['ybins'], ybins)
-    assert np.array_equal(ds['zbins'], zbins)
+    #assert np.array_equal(ds['xbins'], xbins)
+    #assert np.array_equal(ds['ybins'], ybins)
+    #assert np.array_equal(ds['zbins'], zbins)
 
 
-    this_rhoxyz = ds['rho']
+    #this_rhoxyz = ds['rho']
     assert this_rhoxyz.shape[1:] == (nx, ny, nz)
     assert weights.size == this_rhoxyz.shape[0]
 
     this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
 
-    del logweights, this_rhoxyz, weights, ds
+    del logweights, this_rhoxyz, weights
 
 
     return idx, this_weight_rho
@@ -226,11 +228,12 @@ def task_gen(fnames, n_frames_per_file, logweights):
     last_frame = 0
 
     for i, fname in enumerate(fnames):
+        this_rho = np.load(fname)['rho']
         #print(" {}".format(fname))
         slc = slice(last_frame, last_frame+n_frames_per_file[i])
         this_logweights = logweights[slc]
         
-        args = (i, fname, this_logweights, nx, ny, nz, xbins, ybins, zbins)
+        args = (i, this_rho, this_logweights, nx, ny, nz, xbins, ybins, zbins)
         kwargs = dict()
         last_frame += n_frames_per_file[i]
 
@@ -253,7 +256,7 @@ ds = np.load(fnames_rhoxyz[0])
 ### FIRST: UNBIASED ####
 print("\nCalculating rho, (equil)...\n")
 sys.stdout.flush()
-
+#sys.exit()
 logweights = all_logweights.copy()
 logweights -= logweights.max()
 norm = np.log(np.sum(np.exp(logweights)))
@@ -263,7 +266,7 @@ assert np.allclose(1, np.exp(logweights).sum())
 
 rho0 = np.zeros((nx, ny, nz))
 rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
-
+sys.exit()
 
 print("...done\n")
 np.savez_compressed('rho0.dat', rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
