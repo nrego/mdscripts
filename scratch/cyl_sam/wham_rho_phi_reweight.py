@@ -91,7 +91,7 @@ def load_and_weight(idx, fnames, logweights):
 # IDX: index of filename
 # logweights consists of *only* those weights associated with datapoints from fname
 #@profile
-def load_and_weight_file(idx, this_rhoxyz, logweights, nx, ny, nz, xbins, ybins, zbins):
+def load_and_weight_file(idx, fname, logweights, nx, ny, nz, xbins, ybins, zbins):
 
     ## No weight for this sample; return zero density array
     if logweights.max() == -np.inf:
@@ -101,20 +101,21 @@ def load_and_weight_file(idx, this_rhoxyz, logweights, nx, ny, nz, xbins, ybins,
     weights = np.exp(logweights)
 
     #print(fname)
-    #ds = np.load(fname)
+    ds = np.load(fname)
 
-    #assert np.array_equal(ds['xbins'], xbins)
-    #assert np.array_equal(ds['ybins'], ybins)
-    #assert np.array_equal(ds['zbins'], zbins)
+    assert np.array_equal(ds['xbins'], xbins)
+    assert np.array_equal(ds['ybins'], ybins)
+    assert np.array_equal(ds['zbins'], zbins)
 
 
-    #this_rhoxyz = ds['rho']
+    this_rhoxyz = ds['rho']
     assert this_rhoxyz.shape[1:] == (nx, ny, nz)
     assert weights.size == this_rhoxyz.shape[0]
 
     this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
 
-    del logweights, this_rhoxyz, weights
+    ds.close()
+    del logweights, this_rhoxyz, weights, ds
 
 
     return idx, this_weight_rho
@@ -228,12 +229,12 @@ def task_gen(fnames, n_frames_per_file, logweights):
     last_frame = 0
 
     for i, fname in enumerate(fnames):
-        this_rho = np.load(fname)['rho']
+        
         #print(" {}".format(fname))
         slc = slice(last_frame, last_frame+n_frames_per_file[i])
         this_logweights = logweights[slc]
         
-        args = (i, this_rho, this_logweights, nx, ny, nz, xbins, ybins, zbins)
+        args = (i, fname, this_logweights, nx, ny, nz, xbins, ybins, zbins)
         kwargs = dict()
         last_frame += n_frames_per_file[i]
 
