@@ -133,7 +133,7 @@ default_env.add_wm_args(parser)
 args = parser.parse_args()
 default_env.process_wm_args(args)
 wm = default_env.make_work_manager()
-wm.startup()
+#wm.startup()
 
 
 print("READING N v Phi DATA FROM: {}".format(args.nvphi))
@@ -266,8 +266,9 @@ logweights -= norm
 assert np.allclose(1, np.exp(logweights).sum())
 
 rho0 = np.zeros((nx, ny, nz))
-rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
-sys.exit()
+with wm:
+    rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
+#sys.exit()
 
 print("...done\n")
 np.savez_compressed('rho0.dat', rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
@@ -291,7 +292,9 @@ for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
     assert np.allclose(1, np.exp(bias_logweights).sum())
 
     this_rho = np.zeros_like(rho0)
-    this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
+    
+    with wm:
+        this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
 
     rho_beta_phi[i_bphi, ...] = this_rho
 
@@ -327,7 +330,9 @@ for i_nval, nval in enumerate(nvals):
     assert np.allclose(1, np.exp(bias_logweights).sum())
 
     this_rho = np.zeros_like(rho0)
-    this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
+    
+    with wm:
+        this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
 
     rho_n[i_nval, ...] = this_rho
 
