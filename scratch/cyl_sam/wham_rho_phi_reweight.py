@@ -294,7 +294,7 @@ for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
     del this_rho
 
 print("...done\n")
-embed()
+
 np.savez_compressed('rho_bphi.dat', rho_bphi=rho_beta_phi, beta_phi_vals=beta_phi_vals,
                     rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
 
