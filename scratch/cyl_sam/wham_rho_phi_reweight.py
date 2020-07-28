@@ -235,6 +235,7 @@ def task_gen(fnames, n_frames_per_file, logweights):
 
         yield load_and_weight_file, args, kwargs
 
+## Asynchronously launch reweighting's for each windows
 def rho_job(rho_avg, wm, fnames_rhoxyz, n_frames_per_file, logweights):
     for future in wm.submit_as_completed(task_gen(fnames_rhoxyz, n_frames_per_file, logweights), queue_size=wm.n_workers):
         idx, rho = future.get_result(discard=True)
@@ -292,7 +293,13 @@ for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
 
 print("...done\n")
 
+np.savez_compressed('rho_bphi.dat', rho_bphi=rho_bphi, beta_phi_vals=beta_phi_vals,
+                    rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
+
+del rho_bphi
+
 ## Now, rho(x,y,z) for each n val...
+
 
 print("\nCalculating rho for different n vals...\n")
 sys.stdout.flush()
@@ -323,8 +330,12 @@ for i_nval, nval in enumerate(nvals):
 print("Finished, saving...")
 sys.stdout.flush()
 
-np.savez_compressed('rho_final.dat', rho_bphi=rho_bphi, beta_phi_vals=beta_phi_vals, rho_n=rho_n, nvals=nvals,
+
+np.savez_compressed('rho_final.dat', rho_n=rho_n, nvals=nvals,
                     rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
+
+print("done.")
+sys.stdout.flush()
 
 wm.shutdown()
 
