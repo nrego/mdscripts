@@ -273,6 +273,47 @@ with wm:
 print("...done\n")
 np.savez_compressed('rho0.dat', rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
 
+## Now, rho(x,y,z) for each n val...
+
+
+print("\nCalculating rho for different n vals...\n")
+sys.stdout.flush()
+
+rho_n = np.zeros((nvals.size, nx, ny, nz))
+
+for i_nval, nval in enumerate(nvals[:2]):
+    print("doing n {}  ({} of {})".format(nval, i_nval+1, nvals.size))
+    sys.stdout.flush()
+
+    mask = (all_data_N >= nval-n_buffer) & (all_data_N <= nval+n_buffer)
+    bias_logweights = np.zeros_like(all_logweights)
+    bias_logweights[:] = -np.inf
+    bias_logweights[mask] = all_logweights[mask]
+    bias_logweights -= bias_logweights.max()
+    norm = np.log(np.sum(np.exp(bias_logweights)))
+    bias_logweights -= norm
+
+    assert np.allclose(1, np.exp(bias_logweights).sum())
+
+    this_rho = np.zeros_like(rho0)
+    
+    with wm:
+        this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
+
+    rho_n[i_nval, ...] = this_rho
+
+    del this_rho, mask, bias_logweights
+
+print("Finished, saving...")
+sys.stdout.flush()
+
+
+np.savez_compressed('rho_final.dat', rho_n=rho_n, nvals=nvals,
+                    rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
+
+print("done.")
+sys.stdout.flush()
+
 ## Next, rho(x,y,z) for each of the beta phi values...
 
 print("\nCalculating rho for different bphi values...\n")
@@ -280,7 +321,7 @@ sys.stdout.flush()
 
 rho_beta_phi = np.zeros((beta_phi_vals.size, nx, ny, nz))
 
-for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
+for i_bphi, beta_phi_val in enumerate(beta_phi_vals[:2]):
     print("doing bphi {:.2f}  ({} of {})".format(beta_phi_val, i_bphi+1, beta_phi_vals.size))
     sys.stdout.flush()
 
@@ -306,47 +347,4 @@ np.savez_compressed('rho_bphi.dat', rho_bphi=rho_beta_phi, beta_phi_vals=beta_ph
                     rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
 
 del rho_beta_phi
-
-## Now, rho(x,y,z) for each n val...
-
-
-print("\nCalculating rho for different n vals...\n")
-sys.stdout.flush()
-
-rho_n = np.zeros((nvals.size, nx, ny, nz))
-
-for i_nval, nval in enumerate(nvals):
-    print("doing n {}  ({} of {})".format(nval, i_nval+1, nvals.size))
-    sys.stdout.flush()
-
-    mask = (all_data_N >= nval-n_buffer) & (all_data_N <= nval+n_buffer)
-    bias_logweights = np.zeros_like(all_logweights)
-    bias_logweights[:] = -np.inf
-    bias_logweights[mask] = all_logweights[mask]
-    bias_logweights -= bias_logweights.max()
-    norm = np.log(np.sum(np.exp(bias_logweights)))
-    bias_logweights -= norm
-
-    assert np.allclose(1, np.exp(bias_logweights).sum())
-
-    this_rho = np.zeros_like(rho0)
-    
-    with wm:
-        this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
-
-    rho_n[i_nval, ...] = this_rho
-
-    del this_rho
-
-print("Finished, saving...")
-sys.stdout.flush()
-
-
-np.savez_compressed('rho_final.dat', rho_n=rho_n, nvals=nvals,
-                    rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
-
-print("done.")
-sys.stdout.flush()
-
-wm.shutdown()
 
