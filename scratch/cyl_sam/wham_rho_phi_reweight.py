@@ -50,7 +50,7 @@ def load_and_weight(idx, fnames, logweights):
     all_rhoxzy = []
 
     for fname in fnames:
-        #print(fname)
+        print(fname)
         ds = np.load(fname)
 
         if xbins is None:
@@ -85,7 +85,7 @@ def load_and_weight(idx, fnames, logweights):
     all_rhoxzy = np.array(all_rhoxzy)
 
 
-    return idx, all_rhoxzy.sum(axis=0)
+    return idx, all_rhoxzy
 
 # IDX: index of filename
 # logweights consists of *only* those weights associated with datapoints from fname
@@ -99,20 +99,20 @@ def load_and_weight_file(idx, fname, logweights, nx, ny, nz, xbins, ybins, zbins
     weights = np.exp(logweights)
 
     #print(fname)
-    ds = np.load(fname)
+    with np.load(fname) as ds:
+
+        assert np.array_equal(ds['xbins'], xbins)
+        assert np.array_equal(ds['ybins'], ybins)
+        assert np.array_equal(ds['zbins'], zbins)
 
 
-    assert np.array_equal(ds['xbins'], xbins)
-    assert np.array_equal(ds['ybins'], ybins)
-    assert np.array_equal(ds['zbins'], zbins)
+        this_rhoxyz = ds['rho']
+        assert this_rhoxyz.shape[1:] == (nx, ny, nz)
+        assert weights.size == this_rhoxyz.shape[0]
 
-
-    this_rhoxyz = ds['rho']
-    assert this_rhoxyz.shape[1:] == (nx, ny, nz)
-    assert weights.size == this_rhoxyz.shape[0]
-
-    this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
-
+        this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
+    
+    del this_rhoxyz, weights, ds
 
     return idx, this_weight_rho
 
@@ -193,97 +193,138 @@ else:
 print("\nDetermining number of points for each file...")
 n_frames_per_file = np.zeros(len(fnames_rhoxyz), dtype=int)
 
+xbins = None
+ybins = None
+zbins = None
+
 for i, fname in enumerate(fnames_rhoxyz):
     print("checking {}".format(fname))
-    ds = np.load(fname)
-    n_frames_per_file[i] = ds['rho'].shape[0]
+    with np.load(fname) as ds:
+        n_frames_per_file[i] = ds['nframes']
 
-### CALCULATE RHO(x,y,z) with differnt BPHI vals
+        if xbins is None:
+            xbins = ds['xbins']
+            nx = xbins.size-1
+        if ybins is None:
+            ybins = ds['ybins']
+            ny = ybins.size-1
+        if zbins is None:
+            zbins = ds['zbins']
+            nz = zbins.size-1
+
+        assert np.array_equal(xbins, ds['xbins'])
+        assert np.array_equal(ybins, ds['ybins'])
+        assert np.array_equal(zbins, ds['zbins'])
+
+### CALCULATE RHO(x,y,z) with differnt BPHI vals, N, etc...
 ################################################
 
+## Generator/task distributor
+def task_gen(fnames, n_frames_per_file, logweights):
 
-### FIRST UNBIASED ####
+    last_frame = 0
+
+    for i, fname in enumerate(fnames):
+        #print(" {}".format(fname))
+        slc = slice(last_frame, last_frame+n_frames_per_file[i])
+        this_logweights = logweights[slc]
+        
+        args = (i, fname, this_logweights, nx, ny, nz, xbins, ybins, zbins)
+        kwargs = dict()
+        last_frame += n_frames_per_file[i]
+
+        yield load_and_weight_file, args, kwargs
+
+def rho_job(rho_avg, wm, fnames_rhoxyz, n_frames_per_file, logweights):
+    for future in wm.submit_as_completed(task_gen(fnames_rhoxyz, n_frames_per_file, logweights), queue_size=wm.n_workers):
+        idx, rho = future.get_result(discard=True)
+        print("  receiving result...")
+        sys.stdout.flush()
+
+        rho_avg += rho
+
+        del rho
+
+    return rho_avg
+
+### FIRST: UNBIASED ####
 print("\nCalculating rho, (equil)...\n")
 sys.stdout.flush()
 
+logweights = all_logweights.copy()
+logweights -= logweights.max()
+norm = np.log(np.sum(np.exp(logweights)))
+logweights -= norm
 
+assert np.allclose(1, np.exp(logweights).sum())
 
+rho0 = np.zeros((nx, ny, nz))
+rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
 
 
 print("...done\n")
 
 
 ## Next, rho(x,y,z) for each of the beta phi values...
+
 print("\nCalculating rho for different bphi values...\n")
 sys.stdout.flush()
 
+rho_beta_phi = np.zeros((beta_phi_vals.size, nx, ny, nz))
 
-rho_bphi = np.zeros((beta_phi_vals.size, *rho0.shape))
-
-# Generator for reweighting w/ bphi
-def task_gen_bphi():
-    
-    for i, beta_phi_val in enumerate(beta_phi_vals):
-        #print("  doing {} of {}\n".format(i, beta_phi_vals.size))
-
-        bias_logweights = all_logweights - beta_phi_val*all_data
-
-        args = (i, fnames_rhoxyz, bias_logweights)
-        kwargs = dict()
-        print("sending bphi {:.2f} ({} of {})".format(beta_phi_val, i, beta_phi_vals.size))
-
-
-        yield load_and_weight, args, kwargs
-
-
-for future in wm.submit_as_completed(task_gen_bphi(), queue_size=wm.n_workers):
-    idx, rho = future.get_result(discard=True)
-    print("receiving result...")
+for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
+    print("doing bphi {:.2f}  ({} of {})".format(beta_phi_val, i_bphi+1, beta_phi_vals.size))
     sys.stdout.flush()
 
-    rho_bphi[idx] = rho
+    bias_logweights = all_logweights - beta_phi_val * all_data
+    bias_logweights -= bias_logweights.max()
+    norm = np.log(np.sum(np.exp(bias_logweights)))
+    bias_logweights -= norm
 
-    del rho
+    assert np.allclose(1, np.exp(bias_logweights).sum())
+
+    this_rho = np.zeros_like(rho0)
+    this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
+
+    rho_beta_phi[i_bphi, ...] = this_rho
+
+    del this_rho
 
 print("...done\n")
 
-### CALCULATE RHO(x,y,z) with different n vals
-################################################
-print("\nCalculating rho for different n vals (smooth width: {})".format(n_buffer))
+## Now, rho(x,y,z) for each n val...
+
+print("\nCalculating rho for different n vals...\n")
 sys.stdout.flush()
 
-# rho(x,y,z) with n
-rho_n = np.zeros((nvals.size, *rho0.shape))
+rho_n = np.zeros((nvals.size, nx, ny, nz))
 
-def task_gen_nvals():
-    
-    for i, nval in enumerate(nvals):
-        #print("  doing {} of {}\n".format(i, beta_phi_vals.size))
-        mask = (all_data_N >= nval-n_buffer) & (all_data_N < nval+n_buffer)
-
-        bias_logweights = np.zeros_like(all_logweights)
-        bias_logweights[:] = -np.inf
-        bias_logweights[mask] = all_logweights[mask]
-
-        args = (i, fnames_rhoxyz, bias_logweights)
-        kwargs = dict()
-        print("sending nval {} ({} of {})".format(nval, i+1, nvals.size))
-
-
-        yield load_and_weight, args, kwargs
-
-
-for future in wm.submit_as_completed(task_gen_bphi(), queue_size=wm.n_workers):
-    idx, rho = future.get_result(discard=True)
-    print("receiving result...")
+for i_nval, nval in enumerate(nvals):
+    print("doing n {}  ({} of {})".format(nval, i_nval+1, nvals.size))
     sys.stdout.flush()
 
-    rho_n[idx] = rho
+    mask = (all_data_N >= nval-n_buffer) & (all_data_N <= nval+n_buffer)
+    bias_logweights = np.zeros_like(all_logweights)
+    bias_logweights[:] = -np.inf
+    bias_logweights[mask] = all_logweights[mask]
+    bias_logweights -= bias_logweights.max()
+    norm = np.log(np.sum(np.exp(bias_logweights)))
+    bias_logweights -= norm
 
-    del rho
+    assert np.allclose(1, np.exp(bias_logweights).sum())
+
+    this_rho = np.zeros_like(rho0)
+    this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
+
+    rho_n[i_nval, ...] = this_rho
+
+    del this_rho
 
 print("Finished, saving...")
+sys.stdout.flush()
 
 np.savez_compressed('rho_final.dat', rho_bphi=rho_bphi, beta_phi_vals=beta_phi_vals, rho_n=rho_n, nvals=nvals,
                     rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
+
+wm.shutdown()
 
