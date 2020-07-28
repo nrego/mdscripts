@@ -305,7 +305,7 @@ print("...done\n")
 np.savez_compressed('rho_bphi.dat', rho_bphi=rho_beta_phi, beta_phi_vals=beta_phi_vals,
                     rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
 
-del rho_bphi
+del rho_beta_phi
 
 ## Now, rho(x,y,z) for each n val...
 
