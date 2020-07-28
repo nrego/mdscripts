@@ -23,7 +23,7 @@ import argparse
 
 from work_managers.environment import default_env
 
-from memory_profiler import profile
+#from memory_profiler import profile
 
 ## LOAD RHO (x,y,z) density profiles
 #
@@ -90,7 +90,7 @@ def load_and_weight(idx, fnames, logweights):
 
 # IDX: index of filename
 # logweights consists of *only* those weights associated with datapoints from fname
-@profile
+#@profile
 def load_and_weight_file(idx, this_rhoxyz, logweights, nx, ny, nz, xbins, ybins, zbins):
 
     ## No weight for this sample; return zero density array
