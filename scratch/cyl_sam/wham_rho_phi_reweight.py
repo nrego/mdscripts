@@ -281,7 +281,7 @@ sys.stdout.flush()
 
 rho_n = np.zeros((nvals.size, nx, ny, nz))
 
-for i_nval, nval in enumerate(nvals[:2]):
+for i_nval, nval in enumerate(nvals):
     print("doing n {}  ({} of {})".format(nval, i_nval+1, nvals.size))
     sys.stdout.flush()
 
@@ -321,7 +321,7 @@ sys.stdout.flush()
 
 rho_beta_phi = np.zeros((beta_phi_vals.size, nx, ny, nz))
 
-for i_bphi, beta_phi_val in enumerate(beta_phi_vals[:2]):
+for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
     print("doing bphi {:.2f}  ({} of {})".format(beta_phi_val, i_bphi+1, beta_phi_vals.size))
     sys.stdout.flush()
 
