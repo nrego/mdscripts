@@ -18,7 +18,7 @@ labels = np.loadtxt('{}/Desktop/protein_prediction_summary_phi_opt.dat'.format(h
 row_labels = np.array([' '.join(label.split('_')) for label in labels])
 dat_star = np.loadtxt('{}/Desktop/protein_prediction_summary_phi_star.dat'.format(homedir), usecols=range(1,9))
 
-col_labels_opt = (r"$\beta \phi^\mathrm{opt}$", 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
+col_labels_opt = (r"${\beta \phi^\mathrm{opt}}$", 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
 col_labels_star = (r'$\beta \phi^*$', 'TPR', 'FPR', 'PPV', r'$d_\mathrm{h}$', r'$f_1$', 'MCC')
 
 row_labels = np.array(['Thymidylate Synthase (TS)', 'Mannose-Binding Protein (MBP)', 'Melittin (MLT)', 'Mouse Double Minute 2 (MDM2)', 'Ubiquitin (UBQ)'])

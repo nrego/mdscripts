@@ -29,12 +29,54 @@ from functools import reduce
 MAX_MULT = 2e6
 MAX_N = 81
 
+
+## Helper class for quickly finding the energies of all one-step moves from a given state
+class GetDelta:
+    def __init__(self, adj_mat, ext_count, alpha_k_c, alpha_n_cc, alpha_n_ce):
+        self.adj_mat = adj_mat
+        self.ext_count = ext_count
+        self.alpha_k_c = alpha_k_c
+        self.alpha_n_cc = alpha_n_cc
+        self.alpha_n_ce = alpha_n_ce
+
+
+    def __call__(self, x0, cand_indices, prec=6):
+
+        trial_energies = np.zeros_like(cand_indices).astype(float)
+        trial_states = np.empty((cand_indices.size, x0.size), dtype=bool)
+        x0_int = x0.astype(int)
+
+        # Find energy of x0
+        k_c = x0_int.sum()
+        n_cc = 0.5 * np.linalg.multi_dot((x0_int, self.adj_mat, x0_int))
+        n_ce = np.dot(x0_int, self.ext_count)
+
+        e0 = self.alpha_k_c*k_c + self.alpha_n_cc*n_cc + self.alpha_n_ce*n_ce
+
+        for i, cand_idx in enumerate(cand_indices):
+            x1 = x0.copy()
+            x1[cand_idx] = ~x1[cand_idx]
+
+            x1_int = x1.astype(int)
+            
+            k_c = x1_int.sum()
+            n_cc = 0.5 * np.linalg.multi_dot((x1_int, self.adj_mat, x1_int))
+            n_ce = np.dot(x1_int, self.ext_count)
+
+            trial_states[i] = x1
+            e1 = self.alpha_k_c*k_c + self.alpha_n_cc*n_cc + self.alpha_n_ce*n_ce
+            trial_energies[i] = e1 - e0
+        
+
+        return trial_states, np.round(trial_energies, prec)
+
+
+
 # Returns delta_f (w.r.t. pure non-polar), avg f_up, avg f_down
-def get_order(pt_idx, m_mask, p, q, alpha_k_o, alpha_n_oo, alpha_n_oe, delta):
+def get_order(pt_idx, m_mask, p, q, delta):
     
 
     state = State(pt_idx.astype(int), p=p, q=q)
-    x = m_mask.astype(int)
 
     # Indices of *polar* groups, candidates for down hotspots
     down_indices = state.avail_indices
@@ -44,19 +86,20 @@ def get_order(pt_idx, m_mask, p, q, alpha_k_o, alpha_n_oo, alpha_n_oe, delta):
     if down_indices.size == 0:
         delta_f_down = 0
     else:
-        new_states, new_energies = delta(x, down_indices)
-        delta_f_down = new_energies.mean()
+        new_states, new_energies = delta(m_mask, down_indices)
+        delta_f_down = new_energies.mean() 
 
     if up_indices.size == 0:
         delta_f_up = 0
     else:
-        new_states, new_energies = delta(x, up_indices)
-        delta_f_up = new_energies.mean()
+        new_states, new_energies = delta(m_mask, up_indices)
+        delta_f_up = new_energies.mean() 
 
-    # Change in f w.r.t. pure non-polar pattern
-    delta_f = alpha_k_o*state.k_o + alpha_n_oo*state.n_oo + alpha_n_oe*state.n_oe
+    assert delta_f_up >= 0
+    assert delta_f_down <= 0
 
-    return (delta_f, delta_f_up, delta_f_down)
+
+    return (delta_f_up, delta_f_down)
 
 
 #### For given size, ko, run WL on pattern 'hotspots'/susceptibility to point mutations
@@ -113,18 +156,22 @@ alpha_k_c, alpha_n_cc, alpha_n_ce = reg_meth.coef_
 assert np.allclose(alpha_n_oo, alpha_n_cc)
 assert np.allclose(alpha_n_oo - alpha_n_oe, alpha_n_ce)
 
-delta = GetDelta(state_po.adj_mat, state_po.ext_count, alpha_n_cc, alpha_n_ce)
+delta = GetDelta(state_po.adj_mat, state_po.ext_count, alpha_k_c, alpha_n_cc, alpha_n_ce)
 # Difference in energy between pure polar and pure non-polar patches of this size = 
 max_delta_f = alpha_k_o * state_po.k_o + alpha_n_oo * state_po.n_oo + alpha_n_oe * state_po.n_oe
 
 # Non-polar to polar switch
 de = args.de
-bins_up = np.arange(0, np.ceil(max_delta_f)+de, de)
+
+bins_up = np.arange(0, np.ceil(alpha_k_o)+de, de)
 bins_down = - bins_up
 # Fe of pattern w.r.t pure non-polar (delta f)
 bins_delta_f = bins_up.copy()
 
-bins = [bins_delta_f, bins_up, bins_down]
+bins = [bins_up, bins_down]
+
+# DEBUG
+#state = State(np.array([ 5,  9, 20, 28, 30, 31, 32, 35]))
 
 
 print('Generating states:')
@@ -135,9 +182,6 @@ print('  ({} total states); do_wl: {}\n\n'.format(mult_total, do_wl))
 kwargs = {
     'p': p,
     'q': q,
-    'alpha_k_o': alpha_k_o, 
-    'alpha_n_oo': alpha_n_oo,
-    'alpha_n_oe': alpha_n_oe, 
     'delta': delta
 }
 

@@ -196,6 +196,7 @@ class WangLandau:
         m_mask[pt_idx] = True
 
         order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
+        
         try:
             bin_assign = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param, self.bins))
         except TypeError:
@@ -209,12 +210,13 @@ class WangLandau:
 
         M_iter = 0
         print("M: {}".format(M_iter))
+        sys.stdout.flush()
 
         while f > self.eps:
             
             n_iter += 1
 
-            #print("\rn_iter: {}".format(n_iter), end='')
+            print("\rn_iter: {}".format(n_iter), end='')
             #sys.stdout.flush()
 
             pt_idx_new = self._trial_move(pt_idx)
@@ -275,6 +277,7 @@ class WangLandau:
                 f = self.f_scale * f
                 M_iter += 1
                 print("M : {}".format(M_iter))
+                sys.stdout.flush()
 
         occ = wl_entropies > 0
         wl_entropies -= wl_entropies.max()
