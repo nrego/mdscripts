@@ -32,6 +32,7 @@ MAX_N = 81
 # Returns delta_f (w.r.t. pure non-polar), avg f_up, avg f_down
 def get_order(pt_idx, m_mask, p, q, alpha_k_o, alpha_n_oo, alpha_n_oe, delta):
     
+
     state = State(pt_idx.astype(int), p=p, q=q)
     x = m_mask.astype(int)
 
@@ -70,8 +71,8 @@ parser.add_argument('--k-o', default=0, type=int,
                     help='k_o (num hydroxyls);  0 <= k_o <= (p*q) (default: %(default)s)')
 parser.add_argument('--do-wl', action='store_true',
                     help='Use WL algorithm to estimate D.O.S. (default is true if p*q>16, false otherwise)')
-parser.add_argument('--reg-file', default='data/sam_reg_m3.npy', type=str)
-parser.add_argument('--reg-file-meth', default='data/sam_reg_m3_meth.npy', type=str)
+parser.add_argument('--reg-file', default='sam_data/data/sam_reg_m3.npy', type=str)
+parser.add_argument('--reg-file-meth', default='sam_data/data/sam_reg_m3_meth.npy', type=str)
 parser.add_argument('-de', default=0.5, type=float,
                     help='Energy bin spacing')
 args = parser.parse_args()

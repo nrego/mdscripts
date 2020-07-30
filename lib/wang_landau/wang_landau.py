@@ -214,6 +214,9 @@ class WangLandau:
             
             n_iter += 1
 
+            #print("\rn_iter: {}".format(n_iter), end='')
+            #sys.stdout.flush()
+
             pt_idx_new = self._trial_move(pt_idx)
             m_mask = np.zeros(self.N, dtype=bool)
             m_mask[pt_idx_new] = True
