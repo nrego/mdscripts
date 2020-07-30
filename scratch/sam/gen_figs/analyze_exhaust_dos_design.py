@@ -226,7 +226,7 @@ plt.legend()
 
 plt.close()
 
-plt.scatter()
+#plt.scatter()
 
 ## Plot out trajectory
 p = 2
