@@ -137,7 +137,7 @@ for i, fname in enumerate(fnames):
 
             tot_states[i, bin_idx].append(pt)
 
-
+    k_o_vals[i] = k_o
     end_time = time.time()
 
     print("   time: {:.2f}".format(end_time-start_time))
