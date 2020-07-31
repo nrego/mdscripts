@@ -173,20 +173,23 @@ bins = [bins_up, bins_down]
 # DEBUG
 #state = State(np.array([ 5,  9, 20, 28, 30, 31, 32, 35]))
 
+if __name__ == '__main__':
 
-print('Generating states:')
-print('################\n')
-print('P: {}   Q: {}  (N: {})  k_o: {}'.format(p, q, N, k_o))
-print('  ({} total states); do_wl: {}\n\n'.format(mult_total, do_wl))
+    print('Generating states:')
+    print('################\n')
+    print('P: {}   Q: {}  (N: {})  k_o: {}'.format(p, q, N, k_o))
+    print('  ({} total states); do_wl: {}\n\n'.format(mult_total, do_wl))
 
-kwargs = {
-    'p': p,
-    'q': q,
-    'delta': delta
-}
+    kwargs = {
+        'p': p,
+        'q': q,
+        'delta': delta
+    }
 
-wl = WangLandau(state_po.positions, bins, fn=get_order, fn_kwargs=kwargs, eps=1e-6, max_iter=30000)
-wl.gen_states(k=k_o, do_brute=(not do_wl))
+    wl = WangLandau(state_po.positions, bins, fn=get_order, fn_kwargs=kwargs, eps=1e-6, max_iter=30000)
+    wl.gen_states(k=k_o, do_brute=(not do_wl))
 
-np.savez_compressed('hotspot_dos_p_{:02d}_q_{:02d}_ko_{:03d}'.format(p,q,k_o), sampled_points=wl.sampled_pt_idx,
-                     bins=wl.bins, entropies=wl.entropies, density=wl.density, p=p, q=q, ko=k_o)
+    np.savez_compressed('hotspot_dos_p_{:02d}_q_{:02d}_ko_{:03d}'.format(p,q,k_o), sampled_points=wl.sampled_pt_idx,
+                         bins=wl.bins, entropies=wl.entropies, density=wl.density, p=p, q=q, ko=k_o)
+
+

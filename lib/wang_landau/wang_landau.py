@@ -150,6 +150,7 @@ class WangLandau:
                 pass
 
             order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
+            
             try:
                 bin_assign = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param, self.bins))
             except TypeError:
