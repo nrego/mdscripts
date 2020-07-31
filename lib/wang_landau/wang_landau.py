@@ -263,6 +263,7 @@ class WangLandau:
                 else:
                     center_bin_mask = (wl_hist > 0)
                 print("      (from {} bins to {} bins)".format(old_center_bin_mask.sum(), center_bin_mask.sum()))
+                sys.stdout.flush()
 
             is_flat = self.is_flat(wl_hist[center_bin_mask], hist_flat_tol)
 

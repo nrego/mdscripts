@@ -155,7 +155,7 @@ ax3.set_xticks([])
 #fig.tight_layout()
 plt.close('all')
 
-plt, ax1 = plt.subplots()
+fig, ax1 = plt.subplots()
 ax1.bar(indices, coefs[:,0], yerr=ses[:,0], width=width, color=['r','y'])
 ax1.set_ylim(6, 7.6)
 ax1.set_yticks([6, 6.5, 7.0])
@@ -188,31 +188,38 @@ plt.close('all')
 indices = np.arange(9)
 fig, ax = plt.subplots(figsize=(12,6))
 width = 0.35
-ax.bar(indices - width/2, energies[sort_idx], label=r'$f$', width=width)
+ax.bar(indices - width/2, energies[sort_idx], yerr=err_energies[sort_idx], label=r'$f$', width=width)
 ax.bar(indices + width/2, pred[sort_idx], label=r'$\hat{f}$', width=width)
 #ax.legend()
 ax.set_xticks(indices)
 ax.set_xticklabels([])
-ax.set_ylim(0, 300)
+#ax.set_ylim(0, 400)
 
 #ax.set_yticklabels([])
 plt.savefig('{}/Desktop/fig_special'.format(homedir), transparent=True)
+
+ax.set_ylim(215, 275)
+ax.set_yticks([])
+plt.savefig('{}/Desktop/fig_special_inset'.format(homedir), transparent=True)
 plt.close('all')
 
 ## Plot 4x9 ###
-states_04_09[205].plot()
-plt.savefig('{}/Desktop/fig_04_09'.format(homedir), transparent=True)
-plt.close('all')
+for i in [205, 300, 100]:
+    states_04_09[i].plot()
+    plt.savefig('{}/Desktop/fig_04_09_{}'.format(homedir, i), transparent=True)
+    plt.close('all')
 
 ## Plot 6 x 6 ##
-states_06_06[320].plot()
-plt.savefig('{}/Desktop/fig_06_06'.format(homedir), transparent=True)
-plt.close('all')
+for i in [320, 100, 250]:
+    states_06_06[i].plot()
+    plt.savefig('{}/Desktop/fig_06_06_{}'.format(homedir, i), transparent=True)
+    plt.close('all')
 
 # Plot 4 x 4 ##
-states_04_04[140].plot()
-plt.savefig('{}/Desktop/fig_04_04'.format(homedir), transparent=True)
-plt.close('all')
+for i in [140, 200, 70]:
+    states_04_04[i].plot()
+    plt.savefig('{}/Desktop/fig_04_04_{}'.format(homedir, i), transparent=True)
+    plt.close('all')
 
 
 
