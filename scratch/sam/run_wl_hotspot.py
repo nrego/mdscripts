@@ -73,7 +73,7 @@ class GetDelta:
 
 
 # Returns delta_f (w.r.t. pure non-polar), avg f_up, avg f_down
-def get_order(pt_idx, m_mask, p, q, delta):
+def get_order(pt_idx, m_mask, p, q, delta, do_tot=False):
     
 
     state = State(pt_idx.astype(int), p=p, q=q)
@@ -98,8 +98,10 @@ def get_order(pt_idx, m_mask, p, q, delta):
     assert delta_f_up >= 0
     assert delta_f_down <= 0
 
-
-    return (delta_f_up, delta_f_down)
+    if do_tot:
+        return [(delta_f_up*up_indices.size + delta_f_down*down_indices.size) / (state.N)]
+    else:
+        return (delta_f_up, delta_f_down)
 
 
 #### For given size, ko, run WL on pattern 'hotspots'/susceptibility to point mutations
@@ -110,7 +112,7 @@ parser.add_argument('-p', default=6, type=int,
                     help='P dimension (default: %(default)s)')
 parser.add_argument('-q', default=6, type=int,
                     help='Q dimension (default: %(default)s)')
-parser.add_argument('--k-o', default=0, type=int,
+parser.add_argument('--k-c', default=0, type=int,
                     help='k_o (num hydroxyls);  0 <= k_o <= (p*q) (default: %(default)s)')
 parser.add_argument('--do-wl', action='store_true',
                     help='Use WL algorithm to estimate D.O.S. (default is true if p*q>16, false otherwise)')
@@ -118,11 +120,13 @@ parser.add_argument('--reg-file', default='sam_data/data/sam_reg_m3.npy', type=s
 parser.add_argument('--reg-file-meth', default='sam_data/data/sam_reg_m3_meth.npy', type=str)
 parser.add_argument('-de', default=0.5, type=float,
                     help='Energy bin spacing')
+parser.add_argument('--do-expt-tot', action='store_true',
+                    help='If true, do WL on expt (average) Delta f (1D WL)')
 args = parser.parse_args()
 
 p = args.p
 q = args.q
-k_o = args.k_o
+k_c = args.k_c
 
 N = p*q
 if N < 0:
@@ -131,11 +135,11 @@ if N > MAX_N:
     print('N ({}) > MAX_N (MAX_N), exiting.'.format(N, MAX_N))
     exit()
 
-if k_o < 0 or k_o > N:
-    raise ValueError('Invalid k_o ({})'.format(k_o))
+if k_c < 0 or k_c > N:
+    raise ValueError('Invalid k_c ({})'.format(k_c))
 
 ## Total number of patterns for this (p,q,ko)
-mult_total = int(binom(N, k_o))
+mult_total = int(binom(N, k_c))
 
 # Automatically force WL if total number of patterns is large
 do_wl = args.do_wl or mult_total > MAX_MULT
@@ -168,7 +172,12 @@ bins_down = - bins_up
 # Fe of pattern w.r.t pure non-polar (delta f)
 bins_delta_f = bins_up.copy()
 
-bins = [bins_up, bins_down]
+bins_tot = np.unique(np.append(bins_down, bins_up))
+
+if args.do_expt_tot:
+    bins = [bins_tot]
+else:
+    bins = [bins_up, bins_down]
 
 # DEBUG
 #state = State(np.array([ 5,  9, 20, 28, 30, 31, 32, 35]))
@@ -177,19 +186,20 @@ if __name__ == '__main__':
 
     print('Generating states:')
     print('################\n')
-    print('P: {}   Q: {}  (N: {})  k_o: {}'.format(p, q, N, k_o))
+    print('P: {}   Q: {}  (N: {})  k_c: {}'.format(p, q, N, k_c))
     print('  ({} total states); do_wl: {}\n\n'.format(mult_total, do_wl))
 
     kwargs = {
         'p': p,
         'q': q,
-        'delta': delta
+        'delta': delta,
+        'do_tot': args.do_expt_tot
     }
 
     wl = WangLandau(state_po.positions, bins, fn=get_order, fn_kwargs=kwargs, eps=1e-6, max_iter=30000)
-    wl.gen_states(k=k_o, do_brute=(not do_wl))
+    wl.gen_states(k=k_c, do_brute=(not do_wl))
 
-    np.savez_compressed('hotspot_dos_p_{:02d}_q_{:02d}_ko_{:03d}'.format(p,q,k_o), sampled_points=wl.sampled_pt_idx,
-                         bins=wl.bins, entropies=wl.entropies, density=wl.density, p=p, q=q, ko=k_o)
+    np.savez_compressed('hotspot_dos_p_{:02d}_q_{:02d}_kc_{:03d}'.format(p,q,k_c), sampled_points=wl.sampled_pt_idx,
+                         bins=wl.bins, entropies=wl.entropies, density=wl.density, p=p, q=q, kc=k_c)
 
 
