@@ -26,7 +26,7 @@ from scratch.sam.enumerate_design import GetDelta
 from functools import reduce
 
 # Force WL if number of configs for this P,Q,k_o is greater than this number
-MAX_MULT = 2e6
+MAX_MULT = 1e6
 MAX_N = 81
 
 
