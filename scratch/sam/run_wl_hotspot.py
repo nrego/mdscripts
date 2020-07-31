@@ -188,4 +188,5 @@ kwargs = {
 wl = WangLandau(state_po.positions, bins, fn=get_order, fn_kwargs=kwargs, eps=1e-6, max_iter=30000)
 wl.gen_states(k=k_o, do_brute=(not do_wl))
 
-np.savez_compressed('hotspot_dos_p_{:02d}_q_{:02d}_ko_{:03d}'.format(p,q,k_o), entropies=wl.entropies, density=wl.density, omega_k=wl.omega_k, p=p, q=q, ko=k_o)
+np.savez_compressed('hotspot_dos_p_{:02d}_q_{:02d}_ko_{:03d}'.format(p,q,k_o), wl=wl,
+                     p=p, q=q, ko=k_o)
