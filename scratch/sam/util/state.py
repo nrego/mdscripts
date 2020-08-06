@@ -89,7 +89,7 @@ class State:
         assert self.adj_mat.diagonal().max() == 0
         assert np.array_equal(self.adj_mat, self.adj_mat.T)
 
-        self.pt_idx = np.atleast_1d(pt_idx)
+        self.pt_idx = np.sort(np.atleast_1d(pt_idx))
         self.e_func = e_func
         self.reg = reg
 

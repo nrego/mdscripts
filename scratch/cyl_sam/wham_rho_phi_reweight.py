@@ -161,7 +161,7 @@ print("bphi(-): {:.2f} <N_v>bphi(-): {:.2f}".format(bphi_minus, avg_n_minus))
 print("bphi(+): {:.2f} <N_v>bphi(+): {:.2f}\n".format(bphi_plus, avg_n_plus))
 
 ## Set to for N values around <N_v>bphistar
-nvals = np.arange(np.ceil(avg_n_minus), np.floor(avg_n_plus)-1, -1)
+nvals = np.arange(np.ceil(avg_n_minus), -1, -1)
 beta_phi_vals = np.arange(bphi_minus, bphi_plus+0.02, 0.02)
 
 print("nvals: {}".format(nvals))

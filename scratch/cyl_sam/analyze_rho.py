@@ -32,7 +32,7 @@ from scipy.optimize import minimize
 myorange = myorange = plt.rcParams['axes.prop_cycle'].by_key()['color'][1] 
 
 Rv = 20
-w = 9
+w = 3
 
 
 homedir = os.environ['HOME']
@@ -162,28 +162,6 @@ def get_interp_points(rho, xvals, yvals, zvals, iso=0.5):
 
     return np.array(pts)
 
-# Get the radius of each point (xi, yi, zi)
-def get_Ri(x0, pts, y0=35, z0=35):
-    d = pts - np.array([x0,y0,z0])
-
-    # Ri**2 for each point
-    r_sq = np.sum(d**2, axis=1)
-    
-    return np.sqrt(r_sq)
-
-
-# Finds SSE of best fit sphere centered at (x0[0],y0,z0) [x0 is fitted parameter and is a 1d singleton array]
-def sph_fit(x0, pts, y0=35, z0=35):
-
-    Ri = get_Ri(x0[0], pts)
-    R = np.mean(Ri)
-
-    return np.sum((Ri - R)**2)
-
-
-## Finds x coords of a collection of points (in y, z) to a sphere w/ radius R, 
-#    centered at (x0, y0, z0)
-fit_sph_x = lambda pts_y, pts_z, R, x0, y0=35, z0=35: (np.sqrt([R**2 - (pts_y-y0)**2 - (pts_z-z0)**2]) + x0).flatten()
 
 # Transform a list of (x,y,z) points to (r, x) where r=sqrt( (y-y0)**2 + (z-z0)**2 )
 def pts_to_rhorx(pts, y0, z0):
@@ -196,6 +174,33 @@ def pts_to_rhorx(pts, y0, z0):
     ret[:,1] = pts[:,0]
 
     return ret
+
+y0=35.0
+z0=35
+xc = 28.5
+p0 = [30,10]
+
+bounds = ([0, -np.inf], [np.inf, xc])
+## Sum of squared errors for points, given sphere w/ radius R centered at (x0,y0,z0)
+def x_fit(pts_yz, R, x0):
+    theta = np.arccos((xc-x0)/R)
+
+    mask = ((pts_yz[:,0] - y0)**2 + (pts_yz[:,1] - z0)**2) < (R*np.sin(theta))**2
+    #mask = np.ones(pts_yz.shape[0]).astype(bool)
+    ret = np.zeros(pts_yz.shape[0])
+
+    try:
+        ret[~mask] = xc
+    except ValueError:
+        pass
+    try:
+        ret[mask] = x0 + np.sqrt(R**2 - (pts_yz[mask,0] - y0)**2 - (pts_yz[mask,1] - z0)**2)
+    except ValueError:
+        pass
+
+
+    return ret
+
 
 rvals = np.arange(0, 31, 1)
 y0 = 35.0
@@ -296,30 +301,22 @@ with MDAnalysis.Writer("traj_bphi.xtc", univ.atoms.n_atoms) as W:
             univ.atoms.write("base_bphi.gro")
 
         ## Now fit and find contact angle
-        args = (pts, y0, z0)
-        res = minimize(sph_fit, 0, args, bounds=[(-np.inf, 100)])
-        # Center point x0
-        x0 = res.x[0]
+        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=p0, bounds=bounds)
         
-        # Radii of each point    
-        ri = get_Ri(x0, pts, y0, z0)
+        # Radius and center point x0
+        R, x0 = res[0]
 
-        # x vals predicted for sphere with radius r=ri.mean() centered at x0
-        pred_x = fit_sph_x(pts[:,1], pts[:,2], ri.mean(), x0)
+        h = xc - x0
+        theta = 180*np.arccos(h/R)/np.pi
 
-        r2 = 1 - ( np.mean((pts[:,0] - pred_x)**2) / pts[:,0].var() )
-
-        h = 28.5 - x0
-        theta = 180*np.arccos(h/ri.mean())/np.pi
-
-        r_bphi[i] = ri.mean()
+        r_bphi[i] = R
         x0_bphi[i] = x0
         theta_bphi[i] = theta
-        r2_bphi[i] = r2
 
         ## FIT IT
+        # Project iso points to r,x
         ret = pts_to_rhorx(pts, 35, 35)
-        x_of_r = fit_sph_x(rvals+y0, np.ones_like(rvals)*z0, ri.mean(), x0)
+        x_of_r = x_fit(np.vstack((rvals+y0, np.ones_like(rvals)*z0)).T, R, x0)
         plt.close('all')
         ax = plt.gca()
 
@@ -343,7 +340,7 @@ with MDAnalysis.Writer("traj_bphi.xtc", univ.atoms.n_atoms) as W:
         plt.savefig("/Users/nickrego/Desktop/fig_bphi_{:03d}".format(int(bphi*100)))
 
 
-## GO THROUGH BPHI VALS ##
+## GO THROUGH N VALS ##
 ##########################
 
 max_atms = -np.inf
@@ -369,7 +366,6 @@ x0_n = np.zeros_like(nvals)
 # Contact angle with yz plane at x=28.5
 theta_n = np.zeros_like(nvals)
 
-r2_n = np.zeros_like(nvals)
 
 with MDAnalysis.Writer("traj_n.xtc", univ.atoms.n_atoms) as W:
 
@@ -395,31 +391,22 @@ with MDAnalysis.Writer("traj_n.xtc", univ.atoms.n_atoms) as W:
             univ.atoms.write("base_n.gro")
 
         ## Now fit and find contact angle
-        args = (pts, y0, z0)
-        res = minimize(sph_fit, 0, args, bounds=[(-np.inf, 100)])
-        # Center point x0
-        x0 = res.x[0]
+        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=p0, bounds=bounds)
         
-        # Radii of each point    
-        ri = get_Ri(x0, pts, y0, z0)
+        # Radius and center point x0
+        R, x0 = res[0]
 
-        # x vals predicted for sphere with radius r=ri.mean() centered at x0
-        pred_x = fit_sph_x(pts[:,1], pts[:,2], ri.mean(), x0)
+        h = xc - x0
+        theta = 180*np.arccos(h/R)/np.pi
 
-        r2 = 1 - ( np.mean((pts[:,0] - pred_x)**2) / pts[:,0].var() )
-
-        h = 28.5 - x0
-        theta = 180*np.arccos(h/ri.mean())/np.pi
-
-        r_n[i] = ri.mean()
+        r_n[i] = R
         x0_n[i] = x0
         theta_n[i] = theta
-        r2_n[i] = r2
 
-
-        ## Plot rho(r,x) side view
+        ## FIT IT
+        # Project iso points to r,x
         ret = pts_to_rhorx(pts, 35, 35)
-        x_of_r = fit_sph_x(rvals+y0, np.ones_like(rvals)*z0, ri.mean(), x0)
+        x_of_r = x_fit(np.vstack((rvals+y0, np.ones_like(rvals)*z0)).T, R, x0)
         plt.close('all')
         ax = plt.gca()
 
