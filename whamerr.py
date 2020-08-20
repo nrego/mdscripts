@@ -57,7 +57,7 @@ def _subsample(bias_mat, uncorr_n_samples, uncorr_n_tot, n_samples, n_windows):
 
 def _bootstrap(lb, ub, uncorr_ones_m, uncorr_ones_n, bias_mat, n_samples, uncorr_n_samples,
                uncorr_n_sample_diag, uncorr_n_tot, n_windows, xweights, all_data, all_data_aux, boot_fn=None):
-
+    
     # Number of bootstrap runs to do this round
     batch_size = ub - lb
 

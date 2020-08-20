@@ -221,6 +221,7 @@ class WHAMDataExtractor:
             self.n_samples = np.append(self.n_samples, dataframe.shape[0])
 
             self.all_data = np.append(self.all_data, dataframe)
+            self.all_data_aux = np.append(self.all_data_aux, dataframe)
 
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
