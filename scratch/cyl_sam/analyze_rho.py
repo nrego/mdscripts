@@ -178,9 +178,10 @@ def pts_to_rhorx(pts, y0, z0):
 y0=35.0
 z0=35
 xc = 28.5
-p0 = [30,10]
+p0 = np.array([30,10])
 
 bounds = ([0, -np.inf], [np.inf, xc])
+
 ## Sum of squared errors for points, given sphere w/ radius R centered at (x0,y0,z0)
 def x_fit(pts_yz, R, x0):
     theta = np.arccos((xc-x0)/R)
@@ -201,6 +202,16 @@ def x_fit(pts_yz, R, x0):
 
     return ret
 
+def x_fit_noplane(pts_yz, R, x0):
+
+    ret = np.zeros(pts_yz.shape[0])
+
+    ret = x0 + np.sqrt(R**2 - (pts_yz[:,0] - y0)**2 - (pts_yz[:,1] - z0)**2)
+
+    return ret
+
+## Any points (in y, z) that have a radial distance from y0,z0 greater than buffer*RsinTheta
+radial_buffer = 0.8
 
 rvals = np.arange(0, 31, 1)
 y0 = 35.0
@@ -275,11 +286,13 @@ r_bphi = np.zeros_like(beta_phi_vals)
 x0_bphi = np.zeros_like(beta_phi_vals)
 # Contact angle with yz plane at x=28.5
 theta_bphi = np.zeros_like(beta_phi_vals)
+mse_bphi = np.zeros_like(beta_phi_vals)
 r2_bphi = np.zeros_like(beta_phi_vals)
 
 with MDAnalysis.Writer("traj_bphi.xtc", univ.atoms.n_atoms) as W:
 
     for i, bphi in enumerate(beta_phi_vals):
+        print("doing bphi: {:.2f}".format(bphi))
         univ.atoms.positions[:] = 0
         rho = rho_bphi[i]
         avg_rho = rho / rho0
@@ -300,8 +313,14 @@ with MDAnalysis.Writer("traj_bphi.xtc", univ.atoms.n_atoms) as W:
         if i == 0:
             univ.atoms.write("base_bphi.gro")
 
-        ## Now fit and find contact angle
-        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=p0, bounds=bounds)
+        new_p0 = p0.copy()
+        max_dist = np.ceil(np.sqrt((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2).max()) + 1
+        if max_dist > new_p0[0]:
+            new_p0[0] = max_dist
+
+        ## Initial fit
+        ## Now fit and find extent of spherical cap (e.g., y0+-RsinTheta, or z0+-RsinTheta)
+        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=new_p0, bounds=bounds)
         
         # Radius and center point x0
         R, x0 = res[0]
@@ -309,9 +328,26 @@ with MDAnalysis.Writer("traj_bphi.xtc", univ.atoms.n_atoms) as W:
         h = xc - x0
         theta = 180*np.arccos(h/R)/np.pi
 
+        ## Second fit, excluding all y, z points that are further than 
+        mask_radial_xy = ((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2) < radial_buffer*(R * np.sin((theta/180)*np.pi))**2
+        res = curve_fit(x_fit_noplane, pts[mask_radial_xy,1:], pts[mask_radial_xy,0], p0=new_p0, bounds=bounds)
+
+        R, x0 = res[0]
+
+        ## Find rmse of fit
+        pred = x_fit_noplane(pts[mask_radial_xy,1:], R, x0)
+        mse = np.mean((pred - pts[mask_radial_xy,0])**2)
+        r2 = 1 - (mse/pts[mask_radial_xy,0].var())
+
+        h = xc - x0
+        theta = 180*np.arccos(h/R)/np.pi
+
         r_bphi[i] = R
         x0_bphi[i] = x0
         theta_bphi[i] = theta
+
+        mse_bphi[i] = mse
+        r2_bphi[i] = r2
 
         ## FIT IT
         # Project iso points to r,x
@@ -366,10 +402,13 @@ x0_n = np.zeros_like(nvals)
 # Contact angle with yz plane at x=28.5
 theta_n = np.zeros_like(nvals)
 
+mse_n = np.zeros_like(nvals)
+r2_n = np.zeros_like(nvals)
 
 with MDAnalysis.Writer("traj_n.xtc", univ.atoms.n_atoms) as W:
 
     for i, nval in enumerate(nvals):
+        print("doing n: {}".format(nval))
         univ.atoms.positions[:] = 0
         rho = rho_n[i]
         avg_rho = rho / rho0
@@ -390,8 +429,14 @@ with MDAnalysis.Writer("traj_n.xtc", univ.atoms.n_atoms) as W:
         if i == 0:
             univ.atoms.write("base_n.gro")
 
-        ## Now fit and find contact angle
-        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=p0, bounds=bounds)
+        new_p0 = p0.copy()
+        max_dist = np.ceil(np.sqrt((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2).max()) + 1
+        if max_dist > new_p0[0]:
+            new_p0[0] = max_dist
+
+        ## Initial fit
+        ## Now fit and find extent of spherical cap (e.g., y0+-RsinTheta, or z0+-RsinTheta)
+        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=new_p0, bounds=bounds)
         
         # Radius and center point x0
         R, x0 = res[0]
@@ -399,9 +444,26 @@ with MDAnalysis.Writer("traj_n.xtc", univ.atoms.n_atoms) as W:
         h = xc - x0
         theta = 180*np.arccos(h/R)/np.pi
 
+        ## Second fit, excluding all y, z points that are further than 
+        mask_radial_xy = ((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2) < radial_buffer*(R * np.sin((theta/180)*np.pi))**2
+        res = curve_fit(x_fit_noplane, pts[mask_radial_xy,1:], pts[mask_radial_xy,0], p0=new_p0, bounds=bounds)
+
+        R, x0 = res[0]
+
+        ## Find rmse of fit
+        pred = x_fit_noplane(pts[mask_radial_xy,1:], R, x0)
+        mse = np.mean((pred - pts[mask_radial_xy,0])**2)
+        r2 = 1 - (mse/pts[mask_radial_xy,0].var())
+
+        h = xc - x0
+        theta = 180*np.arccos(h/R)/np.pi
+
         r_n[i] = R
         x0_n[i] = x0
         theta_n[i] = theta
+
+        mse_n[i] = mse
+        r2_n[i] = r2
 
         ## FIT IT
         # Project iso points to r,x
@@ -435,5 +497,5 @@ plt.plot(nvals, theta_n, 'x')
 plt.xlabel(r'$N$')
 plt.ylabel(r'$\theta$')
 
-
-
+np.savetxt('theta_v_n.dat', np.vstack((nvals, theta_n)).T)
+np.savetxt('mse_v_n.dat', np.vstack((nvals, mse_n, r2_n)).T)

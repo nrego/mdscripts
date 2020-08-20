@@ -197,7 +197,7 @@ Command-line options
         log.info("Extracting data...")
 
         self.data_extractor = WHAMDataExtractor(args.input, auxinfiles=auxfiles, fmt=args.fmt, autocorr=auto, start=args.start, end=args.end, beta=self.beta)
-        
+
         log.info("Tau for each window: {} ps".format(self.autocorr))
         log.info("data time step: {} ps".format(self.ts))
         log.info("autocorr nsteps: {}".format(self.autocorr_blocks))        

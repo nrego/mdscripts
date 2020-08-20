@@ -18,7 +18,7 @@ parser.add_argument('-f', metavar='INPUT', type=str,
 parser.add_argument('--rstar', required=True, type=float,
                     help='Rstar for this pulling window (in nm)')
 parser.add_argument('--kappa', default=1000.0, type=float,
-                    help='Spring constant for this rstar (in kj/mol-nm^2), default: %s(default)')
+                    help='Spring constant for this rstar (in kj/mol-nm^2), default: %(default)s')
 
 
 args = parser.parse_args()

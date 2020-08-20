@@ -41,6 +41,10 @@ class WHAMDataExtractor:
                     if auxinfiles is not None:
                         this_auxfile = auxinfiles[i]
                     self.dr.loadSimple(infile, aux_filename=this_auxfile)
+                elif self.fmt == 'pmf':
+                    ds = self.dr.loadPMF(infile)
+                    log.info("  kappa: {:.4f}  Rstar: {:.2f}".format(ds.kappa, ds.rstar))
+
                 self.n_windows += 1
         except:
             raise IOError("Error: Unable to successfully load inputs")
@@ -139,6 +143,9 @@ class WHAMDataExtractor:
         elif self.fmt == 'simple':
             self._unpack_simple_data(start, end)
 
+        elif self.fmt == 'pmf':
+            self._unpack_pmf_data(start, end)
+
 
     # Put all data points into N dim vector
     def _unpack_phi_data(self, start, end=None):
@@ -178,6 +185,49 @@ class WHAMDataExtractor:
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
+        
+        log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
+        np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
+        
+        dr.clearData()
+
+    # Put all data points into N dim vector
+    def _unpack_pmf_data(self, start, end=None):
+
+        self.all_data = np.array([], dtype=DTYPE)
+        self.all_data_aux = np.array([], dtype=DTYPE)
+        self.n_samples = np.array([]).astype(int)
+
+        # If autocorr not set, set it ouselves
+        if self.calc_autocorr:
+            self.autocorr = np.zeros(self.n_windows)
+
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
+            
+            if self.ts == None:
+                self.ts = ds.ts
+            # Sanity check - every input should have same timestep
+            else:
+                np.testing.assert_almost_equal(self.ts, ds.ts)
+            
+            data = ds.data[start:end]
+            dataframe = np.array(data['rstar'])
+
+
+            if self.calc_autocorr:
+                autocorr_len = np.ceil(pymbar.timeseries.integratedAutocorrelationTime(dataframe[:]))
+                self.autocorr[i] = ds.ts * autocorr_len
+
+            self.n_samples = np.append(self.n_samples, dataframe.shape[0])
+
+            self.all_data = np.append(self.all_data, dataframe)
+
+
+        self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
+
+        # Ugh !
+        for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
+            self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.rstar)**2)
         
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
         np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
