@@ -173,6 +173,7 @@ def get_negloghist(data, bins, logweights):
     for i in range(bins.size-1):
 
         this_bin_mask = bin_assign == i
+        
         if this_bin_mask.sum() == 0:
             continue
 

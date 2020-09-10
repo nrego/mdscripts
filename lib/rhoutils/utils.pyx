@@ -101,9 +101,6 @@ def rho(np.ndarray[f_DTYPE_t, ndim=2] r_array, double sigma, double sigma_sq, do
     ypts = r_array[:,1]
     zpts = r_array[:,2]
 
-    #phi_x = phi_1d(xpts, sigma, sigma_sq, cutoff, cutoff_sq)
-    #phi_y = phi_1d(ypts, sigma, sigma_sq, cutoff, cutoff_sq)
-    #phi_z = phi_1d(zpts, sigma, sigma_sq, cutoff, cutoff_sq)
     phi_x = fast_phi(xpts)
     phi_y = fast_phi(ypts)
     phi_z = fast_phi(zpts)

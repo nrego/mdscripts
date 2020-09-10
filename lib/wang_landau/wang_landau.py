@@ -1,4 +1,3 @@
-from __future__ import division, print_function
 
 import numpy as np
 from scipy.special import binom
@@ -149,7 +148,7 @@ class WangLandau:
             except IndexError: # all hydroxyl
                 pass
 
-            order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
+            order_param = np.array(self.fn(pt_idx, m_mask, **self.fn_kwargs), ndmin=1)
             
             try:
                 bin_assign = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param, self.bins))
@@ -196,7 +195,7 @@ class WangLandau:
         m_mask = np.zeros(self.N, dtype=bool)
         m_mask[pt_idx] = True
 
-        order_param = self.fn(pt_idx, m_mask, **self.fn_kwargs)
+        order_param = np.array(self.fn(pt_idx, m_mask, **self.fn_kwargs), ndmin=1)
 
         try:
             bin_assign = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param, self.bins))
@@ -226,7 +225,8 @@ class WangLandau:
             assert np.unique(pt_idx_new).size == k
             
             # Outside call is slow!
-            order_param_new = self.fn(pt_idx_new, m_mask, **self.fn_kwargs)
+            order_param_new = np.array(self.fn(pt_idx_new, m_mask, **self.fn_kwargs), ndmin=1)
+
             try:
                 bin_assign_new = tuple(np.digitize(op, b) - 1 for op, b in zip(order_param_new, self.bins))
             except TypeError:

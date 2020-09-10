@@ -91,11 +91,35 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
 # Get instantaneous density profile in x,y,z voxels
 #
 # Returns a 3d array of shape: (xvals.size-1, yvals.size-1, zvals.size-1)
-def get_rhoxyz(water_pos, xbounds, ybounds, zbounds):
-    
-    bounds = [xvals, yvals, zvals]
+def get_rhoxyz(water_pos, tree_grid, nx, ny, nz, cutoff=7.0, sigma=2.4):
+    cutoff_sq = cutoff**2
+    sigma_sq = sigma**2
 
-    return np.histogramdd(water_pos, bounds)[0]
+    tree_water = cKDTree(water_pos)
+    # Len: (n_waters,)
+    #    Gives indices of grid points w/in cutoff of each water
+    res = tree_water.query_ball_tree(tree_grid, r=cutoff)
+
+    # Coarse-grained density at each grid point
+    #   Shape: (n_gridpts)
+    this_rho = np.zeros(tree_grid.data.shape[0])
+
+    for idx in range(water_pos.shape[0]):
+
+        this_water_pos = water_pos[idx]
+
+        # Indices of all grid points within cutoff of this water
+        indices = res[idx]
+        assert len(indices)
+
+        close_gridpts = tree_grid.data[indices]
+
+        dist_vec = close_gridpts - this_water_pos
+
+        this_rho[indices] += rho(dist_vec.astype(np.float32), sigma, sigma_sq, cutoff, cutoff_sq)
+
+    return this_rho.reshape((nx, ny, nz))
+
 
 
 
@@ -159,11 +183,22 @@ if args.equil_vals is not None:
     dz = args.dz
     zvals = np.arange(zmin, zmax+dz, dz)
 
+    nx = xvals.size-1
+    ny = yvals.size-1
+    nz = zvals.size-1
+
     print("Doing rho calculation (and shifting cav COM)...")
     print("dx: {:0.2f} (from {:.2f} to {:.2f})".format(dx, xmin, xmax))
     print("dy: {:0.2f} (from {:.2f} to {:.2f})".format(dy, ymin, ymax))
     print("dz: {:0.2f} (from {:.2f} to {:.2f})".format(dz, zmin, zmax))
 
+    xx, yy, zz = np.meshgrid(xvals[:-1], yvals[:-1], zvals[:-1], indexing='ij')
+    # Center point of each voxel of V
+    gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T + 0.5*np.array([dx,dy,dz])
+    n_voxels = gridpts.shape[0]
+
+    tree_grid = cKDTree(gridpts)
+    
 
 univ = MDAnalysis.Universe(args.top, args.traj)
 start_frame = int(args.start / univ.trajectory.dt)
@@ -173,8 +208,8 @@ n_waters = np.zeros(n_frames-start_frame)
 water_com = np.zeros((n_frames-start_frame, 3))
 
 if do_calc_rho:
-    # Shape: (n_frames, n_x, n_r)
-    rho_xyz = np.zeros((n_frames-start_frame, xvals.size-1, yvals.size-1, zvals.size-1), dtype=np.float32)
+    # Shape: (n_frames, n_x, n_y, n_z)
+    rho_xyz = np.zeros((n_frames-start_frame, nx, ny, nz), dtype=np.float32)
 
 if args.print_out:
     W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
@@ -196,6 +231,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
 
     sel_mask = selx & sely & selz
 
+    # Waters in V at this frame
     this_waters = waters[sel_mask]
     #this_waters.write("noshift.gro")
 
@@ -243,8 +279,9 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         
         # Finally - get instantaneous (un-normalized) density
         #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
-        this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
-
+        #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
+        this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=7.0, sigma=2.4)
+        #embed()
         rho_xyz[i, ...] = this_rho_xyz
         del this_rho_xyz
 

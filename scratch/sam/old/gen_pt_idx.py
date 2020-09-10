@@ -145,6 +145,8 @@ wl = WangLandau(positions, bins, order_fn, fn_kwargs=fn_kwargs, eps=args.eps, ma
 
 wl.gen_states(k_ch3, do_brute, hist_flat_tol=args.hist_flat_tol)
 
+np.savez_compressed('rmsd_dos_p_{:02d}_q_{:02d}_kc_{:03d}'.format(6,6,k_c), sampled_points=wl.sampled_pt_idx,
+                     bins=wl.bins, entropies=wl.entropies, density=wl.density,  kc=k_c)
 
 ## Print out indices for each point at each rms
 dirname = 'k_{:02d}'.format(k_ch3)

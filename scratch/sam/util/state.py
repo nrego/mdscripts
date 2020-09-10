@@ -271,6 +271,14 @@ class State:
 
         return self._energy
 
+    @property
+    def feat(self):
+        feat = make_feat(self.methyl_mask, self.pos_ext, self.patch_indices)
+        feat = plot_feat(feat, self.p+2, self.q+2)
+
+        return feat
+    
+
     def gen_next_pattern(self):
 
         for idx in self.avail_indices:

@@ -1,4 +1,3 @@
-from __future__ import division, print_function
 
 import matplotlib as mpl
 from matplotlib import rc 
@@ -87,7 +86,7 @@ frac_np_dewet = dewet_np / dewet_tot
 frac_po_wet = wet_po / wet_tot
 
 ## Find dewetting cohorts (first N that dewet, second N that dewet, etc)
-n_cohort = 10
+n_cohort = 4
 cohort_size = int(np.round(max_dewet / n_cohort))
 assert np.round(max_dewet/cohort_size) == n_cohort
 
@@ -109,6 +108,8 @@ for i_cohort in range(n_cohort):
 
     this_dewet_tot = dewet_tot[idx]
     assert this_dewet_tot > prev_dewet_tot
+
+    this_wet_tot = wet_tot[idx]
 
     this_dewet_np = dewet_np[idx]
     this_dewet_po = dewet_po[idx]
@@ -191,24 +192,78 @@ plt.close('all')
 ##   that are np or po (cohorts should be roughly 50/50 for intermediately phobic grps of atoms)
 plt.close('all')
 
-fig, ax = plt.subplots(figsize=(5.5, 5))
+fig, ax = plt.subplots(figsize=(5, 4.5))
 
-width = 0.9
-ax.bar(np.arange(n_cohort), cohort_dewet_np, width, color=COLOR_NO_CONTACT)
-ax.bar(np.arange(n_cohort), cohort_dewet_po, width, bottom=cohort_dewet_np, color=COLOR_PO)
+width = 0.7
+#ax.bar(2*np.arange(n_cohort), cohort_dewet_np, width, color=COLOR_NP, edgecolor=COLOR_PRED, linewidth=4)
+#ax.bar(2*np.arange(n_cohort), cohort_dewet_po, width, bottom=cohort_dewet_np, color=COLOR_PO, edgecolor=COLOR_PRED, linewidth=4)
+
+ax.bar(2*np.arange(n_cohort), 100*(dewet_np[cohort_indices]/dewet_tot[cohort_indices]), width, color=COLOR_NP, edgecolor=COLOR_PRED, linewidth=4)
+ax.bar(2*np.arange(n_cohort), 100*(dewet_po[cohort_indices]/dewet_tot[cohort_indices]), width, bottom=100*(dewet_np[cohort_indices]/dewet_tot[cohort_indices]), color=COLOR_PO, edgecolor=COLOR_PRED, linewidth=4)
+
+ax.bar(2*np.arange(n_cohort)+width+0.1, 100*(wet_np[cohort_indices]/wet_tot[cohort_indices]), width, color=COLOR_NP, edgecolor=COLOR_NOT_PRED, linewidth=4)
+ax.bar(2*np.arange(n_cohort)+width+0.1, 100*(wet_po[cohort_indices]/wet_tot[cohort_indices]), width, bottom=100*(wet_np[cohort_indices]/wet_tot[cohort_indices]), color=COLOR_PO, edgecolor=COLOR_NOT_PRED, linewidth=4)
+
+#ax.bar(3*np.arange(n_cohort)+2*width+0.3, 100*(dewet_tot[cohort_indices]/n_surf), width, color=COLOR_PRED, edgecolor='k', linewidth=4)
+#ax.bar(3*np.arange(n_cohort)+2*width+0.3, 100*(wet_tot[cohort_indices]/n_surf), width, bottom=100*(dewet_tot[cohort_indices]/n_surf), color=COLOR_NOT_PRED, edgecolor='k', linewidth=4)
+
+# Total fraction of non-polar surface atoms
+frac_np = 100*tot_np / n_surf
+
 ax.set_xticks([])
 ax.set_xticklabels([])
+ax.set_yticks([])
+ax.set_ylim(0, 110)
+xmin, xmax = ax.get_xlim()
+ax.plot([-1.2, xmax], [frac_np, frac_np], 'k--', linewidth=4)
+ax.set_xlim(-1.2, xmax)
+
 fig.tight_layout()
 
+
+for i, idx in enumerate(cohort_indices):
+    frac_dewet_np = dewet_np[idx] / dewet_tot[idx]
+    frac_dewet_po = dewet_po[idx] / dewet_tot[idx]
+
+    frac_wet_np = wet_np[idx] / wet_tot[idx]
+    frac_wet_po = wet_po[idx] / wet_tot[idx]
+
+    frac_dewet = dewet_tot[idx] / n_surf
+    frac_wet = wet_tot[idx] / n_surf
+
+    ax.text(2*i-0.15, 100*(frac_dewet_np/2.0), r'{:.0f}\%'.format(100*frac_dewet_np), color='white', rotation=90.)
+    ax.text(2*i-0.15, 100*(frac_dewet_np + frac_dewet_po/2.0), r'{:.0f}\%'.format(100*frac_dewet_po), color='white', rotation=90.)
+
+    ax.text(2*i+width+0.1-0.15, 100*(frac_wet_np/2.0), r'{:.0f}\%'.format(100*frac_wet_np), color='white', rotation=90.)
+    ax.text(2*i+width+0.1-0.15, 100*(frac_wet_np + frac_wet_po/2.0), r'{:.0f}\%'.format(100*frac_wet_po), color='white', rotation=90.)
+
+    #ax.text(3*i+2*width+0.3-0.15, 100*(frac_dewet/2.0), r'{:.0f}\%'.format(100*frac_dewet), color='white', rotation=90.)
+    #ax.text(3*i+2*width+0.3-0.15, 100*(frac_dewet + frac_wet/2.0), r'{:.0f}\%'.format(100*frac_wet), color='white', rotation=90.)
+
+
+fig.savefig('{}/cohort_chemistry.pdf'.format(savedir), transparent=True)
+plt.close('all')
+
+'''
 for i, (n_np, n_po) in enumerate(zip(cohort_dewet_np, cohort_dewet_po)):
     frac_np = (n_np / (n_np+n_po)) * 100
     frac_po = (n_po / (n_np+n_po)) * 100
 
-    ax.text(i-0.25, n_np/2.0, r'{:.0f}\%'.format(frac_np), color='white', rotation=90.)
-    ax.text(i-0.25, n_np+ n_po/2.0, r'{:.0f}\%'.format(frac_po), color='white', rotation=90.)
+    idx = cohort_indices[i]
 
-fig.savefig('{}/cohort_chemistry.pdf'.format(savedir), transparent=True)
-plt.close('all')
+    ax.text(2*i-0.25, n_np/2.0, r'{:.0f}\%'.format(frac_np), color='white', rotation=90.)
+    ax.text(2*i-0.25, n_np+ n_po/2.0, r'{:.0f}\%'.format(frac_po), color='white', rotation=90.)
+
+    n_np_wet = wet_np[idx]
+    n_po_wet = wet_po[idx]
+    frac_np_wet = (n_np_wet / (n_np_wet+n_po_wet)) * 100
+    frac_po_wet = (n_po_wet / (n_np_wet+n_po_wet)) * 100
+
+    ax.text(2*i-0.25+width, n_np_wet/2.0, r'{:.0f}\%'.format(frac_np_wet), color='white', rotation=90.)
+    ax.text(2*i-0.25+width, n_np_wet + n_po_wet/2.0, r'{:.0f}\%'.format(frac_po_wet), color='white', rotation=90.)
+'''
+
+
 
 
 

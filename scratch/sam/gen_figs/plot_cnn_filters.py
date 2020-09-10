@@ -234,8 +234,8 @@ plt.close('all')
 
 l1 = net.conv1
 c, r, p = l1.children()
-oc = r(c(x)).detach()[:,1,...][None,...]
-plot_hextensor(oc, norm=plt.Normalize(0, 4.5), cmap='Oranges', mask=np.arange(0,64,9))
+oc = r(c(x)).detach()[:,5,...][None,...]
+plot_hextensor(oc, norm=plt.Normalize(0, 2), cmap='Oranges', mask=np.arange(0,64,9))
 plt.savefig('{}/Desktop/small_pattern_conv'.format(homedir), transparent=True)
 
 op = p(oc)
