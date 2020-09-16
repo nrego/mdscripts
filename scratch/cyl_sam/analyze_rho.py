@@ -231,9 +231,9 @@ rho0 = np.load('rho0.dat.npz')['rho0']
 ds_bphi = np.load('rho_bphi.dat.npz')
 ds_n = np.load('rho_final.dat.npz')
 #ds = np.load('rhoxyz_dx_10.dat.npz')
-xbins = ds_bphi['xbins']
-ybins = ds_bphi['ybins']
-zbins = ds_bphi['zbins']
+xbins = ds_n['xbins']
+ybins = ds_n['ybins']
+zbins = ds_n['zbins']
 
 assert np.array_equal(xbins, ds_n['xbins'])
 assert np.array_equal(ybins, ds_n['ybins'])
@@ -446,8 +446,11 @@ with MDAnalysis.Writer("traj_n.xtc", univ.atoms.n_atoms) as W:
 
         ## Second fit, excluding all y, z points that are further than 
         mask_radial_xy = ((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2) < radial_buffer*(R * np.sin((theta/180)*np.pi))**2
-        res = curve_fit(x_fit_noplane, pts[mask_radial_xy,1:], pts[mask_radial_xy,0], p0=new_p0, bounds=bounds)
-
+        try:
+            res = curve_fit(x_fit_noplane, pts[mask_radial_xy,1:], pts[mask_radial_xy,0], p0=new_p0, bounds=bounds)
+        except ValueError:
+            pass
+            
         R, x0 = res[0]
 
         ## Find rmse of fit

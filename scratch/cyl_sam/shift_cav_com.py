@@ -110,7 +110,9 @@ def get_rhoxyz(water_pos, tree_grid, nx, ny, nz, cutoff=7.0, sigma=2.4):
 
         # Indices of all grid points within cutoff of this water
         indices = res[idx]
-        assert len(indices)
+        if len(indices) == 0:
+            continue
+        #assert len(indices)
 
         close_gridpts = tree_grid.data[indices]
 
@@ -198,7 +200,9 @@ if args.equil_vals is not None:
     n_voxels = gridpts.shape[0]
 
     tree_grid = cKDTree(gridpts)
-    
+
+cutoff = 7.0
+sigma = 2.4
 
 univ = MDAnalysis.Universe(args.top, args.traj)
 start_frame = int(args.start / univ.trajectory.dt)
@@ -269,9 +273,10 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         waters.positions = water_pos_shift
         
         # Find waters that are in V after shifting cavity C.O.M.
-        selx = (water_pos_shift[:,0] >= xmin) & (water_pos_shift[:,0] < xmax)
-        sely = (water_pos_shift[:,1] >= ymin) & (water_pos_shift[:,1] < ymax)
-        selz = (water_pos_shift[:,2] >= zmin) & (water_pos_shift[:,2] < zmax)
+        selx = (water_pos_shift[:,0] >= xmin-cutoff) & (water_pos_shift[:,0] < xmax+cutoff)
+        sely = (water_pos_shift[:,1] >= ymin-cutoff) & (water_pos_shift[:,1] < ymax+cutoff)
+        selz = (water_pos_shift[:,2] >= zmin-cutoff) & (water_pos_shift[:,2] < zmax+cutoff)
+
         sel_mask = selx & sely & selz
 
         # Waters that are in V, after shifting cav COM
@@ -280,7 +285,7 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # Finally - get instantaneous (un-normalized) density
         #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
         #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
-        this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=7.0, sigma=2.4)
+        this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=cutoff, sigma=sigma)
         #embed()
         rho_xyz[i, ...] = this_rho_xyz
         del this_rho_xyz
