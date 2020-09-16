@@ -316,6 +316,7 @@ for i, future in enumerate(wm.as_completed(futures)):
     idx, this_rho_xyz = future.get_result(discard=True)
     if i % 100 == 0:
         print("getting result {} of {}".format(i, len(futures)))
+        sys.stdout.flush()
     rho_xyz[idx, ...] = this_rho_xyz
     del this_rho_xyz
 
