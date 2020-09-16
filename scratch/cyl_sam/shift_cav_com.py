@@ -336,5 +336,6 @@ wm.shutdown()
 
 
 if do_calc_rho:
+    print("...Done: Outputting results")
     np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals, nframes=rho_xyz.shape[0])
     
