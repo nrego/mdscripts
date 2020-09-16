@@ -311,6 +311,14 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
             if i_frame == n_frames - 1:
                 univ.atoms.write("shift.gro")
 
+# Output number of waters in V at each frame, as well as their COM's
+#   Note: *non* shifted positions - just directly from trajectory
+if not do_calc_rho:
+    print("saving cube data...")
+    np.savetxt("phiout_cube.dat", n_waters, fmt='%3d', header='Vmin: ({:.2f} {:.2f} {:.2f}) A Vmax: ({:.2f} {:.2f} {:.2f}) A'.format(xmin, ymin, zmin, xmax, ymax, zmax))
+    np.save("com_cube.dat", water_com)
+
+
 ## Collect results
 for i, future in enumerate(wm.as_completed(futures)):
     idx, this_rho_xyz = future.get_result(discard=True)
@@ -325,11 +333,7 @@ if args.print_out:
 
 wm.shutdown()
 
-# Output number of waters in V at each frame, as well as their COM's
-#   Note: *non* shifted positions - just directly from trajectory
-if not do_calc_rho:
-    np.savetxt("phiout_cube.dat", n_waters, fmt='%3d', header='Vmin: ({:.2f} {:.2f} {:.2f}) A Vmax: ({:.2f} {:.2f} {:.2f}) A'.format(xmin, ymin, zmin, xmax, ymax, zmax))
-    np.save("com_cube.dat", water_com)
+
 
 if do_calc_rho:
     np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals, nframes=rho_xyz.shape[0])
