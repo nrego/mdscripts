@@ -22,6 +22,7 @@ from mdtools.fieldwriter import RhoField
 import sys
 import argparse
 
+from work_managers.environment import default_env
 
 def pbc(pos, box_dim):
 
@@ -91,7 +92,7 @@ def get_rhoz(water_pos, box_com, xvals, rvals):
 # Get instantaneous density profile in x,y,z voxels
 #
 # Returns a 3d array of shape: (xvals.size-1, yvals.size-1, zvals.size-1)
-def get_rhoxyz(water_pos, tree_grid, nx, ny, nz, cutoff=7.0, sigma=2.4):
+def get_rhoxyz(water_pos, tree_grid, nx, ny, nz, cutoff=7.0, sigma=2.4, this_idx=-1):
     cutoff_sq = cutoff**2
     sigma_sq = sigma**2
 
@@ -120,7 +121,7 @@ def get_rhoxyz(water_pos, tree_grid, nx, ny, nz, cutoff=7.0, sigma=2.4):
 
         this_rho[indices] += rho(dist_vec.astype(np.float32), sigma, sigma_sq, cutoff, cutoff_sq)
 
-    return this_rho.reshape((nx, ny, nz))
+    return this_idx, this_rho.reshape((nx, ny, nz))
 
 
 
@@ -145,8 +146,14 @@ parser.add_argument('--V-max', default="48.5 60.0 60.0", type=str,
 parser.add_argument('--print-out', action='store_true',
                     help='If true, print out shifted data')
 
+default_env.add_wm_args(parser)
+
 args = parser.parse_args()
 
+default_env.process_wm_args(args)
+wm = default_env.make_work_manager()
+
+wm.startup()
 
 do_calc_rho = False
 
@@ -218,6 +225,9 @@ if do_calc_rho:
 if args.print_out:
     W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
 
+
+futures = []
+
 for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
     if i_frame % 100 == 0:
         print("frame: {}".format(i_frame))
@@ -285,19 +295,34 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         # Finally - get instantaneous (un-normalized) density
         #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
         #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
-        this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=cutoff, sigma=sigma)
-        #embed()
-        rho_xyz[i, ...] = this_rho_xyz
-        del this_rho_xyz
+        #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=cutoff, sigma=sigma)
 
+        #rho_xyz[i, ...] = this_rho_xyz
+        #del this_rho_xyz
+        fn_args = (this_waters_shift.positions, tree_grid, nx, ny, nz)
+        fn_kwargs = {'cutoff': cutoff, 'sigma': sigma, 'this_idx': i}
+        
+        futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
+
+        print("submitted job {}".format(i))
         ## Optionally print out shifted frame
         if args.print_out:
             W.write(univ.atoms)
             if i_frame == n_frames - 1:
                 univ.atoms.write("shift.gro")
 
+## Collect results
+for i, future in enumerate(wm.as_completed(futures)):
+    idx, this_rho_xyz = future.get_result(discard=True)
+    if i % 100 == 0:
+        print("getting result {} of {}".format(i, len(futures)))
+    rho_xyz[idx, ...] = this_rho_xyz
+    del this_rho_xyz
+
 if args.print_out:
     W.close()
+
+wm.shutdown()
 
 # Output number of waters in V at each frame, as well as their COM's
 #   Note: *non* shifted positions - just directly from trajectory
