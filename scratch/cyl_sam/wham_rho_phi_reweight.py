@@ -127,6 +127,10 @@ parser = argparse.ArgumentParser('Reweight density fields rho(x,y,z) to ensemble
 parser.add_argument('--nvphi', type=str, default='../NvPhi.dat', help='location of n v phi data')
 parser.add_argument('--smooth-width', type=int, default=5,
                     help='Smoothing width for n reweighting (+- smooth on each side for each n)')
+parser.add_argument('--dry-run', action='store_true', help='if true, just print out range of nvals and bphis')
+parser.add_argument('--do-rho0', action='store_true', help='if true, calculate equil density field')
+parser.add_argument('--n-val', type=int, help='calculate rhoxyz density field at this particular value of N')
+parser.add_argument('--bphi-val', type=float, help='calculate rhoxyz density field at this particular value of bphi')
 
 default_env.add_wm_args(parser)
 
@@ -168,6 +172,9 @@ print("nvals: {}".format(nvals))
 print("beta phi vals: {}".format(beta_phi_vals))
 
 sys.stdout.flush()
+
+if args.dry_run:
+    sys.exit()
 
 #### DONE READING N V PHI ###
 
@@ -253,37 +260,42 @@ def rho_job(rho_avg, wm, fnames_rhoxyz, n_frames_per_file, logweights):
 
     return rho_avg
 
-ds = np.load(fnames_rhoxyz[0])
 ### FIRST: UNBIASED ####
-print("\nCalculating rho, (equil)...\n")
-sys.stdout.flush()
-#sys.exit()
-logweights = all_logweights.copy()
-logweights -= logweights.max()
-norm = np.log(np.sum(np.exp(logweights)))
-logweights -= norm
+if args.do_rho0:
 
-assert np.allclose(1, np.exp(logweights).sum())
+    print("\nCalculating rho, (equil)...\n")
+    sys.stdout.flush()
+    
+    logweights = all_logweights.copy()
+    logweights -= logweights.max()
+    norm = np.log(np.sum(np.exp(logweights)))
+    logweights -= norm
 
-rho0 = np.zeros((nx, ny, nz))
-with wm:
-    rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
-#sys.exit()
+    assert np.allclose(1, np.exp(logweights).sum())
 
-print("...done\n")
-np.savez_compressed('rho0.dat', rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
+    rho0 = np.zeros((nx, ny, nz))
+    with wm:
+        rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
+    #sys.exit()
+
+    print("...done\n")
+    np.savez_compressed('rho0.dat', rho0=rho0, xbins=xbins, ybins=ybins, zbins=zbins)
+
+    sys.exit()
 
 ## Now, rho(x,y,z) for each n val...
 
+if args.n_val is not None:
+    nval = args.n_val
 
-print("\nCalculating rho for different n vals...\n")
-sys.stdout.flush()
-
-rho_n = np.zeros((nvals.size, nx, ny, nz))
-
-for i_nval, nval in enumerate(nvals):
-    print("doing n {}  ({} of {})".format(nval, i_nval+1, nvals.size))
+    print("\nCalculating rho for n: {:04d}\n".format(n_val))
     sys.stdout.flush()
+
+    rho_n = np.zeros((nx, ny, nz))
+
+    #for i_nval, nval in enumerate(nvals):
+    #print("doing n {}  ({} of {})".format(nval, i_nval+1, nvals.size))
+    #sys.stdout.flush()
 
     mask = (all_data_N >= nval-n_buffer) & (all_data_N <= nval+n_buffer)
     bias_logweights = np.zeros_like(all_logweights)
@@ -295,35 +307,37 @@ for i_nval, nval in enumerate(nvals):
 
     assert np.allclose(1, np.exp(bias_logweights).sum())
 
-    this_rho = np.zeros_like(rho0)
+    this_rho = np.zeros((nx, ny, nz))
     
     with wm:
         this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
 
-    rho_n[i_nval, ...] = this_rho
 
-    del this_rho, mask, bias_logweights
-
-print("Finished, saving...")
-sys.stdout.flush()
+    print("Finished, saving...")
+    sys.stdout.flush()
 
 
-np.savez_compressed('rho_final.dat', rho_n=rho_n, nvals=nvals,
-                    rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
+    np.savez_compressed('rho_n_{:04d}.dat'.format(n_val), rho_n=this_rho, nval=nval,
+                        xbins=xbins, ybins=ybins, zbins=zbins)
 
-print("done.")
-sys.stdout.flush()
+    print("done.")
+    sys.stdout.flush()
+
+    sys.exit()
 
 ## Next, rho(x,y,z) for each of the beta phi values...
 
-print("\nCalculating rho for different bphi values...\n")
-sys.stdout.flush()
+if args.bphi_val:
 
-rho_beta_phi = np.zeros((beta_phi_vals.size, nx, ny, nz))
-
-for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
-    print("doing bphi {:.2f}  ({} of {})".format(beta_phi_val, i_bphi+1, beta_phi_vals.size))
+    beta_phi_val = args.bphi_val
+    print("\nCalculating rho for bphi={:.4f}...\n".format(beta_phi_val))
     sys.stdout.flush()
+
+    #rho_beta_phi = np.zeros((beta_phi_vals.size, nx, ny, nz))
+
+    #for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
+        #print("doing bphi {:.2f}  ({} of {})".format(beta_phi_val, i_bphi+1, beta_phi_vals.size))
+        #sys.stdout.flush()
 
     bias_logweights = all_logweights - beta_phi_val * all_data
     bias_logweights -= bias_logweights.max()
@@ -332,19 +346,15 @@ for i_bphi, beta_phi_val in enumerate(beta_phi_vals):
 
     assert np.allclose(1, np.exp(bias_logweights).sum())
 
-    this_rho = np.zeros_like(rho0)
+    this_rho = np.zeros((nx, ny, nz))
     
     with wm:
         this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
 
-    rho_beta_phi[i_bphi, ...] = this_rho
 
-    del this_rho
+    print("...done\n")
 
-print("...done\n")
+    np.savez_compressed('rho_bphi_{:.4f}.dat'.format(beta_phi_val), rho_bphi=this_rho, beta_phi_val=beta_phi_val,
+                        xbins=xbins, ybins=ybins, zbins=zbins)
 
-np.savez_compressed('rho_bphi.dat', rho_bphi=rho_beta_phi, beta_phi_vals=beta_phi_vals,
-                    rho0=rho0, xbins=ds['xbins'], ybins=ds['ybins'], zbins=ds['zbins'])
-
-del rho_beta_phi
 
