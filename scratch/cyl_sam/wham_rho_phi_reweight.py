@@ -288,7 +288,7 @@ if args.do_rho0:
 if args.n_val is not None:
     nval = args.n_val
 
-    print("\nCalculating rho for n: {:04d}\n".format(n_val))
+    print("\nCalculating rho for n: {:04d}\n".format(nval))
     sys.stdout.flush()
 
     rho_n = np.zeros((nx, ny, nz))
@@ -317,7 +317,7 @@ if args.n_val is not None:
     sys.stdout.flush()
 
 
-    np.savez_compressed('rho_n_{:04d}.dat'.format(n_val), rho_n=this_rho, nval=nval,
+    np.savez_compressed('rho_n_{:04d}.dat'.format(nval), rho_n=this_rho, nval=nval,
                         xbins=xbins, ybins=ybins, zbins=zbins)
 
     print("done.")
