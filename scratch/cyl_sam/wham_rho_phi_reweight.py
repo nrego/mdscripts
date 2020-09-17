@@ -101,20 +101,20 @@ def load_and_weight_file(idx, fname, logweights, nx, ny, nz, xbins, ybins, zbins
     weights = np.exp(logweights)
 
     #print(fname)
-    ds = np.load(fname)
+    with np.load(fname) as ds:
+    #ds = np.load(fname)
 
-    assert np.array_equal(ds['xbins'], xbins)
-    assert np.array_equal(ds['ybins'], ybins)
-    assert np.array_equal(ds['zbins'], zbins)
+        assert np.array_equal(ds['xbins'], xbins)
+        assert np.array_equal(ds['ybins'], ybins)
+        assert np.array_equal(ds['zbins'], zbins)
 
+        this_rhoxyz = ds['rho']
 
-    this_rhoxyz = ds['rho']
     assert this_rhoxyz.shape[1:] == (nx, ny, nz)
     assert weights.size == this_rhoxyz.shape[0]
 
     this_weight_rho = np.dot(weights, this_rhoxyz.reshape(this_rhoxyz.shape[0], -1)).reshape(nx, ny, nz)
 
-    ds.close()
     del logweights, this_rhoxyz, weights, ds
 
 
@@ -144,6 +144,7 @@ print("READING N v Phi DATA FROM: {}".format(args.nvphi))
 dat = np.loadtxt(args.nvphi)
 n_buffer = args.smooth_width 
 
+# phistar
 max_idx = np.argmax(dat[:,2])
 bphistar = dat[max_idx, 0]
 avg_n_bphistar = dat[max_idx, 1]
@@ -227,11 +228,11 @@ for i, fname in enumerate(fnames_rhoxyz):
         assert np.array_equal(ybins, ds['ybins'])
         assert np.array_equal(zbins, ds['zbins'])
 
-### CALCULATE RHO(x,y,z) with differnt BPHI vals, N, etc...
+### CALCULATE RHO(x,y,z) with different BPHI vals, N, etc...
 ################################################
 
 ## Generator/task distributor
-def task_gen(fnames, n_frames_per_file, logweights):
+def task_gen(fnames, n_frames_per_file, logweights, nx, ny, nz, xbins, ybins, zbins):
 
     last_frame = 0
 
@@ -248,8 +249,8 @@ def task_gen(fnames, n_frames_per_file, logweights):
         yield load_and_weight_file, args, kwargs
 
 ## Asynchronously launch reweighting's for each windows
-def rho_job(rho_avg, wm, fnames_rhoxyz, n_frames_per_file, logweights):
-    for future in wm.submit_as_completed(task_gen(fnames_rhoxyz, n_frames_per_file, logweights), queue_size=wm.n_workers):
+def rho_job(rho_avg, wm, fnames_rhoxyz, n_frames_per_file, logweights, nx, ny, nz, xbins, ybins, zbins):
+    for future in wm.submit_as_completed(task_gen(fnames_rhoxyz, n_frames_per_file, logweights, nx, ny, nz, xbins, ybins, zbins), queue_size=wm.n_workers):
         idx, rho = future.get_result(discard=True)
         print("  receiving result...")
         sys.stdout.flush()
@@ -275,7 +276,7 @@ if args.do_rho0:
 
     rho0 = np.zeros((nx, ny, nz))
     with wm:
-        rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights)
+        rho0 = rho_job(rho0, wm ,fnames_rhoxyz, n_frames_per_file, logweights, nx, ny, nz, xbins, ybins, zbins)
     #sys.exit()
 
     print("...done\n")
@@ -310,7 +311,7 @@ if args.n_val is not None:
     this_rho = np.zeros((nx, ny, nz))
     
     with wm:
-        this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights)
+        this_rho = rho_job(this_rho, wm, fnames_rhoxyz, n_frames_per_file, bias_logweights, nx, ny, nz, xbins, ybins, zbins)
 
 
     print("Finished, saving...")
