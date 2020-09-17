@@ -252,7 +252,7 @@ def task_gen(fnames, n_frames_per_file, logweights, nx, ny, nz, xbins, ybins, zb
 def rho_job(rho_avg, wm, fnames_rhoxyz, n_frames_per_file, logweights, nx, ny, nz, xbins, ybins, zbins):
     for future in wm.submit_as_completed(task_gen(fnames_rhoxyz, n_frames_per_file, logweights, nx, ny, nz, xbins, ybins, zbins), queue_size=wm.n_workers):
         idx, rho = future.get_result(discard=True)
-        print("  receiving result...")
+        print("  receiving result...(fname: {})".format(fnames_rhoxyz[idx]))
         sys.stdout.flush()
 
         rho_avg += rho
