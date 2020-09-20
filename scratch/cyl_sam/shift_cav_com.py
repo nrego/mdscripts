@@ -32,62 +32,16 @@ def pbc(pos, box_dim):
 
     return pos
 
-## Get rho as a function of x (renamed to z) and r
+
+# Get instantaneous density profile in x,y,z voxels
 #
-# water_pos: Positions of all water O's in V 
-# box_com: COM of box in parallel to R; y,z (renamed x,y) - sets r=0
-# xvals: (renamed zvals): bin spacing in x (z)
-#
-# Returns: rhoz;   Shape: (xvals.size-1, rvals.size-1)
-#
-def get_rhoz(water_pos, box_com, xvals, rvals):
+# Returns a 3d array of shape: (xvals.size-1, yvals.size-1, zvals.size-1)
 
-    #water_pos = water.positions
-    # x component of each box water
-    water_pos_x = water_pos[:,0]
+def get_rhoxyz_simple(water_pos, xvals, yvals, zvals, this_idx=-1):
+    
+    bounds = [xvals, yvals, zvals]
 
-    # Shape: (n_xvals-1, n_rvals-1)
-    rhoz = np.zeros((xvals.size-1, rvals.size-1))
-    # Contains the volume of each donut, in A^3
-    rho_vols = np.zeros_like(rhoz)
-
-    # Water distances from center of box in y,z
-    # R2 = y**2 + z**2
-    d_yz = (water_pos - box_com)[:,1:]
-    sq_yz = d_yz**2
-    water_distances = np.sqrt( sq_yz.sum(axis=1) )
-
-    for ix, xval_lb in enumerate(xvals[:-1]):
-        xval_lb = np.round(xval_lb, 5)
-        xval_ub = np.round(xvals[ix+1], 5)
-
-        this_dx = xval_ub - xval_lb
-
-        ## Mask for waters that are between xval_lb and xval_ub
-        xmask = (xval_lb <= water_pos_x) & (water_pos_x < xval_ub)
-
-        # Donut between rval_lb and rval_ub of height this_dx
-        for ir, rval_lb in enumerate(rvals[:-1]):
-            rval_lb = np.round(rval_lb, 5)
-            rval_ub = np.round(rvals[ir+1], 5)
-
-            this_dr = rval_ub - rval_lb
-
-            # Volume of this donut element - for normalizing, later
-            this_vol = this_dx*np.pi*(rval_ub**2 - rval_lb**2)
-
-            ## Mask for waters that are between rval_lb and rval_ub in y,z
-            rmask = (water_distances >= rval_lb) & (water_distances < rval_ub)
-
-            tot_mask = xmask & rmask
-            #if tot_mask.sum() > 0:
-            #    water[tot_mask].write("water_{:02d}_{:02d}.gro".format(ix, ir))
-            rhoz[ix, ir] = tot_mask.sum() #/ expt_waters
-            rho_vols[ix, ir] = this_vol
-
-
-    return rhoz, rho_vols
-
+    return this_idx, np.histogramdd(water_pos, bounds)[0]
 
 # Get instantaneous density profile in x,y,z voxels
 #
@@ -302,7 +256,10 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         fn_args = (this_waters_shift.positions, tree_grid, nx, ny, nz)
         fn_kwargs = {'cutoff': cutoff, 'sigma': sigma, 'this_idx': i}
         
-        futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
+        #futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
+        fn_args = (this_waters_shift.positions, xvals, yvals, zvals)
+        fn_kwargs = {'this_idx': i}
+        futures.append(wm.submit(get_rhoxyz_simple, fn_args, fn_kwargs))
 
         print("submitted job {}".format(i))
         ## Optionally print out shifted frame
