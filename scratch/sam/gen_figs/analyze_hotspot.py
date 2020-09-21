@@ -146,7 +146,7 @@ norm_abs_states = np.zeros_like(norm_abs_energy_array).astype(object)
 k_o_vals = np.zeros(len(fnames))
 
 
-for i, fname in enumerate(fnames[:3]):
+for i, fname in enumerate(fnames):
 
     ds = np.load(fname)
 
