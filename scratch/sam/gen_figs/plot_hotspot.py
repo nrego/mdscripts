@@ -164,8 +164,6 @@ for idx in [9, 18, 27]:
     plot_it(mid_state, delta, label='{:02d}_mid'.format(idx), norm=norm)
     plot_it(max_state, delta, label='{:02d}_max'.format(idx), norm=norm)
 
-
-
 ## Now get average delta f as function of ko
 bc = bins_tot[:-1] + 0.5*np.diff(bins_tot)
 
@@ -177,7 +175,7 @@ avg_energy = np.dot(p_energy, bc)
 plt.close('all')
 
 max_val = 7
-
+k_o_vals = 36 - np.arange(37)
 fig, ax = plt.subplots(figsize=(6,5))
 ax.plot(k_o_vals, avg_energy, '-o')
 

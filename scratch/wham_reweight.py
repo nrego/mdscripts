@@ -42,49 +42,40 @@ all_data_N = all_data_ds['data_aux']
 
 max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 
+# Ntwid and N bins
 bins = np.arange(0, max_val+1, 1)
 
-
-all_neglogpdist, all_neglogpdist_N, beta_phi_vals, avg_ntwid, var_ntwid, avg_N, var_N = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, beta_phi_vals)
-
-
-logweights = all_logweights
-logweights -= all_logweights.max()
-weights = np.exp(logweights) 
-weights /= weights.sum()
-exp_phi = np.exp(- beta*1000*all_data)
-maxval = exp_phi.max()
-
-avg_exp_phi = -np.log(np.dot(weights, exp_phi))
+all_neglogpdist, all_neglogpdist_N, avg_ntwid, var_ntwid, avg_N, var_N, cov_data = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, beta_phi_vals)
 
 
+## Now get errorbars from bootstrap samples
 dat = np.load('boot_fn_payload.dat.npy', encoding='bytes')
 
-n_iter = len(dat)
-neglog_pdist = np.zeros((n_iter, bins.size-1))
-neglog_pdist_N = np.zeros((n_iter, bins.size-1))
+boot_n_iter = len(dat)
+boot_neglogpdist = np.zeros((boot_n_iter, bins.size-1))
+boot_neglogpdist_N = np.zeros((boot_n_iter, bins.size-1))
 
-boot_avg_n = np.zeros((n_iter, beta_phi_vals.size))
-boot_var_n = np.zeros((n_iter, beta_phi_vals.size))
+boot_avg_N = np.zeros((boot_n_iter, beta_phi_vals.size))
+boot_var_N = np.zeros((boot_n_iter, beta_phi_vals.size))
 
-for i, (this_logweights, boot_data, boot_data_N) in enumerate(dat):
-    this_neglogpdist, this_neglogpdist_N, bphi, this_avg_ntwid, this_var_ntwid, this_avg_n, this_var_n = extract_and_reweight_data(this_logweights, boot_data, boot_data_N, bins, beta_phi_vals, do_norm=False)
+# Extract data for each bootstrap
+for i, (this_logweights, this_data, this_data_N) in enumerate(dat):
+    this_neglogpdist, this_neglogpdist_N, this_avg_ntwid, this_var_ntwid, this_avg_N, this_var_N, this_cov = extract_and_reweight_data(this_logweights, this_data, this_data_N, bins, beta_phi_vals)
 
-    neglog_pdist[i] = this_neglogpdist
-    this_neglogpdist_N[this_neglogpdist_N == 0] = np.nan
-    neglog_pdist_N[i] = this_neglogpdist_N
+    boot_neglogpdist[i] = this_neglogpdist
+    boot_neglogpdist_N[i] = this_neglogpdist_N
 
-    boot_avg_n[i] = this_avg_ntwid
-    boot_var_n[i] = this_var_ntwid
+    boot_avg_N[i] = this_avg_ntwid
+    boot_var_N[i] = this_var_ntwid
 
 
-err_avg_n = boot_avg_n.std(axis=0, ddof=1)
-err_var_n = boot_var_n.std(axis=0, ddof=1)
+err_avg_n = boot_avg_N.std(axis=0, ddof=1)
+err_var_n = boot_var_N.std(axis=0, ddof=1)
 dat = np.vstack((beta_phi_vals, avg_ntwid, var_ntwid, err_avg_n, err_var_n)).T
 np.savetxt('NvPhi.dat', dat, header='beta_phi  <N>  <d N^2>  err(<N>)  err(<dN^2>)')
 
-masked_dg = np.ma.masked_invalid(neglog_pdist)
-masked_dg_N = np.ma.masked_invalid(neglog_pdist_N)
+masked_dg = np.ma.masked_invalid(boot_neglogpdist)
+masked_dg_N = np.ma.masked_invalid(boot_neglogpdist_N)
 
 always_null = masked_dg.mask.sum(axis=0) == masked_dg.shape[0]
 always_null_N = masked_dg_N.mask.sum(axis=0) == masked_dg.shape[0]

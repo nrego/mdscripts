@@ -52,8 +52,11 @@ def get_avg_mut_energy(pt_idx, delta):
     # Change po group to np
     new_states_down, new_energies_down = delta(state.methyl_mask, po_indices)
 
+    avg_delta_f = (new_energies_up.sum() + new_energies_down.sum()) / (k_c+k_o)
+    abs_delta_f = (np.abs(new_energies_up).sum() + np.abs(new_energies_down).sum()) / (k_c+k_o)
 
-    return pt_idx, (new_energies_up.sum() + new_energies_down.sum()) / (k_c+k_o)
+
+    return pt_idx, avg_delta_f, abs_delta_f
 
 def task_gen(all_pts, delta):
     
@@ -93,9 +96,10 @@ bins_down = bins[1]
 bins_tot = np.unique(np.append(bins_down, bins_up))
 
 # Hist of counts of avg energy for each ko
-tot_energy_array = np.zeros((len(fnames), bins_tot.size-1))
-tot_states = np.zeros_like(tot_energy_array).astype(object)
-
+tot_avg_energy_array = np.zeros((len(fnames), bins_tot.size-1))
+tot_abs_energy_array = np.zeros_like(tot_avg_energy_array)
+tot_avg_states = np.zeros_like(tot_avg_energy_array).astype(object)
+tot_abs_states = np.zeros_like(tot_avg_states)
 
 k_o_vals = np.zeros(len(fnames))
 
@@ -127,15 +131,23 @@ for i, fname in enumerate(fnames):
     start_time = time.time()
     with wm:
         for future in wm.submit_as_completed(task_gen(all_pts, delta), queue_size=None):
-            pt, avg_delta_f = future.get_result(discard=True)
-            bin_idx = np.digitize(avg_delta_f, bins_tot) - 1
+            pt, avg_delta_f, abs_delta_f = future.get_result(discard=True)
+            bin_idx_avg = np.digitize(avg_delta_f, bins_tot) - 1
+            bin_idx_abs = np.digitize(abs_delta_f, bins_tot) - 1
 
-            tot_energy_array[i, bin_idx] += 1
+            tot_avg_energy_array[i, bin_idx_avg] += 1
+            tot_abs_energy_array[i, bin_idx_abs] += 1
 
-            if not tot_states[i, bin_idx]:
-                tot_states[i, bin_idx] = list()
+            if not tot_avg_states[i, bin_idx_avg]:
+                tot_avg_states[i, bin_idx_avg] = list()
 
-            tot_states[i, bin_idx].append(pt)
+            tot_avg_states[i, bin_idx_avg].append(pt)
+
+            if not tot_abs_states[i, bin_idx_abs]:
+                tot_abs_states[i, bin_idx_abs] = list()
+
+            tot_abs_states[i, bin_idx_abs].append(pt)
+
 
     k_o_vals[i] = k_o
     end_time = time.time()
@@ -143,6 +155,6 @@ for i, fname in enumerate(fnames):
     print("   time: {:.2f}".format(end_time-start_time))
     sys.stdout.flush()
 
-np.savez_compressed('hotspot_anal.dat', bins_tot=bins_tot, tot_energy_array=tot_energy_array, 
-                    tot_states=tot_states, ko_vals=k_o_vals)
+np.savez_compressed('hotspot_anal.dat', bins_tot=bins_tot, tot_avg_energy_array=tot_avg_energy_array, tot_abs_energy_array=tot_abs_energy_array,
+                    tot_avg_states=tot_avg_states, tot_abs_states=tot_abs_states, ko_vals=k_o_vals)
 
