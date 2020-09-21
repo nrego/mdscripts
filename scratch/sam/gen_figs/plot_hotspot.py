@@ -58,8 +58,10 @@ def color_state_by_hotspot(state, delta, norm=plt.Normalize(-6, 6), cmap=cm.RdGy
 
 
     avg_delta_f = (new_energies_up.sum() + new_energies_down.sum()) / (state.N)
+    abs_delta_f = (np.abs(new_energies_up.sum()) + np.abs(new_energies_down.sum())) / (state.N)
     
     print("average delta f: {:.2f}".format(avg_delta_f))
+    print("  abs delta f: {:.2f}".format(abs_delta_f))
     plot_hextensor(feat, norm=norm, cmap=cmap)
 
 
@@ -100,8 +102,8 @@ bins_tot = ds['bins_tot']
 k_o_vals = 36 - np.arange(37)
 k_o_vals = np.append(k_o_vals, -1)
 
-tot_energy = ds['tot_energy_array']
-tot_states = ds['tot_states']
+tot_energy = ds['tot_avg_energy_array']
+tot_states = ds['tot_avg_states']
 
 xx, yy = np.meshgrid(k_o_vals, bins_tot, indexing='ij')
 
@@ -144,7 +146,8 @@ def plot_it(state, delta, label='', norm=plt.Normalize(-7,7)):
     plt.savefig("/Users/nickrego/Desktop/fig_color_{}".format(label), transparent=True)
 
 norm = plt.Normalize(-7, 7)
-for idx in [9, 18, 27]:
+#for idx in [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]:
+for idx in [27]:
     print("\nko: {}".format(36-idx))
     energies = tot_energy[idx]
     pts = tot_states[idx]
