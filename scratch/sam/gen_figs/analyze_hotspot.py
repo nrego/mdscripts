@@ -151,7 +151,8 @@ for i, fname in enumerate(fnames):
     ds = np.load(fname)
 
     # ...yeah, this is backwards
-    k_c = ds['ko'].item()
+    #k_c = ds['ko'].item()
+    k_c = ds['kc'].item()
     k_o = 36 - k_c
     sampled_pts = ds['sampled_points']
     density = ds['density']

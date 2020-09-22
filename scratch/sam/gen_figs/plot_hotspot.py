@@ -96,14 +96,14 @@ xx, yy = np.meshgrid(bins_up, bins_down, indexing='ij')
 
 
 #######################################################
-ds = np.load("hotspot_anal.dat.npz")
+ds = np.load("old_hotspot_anal.dat.npz")
 
 bins_tot = ds['bins_tot']
 k_o_vals = 36 - np.arange(37)
 k_o_vals = np.append(k_o_vals, -1)
 
-tot_energy = ds['tot_avg_energy_array']
-tot_states = ds['tot_avg_states']
+tot_energy = ds['tot_abs_energy_array']
+tot_states = ds['tot_abs_states']
 
 xx, yy = np.meshgrid(k_o_vals, bins_tot, indexing='ij')
 
@@ -127,6 +127,9 @@ plt.savefig('/Users/nickrego/Desktop/fig_down.pdf', transparent=True)
 plt.close()
 print("min: {:.2f}. max: {:.2f}".format(new_energies_down.min(), new_energies_up.max()))
 
+this_avg_energy = (new_energies_up.sum() + new_energies_down.sum()) / state.N
+this_abs_energy = (np.abs(new_energies_up).sum() + np.abs(new_energies_down).sum()) / state.N
+
 
 ## Now plot hotspot map
 color_state_by_hotspot(state, delta, norm=plt.Normalize(-7,7))
@@ -147,10 +150,11 @@ def plot_it(state, delta, label='', norm=plt.Normalize(-7,7)):
 
 norm = plt.Normalize(-7, 7)
 #for idx in [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]:
-for idx in [27]:
+for idx in [9,18,27]:
     print("\nko: {}".format(36-idx))
     energies = tot_energy[idx]
     pts = tot_states[idx]
+    
     mask = energies > 0
     midpt = mask.sum() // 2
     # Mutation, on average, will make it more phobic
@@ -160,8 +164,8 @@ for idx in [27]:
     mid_pts = pts[mask][midpt]
 
     min_state = State(min_pts[0])
-    max_state = State(max_pts[1])
-    mid_state = State(mid_pts[1])
+    max_state = State(max_pts[0])
+    mid_state = State(mid_pts[0])
 
     plot_it(min_state, delta, label='{:02d}_min'.format(idx), norm=norm)
     plot_it(mid_state, delta, label='{:02d}_mid'.format(idx), norm=norm)
