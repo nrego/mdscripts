@@ -68,7 +68,7 @@ def plot_hextensor(
     nrows = int(np.ceil(np.sqrt(nimages)))
     gs = gridspec.GridSpec(nrows, nrows)
     gs.update(wspace=0, hspace=0)
-
+    
     for i in range(nimages):
         if inexamples >= inchannels:
             a = i

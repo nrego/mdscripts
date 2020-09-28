@@ -30,47 +30,6 @@ MAX_MULT = 1e6
 MAX_N = 81
 
 
-## Helper class for quickly finding the energies of all one-step moves from a given state
-class GetDelta:
-    def __init__(self, adj_mat, ext_count, alpha_k_c, alpha_n_cc, alpha_n_ce):
-        self.adj_mat = adj_mat
-        self.ext_count = ext_count
-        self.alpha_k_c = alpha_k_c
-        self.alpha_n_cc = alpha_n_cc
-        self.alpha_n_ce = alpha_n_ce
-
-
-    def __call__(self, x0, cand_indices, prec=6):
-
-        trial_energies = np.zeros_like(cand_indices).astype(float)
-        trial_states = np.empty((cand_indices.size, x0.size), dtype=bool)
-        x0_int = x0.astype(int)
-
-        # Find energy of x0
-        k_c = x0_int.sum()
-        n_cc = 0.5 * np.linalg.multi_dot((x0_int, self.adj_mat, x0_int))
-        n_ce = np.dot(x0_int, self.ext_count)
-
-        e0 = self.alpha_k_c*k_c + self.alpha_n_cc*n_cc + self.alpha_n_ce*n_ce
-
-        for i, cand_idx in enumerate(cand_indices):
-            x1 = x0.copy()
-            x1[cand_idx] = ~x1[cand_idx]
-
-            x1_int = x1.astype(int)
-            
-            k_c = x1_int.sum()
-            n_cc = 0.5 * np.linalg.multi_dot((x1_int, self.adj_mat, x1_int))
-            n_ce = np.dot(x1_int, self.ext_count)
-
-            trial_states[i] = x1
-            e1 = self.alpha_k_c*k_c + self.alpha_n_cc*n_cc + self.alpha_n_ce*n_ce
-            trial_energies[i] = e1 - e0
-        
-
-        return trial_states, np.round(trial_energies, prec)
-
-
 
 # Returns delta_f (w.r.t. pure non-polar), avg f_up, avg f_down
 def get_order(pt_idx, m_mask, p, q, delta, do_tot=False):

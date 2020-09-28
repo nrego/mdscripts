@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from IPython import embed
 
 from constants import k
+from whamutils import get_negloghist, extract_and_reweight_data
 
 ## Construct P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 
