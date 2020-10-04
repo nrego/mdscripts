@@ -87,7 +87,7 @@ def get_full_feat_vec(states):
     n_edge = states[0].n_edges
     
     idx = 3*states[0].n_edges
-    n_feat = idx
+    n_feat = idx + 1
     feat_vec = np.zeros((n_sample, n_feat))
 
     for i,state in enumerate(states):
@@ -99,6 +99,45 @@ def get_full_feat_vec(states):
 
 
     return feat_vec
+
+# M_int edges, N_ext external edges, and N_tot 
+def get_full_feat_vec2(states):
+    n_sample = states.size
+    n_edge = states[0].n_edges
+    M_int = states[0].M_int
+    N_ext = states[0].N_ext
+    N_tot = states[0].N_tot
+
+    idx1 = M_int+N_ext
+    
+    n_feat = M_int + N_ext + N_tot
+    feat_vec = np.zeros((n_sample, n_feat))
+
+    for i,state in enumerate(states):
+        hydroxyl_mask = (~state.methyl_mask).astype(int)
+        feat_vec[i, 0:M_int] = state.edge_oo[state.edges_int_indices]
+        feat_vec[i, M_int:idx1] = state.ext_count[state.ext_indices]*hydroxyl_mask[state.ext_indices]
+        feat_vec[i, idx1:] = hydroxyl_mask
+
+    return feat_vec
+
+# M_int edges (a_k h^oo_k for all internal edges) Plus each node (a_i h^o_i for each node)
+def get_constr_full_feat_vec(states):
+    n_sample = states.size
+    M_int = states[0].M_int
+    N_tot = states[0].N_tot
+    n_feat = M_int + N_tot
+
+    feat_vec = np.zeros((n_sample, n_feat))
+
+    for i,state in enumerate(states):
+        feat_vec[i, :M_int] = state.edge_oo[state.edges_int_indices]
+        feat_vec[i, M_int:] = 1 - state.methyl_mask
+
+        assert state.k_o == feat_vec[i, M_int:].sum()
+
+    return feat_vec
+
 
 # Shape: (M_int+1,)
 #   hoo_k of each edge (all M_int of them), plus ko
@@ -372,6 +411,14 @@ for i, tmp_state in enumerate(states):
 #  h_oo, h_cc, h_oo for each edge location
 feat_vec1 = get_full_feat_vec(states)
 
+
+## Shape (M_int + N_ext + N_tot)
+# over-parameterized model, h_k_oo for each internal edge, (mi_ext*h_i_o) for each perph node, (a_i * h_i_o) for each node
+feat_vec1_part2 = get_full_feat_vec2(states)
+
+# Shape: (M_int + N_tot);
+#   h_oo for each internal edge k, h_i_o for each node position
+feat_vec1_noconstr = get_constr_full_feat_vec(states)
 # Shape: M_tot+1 (hkoo for each edge, plus ko)
 feat_vec2 = get_feat_vec_oo(states)
 
@@ -384,6 +431,16 @@ weights = 1 / (err_energies**2)
 
 # Full feature vector (edge type for each edge, 3*M_tot)
 perf_mse1, perf_wt_mse1, perf_r21, err1, reg1 = fit_multi_k_fold(feat_vec1, energies, k=k_cv, do_ridge=True, weights=weights, do_weighted=do_weighted)
+
+perf_mse12, perf_wt_mse12, perf_r212, err12, reg12 = fit_multi_k_fold(feat_vec1_part2, energies, k=k_cv, do_ridge=True, weights=weights, do_weighted=do_weighted)
+coef_indices = np.zeros(feat_vec1_part2.shape[1], dtype=int)
+coef_indices[state.M_int:state.M_int+state.N_ext] = 1
+coef_indices[state.M_int+state.N_ext:] = 2
+
+
+# Full feat vec, const removed (M_int + N_tot)
+perf_mse_constr, perf_wt_constr, perf_r_constr, err_constr, reg_constr = fit_multi_k_fold(feat_vec1_noconstr, energies, k=k_cv, weights=weights, do_weighted=do_weighted)
+
 # h_oo (one for each of M_tot edges), plus k_o. Has redundancies (periph edges)
 perf_mse2, perf_wt_mse2, perf_r22, err2, reg2 = fit_multi_k_fold(feat_vec2, energies, k=k_cv, do_ridge=True, weights=weights, do_weighted=do_weighted)
 # ko, sum over all internal edges, sum over all external edges (miext edges for each peripheral node); shape: (M_int + N_periph + 1)

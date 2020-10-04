@@ -28,22 +28,24 @@ def get_k(fname, N=36):
 
     if isk:
         num = N-num
-    if isk and num == 36:
+    if isk and num == N:
         isk = False
 
     return isk, num
 
 
-ds = np.load('/Users/nickrego/simulations/sam_dos_rms/rmsd_dos_p_06_q_06_kc_012.npz')
-bins = ds['bins'][0]
+#ds = np.load('/Users/nickrego/simulations/sam_dos_rms/rmsd_dos_p_06_q_06_kc_012.npz')
+#bins = ds['bins'][0]
+#bins = np.arange(0, 2.4, 0.1)
+bins = np.arange(0, 1.15, 0.05)
 bc = bins + 0.5*np.diff(bins)[0]
 
 ## FROM sam_data
 ##  Plot distribution of kc, ko samples to show extent of sampling
 
-ds = np.load("data/sam_pattern_06_06.npz")
+ds = np.load("data/sam_pattern_04_04.npz")
 
-N = 36
+N = 16
 
 k_bins = np.arange(N+1)
 
@@ -60,8 +62,13 @@ fnames = ds['fnames']
 states = ds['states']
 energies = ds['energies']
 
+max_rms = 0 
+
+min_energy = np.inf
+max_energy = -np.inf
+
 for i, fname in enumerate(fnames):
-    is_k, ko = get_k(fname)
+    is_k, ko = get_k(fname, N=N)
     state = states[i]
 
     if ko == 36:
@@ -74,6 +81,9 @@ for i, fname in enumerate(fnames):
     else:
         rms = get_rms(~state.methyl_mask, state.positions)
 
+    if rms > max_rms:
+        max_rms = rms 
+
     kc_idx = np.digitize(kc, k_bins) - 1
     ko_idx = np.digitize(ko, k_bins) - 1
 
@@ -82,7 +92,10 @@ for i, fname in enumerate(fnames):
 
 
     if is_k:
-        if ko_idx == 36:
+        if ko_idx == N:
+            print(fname)
+        if not np.isnan(ener_dist_kc[bin_idx, ko_idx]):
+            break
             print(fname)
         ener_dist_kc[bin_idx, ko_idx] = energies[i]
     else:
@@ -90,15 +103,20 @@ for i, fname in enumerate(fnames):
         #    print(fname)
         ener_dist_ko[bin_idx, ko_idx] = energies[i]
 
+    if energies[i] > max_energy:
+        max_energy = energies[i]
+    if energies[i] < min_energy:
+        min_energy = energies[i]
 
-norm = plt.Normalize(130, 300)
+norm = plt.Normalize(np.floor(min_energy), np.ceil(max_energy))
 
 plt.close('all')
 plt.pcolormesh(bb, kk, ener_dist_ko.T, norm=norm)
 
 ax = plt.gca()
-ax.set_xticks([0, 0.5, 1.0, 1.5, 2.0])
-ax.set_yticks([0, 6, 12, 18, 24, 30, 36])
+#ax.set_xticks([0, 0.5, 1.0, 1.5, 2.0, 2.5])
+#ax.set_yticks([0, 6, 12, 18, 24, 30, 36])
+ax.set_yticks([0, 4, 8, 12, 16])
 
-
-
+mask_kc = ~np.ma.masked_invalid(ener_dist_kc).mask
+mask_ko = ~np.ma.masked_invalid(ener_dist_ko).mask
