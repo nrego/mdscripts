@@ -150,12 +150,14 @@ net = all_nets[i_conv_filters, i_hidden_layer, i_node_hidden]
 
 #Get feat vec and augment to get right dimensions
 feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=True)
+feat_vec2, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=False)
+
 n_patch_dim = feat_vec.shape[1]
 
 homedir = os.environ['HOME']
 
 
-dataset = SAMConvDataset(feat_vec, energies)
+dataset = SAMConvDataset(feat_vec2, energies)
 
 pred = net(dataset.X).detach().numpy().squeeze()
 mse = np.mean((energies - pred)**2)

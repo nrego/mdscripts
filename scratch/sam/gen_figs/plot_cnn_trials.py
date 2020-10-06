@@ -77,8 +77,8 @@ for i_hidden_layer in range(trial_n_hidden_layer.size):
     plt.close('all')
     fig, ax = plt.subplots(figsize=(10,10))
 
-    norm = plt.Normalize(8, 15)
-    pc = ax.imshow(all_perf_cv[:,i_hidden_layer,:], origin='lower', cmap='plasma', norm=norm)
+    norm = plt.Normalize(2.5, 4)
+    pc = ax.imshow(np.sqrt(all_perf_cv[:,i_hidden_layer,:]), origin='lower', cmap='plasma', norm=norm)
 
     ax.set_xticks(np.arange(trial_n_node_hidden.size))
     ax.set_xticklabels(trial_n_node_hidden)

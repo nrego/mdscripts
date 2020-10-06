@@ -1,4 +1,3 @@
-from __future__ import print_function, division; __metaclass__ = type
 
 import numpy as np
 import logging

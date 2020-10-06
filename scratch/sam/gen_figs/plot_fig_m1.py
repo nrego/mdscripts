@@ -46,8 +46,8 @@ mpl.rcParams.update({'legend.fontsize':30})
 #  Also, compare to best performing ANN
 #########################################
 
-n_hidden_layer = 2
-n_node_hidden = 12
+n_hidden_layer = 3
+n_node_hidden = 24
 
 ds = np.load('data/sam_ann_ml_trials.npz')
 all_nets = ds['all_nets']

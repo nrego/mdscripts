@@ -105,7 +105,7 @@ def plot_from_feat(pos_ext, feat, this_map=mymap):
 #   non-patch hydroxyl: 0
 #   patch hydroxyl: -1
 #   patch methyl: +1
-def hex_rotate(feat, pos_ext, patch_idx):
+def hex_rotate(feat, pos_ext, patch_idx, binary_encoding=False):
 
     positions = pos_ext[patch_idx]
     theta_60 = (60*np.pi)/180.
@@ -132,13 +132,14 @@ def hex_rotate(feat, pos_ext, patch_idx):
 
         augmented_feature = np.zeros(pos_ext.shape[0])
         augmented_feature[patch_methyl_indices] = 1
-        augmented_feature[patch_hydroxyl_indices] = -1
+        if not binary_encoding:
+            augmented_feature[patch_hydroxyl_indices] = -1
 
 
         yield augmented_feature
 
 
-def hex_augment_data(feat_vec, y, pos_ext, patch_indices):
+def hex_augment_data(feat_vec, y, pos_ext, patch_indices, binary_encoding=False):
     n_feat = feat_vec.shape[0]
     n_aug = n_feat*6
 
@@ -152,7 +153,7 @@ def hex_augment_data(feat_vec, y, pos_ext, patch_indices):
     for i_feat in range(n_feat):
         feat = feat_vec[i_feat]
         this_y = y[i_feat]
-        gen_hex = hex_rotate(feat, pos_ext, patch_indices[i_feat])
+        gen_hex = hex_rotate(feat, pos_ext, patch_indices[i_feat], binary_encoding=binary_encoding)
 
         for i, aug_feat in enumerate(gen_hex):
             idx = 6*i_feat + i#*n_feat

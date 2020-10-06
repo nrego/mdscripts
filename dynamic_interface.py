@@ -241,12 +241,18 @@ Command-line options
 
             for frame_idx in range(self.start_frame, self.last_frame):
 
+                # Go to frame 'frame_idx'; updates coordinates appropriately
                 self.univ.trajectory[frame_idx]
+                # Select protein atoms (mol_sel_spec is a user-specified string, e.g. 'all protein and not name H*' to get protein heavy atoms)
                 solute_atoms = self.univ.select_atoms(self.mol_sel_spec)
+                # Find all waters within 'water_dist_cutoff' of 'mol_sel_spec'
                 water_atoms = self.univ.select_atoms("name OW and around {} ({})".format(water_dist_cutoff, self.mol_sel_spec))
 
                 if self.extra_water_sel is not None:
                     water_atoms = water_atoms.select_atoms(self.extra_water_sel)
+                
+                # Gives a numpy array of all solute (protein) atoms' positions at this time step
+                #   Shape: (n_solute_atoms, 3)
                 solute_pos = solute_atoms.positions
                 water_pos = water_atoms.positions
                 if self.neighbor_sel_spec is not None:

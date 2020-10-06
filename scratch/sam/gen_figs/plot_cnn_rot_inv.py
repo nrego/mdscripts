@@ -126,7 +126,12 @@ net = all_nets[i_conv_filters, i_hidden_layer, i_node_hidden]
 
 #Get feat vec and augment to get right dimensions
 feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=True)
+feat_vec2, _,_,_,_,_ = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=False)
+
+
 feat_vec, energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices)
+
+feat_vec2, energies2 = hex_augment_data(feat_vec2, energies, pos_ext, patch_indices, binary_encoding=True)
 
 n_patch_dim = feat_vec.shape[1]
 
@@ -134,11 +139,10 @@ homedir = os.environ['HOME']
 
 
 dataset = SAMConvDataset(feat_vec, energies)
-
-pred = net(dataset.X).detach().numpy().squeeze()
-mse = np.mean((energies - pred)**2)
+dataset2 = SAMConvDataset(feat_vec2, energies)
 
 X = dataset.X.reshape(dataset.X.shape[0], 1, *dataset.X.shape[1:])
+X2 = dataset2.X.reshape(dataset2.X.shape[0], 1, *dataset2.X.shape[1:])
 
 
 idx = 841
@@ -146,11 +150,11 @@ idx = 841
 x_rot = np.zeros((6, *X.shape[1:]))
 
 # Collect each rotated image x
-#for i in range(6):
-for i in [0, 2, 4]:
+for i in range(6):
+#for i in [0, 2, 4]:
 
 
-    x_rot[i] = X[idx*6 + i]
+    x_rot[i] = X2[idx*6 + i]
 
     plt.close('all')
     plot_hextensor(x_rot[i])

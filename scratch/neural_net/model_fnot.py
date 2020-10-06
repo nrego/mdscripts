@@ -102,7 +102,7 @@ Command-line options
             y = err
 
         if self.augment_data:
-            feat_vec, y = hex_augment_data(feat_vec, y, pos_ext, patch_indices)
+            feat_vec, y = hex_augment_data(feat_vec, y, pos_ext, patch_indices, binary_encoding=args.binary_encoding)
 
         self.y = y
         self.feat_vec = feat_vec

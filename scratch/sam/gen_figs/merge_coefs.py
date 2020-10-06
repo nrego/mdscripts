@@ -482,6 +482,26 @@ min_mse = np.mean(err**2)
 
 i_merge = 0
 
+## Plot distribution of coefficients ##
+#######################################
+plt.close('all')
+coef_int = reg3.coef_[:state.M_int]
+coef_ext = reg3.coef_[state.M_int:-1]
+coef_ko = reg3.coef_[-1]
+
+w = 0.1
+coef_bins = np.arange(-3, 7, w)
+hist_int, bb = np.histogram(coef_int, coef_bins)
+hist_ext, bb = np.histogram(coef_ext, coef_bins)
+
+
+plt.bar(bb[:-1], hist_int, width=w, label='internal pairs')
+plt.bar(bb[:-1], hist_ext, width=w, label='external pairs')
+
+ax = plt.gca()
+ax.vlines(reg_m3.coef_[1], 0, 14)
+ax.vlines(reg_m3.coef_[2], 0, 14)
+
 ## Now perform merging until we have the requisite number of groups
 while len(mgc) >= n_clust:
     print("merge round i: {:03d}".format(i_merge))

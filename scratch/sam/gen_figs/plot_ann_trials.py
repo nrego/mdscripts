@@ -14,8 +14,8 @@ from torch import optim
 import os, glob, pathlib
 
 mpl.rcParams.update({'axes.labelsize': 45})
-mpl.rcParams.update({'xtick.labelsize': 50})
-mpl.rcParams.update({'ytick.labelsize': 50})
+mpl.rcParams.update({'xtick.labelsize': 30})
+mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':14})
 
@@ -61,8 +61,8 @@ plt.savefig('{}/Desktop/ann_mse_tot.png'.format(homedir), transparent=True)
 plt.close('all')
 fig, ax = plt.subplots()
 
-norm = plt.Normalize(10, 25)
-pc = ax.imshow(all_perf_cv.T, origin='lower', cmap='plasma', norm=norm)
+norm = plt.Normalize(3.0, 5.0)
+pc = ax.imshow(np.sqrt(all_perf_cv.T), origin='lower', cmap='plasma', norm=norm)
 
 ax.set_xticks(np.arange(trial_n_hidden_layer.size))
 ax.set_xticklabels(trial_n_hidden_layer)

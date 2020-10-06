@@ -1,7 +1,6 @@
 # Nbr 05/30/19
 # (use %paste in IPython)
 
-from __future__ import division, print_function
 
 import numpy as np
 import MDAnalysis

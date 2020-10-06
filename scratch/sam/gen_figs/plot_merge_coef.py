@@ -270,27 +270,25 @@ plt.savefig('{}/Desktop/fig_merge_m2'.format(homedir), transparent=True)
 
 
 #########################
+#### PLOT PERFORMANCE ###
 plt.close('all')
 
 fig, ax1 = plt.subplots(figsize=(7,6))
 
-ax2 = ax1.twinx()
+#ax2 = ax1.twinx()
 
 ax1.set_xlim(-5, all_n_params.max()+2)
-ax1.plot(all_n_params[:]-2, np.sqrt(all_cv_mse[:]), 'bo', markersize=12)
-ax1.plot(all_n_params[-2]-2, np.sqrt(all_cv_mse[-2]), 'rD', markersize=20)
-ax1.plot(all_n_params[-1]-2, np.sqrt(all_cv_mse[-1]), 'yD', markersize=20)
-#ax2.plot(all_n_params[:]-2, all_aic[:], 'k-', linewidth=4)
-ax2.plot(all_n_params[:]-2, np.sqrt(all_cv_wt_mse), 'gx-', markersize=12)
+ax1.plot(all_n_params-1, np.sqrt(all_cv_mse), 'bo', markersize=12)
+#ax1.plot(all_n_params[-2]-2, all_cv_mse[-2], 'rD', markersize=20)
+#ax2.plot(all_n_params, all_aic, 'k-', linewidth=4)
 
-ax1.set_zorder(1)
-ax1.patch.set_visible(False)
+#ax1.set_zorder(1)
+#ax1.patch.set_visible(False)
 
-#ax1.set_ylim(3.8, 10)
 
 fig.tight_layout()
 
-plt.savefig('{}/Desktop/merge_perf'.format(homedir), transparent=True)
+plt.savefig('/Users/nickrego/Desktop/merge_perf', transparent=True)
 
 
 ###########################
@@ -299,8 +297,8 @@ plt.savefig('{}/Desktop/merge_perf'.format(homedir), transparent=True)
 # BAR chart of selected
 
 # Grab ANN perf
-n_hidden_layer = 2
-n_node_hidden = 12
+n_hidden_layer = 3
+n_node_hidden = 24
 
 ds = np.load('data/sam_ann_ml_trials.npz')
 all_perf_tot = ds['all_perf_tot']
@@ -322,7 +320,7 @@ n_params_ann = all_n_params[i_hidden_layer, i_node_hidden]
 # Grab CNN perf
 n_hidden_layer = 2
 n_node_hidden = 4
-n_conv_filters = 9
+n_conv_filters = 10
 
 ds = np.load('data/sam_cnn_ml_trials.npz')
 all_perf_tot = ds['all_perf_tot']
@@ -371,5 +369,14 @@ fig.tight_layout()
 plt.savefig('{}/Desktop/bar_merge_perf'.format(homedir), transparent=True)
 
 plt.close('all')
+
+## Plot distribution of alpha_i's for M106 ##
+this_mgc = all_mgc[0]
+this_labels = this_mgc.labels
+this_labels = np.append(this_labels, this_labels.max()+1)
+red_feat = construct_red_feat(full_feat_vec, this_labels)
+
+perf_mse, perf_wt_mse, perf_r2, err, this_reg = fit_multi_k_fold(red_feat, energies, k=5)
+
 
 

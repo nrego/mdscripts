@@ -94,7 +94,7 @@ def get_label_colors(labels, state):
 
     return colors
 
-
+do_weighted=False
 p = 6
 q = 6
 
@@ -116,8 +116,8 @@ perf_m3, err_m3, _, _, reg_m3 = fit_k_fold(ols_feat_vec, energies)
 
 state = states[np.argwhere(ols_feat_vec[:,0] == 0).item()]
 
-
-ds = np.load('merge_data/sam_merge_coef_class_{:02d}_{:02d}.npz'.format(p,q))
+instr = 'weighted' if do_weighted else 'no_weighted'
+ds = np.load('merge_data/sam_merge_coef_class_{}_{:02d}_{:02d}.npz'.format(instr,p,q))
 all_mse = ds['all_mse']
 all_cv_mse = ds['all_cv_mse']
 # Number of edge classes + 2 (for ko and the intercept)
@@ -243,15 +243,15 @@ plt.close('all')
 
 fig, ax1 = plt.subplots(figsize=(7,6))
 
-ax2 = ax1.twinx()
+#ax2 = ax1.twinx()
 
 ax1.set_xlim(-5, all_n_params.max()+2)
-ax1.plot(all_n_params[:-1]-2, all_cv_mse[:-1], 'bo')
-ax1.plot(all_n_params[-2]-2, all_cv_mse[-2], 'rD', markersize=20)
-ax2.plot(all_n_params[:-1]-2, all_aic[:-1], 'k-', linewidth=4)
+ax1.plot(all_n_params-1, np.sqrt(all_cv_mse), 'bo', markersize=12)
+#ax1.plot(all_n_params[-2]-2, all_cv_mse[-2], 'rD', markersize=20)
+#ax2.plot(all_n_params, all_aic, 'k-', linewidth=4)
 
-ax1.set_zorder(1)
-ax1.patch.set_visible(False)
+#ax1.set_zorder(1)
+#ax1.patch.set_visible(False)
 
 
 fig.tight_layout()
