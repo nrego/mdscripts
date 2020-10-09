@@ -32,7 +32,7 @@ from scipy.optimize import minimize
 myorange = myorange = plt.rcParams['axes.prop_cycle'].by_key()['color'][1] 
 
 Rv = 20
-w = 3
+w = 9
 
 
 homedir = os.environ['HOME']

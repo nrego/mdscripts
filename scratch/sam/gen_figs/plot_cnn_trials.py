@@ -16,8 +16,8 @@ import os, glob, pathlib
 import itertools
 
 mpl.rcParams.update({'axes.labelsize': 45})
-mpl.rcParams.update({'xtick.labelsize': 50})
-mpl.rcParams.update({'ytick.labelsize': 50})
+mpl.rcParams.update({'xtick.labelsize': 40})
+mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':14})
 
@@ -75,9 +75,9 @@ for i_hidden_layer in range(trial_n_hidden_layer.size):
 
     ## min CV MSE 
     plt.close('all')
-    fig, ax = plt.subplots(figsize=(10,10))
+    fig, ax = plt.subplots(figsize=(12,10))
 
-    norm = plt.Normalize(2.5, 4)
+    norm = plt.Normalize(2.8, 3.3)
     pc = ax.imshow(np.sqrt(all_perf_cv[:,i_hidden_layer,:]), origin='lower', cmap='plasma', norm=norm)
 
     ax.set_xticks(np.arange(trial_n_node_hidden.size))

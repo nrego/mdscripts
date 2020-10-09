@@ -129,9 +129,7 @@ feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('da
 feat_vec2, _,_,_,_,_ = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=False)
 
 
-feat_vec, energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices)
-
-feat_vec2, energies2 = hex_augment_data(feat_vec2, energies, pos_ext, patch_indices, binary_encoding=True)
+feat_vec, energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices, binary_encoding=False)
 
 n_patch_dim = feat_vec.shape[1]
 
@@ -139,10 +137,8 @@ homedir = os.environ['HOME']
 
 
 dataset = SAMConvDataset(feat_vec, energies)
-dataset2 = SAMConvDataset(feat_vec2, energies)
 
 X = dataset.X.reshape(dataset.X.shape[0], 1, *dataset.X.shape[1:])
-X2 = dataset2.X.reshape(dataset2.X.shape[0], 1, *dataset2.X.shape[1:])
 
 
 idx = 841
@@ -153,8 +149,7 @@ x_rot = np.zeros((6, *X.shape[1:]))
 for i in range(6):
 #for i in [0, 2, 4]:
 
-
-    x_rot[i] = X2[idx*6 + i]
+    x_rot[i] = X[idx*6 + i]
 
     plt.close('all')
     plot_hextensor(x_rot[i])

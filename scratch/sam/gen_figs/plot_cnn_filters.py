@@ -149,7 +149,7 @@ net = all_nets[i_conv_filters, i_hidden_layer, i_node_hidden]
 
 
 #Get feat vec and augment to get right dimensions
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=True)
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=False)
 feat_vec2, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=False)
 
 n_patch_dim = feat_vec.shape[1]
@@ -226,7 +226,7 @@ construct_pvn_images(841, net, dataset.X, is_double=is_double)
 plt.close('all')
 
 ## Plot sample conv ##
-feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', embed_pos_ext=True, ny=8, nz=9, binary_encoding=True)
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', embed_pos_ext=True, ny=8, nz=9, binary_encoding=False)
 dataset = SAMConvDataset(feat_vec, energies, ny=8, nz=9)
 x = dataset.X[841][None, ...]
 
@@ -236,7 +236,7 @@ plt.close('all')
 
 l1 = net.conv1
 c, r, p = l1.children()
-oc = r(c(x)).detach()[:,5,...][None,...]
+oc = r(c(x)).detach()[:,4,...][None,...]
 plot_hextensor(oc, norm=plt.Normalize(0, 2), cmap='Oranges', mask=np.arange(0,64,9))
 plt.savefig('{}/Desktop/small_pattern_conv'.format(homedir), transparent=True)
 
@@ -244,9 +244,73 @@ op = p(oc)
 
 plt.close('all')
 
-plot_hextensor(op, norm=plt.Normalize(0, 4.5), cmap='Oranges' )
+plot_hextensor(op, norm=plt.Normalize(0, 2), cmap='Oranges')
 plt.savefig('{}/Desktop/small_pattern_pool'.format(homedir), transparent=True)
 
 
 
+### Plot each filter output
+
+feat_vec, patch_indices, pos_ext, energies, ols_feat, states = load_and_prep('data/sam_pattern_06_06.npz', binary_encoding=False)
+feat_vec, energies = hex_augment_data(feat_vec, energies, pos_ext, patch_indices, binary_encoding=False)
+
+idx = 841
+rot_num=0
+
+n_patch_dim = feat_vec.shape[1]
+dataset = SAMConvDataset(feat_vec, energies)
+x = dataset.X[idx*6+rot_num][None, ...]
+
+#plot_hextensor(x)
+
+l1 = net.conv1
+c1, r1, p1 = l1.children()
+oc1 = r1(c1(x)).detach()
+op1 = p1(oc1)
+
+l2 = net.conv2
+c2, r2, p2 = l2.children()
+
+oc2 = r2(c2(op1)).detach()
+op2 = p2(oc2)
+
+plt.close('all')
+plot_hextensor(x, norm=plt.Normalize(-1,1))
+plt.savefig('{}/Desktop/large_pattern.png'.format(homedir))
+plt.close('all')
+
+# Gives filter i's position in fig3
+filter_idx_lup = {
+    0: 3,
+    1: 0,
+    2: 8,
+    3: 2,
+    4: 5,
+    5: 9,
+    6: 1,
+    7: 6,
+    8: 4,
+    9: 7
+}
+
+## Plot first layer convolutions
+for i in range(n_conv_filters):
+
+    pos_i = filter_idx_lup[i]
+
+    plt.close('all')
+    plot_hextensor(oc1[:,i,...][None,...], norm=plt.Normalize(0,3), cmap='Oranges')
+    plt.savefig('{}/Desktop/conv1_k_{}'.format(homedir, pos_i), transparent=True)
+
+    plt.close('all')
+    plot_hextensor(op1[:,i,...][None,...], norm=plt.Normalize(0,3), cmap='Oranges')
+    plt.savefig('{}/Desktop/pool1_k_{}'.format(homedir, pos_i), transparent=True)
+
+    plt.close('all')
+    plot_hextensor(oc2[:,i,...][None,...], norm=plt.Normalize(0,30), cmap='Greys')
+    plt.savefig('{}/Desktop/conv2_k_{}'.format(homedir, i), transparent=True)
+
+    plt.close('all')
+    plot_hextensor(op2[:,i,...][None,...], norm=plt.Normalize(0,30), cmap='Greys')
+    plt.savefig('{}/Desktop/pool2_k_{}'.format(homedir, i), transparent=True)
 

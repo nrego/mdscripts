@@ -50,7 +50,7 @@ def extract_n_params(n_conv_filters, n_hidden_layer, n_node_hidden):
 
     return n_param, net
 
-def find_best_trial(path, base_mse, thresh=0.01, choices=['bin_double_cnn_energy1', 'bin_double_cnn_energy2', 'bin_double_cnn_energy3']):
+def find_best_trial(path, base_mse, thresh=0.01, choices=['double_cnn_energy1', 'double_cnn_energy2', 'double_cnn_energy3']):
 
     min_mse_tot = np.inf
     min_mses_cv = None
@@ -104,7 +104,7 @@ feat_vec_conv = dataset.X
 #########################################
 ##
 
-fnames = sorted(glob.glob("bin_double_cnn_energy1/n_layer_*/n_filter_*/perf_model_*"))
+fnames = sorted(glob.glob("double_cnn_energy1/n_layer_*/n_filter_*/perf_model_*"))
 
 
 # n_filter, n_hidden_layer, n_node_hidden
