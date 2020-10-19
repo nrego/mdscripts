@@ -136,6 +136,7 @@ k_o_vals = np.arange(N+1)
 
 
 density_up_down = ds['density_up_down']
+
 # np->po 
 # Shape: (k_o, df_up_vals)
 density_up = density_up_down.sum(axis=2)
@@ -198,7 +199,7 @@ plot_colorbar()
 plt.savefig('/Users/nickrego/Desktop/colorbar', transparent=True)
 plt.close()
 
-## Just plot edges
+## Just plot external polar border
 feat = state.feat
 plot_hextensor(feat, mask=state.patch_indices)
 plt.savefig('/Users/nickrego/Desktop/edge', transparent=True)

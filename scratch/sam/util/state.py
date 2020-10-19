@@ -291,7 +291,7 @@ class State:
             yield State(new_pt_idx, parent=self, p=self.p, q=self.q, mode=self.mode)
 
 
-    def plot(self, noedge=False, do_annotate=False, annotation=None, **kwargs):
+    def plot(self, noedge=False, do_annotate=False, annotation=None, annotation_color=None, annotation_size=None, **kwargs):
 
         feat = make_feat(self.methyl_mask, self.pos_ext, self.patch_indices)
         feat = plot_feat(feat, self.p+2, self.q+2)
@@ -315,6 +315,11 @@ class State:
         if do_annotate:
             if annotation is None:
                 annotation = np.arange(self.N_tot)
+            if annotation_color is None:
+                annotation_color = ['darkorange' for i in range(self.N_tot)]
+            if annotation_size is None:
+                annotation_size = ['xx-large' for i in range(self.N_tot)]
+
             assert annotation.size == self.N_tot, "Error: annotations not right size"
             pos = 2*self.positions
             max_y = 2*self.pos_ext[:,1].max()
@@ -323,15 +328,17 @@ class State:
             ax = plt.gca()
 
             for i, (x,y) in enumerate(pos):
-                ax.annotate(annotation[i], xy=(x-0.025,y-0.025), fontsize='xx-large', color='darkorange')
+                ax.annotate(annotation[i], xy=(x-0.025,y-0.025), fontsize=annotation_size[i], color=annotation_color[i])
 
 
-    def plot_edges(self, do_annotate=False, annotation=None, colors=None, line_styles=None, line_widths=None, ax=None, symbols=None):
+    def plot_edges(self, do_annotate=False, annotation=None, annotation_color=None, weight='bold', colors=None, line_styles=None, line_widths=None, ax=None, symbols=None):
         if ax is None:
             ax = plt.gca()
 
         if annotation is None:
             annotation = np.arange(self.edges.shape[0])
+        if annotation_color is None:
+            annotation_color = ['darkorange' for i in range(self.edges.shape[0])]
 
         this_pos_ext = 2*self.pos_ext
         #max_x = this_pos_ext[:,0].max()
@@ -375,6 +382,6 @@ class State:
             midpt = (this_pos_ext[global_i] + this_pos_ext[global_j]) / 2.0
 
             if do_annotate:
-                ax.annotate(annotation[i_edge], xy=midpt-0.025, fontsize='xx-large', color='darkorange')
+                ax.annotate(annotation[i_edge], xy=midpt-0.025, fontsize='xx-large', weight='bold', color=annotation_color[i_edge])
 
 

@@ -30,7 +30,7 @@ from constants import k
 #\definecolor{gray}{RGB}{97,97,97}
 #\definecolor{dkpurple}{RGB}{63,0,127}
 
-
+plt.close('all')
 beta = 1/(k * 300)
 beta_phi_vals, avg_N, err_avg_N, smooth_chi, err_smooth_chi, chi, err_chi = [arr.squeeze() for arr in np.split(np.loadtxt('../phi_sims/NvPhi.dat'), 7, 1)]
 ## Figure 4 d ##  
@@ -146,6 +146,7 @@ fig.savefig('{}/Desktop/tpr_fpr.pdf'.format(homedir), transparent=True)
 
 print("beta phi opt: {}".format(beta_phi[best_idx]))
 
-norm_auc = tpr[-1] * fpr[-1]
-print("auc: {:.2f}".format(np.trapz(tpr, fpr) / norm_auc))
+#norm_auc = tpr[-1] * fpr[-1]
+#norm_auc = tpr[45]*fpr[45]
+print("auc: {:.2f}".format(np.trapz(tpr[:46], fpr[:46]) / norm_auc))
 
