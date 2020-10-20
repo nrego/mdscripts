@@ -133,7 +133,7 @@ for i_atm in range(n_heavies):
     #futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
     futures.append(wm.submit(extract_and_reweight_data, fn_args, fn_kwargs))
 
-    print("submitted job {}".format(i))
+    #print("submitted job {}".format(i))
 
     if do_smooth:
         boot_avg_ni = np.zeros((n_iter, beta_phi_vals.size))
