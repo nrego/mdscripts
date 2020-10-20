@@ -31,7 +31,7 @@ bins = np.arange(0, max_val+1, 1)
 ### Now input all <n_i>_\phi's for a given i ###
 print('')
 print('Extracting all n_i\'s...')
-beta_phis = np.linspace(0,4,101)
+beta_phis = np.linspace(0,4,1001)
 
 
 n_heavies = None
