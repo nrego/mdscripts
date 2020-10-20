@@ -134,7 +134,7 @@ def task_gen():
         
         #futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
         #futures.append(wm.submit(extract_and_reweight_data, fn_args, fn_kwargs))
-
+        print("sending job for atm {}".format(i_atm))
         yield (extract_and_reweight_data, fn_args, fn_kwargs)
 
         #print("submitted job {}".format(i))
@@ -166,7 +166,7 @@ def task_gen():
         #    sys.stdout.flush()
 
 ## COllect results
-for i, future in enumerate(self.work_manager.submit_as_completed(task_gen(), queue_size=wm.n_workers)):
+for i, future in enumerate(wm.submit_as_completed(task_gen(), queue_size=wm.n_workers)):
     i_atm, neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = future.get_result(discard=True)
     if i % 1 == 0:
         print("getting result {} of {}".format(i, n_heavies))
