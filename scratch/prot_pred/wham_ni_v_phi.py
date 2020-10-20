@@ -34,6 +34,7 @@ default_env.process_wm_args(args)
 wm = default_env.make_work_manager()
 wm.startup()
 
+
 ## Construct -ln P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 ## also get <N> v phi, and suscept
 
@@ -164,7 +165,7 @@ for i_atm in range(n_heavies):
 ## COllect results
 for i, future in enumerate(wm.as_completed(futures)):
     i_atm, neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = future.get_result(discard=True)
-    if i % 100 == 0:
+    if i % 1 == 0:
         print("getting result {} of {}".format(i, len(futures)))
         sys.stdout.flush()
     
