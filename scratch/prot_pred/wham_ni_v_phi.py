@@ -74,7 +74,7 @@ max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 bins = np.arange(0, max_val+1, 1)
 
 ## In kT!
-beta_phi_vals = np.linspace(np.min_bphi, args.max_bphi, args.n_vals)
+beta_phi_vals = np.linspace(args.min_bphi, args.max_bphi, args.n_vals)
 print("bphi vals: {}".format(beta_phi_vals))
 
 ## Get PvN, <Nv>, chi_v from all data ###
