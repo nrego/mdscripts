@@ -23,6 +23,7 @@ import argparse
 
 
 parser = argparse.ArgumentParser("reweight to get ni v phi")
+parser.add_argument('--min-bphi', type=float, default=0.0)
 parser.add_argument('--max-bphi', type=float, default=4.0)
 parser.add_argument('--n-vals', type=int, default=101,
                     help='number of bphi vals between 0 and bphimax (default: 101)')
@@ -73,7 +74,7 @@ max_val = int(np.ceil(np.max((all_data, all_data_N))) + 1)
 bins = np.arange(0, max_val+1, 1)
 
 ## In kT!
-beta_phi_vals = np.linspace(0,args.max_bphi,args.n_vals)
+beta_phi_vals = np.linspace(np.min_bphi, args.max_bphi, args.n_vals)
 print("bphi vals: {}".format(beta_phi_vals))
 
 ## Get PvN, <Nv>, chi_v from all data ###
