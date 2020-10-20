@@ -167,7 +167,7 @@ def task_gen():
         #    sys.stdout.flush()
 
 ## COllect results
-for i, future in enumerate(wm.submit_as_completed(task_gen(), 4)):
+for i, future in enumerate(wm.submit_as_completed(task_gen(), wm.n_workers)):
     i_atm, neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = future.get_result(discard=True)
     if i % 1 == 0:
         print("getting result {} of {}".format(i, n_heavies))
