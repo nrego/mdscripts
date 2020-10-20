@@ -33,7 +33,7 @@ args = parser.parse_args()
 default_env.process_wm_args(args)
 wm = default_env.make_work_manager()
 wm.startup()
-
+print("wm {} started with {} workers".format(wm, wm.n_workers))
 
 ## Construct -ln P_v(N) from wham results (after running whamerr.py with '--boot-fn utility_functions.get_weighted_data')
 ## also get <N> v phi, and suscept
