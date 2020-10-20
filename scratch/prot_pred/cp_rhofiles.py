@@ -56,7 +56,7 @@ except:
 os.chdir('reweight_data')
 
 for i_phi, beta_phi in enumerate(beta_phi_vals):
-    dirname = 'beta_phi_{:03g}'.format(int(np.round(beta_phi*100)))
+    dirname = 'beta_phi_{:04g}'.format(int(np.round(beta_phi*1000)))
     try:
         os.makedirs(dirname)
     except:
