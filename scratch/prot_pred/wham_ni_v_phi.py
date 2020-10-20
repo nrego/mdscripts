@@ -121,52 +121,55 @@ smooth_cov_nis = np.zeros_like(cov_nis)
 
 futures = []
 
-for i_atm in range(n_heavies):
+def task_gen():
+    for i_atm in range(n_heavies):
 
-    import time
-    start = time.time()
+        import time
+        start = time.time()
 
-    #neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = extract_and_reweight_data(all_logweights, all_data, all_data_n_i[i_atm], bins, beta_phi_vals)
+        #neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = extract_and_reweight_data(all_logweights, all_data, all_data_n_i[i_atm], bins, beta_phi_vals)
 
-    fn_args = (all_logweights, all_data, all_data_n_i[i_atm], bins, beta_phi_vals)
-    fn_kwargs = {'this_idx': i_atm}
-    
-    #futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
-    futures.append(wm.submit(extract_and_reweight_data, fn_args, fn_kwargs))
-
-    #print("submitted job {}".format(i))
-
-    if do_smooth:
-        boot_avg_ni = np.zeros((n_iter, beta_phi_vals.size))
-        for i_boot in range(n_iter):
-            this_boot_indices = boot_indices[i_boot]
-            (this_logweights, boot_data, boot_data_N) = dat[i_boot]
-
-            _, _, _, _, this_boot_avg_ni, _, _ = extract_and_reweight_data(this_logweights, boot_data, all_data_n_i[i_atm][boot_indices[i_boot]], bins, beta_phi_vals)
-            boot_avg_ni[i_boot] = this_boot_avg_ni
-
-        err_avg_ni = np.ma.masked_invalid(boot_avg_ni).std(axis=0, ddof=1)
-        spl = scipy.interpolate.UnivariateSpline(beta_phi_vals, avg_ni, w=1/err_avg_ni)
+        fn_args = (all_logweights, all_data, all_data_n_i[i_atm], bins, beta_phi_vals)
+        fn_kwargs = {'this_idx': i_atm}
         
-        smooth_avg_nis[i_atm, :] = spl(beta_phi_vals)
-        smooth_cov_nis[i_atm, :] = -spl(beta_phi_vals, 1)
+        #futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
+        #futures.append(wm.submit(extract_and_reweight_data, fn_args, fn_kwargs))
 
-    #avg_nis[i_atm, :] = avg_ni
-    #chi_nis[i_atm, :] = chi_ni
-    #cov_nis[i_atm, :] = cov_ni
+        yield (extract_and_reweight_data, fn_args, fn_kwargs)
+
+        #print("submitted job {}".format(i))
+
+        #if do_smooth:
+        #    boot_avg_ni = np.zeros((n_iter, beta_phi_vals.size))
+        #    for i_boot in range(n_iter):
+        #        this_boot_indices = boot_indices[i_boot]
+        #        (this_logweights, boot_data, boot_data_N) = dat[i_boot]
+
+        #        _, _, _, _, this_boot_avg_ni, _, _ = extract_and_reweight_data(this_logweights, boot_data, all_data_n_i[i_atm][boot_indices[i_boot]], bins, beta_phi_vals)
+        #        boot_avg_ni[i_boot] = this_boot_avg_ni
+
+        #    err_avg_ni = np.ma.masked_invalid(boot_avg_ni).std(axis=0, ddof=1)
+        #    spl = scipy.interpolate.UnivariateSpline(beta_phi_vals, avg_ni, w=1/err_avg_ni)
+            
+        #    smooth_avg_nis[i_atm, :] = spl(beta_phi_vals)
+        #    smooth_cov_nis[i_atm, :] = -spl(beta_phi_vals, 1)
+
+        #avg_nis[i_atm, :] = avg_ni
+        #chi_nis[i_atm, :] = chi_ni
+        #cov_nis[i_atm, :] = cov_ni
 
 
-    end = time.time()
+        #end = time.time()
 
-    if i_atm % 1 == 0:
-        print('  i: {}, ({:.2f}s)'.format(i_atm, end-start), end='\r')
-        sys.stdout.flush()
+        #if i_atm % 1 == 0:
+        #    print('  i: {}, ({:.2f}s)'.format(i_atm, end-start), end='\r')
+        #    sys.stdout.flush()
 
 ## COllect results
-for i, future in enumerate(wm.as_completed(futures)):
+for i, future in enumerate(self.work_manager.submit_as_completed(task_gen(), queue_size=wm.n_workers)):
     i_atm, neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = future.get_result(discard=True)
     if i % 1 == 0:
-        print("getting result {} of {}".format(i, len(futures)))
+        print("getting result {} of {}".format(i, len(n_heavies))
         sys.stdout.flush()
     
     avg_nis[i_atm, :] = avg_ni
