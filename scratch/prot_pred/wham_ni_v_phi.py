@@ -128,7 +128,7 @@ for i_atm in range(n_heavies):
     #neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = extract_and_reweight_data(all_logweights, all_data, all_data_n_i[i_atm], bins, beta_phi_vals)
 
     fn_args = (all_logweights, all_data, all_data_n_i[i_atm], bins, beta_phi_vals)
-    fn_kwargs = {'this_idx': i}
+    fn_kwargs = {'this_idx': i_atm}
     
     #futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
     futures.append(wm.submit(extract_and_reweight_data, fn_args, fn_kwargs))
