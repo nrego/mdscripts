@@ -169,7 +169,7 @@ def task_gen():
 for i, future in enumerate(self.work_manager.submit_as_completed(task_gen(), queue_size=wm.n_workers)):
     i_atm, neglogpdist, neglogpdist_ni, avg, chi, avg_ni, chi_ni, cov_ni = future.get_result(discard=True)
     if i % 1 == 0:
-        print("getting result {} of {}".format(i, len(n_heavies))
+        print("getting result {} of {}".format(i, n_heavies))
         sys.stdout.flush()
     
     avg_nis[i_atm, :] = avg_ni
