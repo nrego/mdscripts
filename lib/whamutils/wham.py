@@ -194,7 +194,7 @@ def get_negloghist(data, bins, logweights):
 
 # Get PvN, Nvphi, and chi v phi for a set of datapoints and their weights
 #  Note avg n v phi is *not* reweighted (i.e. it's under the phi*ntwid ensemble)
-def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
+def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals, this_idx=-1):
     
     neglogpdist = get_negloghist(ntwid, bins, logweights)
     neglogpdist_data = get_negloghist(data, bins, logweights)
@@ -240,8 +240,10 @@ def extract_and_reweight_data(logweights, ntwid, data, bins, beta_phi_vals):
         var_data[i] = this_var_data
         cov_data[i] = this_cov_data
 
-    return (neglogpdist, neglogpdist_data, avg_ntwid, var_ntwid, avg_data, var_data, cov_data)
-
+    if this_idx == -1:
+        return (neglogpdist, neglogpdist_data, avg_ntwid, var_ntwid, avg_data, var_data, cov_data)
+    else:
+        return (this_idx, neglogpdist, neglogpdist_data, avg_ntwid, var_ntwid, avg_data, var_data, cov_data)
 
 
 # Get covariance matrix over data, reweighted for each of the beta phi vals
