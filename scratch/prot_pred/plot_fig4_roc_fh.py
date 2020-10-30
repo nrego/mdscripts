@@ -70,6 +70,11 @@ ax.set_xlim(-0.02,1)
 ax.set_ylim(0,1)
 ax.set_xticks([0,0.5,1])
 ax.set_yticks([0,0.5,1])
+
+## Load in cluster rms
+tpr_clust, fpr_clust, f_h_clust = [arr.squeeze() for arr in np.split(np.loadtxt("clust_perf.dat"), 3, 1)]
+ax.plot(fpr_clust, tpr_clust, 'k--', linewidth=2)
+
 #ax.set_xticks([])
 #ax.set_yticks([])
 ax.set_xticklabels([])
@@ -146,7 +151,7 @@ fig.savefig('{}/Desktop/tpr_fpr.pdf'.format(homedir), transparent=True)
 
 print("beta phi opt: {}".format(beta_phi[best_idx]))
 
-#norm_auc = tpr[-1] * fpr[-1]
+norm_auc = tpr[-1] * fpr[-1]
 #norm_auc = tpr[45]*fpr[45]
-print("auc: {:.2f}".format(np.trapz(tpr[:46], fpr[:46]) / norm_auc))
+print("auc: {:.2f}".format(np.trapz(tpr, fpr) / norm_auc))
 

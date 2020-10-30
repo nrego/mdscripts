@@ -9,8 +9,8 @@ import numpy as np
 homedir = os.environ['HOME']
 
 mpl.rcParams.update({'axes.labelsize': 20})
-mpl.rcParams.update({'xtick.labelsize': 15})
-mpl.rcParams.update({'ytick.labelsize': 15})
+mpl.rcParams.update({'xtick.labelsize': 50})
+mpl.rcParams.update({'ytick.labelsize': 50})
 mpl.rcParams.update({'axes.titlesize':40})
 mpl.rcParams.update({'legend.fontsize':10})
 

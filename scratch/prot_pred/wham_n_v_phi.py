@@ -1,4 +1,3 @@
-from __future__ import division, print_function
 
 import numpy as np
 
@@ -39,10 +38,7 @@ mpl.rcParams.update({'ytick.labelsize': 40})
 mpl.rcParams.update({'axes.titlesize': 50})
 
 
-### EXTRACT DATA ###
-dat = np.load('boot_fn_payload.dat.npy')
-
-n_iter = len(dat)
+### EXTRACT DATA ALL DATA/get total PVN ###
 
 all_data_ds = np.load('all_data.dat.npz')
 all_logweights = all_data_ds['logweights']
@@ -63,6 +59,10 @@ beta_phi_vals = np.linspace(0,4,1001)
 ## Get PvN, <Nv>, chi_v from all data ###
 all_neglogpdist, all_neglogpdist_N, all_avg, all_chi, all_avg_N, all_chi_N, _ = extract_and_reweight_data(all_logweights, all_data, all_data_N, bins, beta_phi_vals)
 
+### NOW BOOTSTRAP ERRORS ##
+dat = np.load('boot_fn_payload.dat.npy')
+
+n_iter = len(dat)
 
 ## Extract errorbars for avg N v phi ###
 boot_avg_phi = np.zeros((n_iter,beta_phi_vals.size))

@@ -1,4 +1,4 @@
-from __future__ import division; __metaclass__ = type
+
 import sys
 import numpy as np
 from math import sqrt
@@ -118,7 +118,7 @@ sig = 1
 rcut = 5
 
 #pos = np.loadtxt('pos.dat')
-univ = MDAnalysis.Universe("bphi.pdb")
+univ = MDAnalysis.Universe("struct.pdb")
 pos = univ.atoms.positions
 min_pt = pos.min()-buff
 max_pt = pos.max()+buff
@@ -184,16 +184,16 @@ k_mean_rho /= res
 dump_dx('prot_curv.dx', k_mean_rho.ravel(), res, min_pt)
 
 ## Plot slice where z = (z_max-z_min)/2
-ax = plt.gca()
-midpt_idx = grid_pts.size // 2
-pcm = ax.pcolormesh(XX[:,:,midpt_idx], YY[:,:,midpt_idx], rho[:,:,midpt_idx], cmap='hot', norm=plt.Normalize(0,1))
-plt.colorbar(pcm)
-plt.show()
+#ax = plt.gca()
+#midpt_idx = grid_pts.size // 2
+#pcm = ax.pcolormesh(XX[:,:,midpt_idx], YY[:,:,midpt_idx], rho[:,:,midpt_idx], cmap='hot', norm=plt.Normalize(0,1))
+#plt.colorbar(pcm)
+#plt.show()
 
-ax = plt.gca()
-pcm = ax.pcolormesh(XX[:,:,midpt_idx], YY[:,:,midpt_idx], k_mean_rho[:,:,midpt_idx], cmap='hot', norm=plt.Normalize(0,1))
-plt.colorbar(pcm)
-plt.show()
+#ax = plt.gca()
+#pcm = ax.pcolormesh(XX[:,:,midpt_idx], YY[:,:,midpt_idx], k_mean_rho[:,:,midpt_idx], cmap='hot', norm=plt.Normalize(0,1))
+#plt.colorbar(pcm)
+#plt.show()
 
 
 ## Find voxels at isosurface ##
@@ -212,12 +212,14 @@ pts_all = np.vstack([XX[isosurf_mask].ravel(), YY[isosurf_mask].ravel(), ZZ[isos
 
 norm = plt.Normalize(-1,1)
 
-ax = plt.gca(projection='3d')
-ax.scatter(pts_all[:,0], pts_all[:,1], pts_all[:,2], c=isosurf_curv_vals, norm=norm, cmap='seismic')
-plt.show()
+#ax = plt.gca(projection='3d')
+#ax.scatter(pts_all[:,0], pts_all[:,1], pts_all[:,2], c=isosurf_curv_vals, norm=norm, cmap='seismic')
+#plt.show()
 
 write_pdb('surf.pdb', pts_all, isosurf_curv_vals)
 
+
+print("Finding atomic curvature...")
 ## Color atoms by nearby curvature ##
 #univ = MDAnalysis.Universe('actual_contact.pdb')
 univ.atoms.tempfactors = 0
@@ -241,6 +243,9 @@ univ.atoms.write('curv.pdb', bonds=None)
 
 np.savetxt('atomic_curvature.dat', univ.atoms.tempfactors)
 
+print("..done")
+
+'''
 vert_curv = []
 for vert in verts:
     phix = phi(vert[0]-XX, sig, sig**2, rcut, rcut**2)
@@ -254,5 +259,5 @@ for vert in verts:
     this_curv = np.sum(wt*isosurf_curvature_mean)
 
     vert_curv.append(this_curv)   
-
+'''
 

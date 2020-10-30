@@ -107,6 +107,11 @@ ax.set_xticks([0,0.5,1])
 ax.set_yticks([0,0.5,1])
 #ax.set_xticks([])
 #ax.set_yticks([])
+
+## Load in cluster rms
+tpr_clust, fpr_clust, f_h_clust = [arr.squeeze() for arr in np.split(np.loadtxt("clust_perf.dat"), 3, 1)]
+ax.plot(fpr_clust, tpr_clust, 'k--', linewidth=2)
+
 ax.set_xticklabels([])
 ax.set_yticklabels([])
 #ax.set_xlabel('FPR')

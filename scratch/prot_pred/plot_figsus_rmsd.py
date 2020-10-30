@@ -1,4 +1,3 @@
-from __future__ import division, print_function
 
 import matplotlib as mpl
 from matplotlib import rc 
@@ -26,10 +25,10 @@ backbone_rmsds = []
 heavy_rmsds = []
 
 for sys_name in sys_names:
-    dat = np.loadtxt('{}/old_prot_all/bound/rmsd_fit.dat'.format(sys_name))
+    dat = np.loadtxt('{}/old_prot_all/equil/run2/rmsd_fit.dat'.format(sys_name))
     
-    backbone_rmsds.append(dat[1]/10.0)
-    heavy_rmsds.append(dat[2]/10.0) 
+    backbone_rmsds.append(dat[:,1].mean()/10.0)
+    heavy_rmsds.append(dat[:,2].mean()/10.0) 
 
 indices = np.arange(len(sys_names))
 

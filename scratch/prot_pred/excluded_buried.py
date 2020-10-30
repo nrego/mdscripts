@@ -42,7 +42,7 @@ parser.add_argument('--do-static', action='store_true',
 args = parser.parse_args()
 #embed()
 sys = MDSystem(args.top, args.struct, sel_spec=args.sel_spec)
-
+#embed()
 if args.max:
     rho_dat = np.load(args.rhodata)['rho_water'].max(axis=0)
 else:

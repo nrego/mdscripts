@@ -113,7 +113,7 @@ Command-line options
         if ext in ['trr', 'xtc']:
             self.do_traj = True
             self.other_univ = other_univ = MDAnalysis.Universe(args.tprfile2, args.fitfile)
-        elif ext == 'gro':
+        elif ext == 'gro' or ext == 'pdb':
             self.other_univ = other_univ = MDAnalysis.Universe(args.tprfile2, args.fitfile)
         else:
             print("unknown or missing extension")
@@ -160,8 +160,9 @@ Command-line options
         if self.rmsd_spec is not None:
             ref_struct = self.ref_univ.select_atoms(self.rmsd_spec)
             other_struct = self.other_univ.select_atoms(self.rmsd_spec_other)
+            
             assert ref_struct.n_atoms == other_struct.n_atoms
-
+            
             self.rms_per_atom = np.zeros((self.n_frames, ref_struct.n_atoms))
 
         if self.do_traj:
