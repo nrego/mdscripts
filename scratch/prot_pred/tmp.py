@@ -1,135 +1,160 @@
-from scipy.spatial import cKDTree
+from __future__ import division, print_function
+
+import glob, os, sys
 import numpy as np
+from matplotlib import pyplot as plt
+import matplotlib as mpl
+
+from mdtools import dr
+
+from constants import k
+
 import MDAnalysis
-import glob, os, pathlib
-from scipy.integrate import cumtrapz
 
-fnames = sorted(glob.glob('*/prot_contact/noq_phi_sims/PvN.dat'))
-homedir = os.environ['HOME']
+import argparse
+from IPython import embed
 
-name_lut = {
-    '1bmd': 'MDH',
-    '1brs_bn': 'barnase',
-    '1brs_bs': 'barstar',
-    '1msb_pred': 'MBP',
-    '1ycr_mdm2': 'MDM2',
-    '2mlt': 'MLT',
-    '2tsc_pred': 'TS',
-    '2z59_ubiq': 'UBQ'
-}
 
-bphi = None
+def get_perf(dewet_mask, contact_mask, hydropathy_mask):
 
-n_vals = None
-tmp_pvn_q_all = []
-tmp_pvn_noq_all = []
-names = []
-for i, fname in enumerate(fnames):
+    tp_np = (dewet_mask & contact_mask & hydropathy_mask).sum()
+    fp_np = (dewet_mask & ~contact_mask & hydropathy_mask).sum()
+    tn_np = (~dewet_mask & ~contact_mask & hydropathy_mask).sum()
+    fn_np = (~dewet_mask & contact_mask & hydropathy_mask).sum()
 
-    path = pathlib.Path(fname)
-    name = name_lut[path.parts[0]]
-    dirname = os.path.dirname(fname)
-    topdir = os.path.dirname(dirname)
-    names.append(name)
+    tp_po = (dewet_mask & contact_mask & ~hydropathy_mask).sum()
+    fp_po = (dewet_mask & ~contact_mask & ~hydropathy_mask).sum()
+    tn_po = (~dewet_mask & ~contact_mask & ~hydropathy_mask).sum()
+    fn_po = (~dewet_mask & contact_mask & ~hydropathy_mask).sum()
 
-    dat_noq = np.loadtxt(fname)
-    dat_q = np.loadtxt('{}/phi_sims/PvN.dat'.format(topdir))
 
-    rho_noq = np.load('{}/noq_phi_sims/equil/rho_data_dump_rad_6.0.dat.npz'.format(topdir))['rho_water'].mean(axis=0)
-    rho_q = np.load('{}/phi_sims/equil/rho_data_dump_rad_6.0.dat.npz'.format(topdir))['rho_water'].mean(axis=0)
+    return tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po
 
-    univ = MDAnalysis.Universe('{}/phi_sims/cent.gro'.format(topdir))
-    prot = univ.select_atoms('protein and not name H*')
-    prot = univ.select_atoms("not resname SOL and not name H* and not name CL and not name NA")
-    assert prot.n_atoms == rho_noq.size == rho_q.size
+
+beta = 1/(300*k)
+
+### A mix of evaluate perforance.py and anayze patch.py
+#      Evaluates the fraction of TP, FP, etc that are non-polar or polar/charged
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser('Evaluate performance with phi by atom chemistry')
+    parser.add_argument('--actual-contact', type=str, default='../bound/actual_contact_mask.dat', 
+                        help='mask for actual contacts (default: %(default)s)')
+    parser.add_argument('--rho-cross', type=str, default='../reweight_data/rho_cross.dat.npz',
+                        help='Dataset showing all atoms, including interpolated values at which each atom crosses thresh (default: %(default)s)')
+    parser.add_argument('--buried-mask', type=str, default='beta_phi_000/buried_mask.dat',
+                        help='mask for buried atoms (default: %(default)s')
+    parser.add_argument('--hydropathy-mask', type=str, default='../bound/hydropathy_mask.dat',
+                        help='mask of non-polar atoms (default: %(default)s)')
+    parser.add_argument('--no-beta', action='store_true', default=False,
+                        help='If provided, assume input files are in kJ/mol, not kT')
+    parser.add_argument('--thresh', '-s', type=float, default=0.5,
+                        help='Rho threshold for determining if atom is dewetted (default: %(default)s)')
+    args = parser.parse_args()
+
+    s = args.thresh
+    buried_mask = np.loadtxt(args.buried_mask, dtype=bool)
+    surf_mask = ~buried_mask
+    contact_mask = np.loadtxt(args.actual_contact, dtype=bool)
+    hydropathy_mask = np.loadtxt(args.hydropathy_mask, dtype=bool)
     
-    univ.add_TopologyAttr('tempfactors')
-    contact_mask = np.loadtxt('{}/old_prot_all/bound/actual_contact_mask.dat'.format(path.parts[0]), dtype=bool)
-    buried_mask = np.loadtxt('{}/old_prot_all/bound/buried_mask.dat'.format(path.parts[0]), dtype=bool)
-    #prot.tempfactors = -2
-    #prot[contact_mask].tempfactors = (rho_noq/rho_q)[contact_mask]
-    prot.tempfactors = (rho_noq/rho_q)
-    prot[buried_mask].tempfactors = -2
-    prot.write('{}/Desktop/prot_{}.pdb'.format(homedir,name), bonds=None)
+    rho_ds = np.load(args.rho_cross)
 
+    # Beta phi vals, Shape: n_bphi_vals
+    beta_phi_vals = np.round(rho_ds['beta_phi'], 4)
+    # <rho_i>_phi, Shape: (n_heavy_atoms, n_bphi_vals)
+    rho_dat = rho_ds['rho_data']
+    # Critical bphis for each atom - odd number of bphis means atom i is dewetted by bphimax
+    # Shape: (n_heavy_atoms)
+    cross_vals = rho_ds['cross_vals']
+    
 
-    plt.close('all')
-    fig = plt.figure(figsize=(7,6))
-    ax = fig.gca()
-    ax.plot(dat_q[:,0], dat_q[:,1], label='{}, reg'.format(name))
-    ax.plot(dat_noq[:,0], dat_noq[:,1], label='{}, q=0'.format(name))
-    ax.set_xlabel(r'$N$')
-    ax.set_ylabel(r'$\beta F_v(N)$')
-    fig.legend()
-    fig.tight_layout()
-    fig.savefig('{}/Desktop/fig_fvn_{}'.format(homedir, name), transparent=True)
+    if contact_mask[surf_mask].sum() != contact_mask.sum():
+        diff_contact = contact_mask.sum() - contact_mask[surf_mask].sum()
+        print("WARNING: {:1d} Contacts are buried by buried_mask".format(diff_contact))
+    
+    contact_mask = contact_mask[surf_mask] # Only considering surface atoms
+    hydropathy_mask = hydropathy_mask[surf_mask]
+    cross_vals = cross_vals[surf_mask]
+    rho_dat = rho_dat[surf_mask]
+    cross_mask = np.diff(rho_dat < args.thresh)
 
+    print('Number of surface atoms: {}'.format(surf_mask.sum()))
+    print('Number of contacts: {}'.format(contact_mask.sum()))
+    print('Number of non-polar surface atoms: {} ({:0.2f})'.format(hydropathy_mask.sum(), (hydropathy_mask.sum()/surf_mask.sum())))
+    print('Number of non-polar contact atoms: {} ({:0.2f})'.format((hydropathy_mask&contact_mask).sum(), (hydropathy_mask&contact_mask).sum() / contact_mask.sum()))
 
-    tmp_pvn_q_all.append(dat_q[:,1])
-    tmp_pvn_noq_all.append(dat_noq[:,1])
+    header = 'beta*phi  tp(np) tp(p)  fp(np)  fp(p)  tn(np)  tn(p)  fn(np)  fn(p)'   
+    dat = []
+    surf_indices = np.arange(surf_mask.sum())
 
-    assert dat_noq[:,0].min() == dat_q[:,0].min() == 0
-    assert dat_q[:,0].size >= dat_noq[:,0].size
+    for i, beta_phi in enumerate(beta_phi_vals[:-1]):
 
-    n_noq = np.loadtxt('{}/NvPhi.dat'.format(dirname))
-    n_q = np.loadtxt('{}/phi_sims/NvPhi.dat'.format(topdir))
+        if args.no_beta:
+            beta_phi = beta*beta_phi
 
-    if n_vals is None:
-        n_vals = dat_q[:,0]
-    elif n_vals.size < dat_q[:,0].size:
-        n_vals = dat_q[:,0]
+        this_rho = rho_dat[:,i]
+        next_rho = rho_dat[:,i+1]
 
-    n0_noq = n_noq[0,1]
-    n0_q = n_q[0,1]
+        dewet_mask = this_rho < s
 
-    print('Name: {}  <Nv>0_reg: {:1.2f}   <Nv>0_noq: {:1.2f}  Delta <Nv>0: {:1.2f}  ({:0.2f})'.format(name, n0_q, n0_noq, n0_q-n0_noq, (n0_q-n0_noq)/n0_q))
+        ## Record state at this beta phi val
 
+        tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = get_perf(dewet_mask, contact_mask, hydropathy_mask)
+        this_dat = beta_phi, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po
+        dat.append(this_dat)
 
-    plt.close('all')
-    fig = plt.figure(figsize=(7,6))
-    ax = fig.gca()
-    ax.plot(n_q[:,0], n_q[:,1], label='{}, reg'.format(name))
-    ax.plot(n_noq[:,0], n_noq[:,1], label='{}, q=0'.format(name))
-    ax.set_xlabel(r'$\beta \phi$')
-    ax.set_ylabel(r'$\langle N_v \rangle_\phi$')
-    fig.legend()
-    fig.tight_layout()
-    fig.savefig('{}/Desktop/fig_nvphi_{}'.format(homedir, name), transparent=True)
+        ## If we're about to cross a threshold for any atom(s), linearly interpolate their cross values
+        this_cross_mask = cross_mask[:,i]
+        n_cross = this_cross_mask.sum()
 
+        if n_cross > 0:
 
+            print("\n{} crosses from bphi={:.2f} to {:.2f}".format(n_cross, beta_phi, beta_phi_vals[i+1]))
+            assert np.logical_xor((this_rho < s), (next_rho < s)).sum() == n_cross
 
+            # Should always be the same, but oh well
+            delta_bphi = np.round(beta_phi_vals[i+1] - beta_phi, 4)
+            delta_rho = next_rho - this_rho
+            slope = delta_rho / delta_bphi
 
-names = np.array(names)
+            # Deltas giving the critical points for each atom
+            d_bphi = ((s-this_rho)/(slope))[this_cross_mask]
+            cross_indices = surf_indices[this_cross_mask]
 
-pvn_q_all = np.zeros((n_vals.size, len(fnames)+1))
-pvn_noq_all = np.zeros_like(pvn_q_all)
-pvn_q_all[:] = np.inf
-pvn_noq_all[:] = np.inf
+            assert (d_bphi > 0).all()
+            assert np.max(d_bphi) < delta_bphi
 
-pvn_q_all[:,0] = n_vals
-pvn_noq_all[:,0] = n_vals
+            sort_idx = np.argsort(d_bphi)
 
-for i, (this_pvn_q, this_pvn_noq) in enumerate(zip(tmp_pvn_q_all, tmp_pvn_noq_all)):
-    pvn_q_all[:this_pvn_q.size, i+1] = this_pvn_q
-    pvn_noq_all[:this_pvn_noq.size, i+1] = this_pvn_noq
+            for delta_index in sort_idx:
+                this_idx = cross_indices[delta_index]
+                this_d_bphi = d_bphi[delta_index]
+                new_rho = this_rho + slope*this_d_bphi
+                new_beta_phi = beta_phi + this_d_bphi
+                dewet_mask = dewet_mask.copy()
+                
+                # This atom has dewetted
+                if this_rho[this_idx] >= s:
+                    assert next_rho[this_idx] < s
+                    dewet_mask[this_idx] = True
+                # This atom is wetting (flicker)
+                elif this_rho[this_idx] < s:
+                    assert next_rho[this_idx] >= s
+                    dewet_mask[this_idx] = False
+    
+                tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = get_perf(dewet_mask, contact_mask, hydropathy_mask)
+                this_dat = new_beta_phi, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po
+                dat.append(this_dat)
 
-np.savetxt('fvn_q.dat', pvn_q_all, header='    '.join(names), fmt='%1.4e')
-np.savetxt('fvn_noq.dat', pvn_noq_all, header='    '.join(names), fmt='%1.4e')
+    dat = np.array(dat)
+    # check that the data in sorted order by phi...
+    assert np.diff(dat[:,0]).min() >= 0
+    beta_phi_vals, tp_np, tp_po, fp_np, fp_po, tn_np, tn_po, fn_np, fn_po = [arr.squeeze() for arr in np.split(dat, dat.shape[1], axis=1)]
+    n_dewet = tp_np + tp_po + fp_np + fp_po
 
+    assert np.abs(np.diff(n_dewet)).max() <= 1
 
-for i, name in enumerate(names):
-    this_pvn_q = pvn_q_all[:, i+1]
-    this_pvn_noq = pvn_noq_all[:, i+1]
-
-    n0_q = n_vals[np.argmin(this_pvn_q)]
-    n0_noq = n_vals[np.argmin(this_pvn_noq)]
-
-    delta_n_q = n0_q - n_vals
-    delta_n_noq = n0_noq - n_vals
-
-    plt.plot(delta_n_noq, this_pvn_noq/delta_n_noq, label=name)
-
-plt.legend()
-plt.show()
-
+    np.savetxt('perf_by_chemistry.dat', dat, header=header, fmt='%1.8e')
 

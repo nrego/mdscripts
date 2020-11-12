@@ -298,7 +298,7 @@ Command-line options
 
         #water_dist_cutoff = int(np.sqrt(3*self.cutoff**2))
         #water_dist_cutoff += 1
-        water_dist_cutoff = 30
+        water_dist_cutoff = 10
 
         rho_water = np.zeros((self.n_frames, self.npts), dtype=RHO_DTYPE)
         rho_prot = np.zeros((self.n_frames, self.npts), dtype=RHO_DTYPE)
