@@ -16,7 +16,7 @@ from mdtools import ParallelTool
 
 from constants import k
 
-from whamutils import kappa, grad_kappa, gen_data_logweights, WHAMDataExtractor, callbackF
+from whamutils import kappa, grad_kappa, gen_data_logweights, WHAMDataExtractor, callbackF, eval_fn
 
 import matplotlib as mpl
 
@@ -195,7 +195,7 @@ Command-line options
             auxfiles = None
 
         log.info("Extracting data...")
-
+        
         self.data_extractor = WHAMDataExtractor(args.input, auxinfiles=auxfiles, fmt=args.fmt, autocorr=auto, start=args.start, end=args.end, beta=self.beta)
 
         log.info("Tau for each window: {} ps".format(self.autocorr))
@@ -218,16 +218,19 @@ Command-line options
         log.info("Quick sub-sampled MBAR run")
         uncorr_bias_mat, subsampled_indices = _subsample(self.bias_mat, self.uncorr_n_samples, self.uncorr_n_tot, self.n_samples, self.n_windows)
         
-        myargs = (uncorr_bias_mat, self.uncorr_n_sample_diag, self.uncorr_ones_m, self.uncorr_ones_n, self.uncorr_n_tot)
-        f_k_sub = minimize(kappa, xweights[1:], method='L-BFGS-B', args=myargs, jac=grad_kappa).x
+        #myargs = (uncorr_bias_mat, self.uncorr_n_sample_diag, self.uncorr_ones_m, self.uncorr_ones_n, self.uncorr_n_tot)
+        myargs = (uncorr_bias_mat, self.uncorr_n_samples / self.uncorr_n_tot, self.uncorr_n_tot)
+        f_k_sub = minimize(eval_fn, xweights[1:], method='L-BFGS-B', args=myargs, jac=True).x
+        #f_k_sub = minimize(kappa, xweights[1:], method='L-BFGS-B', args=myargs, jac=grad_kappa).x
         f_k_sub = np.append(0, f_k_sub)
         log.info("subsampled MBAR results: {}".format(f_k_sub))
 
         log.info("Running MBAR on entire dataset")
         log.info("...(this might take awhile)")
-        myargs = (self.bias_mat, self.n_sample_diag, self.ones_m, self.ones_n, self.uncorr_n_tot)
+        myargs = (self.bias_mat, self.n_samples / self.n_tot, self.n_tot)
         
-        f_k_actual = minimize(kappa, f_k_sub[1:], method='L-BFGS-B', args=myargs, jac=grad_kappa, callback=callbackF).x
+        f_k_actual = minimize(eval_fn, f_k_sub[1:], method='L-BFGS-B', args=myargs, jac=True, callback=callbackF).x
+        #f_k_actual = minimize(kappa, f_k_sub[1:], method='L-BFGS-B', args=myargs, jac=grad_kappa, callback=callbackF).x
         f_k_actual = np.append(0, f_k_actual)
         log.info("MBAR results on entire dataset: {}".format(f_k_actual))
 

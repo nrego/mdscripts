@@ -222,7 +222,7 @@ fig, ax = plt.subplots(figsize=(8,8))
 ax.plot(fpr_other_all, tpr_other_all, 'o-', color=colors[0], label=r'$\phi$-ens, all contacts')
 ax.plot(fpr_other_all[max_idx_other_all], tpr_other_all[max_idx_other_all], 'X', color=colors[0], markersize=20)
 
-ax.plot(fpr_all, tpr_all, '--', color=colors[0], label=r'cluster, all contacts')
+ax.plot(fpr_all, tpr_all, 'k--', linewidth=2, label=r'cluster, all contacts')
 ax.plot(fpr_all[max_idx_all], tpr_all[max_idx_all], 'X', color=colors[0], markersize=20)
 
 ax.plot(fpr_other_np, tpr_other_np, 'o-', color=colors[1], label=r'$\phi$-ens, non-polar contacts')
@@ -239,8 +239,9 @@ ax.set_yticks([0,0.5,1])
 ax.set_xticklabels([])
 ax.set_yticklabels([])
 
-plt.legend()
+
 fig.tight_layout()
+#plt.legend(loc=4)
 
 plt.savefig('{}/Desktop/roc.pdf'.format(homedir))
 
@@ -264,6 +265,10 @@ print("AUC other np: {:.2f}".format(norm_auc_other_np))
 
 
 ## Save clustering roc perf
-dat = np.vstack((tpr_all, fpr_all, d_h_all)).T 
+dat = np.vstack((tpr_all, fpr_all, d_h_all, tpr_np, fpr_np, d_h_np)).T 
 np.savetxt("../pred_reweight/clust_perf.dat", dat)
+
+dat = np.vstack((tpr_other_np, fpr_other_np, d_h_other_np))
+np.savetxt("../pred_reweight/perf_np.dat", dat)
+
 

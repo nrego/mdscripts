@@ -28,14 +28,22 @@ class WHAMDataExtractor:
         # Number of (possibly correlated) samples in each dataset
         # shape: (N_windows, )
         self.n_samples = None
+
+        # Shape: (N_windows,)
+        #.  kappas, phis, nstars associated with each window, in order.
+        #.   Only used for phi-ens type simulations
+        self.kappas = None
+        self.phis = None
+        self.Nstars = None
+        self.avg_N = None
         
         try:
             for i, infile in enumerate(infiles):
-                log.info("loading {}th input: {}".format(i, infile))
+                log.debug("loading {}th input: {}".format(i, infile))
 
                 if self.fmt == 'phi': 
                     ds = self.dr.loadPhi(infile) 
-                    log.info("  kappa: {:.4f}  Nstar: {:.2f}  phi: {:.2f}".format(ds.kappa, ds.Nstar, ds.phi))
+                    log.debug("  kappa: {:.4f}  Nstar: {:.2f}  phi: {:.2f}".format(ds.kappa, ds.Nstar, ds.phi))
                 elif self.fmt == 'simple':
                     this_auxfile = None
                     if auxinfiles is not None:
@@ -154,11 +162,18 @@ class WHAMDataExtractor:
         self.all_data_aux = np.array([], dtype=DTYPE)
         self.n_samples = np.array([]).astype(int)
 
+        self.kappas = np.zeros(self.n_windows, dtype=DTYPE)
+        self.phis = np.zeros(self.n_windows, dtype=DTYPE)
+        self.Nstars = np.zeros(self.n_windows, dtype=DTYPE)
+        self.avg_N = np.zeros(self.n_windows, dtype=DTYPE)
+
         # If autocorr not set, set it ouselves
         if self.calc_autocorr:
             self.autocorr = np.zeros(self.n_windows)
 
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
+
+            log.info("Extracting {}th dataset {}".format(i, ds_name))
 
             if self.ts == None:
                 self.ts = ds.ts
@@ -179,13 +194,19 @@ class WHAMDataExtractor:
             self.all_data = np.append(self.all_data, dataframe)
             self.all_data_aux = np.append(self.all_data_aux, dataframe_N)
 
+            self.kappas[i] = ds.kappa
+            self.phis[i] = ds.phi
+            self.Nstars[i] = ds.Nstar
+            self.avg_N[i] = dataframe.mean()
+            log.info("   kappa: {:.2f}  Nstar: {:.2f}".format(ds.kappa, ds.Nstar))
+
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
 
         # Ugh !
         for i, (ds_name, ds) in enumerate(self.dr.datasets.items()):
             self.bias_mat[:, i] = self.beta*(0.5*ds.kappa*(self.all_data-ds.Nstar)**2 + ds.phi*self.all_data) 
-        
+
         log.info("saving integrated autocorr times (in ps) to 'autocorr.dat'")
         np.savetxt('autocorr.dat', self.autocorr, header='integrated autocorrelation times for each window (in ps)')
         

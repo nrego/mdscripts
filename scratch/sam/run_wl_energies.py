@@ -77,7 +77,7 @@ do_brute =  args.do_brute
 
 
 ## Load datasets to train model
-ds = np.load('sam_pattern_data.dat.npz')
+ds = np.load('sam_pattern_06_06.npz')
 
 energies = ds['energies']
 k_vals = ds['k_vals']
@@ -144,8 +144,8 @@ for i in range(args.patch_size**2):
     ext_count[i] = np.intersect1d(ext_indices, nn_ext[i]).size
 
 # Run WL
-fn_kwargs = dict(nn=nn, ext_count=ext_count, coef1=reg.coef_[0], coef2=reg.coef_[1], coef3=reg.coef_[2], inter=reg.intercept_)
-wl = WangLandau(positions, bins, get_energy, fn_kwargs=fn_kwargs, eps=args.eps, max_iter=args.max_wl_iter)
+fn_kwargs = dict(nn=nn, ext_count=ext_count, coef1=reg.coef_[0], coef2=reg.coef_[1], coef3=reg.coef_[2], inter=reg.intercept_, positions=positions)
+wl = WangLandau(positions, bins, get_order, fn_kwargs=fn_kwargs, eps=args.eps, max_iter=args.max_wl_iter)
 #embed()
 wl.gen_states(k_ch3, do_brute, hist_flat_tol=args.hist_flat_tol)
 

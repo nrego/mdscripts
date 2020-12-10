@@ -154,6 +154,33 @@ def callbackF(xweights):
     Nfeval += 1
 
 
+def eval_fn(xweights, bias_mat, n_sample_red, n_tot):
+
+    f = np.append(0, xweights)
+
+    Q = f - bias_mat
+    c = Q.max(axis=1)
+    Q -= c[:,None]
+
+    Q_exp = numexpr.evaluate("exp(Q)")
+
+    # kappa, the log-likelihood fn
+    ln_sum_exp = np.log(Q_exp.sum(axis=1)) + c
+
+    logLikelihood = (1/n_tot)*ln_sum_exp.sum() - \
+                    np.dot(n_sample_red, f)
+
+    # grad
+    denom = Q_exp.sum(axis=1)[:,None]
+
+    W = Q_exp / denom
+
+    grad = (1/n_tot)*W.sum(axis=0) - n_sample_red
+
+    del Q, Q_exp, denom, W, ln_sum_exp
+
+    return logLikelihood, grad[1:]
+
 ## Convenience methods to deal constructing prob distributions
 
 # Get the (negative log) of the probability distribution

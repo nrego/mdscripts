@@ -156,7 +156,7 @@ Command-line options
         self.rmsd_arr = np.zeros((self.n_frames, ndim))
 
         self.ref_univ.atoms.write('fit_ref.gro')
-
+        
         if self.rmsd_spec is not None:
             ref_struct = self.ref_univ.select_atoms(self.rmsd_spec)
             other_struct = self.other_univ.select_atoms(self.rmsd_spec_other)

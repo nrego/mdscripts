@@ -49,7 +49,7 @@ sys = MDSystem(args.topology, args.struct, sel_spec=args.sel_spec)
 
 ref_data = np.load(args.ref)['rho_water'].mean(axis=0)
 targ_data = np.load(args.rhodata)['rho_water'].mean(axis=0)
-
+#embed()
 sys.find_buried(ref_data, nb=args.nb)
 
 # Surface heavy atoms

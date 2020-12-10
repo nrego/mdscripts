@@ -197,7 +197,7 @@ plt.savefig('{}/Desktop/fig_merge_half'.format(homedir), transparent=True)
 ###########################
 
 
-## After 10 edge groups left ##
+## After 15 edge groups left (M16, best performance) ##
 #######################################################################
 #######################################################################
 
@@ -205,12 +205,12 @@ plt.close('all')
 
 state.plot(size=figsize)
 
-colors = get_label_colors(all_mgc[-6].labels, state)
+colors = get_label_colors(all_mgc[-15].labels, state)
 
 state.plot_edges(colors=['white' for i in range(state.n_edges)], line_widths=line_widths)
 state.plot_edges(colors=colors, line_styles=line_styles, line_widths=line_widths)
 
-plt.savefig('{}/Desktop/fig_merge_final_10'.format(homedir), transparent=True)
+plt.savefig('{}/Desktop/fig_merge_final_16'.format(homedir), transparent=True)
 
 
 ###########################
@@ -269,28 +269,6 @@ plt.savefig('{}/Desktop/fig_merge_m2'.format(homedir), transparent=True)
 ###########################
 
 
-#########################
-#### PLOT PERFORMANCE ###
-plt.close('all')
-
-fig, ax1 = plt.subplots(figsize=(7,6))
-
-#ax2 = ax1.twinx()
-
-ax1.set_xlim(-5, all_n_params.max()+2)
-ax1.plot(all_n_params-1, np.sqrt(all_cv_mse), 'bo', markersize=12)
-#ax1.plot(all_n_params[-2]-2, all_cv_mse[-2], 'rD', markersize=20)
-#ax2.plot(all_n_params, all_aic, 'k-', linewidth=4)
-
-#ax1.set_zorder(1)
-#ax1.patch.set_visible(False)
-
-
-fig.tight_layout()
-
-plt.savefig('/Users/nickrego/Desktop/merge_perf', transparent=True)
-
-
 ###########################
 ###########################
 
@@ -344,7 +322,7 @@ n_params_cnn = all_n_params[i_conv_filters, i_hidden_layer, i_node_hidden]
 #########################
 plt.close('all')
 
-fig, ax = plt.subplots(figsize=(16,7))
+fig, ax = plt.subplots(figsize=(12,7))
 
 indices = np.arange(7)
 
@@ -370,6 +348,35 @@ plt.savefig('{}/Desktop/bar_merge_perf'.format(homedir), transparent=True)
 
 plt.close('all')
 
+## Bar merge #2
+plt.close('all')
+
+fig, ax = plt.subplots(figsize=(10,7))
+
+indices = np.arange(4)
+
+# M1, M2, M3, and all edge types separate
+perfs = np.sqrt([np.mean(perf_mse_m1), np.mean(perf_mse_m1_quad), perf_ann_cv, perf_cnn_cv])
+colors = ['#888888', '#888888', '#888888', '#888888']
+ax.bar(indices, perfs, color=colors)
+
+# Root mean squared error in f
+rms_obs = np.sqrt(np.mean(err_energies**2))
+
+xmin, xmax = ax.get_xlim()
+#ax.plot([xmin,xmax], [rms_obs, rms_obs], 'k--', linewidth=6)
+
+ax.set_xlim([xmin, xmax])
+ax.set_ylim([0, 7.2])
+
+ax.set_xticks([])
+
+fig.tight_layout()
+
+plt.savefig('{}/Desktop/bar_merge_perf2'.format(homedir), transparent=True)
+
+plt.close('all')
+
 ## Plot distribution of alpha_i's for M106 ##
 this_mgc = all_mgc[0]
 this_labels = this_mgc.labels
@@ -378,5 +385,104 @@ red_feat = construct_red_feat(full_feat_vec, this_labels)
 
 perf_mse, perf_wt_mse, perf_r2, err, this_reg = fit_multi_k_fold(red_feat, energies, k=5)
 
+
+#########################
+#### PLOT PERFORMANCE ###
+
+
+instr = 'weighted' if do_weighted else 'no_weighted'
+ds = np.load('merge_data/sam_merge_coef_class_{}_{:02d}_{:02d}.npz'.format(instr,p,q))
+
+all_mse = ds['all_mse']
+all_wt_mse = ds['all_wt_mse']
+
+all_cv_mse = ds['all_cv_mse']
+all_cv_wt_mse = ds['all_cv_wt_mse']
+
+all_cv_mse_se = ds['all_cv_mse_se']
+all_cv_wt_mse_se = ds['all_cv_wt_mse_se']
+
+# Number of edge classes + 2 (for ko and the intercept)
+all_n_params = ds['all_n_params']
+all_mgc = ds['all_mgc']
+
+# Contains h_k_oo for each edge, plus ko
+#    shape: (M_tot + 1)
+full_feat_vec = ds['feat_vec']
+
+
+n_dat = full_feat_vec.shape[0]
+
+all_aic = aic(n_dat, all_mse, all_n_params, do_corr=True)
+
+plt.close('all')
+
+fig, ax1 = plt.subplots(figsize=(16,6))
+
+#ax2 = ax1.twinx()
+
+
+ax1.plot(all_n_params-1, np.sqrt(all_cv_mse), 'bo', markersize=12)
+ax1.plot([-5, 108], [np.sqrt(perf_cnn_cv), np.sqrt(perf_cnn_cv)], 'k--', linewidth=4)
+ax1.set_xlim(-5, all_n_params.max()+2)
+#ax1.plot(all_n_params[-2]-2, all_cv_mse[-2], 'rD', markersize=20)
+#ax2.plot(all_n_params, all_aic, 'k-', linewidth=4)
+
+#ax1.set_zorder(1)
+#ax1.patch.set_visible(False)
+
+
+fig.tight_layout()
+
+plt.savefig('/Users/nickrego/Desktop/merge_perf', transparent=True)
+
+
+##### Compoarison of M1, M2, M3 coefs
+plt.close('all')
+
+fig, ax = plt.subplots(figsize=(10,7))
+
+indices = np.arange(9)
+
+# M1, M2, M3, and all edge types separate
+coefs_m1 = np.array([reg_m1.coef_[0], 0, 0])
+coefs_m2 = np.array([reg_m2.coef_[0], reg_m2.coef_[1], reg_m2.coef_[1]])
+coefs_m3 = reg_m3.coef_
+
+#colors = ['#888888', '#888888', '#888888', '#888888']
+ax.bar(indices[::3], coefs_m1, width=1.0, label='M1')
+ax.bar(indices[1::3], coefs_m2, width=1.0, label='M2')
+ax.bar(indices[2::3], coefs_m3, width=1.0, label='M3')
+ax.set_xlim(100,110)
+ax.legend()
+plt.savefig("/Users/nickrego/Desktop/legend_coef", transparent=True)
+
+
+plt.close('all')
+
+fig, ax = plt.subplots(figsize=(4,3))
+#colors = ['#888888', '#888888', '#888888', '#888888']
+ax.bar(0, coefs_m1[0], width=1)
+ax.bar(1, coefs_m2[0], width=1)
+ax.bar(2, coefs_m3[0], width=1)
+ax.set_xticks([])
+ax.set_xticklabels([])
+
+plt.savefig("/Users/nickrego/Desktop/coef_ko", transparent=True)
+
+
+
+plt.close('all')
+
+fig, ax = plt.subplots(figsize=(10,3))
+
+indices = np.arange(6)
+ax.bar(indices[::3], coefs_m1[1:], width=1)
+ax.bar(indices[1::3], coefs_m2[1:], width=1)
+ax.bar(indices[2::3], coefs_m3[1:], width=1)
+ax.set_xticks([])
+ax.set_xticklabels([])
+
+plt.savefig("/Users/nickrego/Desktop/coef_edge", transparent=True)
 
 

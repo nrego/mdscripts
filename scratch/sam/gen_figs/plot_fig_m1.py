@@ -148,15 +148,15 @@ sc = ax.scatter(k_o, err)
 
 ax.scatter(k_o, err_poly)
 
-ax.scatter(k_o, net_err[::6], color='gray')
+ax.scatter(k_o, net_err[::6], color='k')
 
 #ax.scatter(k_o, net_err[::6], color='gray')
 xmin, xmax = ax.get_xlim()
 data_rmse = np.sqrt(np.mean(err_energies**2))
 #ax.plot([-10, 46], [-data_rmse, -data_rmse], 'k--')
 #ax.plot([-10, 46], [data_rmse, data_rmse], 'k--')
-ax.fill_between([-10, 46], -data_rmse, data_rmse, alpha=0.5)
-plot_dashed_lines([-10, 46], -np.sqrt(np.mean(net_err[::6]**2)), color='gray', linestyle='--', linewidth=2)
+#ax.fill_between([-10, 46], -data_rmse, data_rmse, alpha=0.5)
+plot_dashed_lines([-10, 46], -np.sqrt(np.mean(net_err[::6]**2)), color='k', linestyle='--', linewidth=2)
 plot_dashed_lines([-10, 46], -np.sqrt(np.mean(err_poly**2)), color=def_colors[1], linestyle='--', linewidth=2)
 plot_dashed_lines([-10, 46], -np.sqrt(np.mean(err**2)), color=def_colors[0], linestyle='--', linewidth=2)
 
@@ -181,7 +181,7 @@ plt.close('all')
 fig = plt.figure(figsize=(6,5))
 ax = fig.gca()
 
-ax.bar(np.arange(3), np.sqrt(mses), color=[def_colors[0], def_colors[1], 'gray'], width=0.8)
+ax.bar(np.arange(3), np.sqrt(mses), color=[def_colors[0], def_colors[1], 'k'], width=0.8)
 ax.set_xticks([0,1,2])
 ax.set_xticklabels([])
 #ax.set_ylim(0, 7.5)

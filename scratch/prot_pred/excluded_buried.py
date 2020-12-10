@@ -36,6 +36,8 @@ parser.add_argument('-nb', '--nburied', type=float, default=5,
                          'this many average water molecules')
 parser.add_argument('--sel-spec', type=str, default='segid targ',
                     help='selection spec for finding solute (all) atoms, including hydrogens (MDSystem will take care of them)')
+parser.add_argument('--sub-sel-spec', type=str, default='all',
+                    help='(optional) secondary selection string for selecting a subset of surface protein heavy atoms')
 parser.add_argument('--do-static', action='store_true', 
                     help='Create static probe volume')
 
@@ -68,9 +70,20 @@ np.savetxt('surf_mask.dat', surf_mask, fmt='%1d')
 np.savetxt('buried_mask.dat', buried_mask, fmt='%1d')
 
 surf_atoms = sys.prot_h[surf_mask]
-sys.prot_h.write("buried.pdb")
+if args.sub_sel_spec:
+    surf_atoms = surf_atoms.select_atoms(args.sub_sel_spec)
+
+sys.prot_h.write("buried.pdb", bonds=None)
 
 print("Writing umbr.conf...")
+
+
+## Sanity out file: contains the indices of each atom
+sys.prot_h.tempfactors = 0
+surf_atoms.tempfactors = 1
+probe_vol_mask = sys.prot_h.tempfactors == 1
+np.savetxt('probe_mask.dat', probe_vol_mask, fmt='%1d')
+surf_atoms.write("probe_atoms.pdb", bonds=None)
 
 if args.do_static:
     header_string = "; Umbrella potential for a spherical shell cavity\n"\
@@ -78,19 +91,20 @@ if args.do_static:
     "hydshell union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
 
     with open('umbr.conf', 'w') as fout:
-        fout = open('umbr.conf', 'w')
+        #fout = open('umbr.conf', 'w')
+        
         fout.write(header_string)
 
         for atm in surf_atoms:
             fout.write("{:<10.1f} {:<10.1f} {:<10.3f} {:<10.3f} {:<10.3f}\\\n".format(-0.5, 0.6, atm.position[0]/10.0, atm.position[1]/10.0, atm.position[2]/10.0))
-
+            
 else:
     header_string = "; Umbrella potential for a spherical shell cavity\n"\
     "; Name    Type          Group  Kappa   Nstar    mu    width  cutoff  outfile    nstout\n"\
     "hydshell dyn_union_sph_sh   OW  0.0     0   XXX    0.01   0.02   phiout.dat   50  \\\n"
 
     with open('umbr.conf', 'w') as fout:
-        fout = open('umbr.conf', 'w')
+        #fout = open('umbr.conf', 'w')
         fout.write(header_string)
 
         for atm in surf_atoms:

@@ -1,5 +1,5 @@
-set buried [atomselect top "beta<=-2"]
-set contact [atomselect top "beta>-2"]
+set buried [atomselect top "beta<=0"]
+set contact [atomselect top "beta>0"]
 
 $buried set name C
 $contact set name S
