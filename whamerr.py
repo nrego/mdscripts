@@ -30,7 +30,7 @@ from IPython import embed
 def _subsample(bias_mat, uncorr_n_samples, uncorr_n_tot, n_samples, n_windows):
 
     # sub sample the bias matrix according to the number of uncorrelated samples from each window
-    uncorr_bias_mat = np.zeros((uncorr_n_tot, n_windows), dtype=np.float64)
+    uncorr_bias_mat = np.zeros((uncorr_n_tot, n_windows), dtype=np.float32)
     start_idx = 0
     uncorr_start_idx = 0
     subsampled_indices = np.array([], dtype=int)
@@ -62,7 +62,7 @@ def _bootstrap(lb, ub, uncorr_ones_m, uncorr_ones_n, bias_mat, n_samples, uncorr
     batch_size = ub - lb
 
     # Results for this bootstrap batch
-    f_k_ret = np.zeros((batch_size, n_windows), dtype=np.float64)
+    f_k_ret = np.zeros((batch_size, n_windows), dtype=np.float32)
     boot_fn_ret = np.zeros(batch_size, dtype=object)
     all_boot_indices = np.zeros((batch_size, uncorr_n_tot), dtype=int)
     for batch_num in range(batch_size):
@@ -247,7 +247,7 @@ Command-line options
         log.info("batch size for bootstrap: {}".format(batch_size))
 
         # the bootstrap estimates of free energies wrt window i=0
-        f_k_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float64)
+        f_k_boot = np.zeros((self.n_bootstrap, self.n_windows), dtype=np.float32)
         boot_indices = np.zeros((self.n_bootstrap, self.uncorr_n_tot), dtype=int)
         # Results of hook function, if desired
         boot_res = np.zeros(self.n_bootstrap, dtype=object)

@@ -59,7 +59,7 @@ if __name__ == '__main__':
         if args.no_beta:
             beta_phi = beta*float(os.path.dirname(fname).split('_')[-1]) / 10.0
         else:
-            beta_phi = float(os.path.dirname(fname).split('_')[-1])/ 1000.0
+            beta_phi = float(os.path.dirname(fname).split('_')[-1])/ 100.0
 
         pred_contact_mask = np.loadtxt(fname, dtype=bool)[surf_mask]
 

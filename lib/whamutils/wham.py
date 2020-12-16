@@ -164,6 +164,7 @@ def eval_fn(xweights, bias_mat, n_sample_red, n_tot):
 
     Q_exp = numexpr.evaluate("exp(Q)")
 
+    del Q
     # kappa, the log-likelihood fn
     ln_sum_exp = np.log(Q_exp.sum(axis=1)) + c
 
@@ -177,7 +178,7 @@ def eval_fn(xweights, bias_mat, n_sample_red, n_tot):
 
     grad = (1/n_tot)*W.sum(axis=0) - n_sample_red
 
-    del Q, Q_exp, denom, W, ln_sum_exp
+    del Q_exp, denom, W, ln_sum_exp
 
     return logLikelihood, grad[1:]
 

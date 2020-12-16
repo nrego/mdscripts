@@ -125,42 +125,32 @@ ycom = ymin + (ymax - ymin)/2.0
 zcom = zmin + (zmax - zmin)/2.0
 box_com = np.array([xmin, ycom, zcom])
 
-# Equil vals avail for V (i.e., N_V and COM at equil - well, unbiased)
-#.   Since they're available - calculate rho(z,r)
-if args.equil_vals is not None:
+## Set up voxel grid
 
-    do_calc_rho = True
+dx = args.dx
+xvals = np.arange(xmin, xmax+dx, dx)
+dy = args.dy
+yvals = np.arange(ymin, ymax+dy, dy)    
+dz = args.dz
+zvals = np.arange(zmin, zmax+dz, dz)
 
-    equil_ds = np.load(args.equil_vals)
-    # Average num waters in V at bphi=0
-    avg_0 = equil_ds['n0'].item()
-    # Average COM of waters in V at bphi=0
-    com_0 = equil_ds['avg_com']
-    # Average water density in box (at bphi=0)
-    bulk_rho = avg_0 / box_vol
+expt_waters = 0.033 * dx * dy * dz
 
-    dx = args.dx
-    xvals = np.arange(xmin, xmax+dx, dx)
-    dy = args.dy
-    yvals = np.arange(ymin, ymax+dy, dy)    
-    dz = args.dz
-    zvals = np.arange(zmin, zmax+dz, dz)
+nx = xvals.size-1
+ny = yvals.size-1
+nz = zvals.size-1
 
-    nx = xvals.size-1
-    ny = yvals.size-1
-    nz = zvals.size-1
+print("Doing rho calculation (and shifting cav COM)...")
+print("dx: {:0.2f} (from {:.2f} to {:.2f})".format(dx, xmin, xmax))
+print("dy: {:0.2f} (from {:.2f} to {:.2f})".format(dy, ymin, ymax))
+print("dz: {:0.2f} (from {:.2f} to {:.2f})".format(dz, zmin, zmax))
 
-    print("Doing rho calculation (and shifting cav COM)...")
-    print("dx: {:0.2f} (from {:.2f} to {:.2f})".format(dx, xmin, xmax))
-    print("dy: {:0.2f} (from {:.2f} to {:.2f})".format(dy, ymin, ymax))
-    print("dz: {:0.2f} (from {:.2f} to {:.2f})".format(dz, zmin, zmax))
+xx, yy, zz = np.meshgrid(xvals[:-1], yvals[:-1], zvals[:-1], indexing='ij')
+# Center point of each voxel of V
+gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T + 0.5*np.array([dx,dy,dz])
+n_voxels = gridpts.shape[0]
 
-    xx, yy, zz = np.meshgrid(xvals[:-1], yvals[:-1], zvals[:-1], indexing='ij')
-    # Center point of each voxel of V
-    gridpts = np.vstack((xx.ravel(), yy.ravel(), zz.ravel())).T + 0.5*np.array([dx,dy,dz])
-    n_voxels = gridpts.shape[0]
-
-    tree_grid = cKDTree(gridpts)
+tree_grid = cKDTree(gridpts)
 
 cutoff = 7.0
 sigma = 2.4
@@ -172,9 +162,8 @@ n_frames = univ.trajectory.n_frames
 n_waters = np.zeros(n_frames-start_frame)
 water_com = np.zeros((n_frames-start_frame, 3))
 
-if do_calc_rho:
-    # Shape: (n_frames, n_x, n_y, n_z)
-    rho_xyz = np.zeros((n_frames-start_frame, nx, ny, nz), dtype=np.float32)
+
+rho_xyz = np.zeros((n_frames-start_frame, nx, ny, nz), dtype=np.float32)
 
 if args.print_out:
     W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
@@ -201,79 +190,25 @@ for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
 
     # Waters in V at this frame
     this_waters = waters[sel_mask]
-    #this_waters.write("noshift.gro")
 
     ## COM of waters in V
     this_water_com = this_waters.positions.mean(axis=0)
     water_com[i] = this_water_com
 
-    ## N_V: number of waters in V
-    this_n_waters = this_waters.n_atoms
-    n_waters[i] = this_n_waters
 
+    # Finally - get instantaneous (un-normalized) density
+    #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
+    #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
+    #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=cutoff, sigma=sigma)
 
-    ## Center cavity COM in V's COM (in y,z)
-    if do_calc_rho:
-        
-        n_cav = avg_0 - this_n_waters
-        #First, find com of cavity
-        # Found from a weighted difference of water COM at bphi=0 and at this ensemble
-        cavity_com = (avg_0*com_0 - this_n_waters*this_water_com) / (avg_0 - this_n_waters)
-        
-        # Assume no cav if sys has lost fewer than 1 % of its waters
-        if (n_cav / avg_0) < 0.01 or cavity_com.min() < 0:
-            print("no cav; not centering...")
-            cavity_com = box_com
-
-        # now shift all atoms so cav COM lies in center of cubic box - but only in y,z
-        shift_vector = np.array([0,ycom,zcom]) - cavity_com
-        shift_vector[0] = 0
-        #print("frame: {} shift: {}".format(i_frame, shift_vector))
-        # Shift *all* water positions in this frame 
-        water_pos_shift = water_pos + shift_vector
-        
-        # Fix any waters that have been shifted outside of the box
-        pbc(water_pos_shift, univ.dimensions[:3])
-        waters.positions = water_pos_shift
-        
-        # Find waters that are in V after shifting cavity C.O.M.
-        selx = (water_pos_shift[:,0] >= xmin-cutoff) & (water_pos_shift[:,0] < xmax+cutoff)
-        sely = (water_pos_shift[:,1] >= ymin-cutoff) & (water_pos_shift[:,1] < ymax+cutoff)
-        selz = (water_pos_shift[:,2] >= zmin-cutoff) & (water_pos_shift[:,2] < zmax+cutoff)
-
-        sel_mask = selx & sely & selz
-
-        # Waters that are in V, after shifting cav COM
-        this_waters_shift = waters[sel_mask]
-        
-        # Finally - get instantaneous (un-normalized) density
-        #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
-        #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
-        #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=cutoff, sigma=sigma)
-
-        #rho_xyz[i, ...] = this_rho_xyz
-        #del this_rho_xyz
-        fn_args = (this_waters_shift.positions, tree_grid, nx, ny, nz)
-        fn_kwargs = {'cutoff': cutoff, 'sigma': sigma, 'this_idx': i}
-        
-        #futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
-        fn_args = (this_waters_shift.positions, xvals, yvals, zvals)
-        fn_kwargs = {'this_idx': i}
-        futures.append(wm.submit(get_rhoxyz_simple, fn_args, fn_kwargs))
-
+    #rho_xyz[i, ...] = this_rho_xyz
+    #del this_rho_xyz
+    fn_args = (this_waters.positions, tree_grid, nx, ny, nz)
+    fn_kwargs = {'cutoff': cutoff, 'sigma': sigma, 'this_idx': i}
+    
+    futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
+    if i % 100 == 0:
         print("submitted job {}".format(i))
-        ## Optionally print out shifted frame
-        if args.print_out:
-            W.write(univ.atoms)
-            if i_frame == n_frames - 1:
-                univ.atoms.write("shift.gro")
-
-# Output number of waters in V at each frame, as well as their COM's
-#   Note: *non* shifted positions - just directly from trajectory
-if not do_calc_rho:
-    print("saving cube data...")
-    np.savetxt("phiout_cube.dat", n_waters, fmt='%3d', header='Vmin: ({:.2f} {:.2f} {:.2f}) A Vmax: ({:.2f} {:.2f} {:.2f}) A'.format(xmin, ymin, zmin, xmax, ymax, zmax))
-    np.save("com_cube.dat", water_com)
 
 
 ## Collect results
@@ -284,12 +219,6 @@ for i, future in enumerate(wm.as_completed(futures)):
         sys.stdout.flush()
     rho_xyz[idx, ...] = this_rho_xyz
     del this_rho_xyz
-
-if args.print_out:
-    W.close()
-
-wm.shutdown()
-
 
 
 if do_calc_rho:

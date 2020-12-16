@@ -72,9 +72,12 @@ ax.set_xticks([0,0.5,1])
 ax.set_yticks([0,0.5,1])
 
 ## Load in cluster rms
-tpr_clust, fpr_clust, d_h_clust, tpr_np, fpr_np, d_h_np = [arr.squeeze() for arr in np.split(np.loadtxt("clust_perf.dat"), 6, 1)]
-tpr_other_np, fpr_other_np, d_h_other_np = [arr.squeeze() for arr in np.split(np.loadtxt("perf_np.dat"), 3, 0)]
-ax.plot(fpr_clust, tpr_clust, 'k--', linewidth=2)
+try:
+    tpr_clust, fpr_clust, d_h_clust, tpr_np, fpr_np, d_h_np = [arr.squeeze() for arr in np.split(np.loadtxt("clust_perf.dat"), 6, 1)]
+    tpr_other_np, fpr_other_np, d_h_other_np = [arr.squeeze() for arr in np.split(np.loadtxt("perf_np.dat"), 3, 0)]
+    ax.plot(fpr_clust, tpr_clust, 'k--', linewidth=2)
+except IOError:
+    pass
 #ax.plot(fpr_np, tpr_np, 'k--', color='orange', linewidth=2)
 #ax.plot(fpr_other_np, tpr_other_np, 'o', color='orange', markersize=6)
 #ax.set_xticks([])
