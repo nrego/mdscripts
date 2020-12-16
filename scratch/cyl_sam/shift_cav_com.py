@@ -171,7 +171,7 @@ if args.print_out:
 futures = []
 
 
-def task_gen():
+def task_gen(shift=None, W=None):
 
     for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
         if i_frame % 100 == 0:
@@ -179,6 +179,16 @@ def task_gen():
             sys.stdout.flush()
 
         univ.trajectory[i_frame]
+        
+        if shift is not None:
+            this_pos = univ.atoms.positions
+            shift_pos = this_pos + shift
+            pbc(shift_pos, univ.dimensions[:3])
+            univ.atoms.positions = shift_pos
+            
+            W.write(univ.atoms)
+            if i_frame == n_frames - 1:
+                univ.atoms.write("shift.gro")
 
         ## Find waters in V at this step
         waters = univ.select_atoms("name OW")
@@ -199,17 +209,69 @@ def task_gen():
 
         yield (get_rhoxyz, fn_args, fn_kwargs)
 
+cav_com = np.zeros((n_frames-start_frame, 3))
 with wm:
     for future in wm.submit_as_completed(task_gen(), queue_size=wm.n_workers):
         idx, this_rho_xyz = future.get_result(discard=True)
         if idx % 10 == 0:
             print("getting result {}".format(idx))
             sys.stdout.flush()
-        rho_xyz[idx, ...] = this_rho_xyz
-        this_cav = 1 - ((this_rho_xyz/expt_waters) > 0.5)
+
+        #rho_xyz[idx, ...] = this_rho_xyz
+
+        this_cav = ((this_rho_xyz/expt_waters) < 0.5)
+        cav_mask = this_cav.ravel()
+
+        if cav_mask.sum() > 0:
+            this_com = gridpts[cav_mask].mean(axis=0)
+        else:
+            this_com = box_com
+
+        cav_com[idx, ...] = this_com
+
         del this_rho_xyz
+
+cav_com = cav_com.mean(axis=0)
+print("Box com: {}".format(box_com))
+print("Cav com: {}".format(cav_com))
+
+
+shift = box_com - cav_com
+shift[0] = 0
+
+print("Shifting all atoms by {}".format(shift))
+
+W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
+
+shift_cav_com = np.zeros((n_frames-start_frame, 3))
+## Now calculate shifted instantaneous density field
+with wm:
+    for future in wm.submit_as_completed(task_gen(shift=shift, W=W), queue_size=wm.n_workers):
+        idx, this_rho_xyz = future.get_result(discard=True)
+        if idx % 10 == 0:
+            print("getting result {}".format(idx))
+            sys.stdout.flush()
+
+        rho_xyz[idx, ...] = this_rho_xyz
+
+        this_cav = ((this_rho_xyz/expt_waters) < 0.5)
+        cav_mask = this_cav.ravel()
+        
+        if cav_mask.sum() > 0:
+            this_com = gridpts[cav_mask].mean(axis=0)
+        else:
+            this_com = box_com
+
+        shift_cav_com[idx, ...] = this_com
+
+        del this_rho_xyz
+
+print("New cav COM: {}".format(shift_cav_com.mean(axis=0)))
+if not np.allclose(shift_cav_com.mean(axis=0)[1:], box_com[1:], 0.01):
+    print("Warning: shifted cavity com differs from box com...")
+
 
 
 print("...Done: Outputting results")
-np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals, nframes=rho_xyz.shape[0])
+np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals, nframes=rho_xyz.shape[0], gridpts=gridpts)
     
