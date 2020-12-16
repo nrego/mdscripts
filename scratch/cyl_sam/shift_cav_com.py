@@ -1,4 +1,3 @@
-from __future__ import division; __metaclass__ = type
 import sys
 import numpy as np
 from math import sqrt
@@ -107,7 +106,7 @@ args = parser.parse_args()
 default_env.process_wm_args(args)
 wm = default_env.make_work_manager()
 
-wm.startup()
+#wm.startup()
 
 do_calc_rho = False
 
@@ -171,57 +170,46 @@ if args.print_out:
 
 futures = []
 
-for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
-    if i_frame % 100 == 0:
-        print("frame: {}".format(i_frame))
-        sys.stdout.flush()
 
-    univ.trajectory[i_frame]
+def task_gen():
 
-    ## Find waters in V at this step
-    waters = univ.select_atoms("name OW")
-    water_pos = waters.positions
+    for i, i_frame, in enumerate(np.arange(start_frame, n_frames)):
+        if i_frame % 100 == 0:
+            print("frame: {}".format(i_frame))
+            sys.stdout.flush()
 
-    selx = (water_pos[:,0] >= xmin) & (water_pos[:,0] < xmax)
-    sely = (water_pos[:,1] >= ymin) & (water_pos[:,1] < ymax)
-    selz = (water_pos[:,2] >= zmin) & (water_pos[:,2] < zmax)
+        univ.trajectory[i_frame]
 
-    sel_mask = selx & sely & selz
+        ## Find waters in V at this step
+        waters = univ.select_atoms("name OW")
+        water_pos = waters.positions
 
-    # Waters in V at this frame
-    this_waters = waters[sel_mask]
+        selx = (water_pos[:,0] >= xmin) & (water_pos[:,0] < xmax)
+        sely = (water_pos[:,1] >= ymin) & (water_pos[:,1] < ymax)
+        selz = (water_pos[:,2] >= zmin) & (water_pos[:,2] < zmax)
 
-    ## COM of waters in V
-    this_water_com = this_waters.positions.mean(axis=0)
-    water_com[i] = this_water_com
+        sel_mask = selx & sely & selz
 
+        # Waters in V at this frame
+        this_waters = waters[sel_mask]
 
-    # Finally - get instantaneous (un-normalized) density
-    #   (Get rho z is *count* of waters at each x,r and x+dx,r+dr)
-    #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, xvals, yvals, zvals)
-    #this_rho_xyz = get_rhoxyz(this_waters_shift.positions, tree_grid, nx, ny, nz, cutoff=cutoff, sigma=sigma)
+        fn_args = (this_waters.positions, tree_grid, nx, ny, nz)
+        fn_kwargs = {'cutoff': cutoff, 'sigma': sigma, 'this_idx': i}
+        
 
-    #rho_xyz[i, ...] = this_rho_xyz
-    #del this_rho_xyz
-    fn_args = (this_waters.positions, tree_grid, nx, ny, nz)
-    fn_kwargs = {'cutoff': cutoff, 'sigma': sigma, 'this_idx': i}
-    
-    futures.append(wm.submit(get_rhoxyz, fn_args, fn_kwargs))
-    if i % 100 == 0:
-        print("submitted job {}".format(i))
+        yield (get_rhoxyz, fn_args, fn_kwargs)
 
-
-## Collect results
-for i, future in enumerate(wm.as_completed(futures)):
-    idx, this_rho_xyz = future.get_result(discard=True)
-    if i % 100 == 0:
-        print("getting result {} of {}".format(i, len(futures)))
-        sys.stdout.flush()
-    rho_xyz[idx, ...] = this_rho_xyz
-    del this_rho_xyz
+with wm:
+    for future in wm.submit_as_completed(task_gen(), queue_size=wm.n_workers):
+        idx, this_rho_xyz = future.get_result(discard=True)
+        if idx % 10 == 0:
+            print("getting result {}".format(idx))
+            sys.stdout.flush()
+        rho_xyz[idx, ...] = this_rho_xyz
+        this_cav = 1 - ((this_rho_xyz/expt_waters) > 0.5)
+        del this_rho_xyz
 
 
-if do_calc_rho:
-    print("...Done: Outputting results")
-    np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals, nframes=rho_xyz.shape[0])
+print("...Done: Outputting results")
+np.savez_compressed("rhoxyz.dat", rho=rho_xyz, xbins=xvals, ybins=yvals, zbins=zvals, nframes=rho_xyz.shape[0])
     
