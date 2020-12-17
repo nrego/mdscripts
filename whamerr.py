@@ -239,6 +239,9 @@ Command-line options
         # Log of each datapoint's statistical weight. Note this accounts for statistical inefficiency in samples
         all_logweights = gen_data_logweights(self.bias_mat, f_k_actual, self.n_samples, self.ones_m, self.ones_n)
         
+        
+        np.savez_compressed('all_data.dat', logweights=all_logweights, data=self.all_data, data_aux=self.all_data_aux, bias_mat=self.bias_mat, n_samples=self.n_samples)
+
         # Now for bootstrapping...
         n_workers = self.work_manager.n_workers or 1
         batch_size = self.n_bootstrap // n_workers
@@ -291,8 +294,6 @@ Command-line options
         np.savetxt('err_f_k.dat', f_k_se, fmt='%3.6f')
         np.savetxt('boot_f_k.dat', f_k_boot)
         np.save('boot_indices.dat', boot_indices)
-        np.savetxt('f_k_all.dat', f_k_actual)
-        np.savez_compressed('all_data.dat', logweights=all_logweights, data=self.all_data, data_aux=self.all_data_aux, bias_mat=self.bias_mat, n_samples=self.n_samples)
 
         if self.boot_fn is not None:
             np.save('boot_fn_payload.dat', boot_res)
