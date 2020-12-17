@@ -315,6 +315,7 @@ Command-line options
 
             this_occ = obs_hist > 0
             this_eta = obs_hist[this_occ] * np.log(obs_hist[this_occ]/cons_hist[this_occ])
+            this_eta = np.ma.masked_invalid(this_eta)
             print("{}th window consensus: {:.2e}".format(i, this_eta.sum()))
 
 if __name__=='__main__':
