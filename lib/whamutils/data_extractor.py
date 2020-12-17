@@ -198,7 +198,7 @@ class WHAMDataExtractor:
             self.phis[i] = ds.phi
             self.Nstars[i] = ds.Nstar
             self.avg_N[i] = dataframe.mean()
-            log.info("   kappa: {:.2f}  Nstar: {:.2f}".format(ds.kappa, ds.Nstar))
+            log.info("   kappa: {:.5f}  phi: {:.5f}  Nstar: {:.2f}".format(ds.kappa, ds.phi, ds.Nstar))
 
 
         self.bias_mat = np.zeros((self.n_tot, self.n_windows), dtype=np.float32)
