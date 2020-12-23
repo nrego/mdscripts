@@ -63,7 +63,7 @@ def load_and_weight_file(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
     return idx, avg_cav.reshape(nx,ny,nz), avg_cav_sq.reshape(nx,ny,nz)
 
 def find_hat_cav_diff(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
-    print(fname)
+    #print(fname)
 
     nx = xbins.size - 1
     ny = ybins.size - 1
@@ -265,6 +265,9 @@ if args.bphi_val is not None:
     hat_cav = avg_cav > 0.5
     mse_hat_cav = np.zeros((nx, ny, nz))
 
+    print("...done\n")
+    print("Next up: calculating devation from cg density field...\n")
+    
     with wm:
         for future in wm.submit_as_completed(task_gen(find_hat_cav_diff, fnames_rhoxyz, n_frames_per_file, bias_logweights, xbins, ybins, zbins, hat_cav), queue_size=wm.n_workers):
             idx, this_hat_cav_diff = future.get_result(discard=True)
@@ -300,6 +303,8 @@ if args.n_val is not None:
             avg_cav += this_avg_cav
             avg_cav_sq += this_avg_cav_sq
 
+    print("...done\n")
+    print("Next up: calculating devation from cg density field...\n")
     # binary density field from avg_cav
     hat_cav = avg_cav > 0.5
     mse_hat_cav = np.zeros((nx, ny, nz))
