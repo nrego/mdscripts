@@ -226,7 +226,7 @@ def task_gen(fn, fnames, n_frames_per_file, logweights, xbins, ybins, zbins, hat
     ## For each rhoxyz.dat.npz...
     for i, fname in enumerate(fnames):
         
-        #print(" {}".format(fname))
+        print("sending {:04d} {}".format(i, fname))
         # Slice of logweights corresponding to this rhoxyz cavity profile
         slc = slice(last_frame, last_frame+n_frames_per_file[i])
         this_logweights = logweights[slc]
