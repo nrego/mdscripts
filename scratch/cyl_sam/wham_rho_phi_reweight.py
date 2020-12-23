@@ -28,7 +28,7 @@ from work_managers.environment import default_env
 # logweights consists of *only* those weights associated with datapoints from fname
 #@profile
 def load_and_weight_file(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
-    print(fname)
+    #print(fname)
 
     nx = xbins.size - 1
     ny = ybins.size - 1
@@ -307,6 +307,7 @@ if args.n_val is not None:
     with wm:
         for future in wm.submit_as_completed(task_gen(find_hat_cav_diff, fnames_rhoxyz, n_frames_per_file, bias_logweights, xbins, ybins, zbins, hat_cav), queue_size=wm.n_workers):
             idx, this_hat_cav_diff = future.get_result(discard=True)
+            print("getting job: {:04d}".format(idx))
             mse_hat_cav += this_hat_cav_diff
 
 
