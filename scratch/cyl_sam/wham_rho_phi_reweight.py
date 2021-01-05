@@ -103,7 +103,7 @@ def find_hat_cav_diff(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
 
     avg_diff_sq = np.zeros(this_cav_shape.shape[-1])
     for i, w in enumerate(weights):
-        avg_dif_sq += w * diff[i]**2
+        avg_diff_sq += w * diff[i]**2
 
     del logweights, this_cav, this_cav_shape, hat_cav_shape, weights, ds
 
