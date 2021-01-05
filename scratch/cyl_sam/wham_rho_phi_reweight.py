@@ -262,7 +262,7 @@ if args.bphi_val is not None:
             avg_cav_sq += this_avg_cav_sq
 
     # binary density field from avg_cav
-    hat_cav = avg_cav > 0.5
+    hat_cav = avg_cav < 0.5
     mse_hat_cav = np.zeros((nx, ny, nz))
 
     print("...done\n")
@@ -306,7 +306,7 @@ if args.n_val is not None:
     print("...done\n")
     print("Next up: calculating devation from cg density field...\n")
     # binary density field from avg_cav
-    hat_cav = avg_cav > 0.5
+    hat_cav = avg_cav < 0.5
     mse_hat_cav = np.zeros((nx, ny, nz))
 
     with wm:
