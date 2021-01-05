@@ -54,8 +54,14 @@ def load_and_weight_file(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
 
     this_cav_shape = this_cav.reshape(this_cav.shape[0], -1)
     
-    avg_cav = np.dot(weights, this_cav_shape)
-    avg_cav_sq = np.dot(weights, this_cav_shape**2)
+    avg_cav = np.zeros(this_cav_shape.shape[-1])
+    avg_cav_sq = np.zeros_like(avg_cav)
+
+    for i, w in enumerate(weights):
+        avg_cav += w * this_cav_shape[i]
+        avg_cav_sq += w * this_cav_shape[i]**2
+    #avg_cav = np.dot(weights, this_cav_shape)
+    #avg_cav_sq = np.dot(weights, this_cav_shape**2)
 
     del logweights, this_cav, this_cav_shape, weights, ds
 
@@ -91,9 +97,13 @@ def find_hat_cav_diff(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
     hat_cav_shape = hat_cav.ravel()
 
     diff = this_cav_shape - hat_cav_shape
-    diff_sq = diff**2
+    #diff_sq = diff**2
     
-    avg_diff_sq = np.dot(weights, diff_sq)
+    #avg_diff_sq = np.dot(weights, diff_sq)
+
+    avg_diff_sq = np.zeros(this_cav_shape.shape[-1])
+    for i, w in enumerate(weights):
+        avg_dif_sq += w * diff[i]**2
 
     del logweights, this_cav, this_cav_shape, hat_cav_shape, weights, ds
 
