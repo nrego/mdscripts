@@ -91,13 +91,14 @@ def find_hat_cav_diff(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
     hat_cav_shape = hat_cav.ravel()
 
     diff = this_cav_shape - hat_cav_shape
+    diff_sq = diff**2
     
-    avg_diff = np.dot(weights, diff)
+    avg_diff_sq = np.dot(weights, diff_sq)
 
     del logweights, this_cav, this_cav_shape, hat_cav_shape, weights, ds
 
 
-    return idx, avg_diff.reshape(nx,ny,nz)
+    return idx, avg_diff_sq.reshape(nx,ny,nz)
 
 
 ### SET THIS TO TASTE AROUND BPHI *
@@ -311,9 +312,9 @@ if args.n_val is not None:
 
     with wm:
         for future in wm.submit_as_completed(task_gen(find_hat_cav_diff, fnames_rhoxyz, n_frames_per_file, bias_logweights, xbins, ybins, zbins, hat_cav), queue_size=wm.n_workers):
-            idx, this_hat_cav_diff = future.get_result(discard=True)
+            idx, this_hat_cav_diff_sq = future.get_result(discard=True)
             print("getting job: {:04d}".format(idx))
-            mse_hat_cav += this_hat_cav_diff
+            mse_hat_cav += this_hat_cav_diff_sq
 
 
     print("...done\n")
