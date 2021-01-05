@@ -303,6 +303,7 @@ if args.n_val is not None:
             
             idx, this_avg_cav, this_avg_cav_sq = future.get_result(discard=True)
             print("Getting result idx {}".format(idx))
+            sys.stdout.flush()
             avg_cav += this_avg_cav
             avg_cav_sq += this_avg_cav_sq
 
@@ -317,7 +318,8 @@ if args.n_val is not None:
     with wm:
         for future in wm.submit_as_completed(task_gen(find_hat_cav_diff, fnames_rhoxyz, n_frames_per_file, bias_logweights, xbins, ybins, zbins, hat_cav), queue_size=wm.n_workers):
             idx, this_hat_cav_diff_sq = future.get_result(discard=True)
-            print("getting job: {:04d}".format(idx))
+            print("getting job idx: {:04d}".format(idx))
+            sys.stdout.flush()
             mse_hat_cav += this_hat_cav_diff_sq
 
 
