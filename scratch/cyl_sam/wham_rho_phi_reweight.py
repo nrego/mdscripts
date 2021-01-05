@@ -300,8 +300,9 @@ if args.n_val is not None:
     
     with wm:
         for future in wm.submit_as_completed(task_gen(load_and_weight_file, fnames_rhoxyz, n_frames_per_file, bias_logweights, xbins, ybins, zbins), queue_size=wm.n_workers):
-            print("Getting result idx {}".format(idx))
+            
             idx, this_avg_cav, this_avg_cav_sq = future.get_result(discard=True)
+            print("Getting result idx {}".format(idx))
             avg_cav += this_avg_cav
             avg_cav_sq += this_avg_cav_sq
 
