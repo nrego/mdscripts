@@ -187,9 +187,6 @@ start_frame = int(args.start / univ.trajectory.dt)
 n_frames = univ.trajectory.n_frames
 
 
-
-all_cav = np.zeros((n_frames-start_frame, nx, ny, nz), dtype=np.bool)
-
 #if args.print_out:
 #if True:
 W = MDAnalysis.Writer("shift.xtc", univ.atoms.n_atoms)
@@ -244,7 +241,7 @@ def task_gen(W=None, shifts=None):
         yield (get_rhoxyz, fn_args, fn_kwargs)
 
 
-
+## Calculate the cavity COM for each frame
 cav_com = np.zeros((n_frames-start_frame, 3))
 with wm:
     for future in wm.submit_as_completed(task_gen(), queue_size=wm.n_workers):
@@ -259,6 +256,7 @@ with wm:
         this_cav = this_rho < 0.5
         cav_mask = this_cav.ravel()
 
+        ## Large enough cavity - calculate its COM
         if cav_mask.sum()/gridpts.shape[0] > 1e-4:
             this_com = gridpts[cav_mask].mean(axis=0)
         else:
@@ -266,12 +264,13 @@ with wm:
 
         cav_com[idx, ...] = this_com
 
-        all_cav[idx, ...] = this_cav
+        #all_cav[idx, ...] = this_cav
 
         del this_rho_water, this_rho_sam, this_rho
 
 
 ## Now redo, but shift each frame so cavity com is centered in the box
+all_cav = np.zeros((n_frames-start_frame, nx, ny, nz), dtype=np.bool)
 
 print("Shifting each frame...")
 
@@ -312,7 +311,9 @@ with wm:
         
         all_verts.append(verts)
 
-        del this_rho_water, this_rho_sam, this_rho
+        all_cav[idx, ...] = this_cav
+
+        del this_rho_water, this_rho_sam, this_rho, this_cav
 
 print("New cav COM: {}".format(new_cav_com.mean(axis=0)))
 if not np.allclose(new_cav_com.mean(axis=0)[1:], box_com[1:], 0.01):
