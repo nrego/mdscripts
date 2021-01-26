@@ -92,11 +92,10 @@ univ_replace.add_TopologyAttr('resnames')
 univ_replace.add_TopologyAttr('resids')
 univ_replace.residues.resnames = "CH3"
 
-# i is local index of each patch group that will become a methyl
-for i in pt_idx:
+# idx is local index of each patch group that will become a methyl
+for i, idx in enumerate(pt_idx):
     
-
-    this_oh_res = sam_res[i]
+    this_oh_res = sam_res[idx]
     this_ch_res = univ_replace.residues[i]
 
     this_ch_res.atoms.names = np.append(['HC1', 'HC2', 'HC3', 'CT'], this_oh_res.atoms.names[2:])
@@ -118,9 +117,9 @@ for i in pt_idx:
 ag_oh = sam_res.atoms[sam_res.atoms.tempfactors != 1]
 
 if ag_oh.n_atoms > 0:
-    final_univ = MDAnalysis.core.universe.Merge(ag_nonpatch, ag_oh, univ_replace.atoms)
+    final_univ = MDAnalysis.core.universe.Merge(ag_nonpatch, ag_oh)
+    final_univ = MDAnalysis.core.universe.Merge(final_univ.atoms, univ_replace.atoms)
 else:
     final_univ = MDAnalysis.core.universe.Merge(ag_nonpatch, univ_replace.atoms)
 
-final_univ.atoms.write("struct.gro")
 
