@@ -122,4 +122,5 @@ if ag_oh.n_atoms > 0:
 else:
     final_univ = MDAnalysis.core.universe.Merge(ag_nonpatch, univ_replace.atoms)
 
+final_univ.atoms.write("struct.gro")
 
