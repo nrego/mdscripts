@@ -24,7 +24,7 @@ homedir = os.environ["HOME"]
 
 norm = plt.Normalize(-1,1)
 
-pos_ext = gen_pos_grid(12, z_offset=True, shift_y=-3, shift_z=-3)
+pos_ext = gen_pos_grid(12, y_offset=True, shift_x=-3, shift_y=-3)
 
 def make_feat(methyl_mask, pos_ext, patch_indices):
     feat = np.zeros(pos_ext.shape[0])
@@ -55,12 +55,12 @@ def get_energy(pt_idx, m_mask, nn, ext_count, reg):
 
 class State:
 
-    def __init__(self, pt_idx, p=6, q=6, shift_y=0, shift_z=0, parent=None, reg=None, e_func=None, mode='build_phob'):
+    def __init__(self, pt_idx, p=6, q=6, shift_x=0, shift_y=0, parent=None, reg=None, e_func=None, mode='build_phob'):
         #embed()
         self.p = p
         self.q = q
-        self.positions = gen_pos_grid(p, q, shift_y=shift_y, shift_z=shift_z)
-        self.pos_ext = gen_pos_grid(p+2, q+2, z_offset=True, shift_y=-1, shift_z=-1)
+        self.positions = gen_pos_grid(p, q, shift_x=shift_x, shift_y=shift_y)
+        self.pos_ext = gen_pos_grid(p+2, q+2, y_offset=True, shift_x=-1, shift_y=-1)
 
         # Patch_indices is a mapping of local (patch) index to (global) patch index
         #   patch_index[local_i] = global_i

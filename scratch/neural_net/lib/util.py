@@ -57,29 +57,29 @@ def center_pos(this_pos, pos_ext):
     
     #plt.show()
 
-def gen_pos_grid(ny=6, nz=None, z_offset=False, shift_y=0, shift_z=0):
-    if nz is None:
-        nz = ny
+def gen_pos_grid(nx=6, ny=None, y_offset=False, shift_x=0, shift_y=0):
+    if ny is None:
+        ny = nx
     ## Generate grid of center points
-    z_space = 0.5 # 0.5 nm spacing
-    y_space = np.sqrt(3)/2.0 * z_space
+    y_space = 0.5 # 0.5 nm spacing
+    x_space = np.sqrt(3)/2.0 * y_space
 
-    y_pos = 0 + shift_y*y_space
-    pos_row = np.arange(0,0.5*(nz+1), 0.5) + shift_z*z_space
+    x_pos = 0 + shift_x*x_space
+    pos_row = np.arange(0,0.5*(ny+1), 0.5) + shift_y*y_space
 
     positions = []
-    for i in range(ny):
-        if not z_offset:
-            this_pos_row = pos_row if i % 2 == 0 else pos_row + z_space/2.0
+    for i in range(nx):
+        if not y_offset:
+            this_pos_row = pos_row if i % 2 == 0 else pos_row + y_space/2.0
         else:
-            this_pos_row = pos_row if i % 2 != 0 else pos_row + z_space/2.0
+            this_pos_row = pos_row if i % 2 != 0 else pos_row + y_space/2.0
 
 
-        for j in range(nz):
-            z_pos = this_pos_row[j]
-            positions.append(np.array([y_pos, z_pos]))
+        for j in range(ny):
+            y_pos = this_pos_row[j]
+            positions.append(np.array([x_pos, y_pos]))
 
-        y_pos += y_space
+        x_pos += x_space
 
 
     return np.array(positions)

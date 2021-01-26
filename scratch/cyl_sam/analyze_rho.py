@@ -29,6 +29,10 @@ from scipy.optimize import curve_fit
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.optimize import minimize
 
+from skimage.measure import marching_cubes_lewiner
+
+import os, glob
+
 myorange = myorange = plt.rcParams['axes.prop_cycle'].by_key()['color'][1] 
 
 Rv = 20
@@ -43,125 +47,58 @@ mpl.rcParams.update({'xtick.labelsize': 30})
 mpl.rcParams.update({'ytick.labelsize': 30})
 mpl.rcParams.update({'axes.titlesize': 30})
 
-#fn_sph = lambda pts, x0 : 
+## Get boundaries
+ds = np.load('rho_n_0000.dat.npz')
+xbins = ds['xbins']
+ybins = ds['ybins']
+zbins = ds['zbins']
 
-## Analyze (reweighted) rho(x,y,z) profiles with beta phi, n
-#
-#  Find/linearly interpolate points of isosurface where rho(x,y,z) < s=0.5
-#    Finally, fit a circle to the isopoints.
+dx = np.diff(xbins)[0]
+dy = np.diff(ybins)[0]
+dz = np.diff(zbins)[0]
 
-# Find xs, point where line between (xlo, ylo) and (xhi, yhi) crosses ys
-def interp1d(xlo, xhi, ylo, yhi, ys=0.5):
+y0 = ybins.mean()
+z0 = zbins.mean()
+xc = xbins.min()
 
-    m = (yhi - ylo) / (xhi - xlo)
+min_pt = np.array([xbins.min(), ybins.min(), zbins.min()])
 
-    if m == 0:
-        return xlo
-
-    return xlo + (ys-ylo)/m
-
-
-# Given a density field (shape: (xvals.size, yvals.size, zvals.size)), find 
-#     linearly interpolated points where we cross isovalue
-def get_interp_points(rho, xvals, yvals, zvals, iso=0.5):
+print("\nDoing Rv={}A w={}A".format(Rv, w))
+print("min pt: {}".format(min_pt))
+print("xc: {} y0: {}  z0: {}".format(xc, y0, z0))
 
 
-    rho_mask = (rho > iso).astype(int)
-    xcross = np.diff(rho_mask, axis=0).astype(bool)
-    ycross = np.diff(rho_mask, axis=1).astype(bool)
-    zcross = np.diff(rho_mask, axis=2).astype(bool)
+## Initial guess for (R, x0)
+p0 = np.array([30,10])
 
-    dx, dy, dz = np.gradient(rho_mask)
+bounds = ([0, -np.inf], [np.inf, xc])
 
-    pts = []
-    for ix in range(xvals.size-1):
-        xlo = xvals[ix]
-        xhi = xvals[ix+1]
+min_pt = np.array([xbins.min(), ybins.min(), zbins.min()])
 
-        for iy in range(yvals.size-1):
-            ylo = yvals[iy]
-            yhi = yvals[iy+1]
+rvals = np.arange(0, 31, 1)
 
-            for iz in range(zvals.size-1):
-                zlo = zvals[iz]
-                zhi = zvals[iz+1]
-
-                bxcross = xcross[ix, iy, iz]
-                bycross = ycross[ix, iy, iz]
-                bzcross = zcross[ix, iy, iz]
-
-                if not (bxcross or bycross or bzcross):
-                    continue
-
-                ptx = interp1d(xlo, xhi, rho[ix, iy, iz], rho[ix+1, iy, iz], ys=iso) if bxcross else xlo
-                pty = interp1d(ylo, yhi, rho[ix, iy, iz], rho[ix, iy+1, iz], ys=iso) if bycross else ylo
-                ptz = interp1d(zlo, zhi, rho[ix, iy, iz], rho[ix, iy, iz+1], ys=iso) if bzcross else zlo
-
-                pts.append(np.array([ptx, pty, ptz]))
-
-    # last col of x
-    for iy in range(yvals.size-1):
-        ylo = yvals[iy]
-        yhi = yvals[iy+1]
-
-        for iz in range(zvals.size-1):
-            zlo = zvals[iz]
-            zhi = zvals[iz+1]
-
-            bycross = ycross[-1, iy, iz]
-            bzcross = zcross[-1, iy, iz]
-
-            if not (bycross or bzcross):
-                continue
-
-            pty = interp1d(ylo, yhi, rho[-1, iy, iz], rho[-1, iy+1, iz], ys=iso) if bycross else ylo
-            ptz = interp1d(zlo, zhi, rho[-1, iy, iz], rho[-1, iy, iz+1], ys=iso) if bzcross else zlo
-
-            pts.append(np.array([xvals[-1], pty, ptz]))
-
-    # last col of y
-    for ix in range(xvals.size-1):
-        xlo = xvals[ix]
-        xhi = xvals[ix+1]
-
-        for iz in range(zvals.size-1):
-            zlo = zvals[iz]
-            zhi = zvals[iz+1]
-
-            bxcross = xcross[ix, -1, iz]
-            bzcross = zcross[ix, -1, iz]
-
-            if not (bxcross or bzcross):
-                continue
-
-            ptx = interp1d(xlo, xhi, rho[ix, -1, iz], rho[ix+1, -1, iz], ys=iso) if bxcross else xlo
-            ptz = interp1d(zlo, zhi, rho[ix, -1, iz], rho[ix, -1, iz+1], ys=iso) if bzcross else zlo
-
-            pts.append(np.array([ptx, yvals[-1], ptz]))
-
-    # last col of z
-    for ix in range(xvals.size-1):
-        xlo = xvals[ix]
-        xhi = xvals[ix+1]
-
-        for iy in range(yvals.size-1):
-            ylo = yvals[iy]
-            yhi = yvals[iy+1]
-
-            bxcross = xcross[ix, iy, -1]
-            bycross = ycross[ix, iy, -1]
-
-            if not (bxcross or bycross):
-                continue
-
-            ptx = interp1d(xlo, xhi, rho[ix, iy, -1], rho[ix+1, iy, -1], ys=iso) if bxcross else xlo
-            pty = interp1d(ylo, yhi, rho[ix, iy, -1], rho[ix, iy+1, -1], ys=iso) if bycross else ylo
-
-            pts.append(np.array([ptx, pty, zvals[-1]]))
+## Set all other points to this, so we have a base line
+cent_point = np.array([xc, y0, z0])
 
 
-    return np.array(pts)
 
+# Fit points in y,z plane to spherical cap with radius R centered at (x0,y0,z0)
+def x_fit(pts_yz, R, x0):
+
+    # Fit (that is, S(y,z)) for each y,z point
+    ret = np.zeros(pts_yz.shape[0])
+
+    if R == 0 or x0 == xc:
+        ret[:] = xc
+        return ret
+
+    try:
+        ret = x0 + np.sqrt(R**2 - (pts_yz[:,0] - y0)**2 - (pts_yz[:,1] - z0)**2)
+    except ValueError:
+        pass
+
+
+    return ret
 
 # Transform a list of (x,y,z) points to (r, x) where r=sqrt( (y-y0)**2 + (z-z0)**2 )
 def pts_to_rhorx(pts, y0, z0):
@@ -175,336 +112,112 @@ def pts_to_rhorx(pts, y0, z0):
 
     return ret
 
-y0=35.0
-z0=35
-xc = 28.5
-p0 = np.array([30,10])
 
-bounds = ([0, -np.inf], [np.inf, xc])
+def process_fname(idx, fname):
 
-## Sum of squared errors for points, given sphere w/ radius R centered at (x0,y0,z0)
-def x_fit(pts_yz, R, x0):
-    theta = np.arccos((xc-x0)/R)
+    ds = np.load(fname)
 
-    mask = ((pts_yz[:,0] - y0)**2 + (pts_yz[:,1] - z0)**2) < (R*np.sin(theta))**2
-    #mask = np.ones(pts_yz.shape[0]).astype(bool)
-    ret = np.zeros(pts_yz.shape[0])
+    n_val = ds['n_val'].item()
 
+    assert np.array_equal(xbins, ds['xbins'])
+    assert np.array_equal(ybins, ds['ybins'])
+    assert np.array_equal(zbins, ds['zbins'])
+
+    avg_cav = ds['avg_cav']
+
+
+    # Try to fit isosurf - except means no cavity
     try:
-        ret[~mask] = xc
-    except ValueError:
-        pass
-    try:
-        ret[mask] = x0 + np.sqrt(R**2 - (pts_yz[mask,0] - y0)**2 - (pts_yz[mask,1] - z0)**2)
-    except ValueError:
-        pass
-
-
-    return ret
-
-def x_fit_noplane(pts_yz, R, x0):
-
-    ret = np.zeros(pts_yz.shape[0])
-
-    ret = x0 + np.sqrt(R**2 - (pts_yz[:,0] - y0)**2 - (pts_yz[:,1] - z0)**2)
-
-    return ret
-
-## Any points (in y, z) that have a radial distance from y0,z0 greater than buffer*RsinTheta
-radial_buffer = 0.8
-
-rvals = np.arange(0, 31, 1)
-y0 = 35.0
-z0 = 35.0
-
-vals = np.arange(10, 61, 1)
-yy, zz = np.meshgrid(vals, vals, indexing='ij')
-
-univ_fit = MDAnalysis.Universe.empty(n_atoms=yy.size, trajectory=True)
-
-## Set all other points to this, so we have a base line
-cent_point = np.array([28.5, 35, 35])
-
-rho0 = np.load('rho0.dat.npz')['rho0']
-
-
-#ds_bphi = np.load('rho_bphi.dat.npz')
-ds_n = np.load('rho_final.dat.npz')
-#ds = np.load('rhoxyz_dx_10.dat.npz')
-xbins = ds_n['xbins']
-ybins = ds_n['ybins']
-zbins = ds_n['zbins']
-
-#assert np.array_equal(xbins, ds_n['xbins'])
-#assert np.array_equal(ybins, ds_n['ybins'])
-#assert np.array_equal(zbins, ds_n['zbins'])
-
-xvals = xbins[:-1] + 0.5*np.diff(xbins)
-yvals = ybins[:-1] + 0.5*np.diff(ybins)
-zvals = zbins[:-1] + 0.5*np.diff(zbins)
-
-
-#rho_bphi = ds_bphi['rho_bphi']
-#assert rho_bphi.shape[1:] == rho0.shape
-#beta_phi_vals = ds_bphi['beta_phi_vals']
-
-rho_n = ds_n['rho_n']
-nvals = ds_n['nvals'].astype(float)
-assert rho_n.shape[1:] == rho0.shape
-
-dx = np.diff(xvals)[0]
-dy = np.diff(yvals)[0]
-dz = np.diff(zvals)[0]
-
-expt_waters = 0.033 * dx*dy*dz
-
-## Change rho0 to simply expt number of waters per voxel
-#rho0[:] = expt_waters
-rho0 = 0.033
-
-## GO THROUGH BPHI VALS ##
-##########################
-
-
-## GO THROUGH N VALS ##
-##########################
-
-max_atms = -np.inf
-for i, nval in enumerate(nvals):
-
-    rho = rho_n[i]
-    avg_rho = rho / rho0
-
-    mask_rho = (avg_rho > 0.5).astype(int)
-
-    pts = get_interp_points(avg_rho, xvals, yvals, zvals)
-
-    if pts.shape[0] > max_atms:
-        max_atms = pts.shape[0]
-
-univ = MDAnalysis.Universe.empty(n_atoms=max_atms, trajectory=True)
-
-
-# Radii for each n
-r_n = np.zeros_like(nvals)
-# initial point x0 for each nval
-x0_n = np.zeros_like(nvals)
-# Contact angle with yz plane at x=28.5
-theta_n = np.zeros_like(nvals)
-
-mse_n = np.zeros_like(nvals)
-r2_n = np.zeros_like(nvals)
-
-with MDAnalysis.Writer("traj_n.xtc", univ.atoms.n_atoms) as W:
-
-    for i, nval in enumerate(nvals):
-        print("doing n: {}".format(nval))
-        univ.atoms.positions[:] = 0
-        rho = rho_n[i]
-        avg_rho = rho / rho0
-
-        mask_rho = (avg_rho > 0.5).astype(int)
-
-        pts = get_interp_points(avg_rho, xvals, yvals, zvals)
-
-        tmp_pos = univ.atoms.positions.copy()
-
-        tmp_pos[:pts.shape[0]] = pts
-        tmp_pos[pts.shape[0]:] = cent_point
-
-        univ.atoms.positions = tmp_pos
-
-        W.write(univ.atoms)
-
-        if i == 0:
-            univ.atoms.write("base_n.gro")
-
-        new_p0 = p0.copy()
-        max_dist = np.ceil(np.sqrt((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2).max()) + 1
-        if max_dist > new_p0[0]:
-            new_p0[0] = max_dist
-
-        ## Initial fit
-        ## Now fit and find extent of spherical cap (e.g., y0+-RsinTheta, or z0+-RsinTheta)
-        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=new_p0, bounds=bounds)
+        pts, faces, norms, vals = marching_cubes_lewiner(avg_cav, level=0.5, spacing=np.array([dx,dy,dz]))
         
-        # Radius and center point x0
-        R, x0 = res[0]
+        pts += min_pt
 
-        h = xc - x0
-        theta = 180*np.arccos(h/R)/np.pi
-
-        ## Second fit, excluding all y, z points that are further than 
-        mask_radial_xy = ((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2) < radial_buffer*(R * np.sin((theta/180)*np.pi))**2
-        try:
-            res = curve_fit(x_fit_noplane, pts[mask_radial_xy,1:], pts[mask_radial_xy,0], p0=new_p0, bounds=bounds)
-        except ValueError:
-            pass
-            
-        R, x0 = res[0]
-
-        ## Find rmse of fit
-        pred = x_fit_noplane(pts[mask_radial_xy,1:], R, x0)
-        mse = np.mean((pred - pts[mask_radial_xy,0])**2)
-        r2 = 1 - (mse/pts[mask_radial_xy,0].var())
-
-        h = xc - x0
-        theta = 180*np.arccos(h/R)/np.pi
-
-        r_n[i] = R
-        x0_n[i] = x0
-        theta_n[i] = theta
-
-
-        mse_n[i] = mse
-        r2_n[i] = r2
-
-
-        ## FIT IT
-        # Project iso points to r,x
-        ret = pts_to_rhorx(pts, 35, 35)
-        x_of_r = x_fit(np.vstack((rvals+y0, np.ones_like(rvals)*z0)).T, R, x0)
-        plt.close('all')
-        ax = plt.gca()
-
-        ax.set_xlabel(r'$r$ (nm)')
-        ax.set_ylabel(r'$z$ (nm)')
-        ax.set_ylim(0, w/10.+0.1)
-        # R
-        ax.set_xlim(0, (Rv/10.)+0.4) 
-
-        ax.plot([0,Rv/10.], [w/10.,w/10.], '-', color=myorange, linewidth=10)
-        ax.axvline(Rv/10., ymin=0, ymax=(w/10.)/ax.get_ylim()[1], linewidth=10, linestyle='-', color=myorange)
-
-        ax.plot(ret[:,0]/10.0, ret[:,1]/10.0-2.85, 'yx')
-        ax.plot(rvals/10., x_of_r/10.-2.85, 'k--', linewidth=4)
-
-        label = r'$N={};  \theta={:.2f}$'.format(nval, theta)
-        ax.set_title(label)
-
-        plt.tight_layout()
-
-        n_idx = int(nvals.max() - nval)
-        plt.savefig("/Users/nickrego/Desktop/fig_n_{:03d}".format(n_idx))
-
-plt.close()
-plt.plot(nvals, theta_n, 'x')
-plt.xlabel(r'$N$')
-plt.ylabel(r'$\theta$')
-
-np.savetxt('theta_v_n.dat', np.vstack((nvals, theta_n)).T)
-np.savetxt('mse_v_n.dat', np.vstack((nvals, mse_n, r2_n)).T)
-
-'''
-
-max_atms = -np.inf
-for i, bphi in enumerate(beta_phi_vals):
-
-    rho = rho_bphi[i]
-    #avg_rho = rho / (0.033*dx*dy*dz)
-    avg_rho = rho / rho0
-    #avg_rho = np.clip(avg_rho, 0, 1)
-    mask_rho = (avg_rho > 0.5).astype(int)
-
-    pts = get_interp_points(avg_rho, xvals, yvals, zvals)
-
-    if pts.shape[0] > max_atms:
-        max_atms = pts.shape[0]
-
-univ = MDAnalysis.Universe.empty(n_atoms=max_atms, trajectory=True)
-
-# Radii for each bphi
-r_bphi = np.zeros_like(beta_phi_vals)
-# initial point x0 for each bphi
-x0_bphi = np.zeros_like(beta_phi_vals)
-# Contact angle with yz plane at x=28.5
-theta_bphi = np.zeros_like(beta_phi_vals)
-mse_bphi = np.zeros_like(beta_phi_vals)
-r2_bphi = np.zeros_like(beta_phi_vals)
-
-with MDAnalysis.Writer("traj_bphi.xtc", univ.atoms.n_atoms) as W:
-
-    for i, bphi in enumerate(beta_phi_vals):
-        print("doing bphi: {:.2f}".format(bphi))
-        univ.atoms.positions[:] = 0
-        rho = rho_bphi[i]
-        avg_rho = rho / rho0
-
-        mask_rho = (avg_rho > 0.5).astype(int)
-
-        pts = get_interp_points(avg_rho, xvals, yvals, zvals)
-
-        tmp_pos = univ.atoms.positions.copy()
-
-        tmp_pos[:pts.shape[0]] = pts
-        tmp_pos[pts.shape[0]:] = cent_point
-
-        univ.atoms.positions = tmp_pos
-
-        W.write(univ.atoms)
-
-        if i == 0:
-            univ.atoms.write("base_bphi.gro")
-
-        new_p0 = p0.copy()
-        max_dist = np.ceil(np.sqrt((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2).max()) + 1
-        if max_dist > new_p0[0]:
-            new_p0[0] = max_dist
-
-        ## Initial fit
-        ## Now fit and find extent of spherical cap (e.g., y0+-RsinTheta, or z0+-RsinTheta)
-        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=new_p0, bounds=bounds)
+        #new_p0 = p0.copy()
+        #max_dist = np.ceil(np.sqrt((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2).max()) + 1
+        #if max_dist > new_p0[0]:
+        #    new_p0[0] = max_dist
         
-        # Radius and center point x0
+
+        res = curve_fit(x_fit, pts[:,1:], pts[:,0], p0=p0, bounds=bounds)
         R, x0 = res[0]
-
         h = xc - x0
-        theta = 180*np.arccos(h/R)/np.pi
+        this_theta = 180*np.arccos(h/R)/np.pi
 
-        ## Second fit, excluding all y, z points that are further than 
-        mask_radial_xy = ((pts[:,1] - y0)**2 + (pts[:,2] - z0)**2) < radial_buffer*(R * np.sin((theta/180)*np.pi))**2
-        res = curve_fit(x_fit_noplane, pts[mask_radial_xy,1:], pts[mask_radial_xy,0], p0=new_p0, bounds=bounds)
+        pred = x_fit(pts[:,1:], R, x0)
 
-        R, x0 = res[0]
+        diff_sq = (pts[:,0] - pred)**2
+        this_fit_mse = np.mean(diff_sq)
 
-        ## Find rmse of fit
-        pred = x_fit_noplane(pts[mask_radial_xy,1:], R, x0)
-        mse = np.mean((pred - pts[mask_radial_xy,0])**2)
-        r2 = 1 - (mse/pts[mask_radial_xy,0].var())
+        mse_hat_cav = np.mean(ds['mse_hat_cav'])
 
-        h = xc - x0
-        theta = 180*np.arccos(h/R)/np.pi
 
-        r_bphi[i] = R
-        x0_bphi[i] = x0
-        theta_bphi[i] = theta
+        ## Project isosurf points to (r, x)
+        proj_pts = pts_to_rhorx(pts, y0, z0)
 
-        mse_bphi[i] = mse
-        r2_bphi[i] = r2
+        proj_fit = x_fit(np.vstack((rvals+y0, np.ones_like(rvals)*z0)).T, R, x0)
 
-        ## FIT IT
-        # Project iso points to r,x
-        ret = pts_to_rhorx(pts, 35, 35)
-        x_of_r = x_fit(np.vstack((rvals+y0, np.ones_like(rvals)*z0)).T, R, x0)
-        plt.close('all')
-        ax = plt.gca()
+    # No cavity
+    except ValueError:
+        this_theta = 0
+        this_fit_mse = np.nan
 
-        ax.set_xlabel(r'$r$ (nm)')
-        ax.set_ylabel(r'$z$ (nm)')
-        ax.set_ylim(0, w/10.+0.1)
-        # R
-        ax.set_xlim(0, (Rv/10.)+0.4) 
+        mse_hat_cav = np.mean(ds['mse_hat_cav'])
 
-        ax.plot([0,Rv/10.], [w/10.,w/10.], '-', color=myorange, linewidth=10)
-        ax.axvline(Rv/10., ymin=0, ymax=(w/10.)/ax.get_ylim()[1], linewidth=10, linestyle='-', color=myorange)
+        proj_fit = np.ones_like(rvals)
 
-        ax.plot(ret[:,0]/10.0, ret[:,1]/10.0-2.85, 'yx')
-        ax.plot(rvals/10., x_of_r/10.-2.85, 'k--', linewidth=4)
+        proj_pts = None
 
-        label = r'$\beta \phi={:.2f};  \theta={:.2f}$'.format(bphi, theta)
-        ax.set_title(label)
+    plt.close('all')
+    ax = plt.gca()
 
-        plt.tight_layout()
+    ax.set_xlabel(r'$r$ (nm)')
+    ax.set_ylabel(r'$z$ (nm)')
+    ax.set_ylim(0, w/10.+0.1)
+    # R
+    ax.set_xlim(0, (Rv/10.)+0.4)  
 
-        plt.savefig("/Users/nickrego/Desktop/fig_bphi_{:03d}".format(int(bphi*100)))
-'''
+    ax.plot([0,Rv/10.], [w/10.,w/10.], '-', color=myorange, linewidth=10)
+    ax.axvline(Rv/10., ymin=0, ymax=(w/10.)/ax.get_ylim()[1], linewidth=10, linestyle='-', color=myorange)
+
+    if proj_pts is not None:
+        ax.plot(proj_pts[:,0]/10., (proj_pts[:,1]-xc)/10., 'yx')
+    ax.plot(rvals/10., (proj_fit-xc)/10., 'k--', linewidth=4)
+
+    label = r'$N={};  \theta={:.2f}$'.format(n_val, this_theta)
+    ax.set_title(label)
+
+    plt.tight_layout()
+
+    plt.savefig("/Users/nickrego/Desktop/fig_n_{:03d}".format(idx))
+
+
+    return n_val, this_theta, mse_hat_cav, this_fit_mse
+
+
+fnames = sorted(glob.glob("rho_n*"))[::-1]
+
+n_vals = np.zeros(len(fnames))
+mses_hat_cav = np.zeros_like(n_vals)
+mses_fit = np.zeros_like(n_vals)
+thetas = np.zeros_like(n_vals)
+# At each N val, number of cavity voxels in the binary average cavity field - size of average
+#    cav at this N, essentially
+n_avg_cav = np.zeros_like(n_vals)
+
+for i, fname in enumerate(fnames):
+    n_val, this_theta, mse_hat_cav, this_fit_mse = process_fname(i, fname)
+
+    print("Doing N: {}".format(n_val))
+
+    n_vals[i] = n_val
+    thetas[i] = this_theta
+    mses_hat_cav[i] = mse_hat_cav
+    mses_fit[i] = this_fit_mse
+
+    n_avg_cav[i] = (np.load(fname)['avg_cav'] > 0.5).sum()
+
+
+np.savetxt('theta_v_n.dat', np.vstack((n_vals, thetas)).T)
+np.savetxt('mse_v_n.dat', np.vstack((n_vals, n_avg_cav, mses_hat_cav, mses_fit)).T)
+
+

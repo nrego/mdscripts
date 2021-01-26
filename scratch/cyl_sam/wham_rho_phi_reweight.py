@@ -96,6 +96,7 @@ def find_hat_cav_diff(idx, fname, logweights, xbins, ybins, zbins, hat_cav):
     this_cav_shape = this_cav.reshape(this_cav.shape[0], -1)
     hat_cav_shape = hat_cav.ravel()
 
+    # Shape: (n_frames, n_voxels)
     diff = this_cav_shape - hat_cav_shape
     #diff_sq = diff**2
     
