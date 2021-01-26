@@ -47,7 +47,7 @@ q = args.q
 if q is None:
     q = p
 
-pt_idx = np.loadtxt(args.pt_idx).astype(int)
+pt_idx = np.loadtxt(args.pt_idx, ndmin=1).astype(int)
 state = State(pt_idx, p=p, q=q)
 
 plt.close()
