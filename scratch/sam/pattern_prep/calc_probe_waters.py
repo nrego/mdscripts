@@ -53,7 +53,7 @@ for i_frame, ts in enumerate(univ.trajectory):
         n_waters[i_frame, i_ro] = sel.n_atoms
 
 
-np.savez_compressed("n_waters.dat", n_waters=n_waters, rc=rc, ro_vals=ro_vals)
+np.savez_compressed("n_waters_{:02d}.dat".format(int(rc*10)), n_waters=n_waters, rc=rc, ro_vals=ro_vals)
 
 
 
