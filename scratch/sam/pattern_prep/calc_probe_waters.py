@@ -17,7 +17,7 @@ import os,sys
 
 
 parser = argparse.ArgumentParser('Measure the number of water (oxygens) w/in distance of patch atoms')
-parser.add_argument('-c', '--struct', type=str, default='equil/confout.gro',
+parser.add_argument('-c', '--struct', type=str, default='nvt/nvt.gro',
                     help='Structure of patterned SAM')
 parser.add_argument('-f', '--traj', type=str, default='equil/traj.xtc',
                     help='Structure of patterned SAM')

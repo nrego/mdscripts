@@ -193,7 +193,7 @@ def augment_data(feat_vec, y):
     return (aug_feat_vec, aug_y)
 
 # Load in data (energies and methyl positions)
-def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, nz=13, binary_encoding=False):
+def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, nx=14, ny=13, binary_encoding=False):
 
     ds = np.load(fname)
     energies = ds['energies']
@@ -207,12 +207,12 @@ def load_and_prep(fname='sam_pattern_06_06.dat.npz', embed_pos_ext=True, ny=14, 
     
     ols_feat = np.zeros((n_data, 3))
     if embed_pos_ext:
-        pos_ext = gen_pos_grid(ny=ny, nz=nz, shift_z=-4, shift_y=-4, z_offset=True)
+        pos_ext = gen_pos_grid(nx=nx, ny=ny, shift_x=-4, shift_y=-4, y_offset=True)
     else:
         pos_ext = states[0].positions
         #pos_ext = states[0].pos_ext
         
-    # shape: (n_data_points, ny*nz)
+    # shape: (n_data_points, nx*ny)
     feat_vec = np.zeros((n_data, pos_ext.shape[0]), dtype=np.float32) # might as well keep this shit small
     #if binary_encoding:
     #    feat_vec[:] = 1
